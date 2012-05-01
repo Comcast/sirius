@@ -15,7 +15,7 @@ public interface RequestHandler {
      * 
      * @param request
      */
-    public void hanldeUpdate(HttpServletRequest request);
+    public void handleUpdate(HttpServletRequest request);
 
     /**
      * Processes the GETs from the Sirius queue and applies business logic.
