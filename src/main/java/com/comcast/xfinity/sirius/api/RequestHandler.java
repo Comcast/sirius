@@ -1,4 +1,4 @@
-package com.comcast.xfinity;
+package com.comcast.xfinity.sirius.api;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
