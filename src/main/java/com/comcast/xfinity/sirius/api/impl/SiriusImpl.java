@@ -1,6 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
@@ -42,41 +41,4 @@ public class SiriusImpl implements Sirius {
     private long getOrder(HttpServletRequest request) {
         return requestOrderer.orderRequest(request);
     }     
-}
-
-class UpdateRunnable implements Runnable {
-
-    private SiriusCommand command;
-    
-    UpdateRunnable(SiriusCommand command){
-        this.command = command;
-    }
-    
-    public SiriusCommand getCommand() {
-        return command;
-    }
-
-    @Override
-    public void run() {
-        command.getHandler().handleUpdate(command.getRequest());
-    }   
-}
-
-class GetCallable implements Callable<HttpServletResponse> {
-
-    private SiriusCommand command;
-    
-    GetCallable(SiriusCommand command){
-        this.command = command;
-    }
-
-    public SiriusCommand getCommand() {
-        return command;
-    }
-
-    @Override
-    public HttpServletResponse call() throws Exception {
-        return command.getHandler().handleGet(command.getRequest());
-    }
-    
 }
