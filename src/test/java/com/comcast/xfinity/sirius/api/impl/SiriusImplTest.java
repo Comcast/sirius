@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.api.impl;
 
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.concurrent.ExecutorService;
 
@@ -13,7 +14,6 @@ import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.runners.MockitoJUnitRunner;
-import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comcast.xfinity.sirius.api.RequestHandler;
@@ -30,6 +30,7 @@ public class SiriusImplTest {
     @Mock
     private ExecutorService executorService;
     
+    @Mock
     private HttpServletRequest httpServletRequest;
     
     private SiriusImpl sirius;
@@ -39,11 +40,11 @@ public class SiriusImplTest {
         sirius = new SiriusImpl();
         ReflectionTestUtils.setField(sirius, "requestOrderer", requestOrderer);
         ReflectionTestUtils.setField(sirius, "executorService", executorService);
-        httpServletRequest = new MockHttpServletRequest();
     }
     
     @Test
     public void testEnqueueUpdateCallsOrderRequest() {
+        when(httpServletRequest.getMethod()).thenReturn("PUT");
         sirius.enqueueUpdate(httpServletRequest, requestHandler);
         
         verify(requestOrderer).orderRequest(httpServletRequest);
@@ -51,6 +52,7 @@ public class SiriusImplTest {
     
     @Test
     public void testThatEnqueueUpdatePassesCommandToExecutorService() {
+        when(httpServletRequest.getMethod()).thenReturn("PUT");
         sirius.enqueueUpdate(httpServletRequest, requestHandler);
         ArgumentCaptor<UpdateRunnable> runnableCaptor = ArgumentCaptor.forClass(UpdateRunnable.class);
         
@@ -62,6 +64,7 @@ public class SiriusImplTest {
     
     @Test
     public void testThatEnqueueGetPassesCommandToExecutorService() {
+        when(httpServletRequest.getMethod()).thenReturn("PUT");
         sirius.enqueueGet(httpServletRequest, requestHandler);
         ArgumentCaptor<GetCallable> callableCaptor = ArgumentCaptor.forClass(GetCallable.class);
         
