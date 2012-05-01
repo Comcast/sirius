@@ -22,8 +22,7 @@ public class SiriusImpl implements Sirius {
     @Override
     public void enqueueUpdate(HttpServletRequest request, RequestHandler handler) {
         long order = getOrder(request);
-        SiriusCommand command = new SiriusCommand(request, handler);
-        command.setOrder(order);
+        SiriusCommand command = new SiriusCommand(request, handler, order);
         writeToTransactionLog(command);
         executorService.execute(new UpdateRunnable(command));
     }

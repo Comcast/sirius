@@ -5,38 +5,37 @@ import javax.servlet.http.HttpServletRequest;
 import com.comcast.xfinity.sirius.api.RequestHandler;
 
 
-public class SiriusCommand {
+final public class SiriusCommand {
     
-    private HttpServletRequest request;
-    private RequestHandler handler;
-    private long order;
+    final private HttpServletRequest request;
+    final private RequestHandler handler;
+    final private long order;
+    final private SiriusCommandType type;
     
     public SiriusCommand(HttpServletRequest request, RequestHandler handler) {
+        this(request, handler, 0);
+    }
+    
+    public SiriusCommand(HttpServletRequest request, RequestHandler handler, long order) {
         this.request = request;
+        this.type = SiriusCommandType.getType(request);
         this.handler = handler;
+        this.order = order;
     }
     
     public HttpServletRequest getRequest() {
         return request;
     }
     
-    public void setRequest(HttpServletRequest request) {
-        this.request = request;
-    }
-    
     public RequestHandler getHandler() {
         return handler;
-    }
-    
-    public void setHandler(RequestHandler handler) {
-        this.handler = handler;
     }
     
     public long getOrder() {
         return order;
     }
-    
-    public void setOrder(long order) {
-        this.order = order;
+
+    public SiriusCommandType getType() {
+        return type;
     }
 }
