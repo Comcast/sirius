@@ -128,6 +128,7 @@
         </dependency>
     </dependencies>
     <build>
+        <finalName>sirius</finalName>
         <plugins>
             <plugin>
                 <artifactId>maven-eclipse-plugin</artifactId>
