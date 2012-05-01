@@ -1,6 +1,7 @@
 package com.comcast.xfinity;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * Class that the application must implement to process GETs, PUTs, and DELETEs
@@ -14,7 +15,7 @@ public interface RequestHandler {
      * 
      * @param request
      */
-    void hanldeUpdate(HttpServletRequest request);
+    public void hanldeUpdate(HttpServletRequest request);
 
     /**
      * Processes the GETs from the Sirius queue and applies business logic.
@@ -22,5 +23,5 @@ public interface RequestHandler {
      * @param request
      * @return The response of the GET from the application
      */
-    HttpServletRequest handleGet(HttpServletRequest request);
+    public HttpServletResponse handleGet(HttpServletRequest request);
 }

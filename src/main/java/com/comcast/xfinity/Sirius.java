@@ -3,6 +3,7 @@ package com.comcast.xfinity;
 import java.util.concurrent.Future;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * Main interface for the Sirius library.
@@ -15,7 +16,7 @@ public interface Sirius {
      * 
      * @param request
      */
-    void enqueueUpdate(HttpServletRequest request);
+    public void enqueueUpdate(HttpServletRequest request);
 
     /**
      * Adds a GET to the Queue. Does not consult with other nodes, nor does it
@@ -24,5 +25,5 @@ public interface Sirius {
      * @param request
      * @return A future that will contain the results of the GET.
      */
-    Future<?> enqueueGet(HttpServletRequest request);
+    public Future<HttpServletResponse> enqueueGet(HttpServletRequest request);
 }
