@@ -7,34 +7,16 @@ import javax.inject.Inject;
 
 import com.comcast.xfinity.sirius.api.RequestHandler;
 import com.comcast.xfinity.sirius.api.Sirius;
-import com.comcast.xfinity.sirius.api.SiriusResponse;
 
-
-public class SiriusImpl extends Sirius {
-    
-    public SiriusImpl(RequestHandler requestHandler) {
-        super(requestHandler);
-    }
+public class SiriusImpl implements Sirius {
 
     @Inject
-    private ExecutorService executorService;
-    
-    @Override
-    public Future<SiriusResponse> enqeuePUT(String key, Object body) {
-        RequestCallable callable = new RequestCallable("PUT", key, body, getRequestHandler());
-        return executorService.submit(callable);
-    }
+    ExecutorService executorService;
 
-    @Override
-    public Future<SiriusResponse> enqueueDELETE(String key) {
-        RequestCallable callable = new RequestCallable("DELETE", key, null, getRequestHandler());
+    public <BODY, RESPONSE> Future<RESPONSE> enqueue(String method, String key,
+            BODY body, RequestHandler<BODY, RESPONSE> requestHandler) {
+        RequestCallable<BODY, RESPONSE> callable = new RequestCallable<BODY, RESPONSE>(
+                method, key, body, requestHandler);
         return executorService.submit(callable);
     }
-
-    @Override
-    public Future<SiriusResponse> enqueueGET(String key) {
-        RequestCallable callable = new RequestCallable("GET", key, null, getRequestHandler());
-        return executorService.submit(callable);
-    }
-     
 }

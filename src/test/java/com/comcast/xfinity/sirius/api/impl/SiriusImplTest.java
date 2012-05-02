@@ -1,8 +1,11 @@
 package com.comcast.xfinity.sirius.api.impl;
 
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.when;
 
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -15,47 +18,30 @@ import com.comcast.xfinity.sirius.api.RequestHandler;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SiriusImplTest {
-    
+
     @Mock
-    private RequestHandler requestHandler;
-    
-    @Mock
+    private RequestHandler<String, String> requestHandler;
+
     private ExecutorService executorService;
-    
-    private CapturingRequestHandler capturingRequestHandler;
-    
+
+
     private SiriusImpl sirius;
-    
+
     @Before
     public void setUp() {
-        capturingRequestHandler = new CapturingRequestHandler();
-        sirius = new SiriusImpl(capturingRequestHandler);
+        
+        sirius = new SiriusImpl();
+        
+        executorService = new MockExecutorService();
+        
         ReflectionTestUtils.setField(sirius, "executorService", executorService);
     }
-    
-    @Test
-    public void whenEnqueuePUTIsCalled_PutIsEnqueued(){
-        sirius.enqeuePUT("foo", "bar");
-        
-        assertEquals("foo", capturingRequestHandler.key);
-        assertEquals("bar", capturingRequestHandler.body);
-        assertEquals("PUT", capturingRequestHandler.method);
-    }
-    
-    @Test
-    public void whenEnqueueGETIsCalled_GetIsEnqueued(){
-        sirius.enqueueGET("baz");
 
-        assertEquals("baz", capturingRequestHandler.key);
-        assertEquals("GET", capturingRequestHandler.method);
-    }
-    
     @Test
-    public void whenEnqueueDELETEIsCalled_DELETEIsEnqueued(){
-        sirius.enqueueDELETE("quz");
-
-        assertEquals("quz", capturingRequestHandler.key);
-        assertEquals("DELETE", capturingRequestHandler.method);
+    public void whenEnqueueIsCalled_RequestIsEnqueued() throws InterruptedException, ExecutionException {
+        when(requestHandler.handle("GET", "foo", "bar")).thenReturn("baz");
+        Future<String> future = sirius.enqueue("GET", "foo", "bar", requestHandler);
+        assertEquals("baz", future.get());
     }
-    
+
 }

@@ -4,23 +4,22 @@ import java.util.concurrent.Callable;
 
 import com.comcast.xfinity.sirius.api.RequestHandler;
 
-public class RequestCallable implements Callable {
+public class RequestCallable<BODY, RESPONSE> implements Callable<RESPONSE> {
 
     private String method;
     private String key;
-    private Object body;
-    private RequestHandler requestHandler;
+    private BODY body;
+    private RequestHandler<BODY, RESPONSE> requestHandler;
     
-    public RequestCallable(String method, String key, Object body, RequestHandler requestHandler){
+    public RequestCallable(String method, String key, BODY body, RequestHandler<BODY, RESPONSE> requestHandler){
         this.method = method;
         this.key = key;
         this.body = body;
         this.requestHandler = requestHandler;
     }
-    
-    @Override
-    public Object call() throws Exception {
-        return requestHandler.handleRequest(key, method, body);
+
+    public RESPONSE call() throws Exception {
+        return requestHandler.handle(method, key, body);
     }
     
 }

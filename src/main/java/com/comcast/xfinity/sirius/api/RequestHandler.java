@@ -5,8 +5,8 @@ package com.comcast.xfinity.sirius.api;
  * from the Sirius Queue.
  * 
  */
-public interface RequestHandler {
-    
-    public Object handleRequest(String key, String method, Object body);
-    
+public interface RequestHandler<BODY, RESPONSE> {
+
+    public RESPONSE handle(String method, String key, BODY body);
+
 }

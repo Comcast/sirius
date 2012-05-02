@@ -2,25 +2,12 @@ package com.comcast.xfinity.sirius.api;
 
 import java.util.concurrent.Future;
 
-
 /**
  * Main interface for the Sirius library.
  */
-public abstract class Sirius {
-    private RequestHandler requestHandler;
-    
-    public Sirius(RequestHandler requestHandler) {
-        this.requestHandler = requestHandler;
-    }
-    
-    protected RequestHandler getRequestHandler(){
-        return requestHandler;
-    }
-    
-    public abstract Future<SiriusResponse> enqeuePUT(String key, Object body);
-    
-    public abstract Future<SiriusResponse> enqueueDELETE(String key);
-    
-    public abstract Future<SiriusResponse> enqueueGET(String key);
-    
+public interface Sirius {
+
+    public <BODY, RESPONSE> Future<RESPONSE> enqueue(String method, String key,
+            BODY body, RequestHandler<BODY, RESPONSE> requestHandler);
+
 }
