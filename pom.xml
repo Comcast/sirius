@@ -15,6 +15,8 @@
         <org.springframework-version>3.1.0.RELEASE</org.springframework-version>
         <org.aspectj-version>1.6.9</org.aspectj-version>
         <org.slf4j-version>1.5.10</org.slf4j-version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
     <dependencies>
         <!-- Spring -->
