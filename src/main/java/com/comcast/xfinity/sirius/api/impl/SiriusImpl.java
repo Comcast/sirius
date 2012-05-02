@@ -4,40 +4,37 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import javax.inject.Inject;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import com.comcast.xfinity.sirius.api.RequestHandler;
 import com.comcast.xfinity.sirius.api.Sirius;
+import com.comcast.xfinity.sirius.api.SiriusResponse;
 
 
-public class SiriusImpl implements Sirius {
+public class SiriusImpl extends Sirius {
     
-    @Inject
-    private RequestOrderer requestOrderer;
-    
+    public SiriusImpl(RequestHandler requestHandler) {
+        super(requestHandler);
+    }
+
     @Inject
     private ExecutorService executorService;
     
     @Override
-    public void enqueueUpdate(HttpServletRequest request, RequestHandler handler) {
-        long order = getOrder(request);
-        SiriusCommand command = new SiriusCommand(request, handler, order);
-        writeToTransactionLog(command);
-        executorService.execute(new UpdateRunnable(command));
+    public Future<SiriusResponse> enqeuePUT(String key, Object body) {
+        RequestCallable callable = new RequestCallable("PUT", key, body, getRequestHandler());
+        return executorService.submit(callable);
     }
 
     @Override
-    public Future<HttpServletResponse> enqueueGet(HttpServletRequest request, RequestHandler handler) { 
-        SiriusCommand command = new SiriusCommand(request, handler);
-        return executorService.submit(new GetCallable(command));
+    public Future<SiriusResponse> enqueueDELETE(String key) {
+        RequestCallable callable = new RequestCallable("DELETE", key, null, getRequestHandler());
+        return executorService.submit(callable);
     }
 
-    private void writeToTransactionLog(SiriusCommand command) {
-        
+    @Override
+    public Future<SiriusResponse> enqueueGET(String key) {
+        RequestCallable callable = new RequestCallable("GET", key, null, getRequestHandler());
+        return executorService.submit(callable);
     }
-
-    private long getOrder(HttpServletRequest request) {
-        return requestOrderer.orderRequest(request);
-    }     
+     
 }
