@@ -13,10 +13,12 @@ public class SiriusImpl implements Sirius {
     @Inject
     ExecutorService executorService;
 
-    public <BODY, RESPONSE> Future<RESPONSE> enqueue(String method, String key,
-            BODY body, RequestHandler<BODY, RESPONSE> requestHandler) {
-        RequestCallable<BODY, RESPONSE> callable = new RequestCallable<BODY, RESPONSE>(
-                method, key, body, requestHandler);
+    @Inject
+    RequestHandler requestHandler;
+
+    public Future<byte[]> enqueue(String method, String key, byte[] body) {
+        RequestCallable callable = new RequestCallable(method, key, body,
+                requestHandler);
         return executorService.submit(callable);
     }
 }

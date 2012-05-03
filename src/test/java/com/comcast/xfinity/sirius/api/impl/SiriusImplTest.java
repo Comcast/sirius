@@ -20,7 +20,7 @@ import com.comcast.xfinity.sirius.api.RequestHandler;
 public class SiriusImplTest {
 
     @Mock
-    private RequestHandler<String, String> requestHandler;
+    private RequestHandler requestHandler;
 
     private ExecutorService executorService;
 
@@ -35,13 +35,14 @@ public class SiriusImplTest {
         executorService = new MockExecutorService();
         
         ReflectionTestUtils.setField(sirius, "executorService", executorService);
+        ReflectionTestUtils.setField(sirius, "requestHandler", requestHandler);
     }
 
     @Test
     public void whenEnqueueIsCalled_RequestIsEnqueued() throws InterruptedException, ExecutionException {
-        when(requestHandler.handle("GET", "foo", "bar")).thenReturn("baz");
-        Future<String> future = sirius.enqueue("GET", "foo", "bar", requestHandler);
-        assertEquals("baz", future.get());
+        when(requestHandler.handle("GET", "foo", "bar".getBytes())).thenReturn("baz".getBytes());
+        Future<byte[]> future = sirius.enqueue("GET", "foo", "bar".getBytes());
+        assertEquals("baz", new String(future.get()));
     }
 
 }

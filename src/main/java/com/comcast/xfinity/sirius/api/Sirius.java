@@ -7,7 +7,6 @@ import java.util.concurrent.Future;
  */
 public interface Sirius {
 
-    public <BODY, RESPONSE> Future<RESPONSE> enqueue(String method, String key,
-            BODY body, RequestHandler<BODY, RESPONSE> requestHandler);
+    public Future<byte[]> enqueue(String method, String key, byte[] body);
 
 }
