@@ -22,4 +22,14 @@ public class SiriusImpl implements Sirius {
                 requestHandler);
         return executorService.submit(callable);
     }
+
+    @Override
+    public Future<byte[]> enqueuePut(String key, byte[] body) {
+        return this.enqueue(RequestMethod.PUT, key, body);
+    }
+
+    @Override
+    public Future<byte[]> enqueueGet(String key) {
+        return this.enqueue(RequestMethod.GET, key, null);
+    }
 }
