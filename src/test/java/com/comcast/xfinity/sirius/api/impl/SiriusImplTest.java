@@ -15,6 +15,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import com.comcast.xfinity.sirius.api.RequestHandler;
+import com.comcast.xfinity.sirius.api.RequestMethod;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SiriusImplTest {
@@ -40,8 +41,8 @@ public class SiriusImplTest {
 
     @Test
     public void whenEnqueueIsCalled_RequestIsEnqueued() throws InterruptedException, ExecutionException {
-        when(requestHandler.handle("GET", "foo", "bar".getBytes())).thenReturn("baz".getBytes());
-        Future<byte[]> future = sirius.enqueue("GET", "foo", "bar".getBytes());
+        when(requestHandler.handle(RequestMethod.GET, "foo", "bar".getBytes())).thenReturn("baz".getBytes());
+        Future<byte[]> future = sirius.enqueue(RequestMethod.GET, "foo", "bar".getBytes());
         assertEquals("baz", new String(future.get()));
     }
 

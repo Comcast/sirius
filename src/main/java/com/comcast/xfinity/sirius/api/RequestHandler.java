@@ -7,6 +7,6 @@ package com.comcast.xfinity.sirius.api;
  */
 public interface RequestHandler {
 
-    public byte[] handle(String method, String key, byte[] body);
+    public byte[] handle(RequestMethod method, String key, byte[] body);
 
 }
