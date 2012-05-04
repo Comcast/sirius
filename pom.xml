@@ -141,6 +141,11 @@
             <artifactId>akka-testkit</artifactId>
             <version>${akka-version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scala-version}</artifactId>
+            <version>1.7.1</version>
+        </dependency>
     </dependencies>
     <build>
         <finalName>sirius</finalName>
