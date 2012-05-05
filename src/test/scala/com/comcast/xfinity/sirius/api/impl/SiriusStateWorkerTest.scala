@@ -22,7 +22,7 @@ class SiriusStateWorkerTest extends FunSpec with BeforeAndAfter with AkkaTestCon
   }
 
   after {
-    system.shutdown()
+    spiedAkkaSystem.shutdown()
   }
 
   describe("a SiriusStateWorker") {

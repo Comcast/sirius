@@ -1,4 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl
+
 import org.junit.runner.RunWith
 import org.junit.Before
 import org.mockito.runners.MockitoJUnitRunner
@@ -6,56 +7,49 @@ import org.mockito.Matchers
 import org.mockito.Mock
 import org.mockito.Mockito
 import org.mockito.Spy
-import com.comcast.xfinity.sirius.api.RequestHandler
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.testkit.TestProbe
 import org.junit.After
 import org.junit.Test
-import com.comcast.xfinity.sirius.api.RequestMethod
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.{FunSpec, BeforeAndAfter}
+import org.mockito.Mockito._
+import org.mockito.Matchers._
+import com.comcast.xfinity.sirius.api.{AkkaTestConfig, RequestHandler, RequestMethod}
 
-@RunWith(classOf[MockitoJUnitRunner])
-class SiriusScalaImplTest {
-  
-  @Mock
+@RunWith(classOf[JUnitRunner])
+class SiriusScalaImplTest extends FunSpec with BeforeAndAfter with AkkaTestConfig {
+
   var mockRequestHandler: RequestHandler = _
-  
-  var actorSystem: ActorSystem = _
-  
   var stateWorkerProbe: TestProbe = _
-  
   var underTest: SiriusScalaImpl = _
-  
-  @Before
-  def setUp() = {
-    actorSystem = Mockito.spy(ActorSystem("test"))
-    
-    stateWorkerProbe = TestProbe()(actorSystem)
-    Mockito.doReturn(stateWorkerProbe.ref).when(actorSystem).actorOf(Matchers.any(classOf[Props]))
-    underTest = new SiriusScalaImpl(mockRequestHandler, actorSystem)
+
+  before {
+    mockRequestHandler = mock(classOf[RequestHandler])
+    stateWorkerProbe = TestProbe()
+    doReturn(stateWorkerProbe.ref).when(spiedAkkaSystem).actorOf(any(classOf[Props]))
+    underTest = new SiriusScalaImpl(mockRequestHandler, spiedAkkaSystem)
   }
-  
-  @After
-  def tearDown = {
-    actorSystem.shutdown()
+
+  after {
+    spiedAkkaSystem.shutdown()
   }
-  
-  @Test
-  def testEnqueuePutForwardsProperMessageToStateWorker() = {
-    val key = "hello"
-    val body = "there".getBytes()
-    underTest.enqueuePut(key, body)
-    stateWorkerProbe.expectMsg((RequestMethod.PUT, key, body))
-    ()
+
+
+  describe("a SiriusScalaImpl") {
+    it("should forward a PUT message to StateWorker when enqueuePut called") {
+      val key = "hello"
+      val body = "there".getBytes()
+      underTest.enqueuePut(key, body)
+      stateWorkerProbe.expectMsg((RequestMethod.PUT, key, body))
+    }
+
+    it("should forward a GET message to StateWorker when enqueueGet called ") {
+      val key = "hello"
+      underTest.enqueueGet(key)
+      stateWorkerProbe.expectMsg((RequestMethod.GET, key, null))
+    }
   }
-  
-  @Test
-  def testEnqueueGetForwardsProperMessageToStateWorker() = {
-    val key = "hello"
-    underTest.enqueueGet(key)
-    stateWorkerProbe.expectMsg((RequestMethod.GET, key, null))
-    ()
-  }
-  
 }
