@@ -1,18 +1,9 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import org.junit.runner.RunWith
-import org.junit.Before
-import org.mockito.runners.MockitoJUnitRunner
-import org.mockito.Matchers
-import org.mockito.Mock
-import org.mockito.Mockito
-import org.mockito.Spy
-import akka.actor.ActorRef
-import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.testkit.TestProbe
-import org.junit.After
-import org.junit.Test
+
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FunSpec, BeforeAndAfter}
 import org.mockito.Mockito._
