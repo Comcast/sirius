@@ -2,12 +2,12 @@ package com.comcast.xfinity.sirius.api.impl
 
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.{FunSpec, BeforeAndAfter}
+import org.scalatest.{ FunSpec, BeforeAndAfter }
 import org.mockito.Mockito._
 import org.mockito.Matchers._
-import com.comcast.xfinity.sirius.api.{RequestHandler, RequestMethod}
-import akka.testkit.{TestActor, TestProbe}
-import akka.actor.{ActorRef, Props}
+import com.comcast.xfinity.sirius.api.{ RequestHandler, RequestMethod }
+import akka.testkit.{ TestActor, TestProbe }
+import akka.actor.{ ActorRef, Props }
 import akka.dispatch.Await
 import akka.actor.ActorSystem
 import akka.util.duration._
@@ -27,12 +27,13 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
     spiedAkkaSystem = spy(ActorSystem("testsystem", ConfigFactory.parseString("""
     akka.event-handlers = ["akka.testkit.TestEventListener"]
     """)))
-    
+
     mockRequestHandler = mock(classOf[RequestHandler])
     stateWorkerProbe = TestProbe()(spiedAkkaSystem)
     stateWorkerProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] =
         msg match {
+          case (RequestMethod.DELETE, _) => sender ! "Delete it".getBytes(); Some(this)
           case (RequestMethod.GET, _) => sender ! "Got it".getBytes(); Some(this)
           case (RequestMethod.PUT, _, _) => sender ! "Put it".getBytes(); Some(this)
         }
@@ -46,7 +47,6 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
     spiedAkkaSystem.shutdown()
   }
 
-
   describe("a SiriusScalaImpl") {
     it("should forward a PUT message to StateWorker when enqueuePut called and get an \"ACK\" back") {
       val key = "hello"
@@ -59,6 +59,12 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
       val key = "hello"
       assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
       stateWorkerProbe.expectMsg((RequestMethod.GET, key))
+    }
+
+    it("should forward a DELETE message to StateWorker when enqueueDelete called ") {
+      val key = "hello"
+      assert("Delete it".getBytes() === Await.result(underTest.enqueueDelete(key), timeout.duration).asInstanceOf[Array[Byte]])
+      stateWorkerProbe.expectMsg((RequestMethod.DELETE, key))
     }
   }
 }
