@@ -2,16 +2,17 @@ package com.comcast.xfinity.sirius.api.impl
 
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.RequestMethod
-
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.pattern.ask
 import akka.dispatch.Await
+import com.comcast.xfinity.sirius.api.Sirius
+import akka.dispatch.Future
 
 /**
  * A Sirius implementation implemented in Scala using Akka actors
  */
-class SiriusScalaImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem) extends AkkaConfig {
+class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem) extends Sirius with AkkaConfig {
 
   val stateWorker = actorSystem.actorOf(Props(new SiriusStateWorker(requestHandler)), SIRIUS_STATE_WORKER_NAME)
 
@@ -19,9 +20,7 @@ class SiriusScalaImpl(val requestHandler: RequestHandler, val actorSystem: Actor
    * Enqueue an event for processing
    */
   def enqueue(method: RequestMethod, key: String, body: Array[Byte]) = {
-    val akkaFuture = stateWorker ?(method, key, body)
-    Await.result(akkaFuture, timeout.duration).asInstanceOf[Array[Byte]]
-
+    (stateWorker ? (method, key, body)).asInstanceOf[Future[Array[Byte]]]
   }
 
   /**
