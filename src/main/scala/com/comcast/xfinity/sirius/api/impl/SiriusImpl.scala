@@ -17,19 +17,16 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
   val stateWorker = actorSystem.actorOf(Props(new SiriusStateWorker(requestHandler)), SIRIUS_STATE_WORKER_NAME)
 
   /**
-   * Enqueue an event for processing
-   */
-  def enqueue(method: RequestMethod, key: String, body: Array[Byte]) = {
-    (stateWorker ? (method, key, body)).asInstanceOf[Future[Array[Byte]]]
-  }
-
-  /**
    * Enqueue a PUT for processing
    */
-  def enqueuePut(key: String, body: Array[Byte]) = enqueue(RequestMethod.PUT, key, body)
+  def enqueuePut(key: String, body: Array[Byte]) = {
+    (stateWorker ? (RequestMethod.PUT, key, body)).asInstanceOf[Future[Array[Byte]]]
+  }
 
   /**
    * Enqueue a GET for processing
    */
-  def enqueueGet(key: String) = enqueue(RequestMethod.GET, key, null)
+  def enqueueGet(key: String) = {
+    (stateWorker ? (RequestMethod.GET, key)).asInstanceOf[Future[Array[Byte]]]
+  }
 }

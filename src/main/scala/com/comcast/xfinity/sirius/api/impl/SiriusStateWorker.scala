@@ -11,5 +11,7 @@ class SiriusStateWorker(val requestHandler: RequestHandler) extends Actor {
   def receive = {
     case (requestMethod: RequestMethod, key: String, body: Array[Byte]) =>
       sender ! requestHandler.handle(requestMethod, key, body)
+    case (requestMethod: RequestMethod, key: String) =>
+      sender ! requestHandler.handle(requestMethod, key, null)
   }
 }
