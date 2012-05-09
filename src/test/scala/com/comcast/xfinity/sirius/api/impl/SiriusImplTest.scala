@@ -1,25 +1,35 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import org.junit.runner.RunWith
-
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{FunSpec, BeforeAndAfter}
 import org.mockito.Mockito._
 import org.mockito.Matchers._
-import com.comcast.xfinity.sirius.api.{AkkaTestConfig, RequestHandler, RequestMethod}
+import com.comcast.xfinity.sirius.api.{RequestHandler, RequestMethod}
 import akka.testkit.{TestActor, TestProbe}
 import akka.actor.{ActorRef, Props}
+import akka.dispatch.Await
+import akka.actor.ActorSystem
+import akka.util.duration._
+import akka.util.Timeout
+import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
-class SiriusScalaImplTest extends FunSpec with BeforeAndAfter with AkkaTestConfig {
+class SiriusImplTest extends FunSpec with BeforeAndAfter {
 
   var mockRequestHandler: RequestHandler = _
   var stateWorkerProbe: TestProbe = _
-  var underTest: SiriusScalaImpl = _
+  var underTest: SiriusImpl = _
+  var spiedAkkaSystem: ActorSystem = _
+  val timeout: Timeout = (5 seconds)
 
   before {
+    spiedAkkaSystem = spy(ActorSystem("testsystem", ConfigFactory.parseString("""
+    akka.event-handlers = ["akka.testkit.TestEventListener"]
+    """)))
+    
     mockRequestHandler = mock(classOf[RequestHandler])
-    stateWorkerProbe = TestProbe()
+    stateWorkerProbe = TestProbe()(spiedAkkaSystem)
     stateWorkerProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] =
         msg match {
@@ -29,7 +39,7 @@ class SiriusScalaImplTest extends FunSpec with BeforeAndAfter with AkkaTestConfi
     })
 
     doReturn(stateWorkerProbe.ref).when(spiedAkkaSystem).actorOf(any(classOf[Props]), anyString())
-    underTest = new SiriusScalaImpl(mockRequestHandler, spiedAkkaSystem)
+    underTest = new SiriusImpl(mockRequestHandler, spiedAkkaSystem)
   }
 
   after {
@@ -41,14 +51,13 @@ class SiriusScalaImplTest extends FunSpec with BeforeAndAfter with AkkaTestConfi
     it("should forward a PUT message to StateWorker when enqueuePut called and get an \"ACK\" back") {
       val key = "hello"
       val body = "there".getBytes()
-      assert("Put it".getBytes() === underTest.enqueuePut(key, body))
+      assert("Put it".getBytes() === Await.result(underTest.enqueuePut(key, body), timeout.duration).asInstanceOf[Array[Byte]])
       stateWorkerProbe.expectMsg((RequestMethod.PUT, key, body))
-
     }
 
     it("should forward a GET message to StateWorker when enqueueGet called ") {
       val key = "hello"
-      assert("Got it".getBytes() === underTest.enqueueGet(key))
+      assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
       stateWorkerProbe.expectMsg((RequestMethod.GET, key, null))
     }
   }

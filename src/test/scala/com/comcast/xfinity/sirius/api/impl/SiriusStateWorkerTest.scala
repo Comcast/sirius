@@ -5,19 +5,29 @@ import org.scalatest.junit.JUnitRunner
 import akka.testkit.TestActorRef
 import org.mockito.Mockito._
 import org.mockito.{Mockito, Matchers}
-import com.comcast.xfinity.sirius.api.{RequestMethod, RequestHandler, AkkaTestConfig}
+import com.comcast.xfinity.sirius.api.{RequestMethod, RequestHandler}
 import org.scalatest.{BeforeAndAfter, FunSpec}
+import akka.actor.ActorSystem
+import akka.util.Timeout
+import akka.util.duration._
+import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
-class SiriusStateWorkerTest extends FunSpec with BeforeAndAfter with AkkaTestConfig {
+class SiriusStateWorkerTest extends FunSpec with BeforeAndAfter {
 
   var mockRequestHandler: RequestHandler = _
   var testActor: TestActorRef[SiriusStateWorker] = _
   var underTest: SiriusStateWorker = _
+  var spiedAkkaSystem: ActorSystem = _
+  val timeout: Timeout = (5 seconds)
 
   before {
+    spiedAkkaSystem = spy(ActorSystem("testsystem", ConfigFactory.parseString("""
+    akka.event-handlers = ["akka.testkit.TestEventListener"]
+    """)))
+    
     mockRequestHandler = mock(classOf[RequestHandler])
-    testActor = TestActorRef(new SiriusStateWorker(mockRequestHandler))
+    testActor = TestActorRef(new SiriusStateWorker(mockRequestHandler))(spiedAkkaSystem)
     underTest = testActor.underlyingActor
   }
 
