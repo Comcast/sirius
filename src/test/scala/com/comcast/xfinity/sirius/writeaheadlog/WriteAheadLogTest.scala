@@ -4,28 +4,28 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.BeforeAndAfter
 import org.scalatest.FunSpec
 
-import com.comcast.xfinity.sirius.writeaheadlog.LogCreator
+import com.comcast.xfinity.sirius.writeaheadlog.WriteAheadLog
 import com.comcast.xfinity.sirius.writeaheadlog.LogData
 
 @RunWith(classOf[JUnitRunner])
 class LogCreatorTest extends FunSpec with BeforeAndAfter {
-  var logCreator : LogCreator = _
+  var logCreator : WriteAheadLog = _
   
   before {
-    logCreator = new LogCreator()
+    logCreator = new WriteAheadLog()
   }
   
   describe("A Sirius write ahead log") {
     it("Returns a string representation of the log contents.") {
       val logData = new LogData("PUT", "key", 123L, 12345L , Array[Byte](65))
-      val expectedLogEntry = "PUT|key|123|19691231T190012.345-0500|QQ==|NGdbieMz1OKbWsuEa9ZBGQ=="
+      val expectedLogEntry = "PUT|key|123|19691231T190012.345-0500|QQ==|NGdbieMz1OKbWsuEa9ZBGQ==\r"
 
       assertLogEntriesEqual(expectedLogEntry, logCreator.createLogEntry(logData))
     }
     
     it("Properly encodes payloads that have a | character.") {
       val logData = new LogData("PUT", "key", 123L, 12345L, Array[Byte](65, 124, 65))
-      val expectedLogEntry = "PUT|key|123|19691231T190012.345-0500|QXxB|t2h71DyaSgBSgS2xrEf3FQ=="
+      val expectedLogEntry = "PUT|key|123|19691231T190012.345-0500|QXxB|t2h71DyaSgBSgS2xrEf3FQ==\r"
         
       assertLogEntriesEqual(expectedLogEntry, logCreator.createLogEntry(logData))
     }

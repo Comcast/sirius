@@ -1,19 +1,21 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
+import java.security.MessageDigest
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
 import scala.collection.mutable.StringBuilder
+
 import org.apache.commons.codec.binary.Base64
 import org.joda.time.format.DateTimeFormatter
 import org.joda.time.format.ISODateTimeFormat
-import java.util.regex.Matcher
-import java.util.regex.Pattern
-import java.security.MessageDigest
 
 case class LogData(actionType: String, key: String, sequence: Long, timestamp: Long, payload: Array[Byte])
 
 /**
  * Responsible for creating entries in the Sirius write ahead log.
  */
-class LogCreator {
+class WriteAheadLog {
   val dateTimeFormatter = ISODateTimeFormat.basicDateTime()
   val md5Digest = MessageDigest.getInstance("MD5");
   val whitespacePattern = Pattern.compile("\\s")
@@ -38,14 +40,24 @@ class LogCreator {
         entryBuilder.append("|")
         entryBuilder.append(Base64.encodeBase64String(payload))
         entryBuilder.append("|")
-        
-        val bytesSoFar = entryBuilder.toString().getBytes("UTF-8")
+        val bytesSoFar = entryBuilder.toString().getBytes("US-ASCII")
         entryBuilder.append(Base64.encodeBase64String(md5Digest.digest(bytesSoFar)))
-        
+        entryBuilder.append("\r")
+
         entryBuilder.toString()
     }
   }
-
+  
+  /**
+   * Read a single log entry from a String.
+   */
+  def parseLogEntry(logEntry : String): LogData = {
+    val Array(actionType, key, sequence, timestamp, payload, checksum) = logEntry.split("\\|")
+    
+    
+    return LogData(actionType, key, sequence.toLong,dateTimeFormatter.parseDateTime(timestamp).getMillis(), Base64.decodeBase64(payload))
+  }
+  
   def validateKey(key: String) = {
     val whitespaceMatcher = whitespacePattern.matcher(key)
     val hasWhitespace = whitespaceMatcher.find()
