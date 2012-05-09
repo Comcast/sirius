@@ -6,15 +6,15 @@ import org.scalatest.BeforeAndAfter
 import org.scalatest.FunSpec
 
 @RunWith(classOf[JUnitRunner])
-class AbstractRequestHandlerScalaTest extends FunSpec with BeforeAndAfter {
+class AbstractRequestHandlerTest extends FunSpec with BeforeAndAfter {
   
-  class FauxAbstractRequestHandler extends AbstractRequestHandlerScala {
+  class FauxAbstractRequestHandler extends AbstractRequestHandler {
     def doPut(key: String, body: Array[Byte]) = null
     def doGet(key: String, body: Array[Byte]) = null
     def doDelete(key: String, body: Array[Byte]) = null    
   }
   
-  var underTest: AbstractRequestHandlerScala = _
+  var underTest: AbstractRequestHandler = _
   
   before {
     underTest = Mockito.spy(new FauxAbstractRequestHandler())
