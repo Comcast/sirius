@@ -3,12 +3,11 @@ package com.comcast.xfinity.sirius.writeaheadlog
 import java.security.MessageDigest
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-
 import scala.collection.mutable.StringBuilder
-
 import org.apache.commons.codec.binary.Base64
 import org.joda.time.format.DateTimeFormatter
 import org.joda.time.format.ISODateTimeFormat
+import org.joda.time.DateTimeZone
 
 case class LogData(actionType: String, key: String, sequence: Long, timestamp: Long, payload: Array[Byte])
 
@@ -36,7 +35,7 @@ class WriteAheadLog {
         entryBuilder.append("|")
         entryBuilder.append(sequence)
         entryBuilder.append("|")
-        entryBuilder.append(dateTimeFormatter.print(timestamp))
+        entryBuilder.append(dateTimeFormatter.withZone(DateTimeZone.UTC).print(timestamp))
         entryBuilder.append("|")
         entryBuilder.append(Base64.encodeBase64String(payload))
         entryBuilder.append("|")
