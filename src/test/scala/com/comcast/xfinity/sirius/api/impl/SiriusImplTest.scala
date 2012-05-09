@@ -33,7 +33,7 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
     stateWorkerProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] =
         msg match {
-          case (RequestMethod.GET, _, _) => sender ! "Got it".getBytes(); Some(this)
+          case (RequestMethod.GET, _) => sender ! "Got it".getBytes(); Some(this)
           case (RequestMethod.PUT, _, _) => sender ! "Put it".getBytes(); Some(this)
         }
     })
@@ -58,7 +58,7 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
     it("should forward a GET message to StateWorker when enqueueGet called ") {
       val key = "hello"
       assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
-      stateWorkerProbe.expectMsg((RequestMethod.GET, key, null))
+      stateWorkerProbe.expectMsg((RequestMethod.GET, key))
     }
   }
 }
