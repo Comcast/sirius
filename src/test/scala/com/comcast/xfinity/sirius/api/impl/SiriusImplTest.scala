@@ -33,9 +33,9 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
     stateWorkerProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] =
         msg match {
-          case (RequestMethod.DELETE, _) => sender ! "Delete it".getBytes(); Some(this)
-          case (RequestMethod.GET, _) => sender ! "Got it".getBytes(); Some(this)
-          case (RequestMethod.PUT, _, _) => sender ! "Put it".getBytes(); Some(this)
+          case Delete(_) => sender ! "Delete it".getBytes(); Some(this)
+          case Get(_) => sender ! "Got it".getBytes(); Some(this)
+          case Put(_, _) => sender ! "Put it".getBytes(); Some(this)
         }
     })
 
@@ -52,19 +52,19 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
       val key = "hello"
       val body = "there".getBytes()
       assert("Put it".getBytes() === Await.result(underTest.enqueuePut(key, body), timeout.duration).asInstanceOf[Array[Byte]])
-      stateWorkerProbe.expectMsg((RequestMethod.PUT, key, body))
+      stateWorkerProbe.expectMsg(Put(key, body))
     }
 
     it("should forward a GET message to StateWorker when enqueueGet called ") {
       val key = "hello"
       assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
-      stateWorkerProbe.expectMsg((RequestMethod.GET, key))
+      stateWorkerProbe.expectMsg(Get(key))
     }
 
     it("should forward a DELETE message to StateWorker when enqueueDelete called ") {
       val key = "hello"
       assert("Delete it".getBytes() === Await.result(underTest.enqueueDelete(key), timeout.duration).asInstanceOf[Array[Byte]])
-      stateWorkerProbe.expectMsg((RequestMethod.DELETE, key))
+      stateWorkerProbe.expectMsg(Delete(key))
     }
   }
 }

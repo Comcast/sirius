@@ -37,18 +37,22 @@ class SiriusStateWorkerTest extends FunSpec with BeforeAndAfter {
 
   describe("a SiriusStateWorker") {
     it("should forward proper PUT message to handler") {
-      val method = RequestMethod.PUT
       val key = "key"
       val body = "value".getBytes()
-      testActor !(RequestMethod.PUT, key, body)
-      verify(mockRequestHandler).handle(Matchers.eq(method), Matchers.eq(key), Matchers.eq(body))
+      testActor ! Put(key, body)
+      verify(mockRequestHandler).handlePut(Matchers.eq(key), Matchers.eq(body))
     }
 
     it("should forward proper GET message to handler") {
-      val method = RequestMethod.GET
       val key = "key"
-      testActor !(RequestMethod.GET, key)
-      verify(mockRequestHandler).handle(Matchers.eq(method), Matchers.eq(key), Matchers.eq(null))
+      testActor ! Get(key)
+      verify(mockRequestHandler).handleGet(Matchers.eq(key))
+    }
+
+    it("should forward proper DELETE message to handler") {
+      val key = "key"
+      testActor ! Delete(key)
+      verify(mockRequestHandler).handleDelete(Matchers.eq(key))
     }
 
     it("should not invoke handler when given invalid message id") {

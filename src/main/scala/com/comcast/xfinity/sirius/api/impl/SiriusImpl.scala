@@ -20,20 +20,20 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
    * ${@inheritDoc}
    */
   def enqueuePut(key: String, body: Array[Byte]) = {
-    (stateWorker ? (RequestMethod.PUT, key, body)).asInstanceOf[Future[Array[Byte]]]
+    (stateWorker ? Put(key, body)).asInstanceOf[Future[Array[Byte]]]
   }
 
   /**
    * ${@inheritDoc}
    */
   def enqueueGet(key: String) = {
-    (stateWorker ? (RequestMethod.GET, key)).asInstanceOf[Future[Array[Byte]]]
+    (stateWorker ? Get(key)).asInstanceOf[Future[Array[Byte]]]
   }
 
   /**
    * ${@inheritDoc}
    */
   def enqueueDelete(key: String) = {
-    (stateWorker ? (RequestMethod.DELETE, key)).asInstanceOf[Future[Array[Byte]]]
+    (stateWorker ? Delete(key)).asInstanceOf[Future[Array[Byte]]]
   }
 }

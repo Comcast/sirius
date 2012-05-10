@@ -9,9 +9,8 @@ import com.comcast.xfinity.sirius.api.RequestMethod
 class SiriusStateWorker(val requestHandler: RequestHandler) extends Actor {
   
   def receive = {
-    case (requestMethod: RequestMethod, key: String, body: Array[Byte]) =>
-      sender ! requestHandler.handle(requestMethod, key, body)
-    case (requestMethod: RequestMethod, key: String) =>
-      sender ! requestHandler.handle(requestMethod, key, null)
+    case Get(key) => sender ! requestHandler.handleGet(key)
+    case Delete(key) => sender ! requestHandler.handleDelete(key)
+    case Put(key, body) => sender ! requestHandler.handlePut(key, body)
   }
 }
