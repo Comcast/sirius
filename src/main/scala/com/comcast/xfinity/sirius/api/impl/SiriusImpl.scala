@@ -2,11 +2,11 @@ package com.comcast.xfinity.sirius.api.impl
 
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
-
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.dispatch.Future
 import akka.pattern.ask
+import com.comcast.xfinity.sirius.api.impl.state.SiriusStateWorker
 
 /**
  * A Sirius implementation implemented in Scala using Akka actors

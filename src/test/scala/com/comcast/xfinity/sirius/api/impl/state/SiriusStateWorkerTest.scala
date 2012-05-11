@@ -1,16 +1,24 @@
-package com.comcast.xfinity.sirius.api.impl
+package com.comcast.xfinity.sirius.api.impl.state
 
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import akka.testkit.TestActorRef
-import org.mockito.Mockito._
-import org.mockito.{Mockito, Matchers}
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.spy
+import org.mockito.Mockito.verify
+import org.mockito.Matchers
+import org.mockito.Mockito
+import org.scalatest.BeforeAndAfter
+import org.scalatest.FunSpec
 import com.comcast.xfinity.sirius.api.RequestHandler
-import org.scalatest.{BeforeAndAfter, FunSpec}
-import akka.actor.ActorSystem
-import akka.util.Timeout
-import akka.util.duration._
 import com.typesafe.config.ConfigFactory
+import akka.actor.ActorSystem
+import akka.testkit.TestActorRef
+import akka.util.Timeout.durationToTimeout
+import akka.util.duration.intToDurationInt
+import akka.util.Timeout
+import org.scalatest.junit.JUnitRunner
+import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.api.impl.Get
+import com.comcast.xfinity.sirius.api.impl.Put
 
 @RunWith(classOf[JUnitRunner])
 class SiriusStateWorkerTest extends FunSpec with BeforeAndAfter {
