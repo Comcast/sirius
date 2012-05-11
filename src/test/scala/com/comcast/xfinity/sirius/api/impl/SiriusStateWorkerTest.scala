@@ -5,7 +5,7 @@ import org.scalatest.junit.JUnitRunner
 import akka.testkit.TestActorRef
 import org.mockito.Mockito._
 import org.mockito.{Mockito, Matchers}
-import com.comcast.xfinity.sirius.api.{RequestMethod, RequestHandler}
+import com.comcast.xfinity.sirius.api.RequestHandler
 import org.scalatest.{BeforeAndAfter, FunSpec}
 import akka.actor.ActorSystem
 import akka.util.Timeout

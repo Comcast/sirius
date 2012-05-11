@@ -1,18 +1,23 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.{ FunSpec, BeforeAndAfter }
-import org.mockito.Mockito._
 import org.mockito.Matchers._
-import com.comcast.xfinity.sirius.api.{ RequestHandler, RequestMethod }
-import akka.testkit.{ TestActor, TestProbe }
-import akka.actor.{ ActorRef, Props }
-import akka.dispatch.Await
+import org.mockito.Mockito._
+import org.scalatest.junit.JUnitRunner
+import org.scalatest.BeforeAndAfter
+import org.scalatest.FunSpec
+
+import com.comcast.xfinity.sirius.api.RequestHandler
+import com.typesafe.config.ConfigFactory
+
+import akka.actor.ActorRef
 import akka.actor.ActorSystem
+import akka.actor.Props
+import akka.dispatch.Await
+import akka.testkit.TestActor
+import akka.testkit.TestProbe
 import akka.util.duration._
 import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
 
 @RunWith(classOf[JUnitRunner])
 class SiriusImplTest extends FunSpec with BeforeAndAfter {
