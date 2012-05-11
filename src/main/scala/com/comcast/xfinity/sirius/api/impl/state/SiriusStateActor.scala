@@ -9,7 +9,7 @@ import com.comcast.xfinity.sirius.api.impl.Put
 /**
  * Actor wrapping a {@link RequestHandler} for single threaded, actor like access
  */
-class SiriusStateWorker(val requestHandler: RequestHandler) extends Actor {
+class SiriusStateActor(val requestHandler: RequestHandler) extends Actor {
   
   def receive = {
     case Get(key) => sender ! requestHandler.handleGet(key)

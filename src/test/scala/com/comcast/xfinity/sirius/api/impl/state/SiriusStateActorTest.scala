@@ -21,11 +21,11 @@ import com.comcast.xfinity.sirius.api.impl.Get
 import com.comcast.xfinity.sirius.api.impl.Put
 
 @RunWith(classOf[JUnitRunner])
-class SiriusStateWorkerTest extends FunSpec with BeforeAndAfter {
+class SiriusStateActorTest extends FunSpec with BeforeAndAfter {
 
   var mockRequestHandler: RequestHandler = _
-  var testActor: TestActorRef[SiriusStateWorker] = _
-  var underTest: SiriusStateWorker = _
+  var testActor: TestActorRef[SiriusStateActor] = _
+  var underTest: SiriusStateActor = _
   var spiedAkkaSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
 
@@ -35,7 +35,7 @@ class SiriusStateWorkerTest extends FunSpec with BeforeAndAfter {
     """)))
     
     mockRequestHandler = mock(classOf[RequestHandler])
-    testActor = TestActorRef(new SiriusStateWorker(mockRequestHandler))(spiedAkkaSystem)
+    testActor = TestActorRef(new SiriusStateActor(mockRequestHandler))(spiedAkkaSystem)
     underTest = testActor.underlyingActor
   }
 

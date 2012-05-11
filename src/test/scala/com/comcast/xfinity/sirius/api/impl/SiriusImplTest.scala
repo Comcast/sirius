@@ -23,7 +23,7 @@ import akka.util.Timeout
 class SiriusImplTest extends FunSpec with BeforeAndAfter {
 
   var mockRequestHandler: RequestHandler = _
-  var stateWorkerProbe: TestProbe = _
+  var stateActorProbe: TestProbe = _
   var underTest: SiriusImpl = _
   var spiedAkkaSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
@@ -34,8 +34,8 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
     """)))
 
     mockRequestHandler = mock(classOf[RequestHandler])
-    stateWorkerProbe = TestProbe()(spiedAkkaSystem)
-    stateWorkerProbe.setAutoPilot(new TestActor.AutoPilot {
+    stateActorProbe = TestProbe()(spiedAkkaSystem)
+    stateActorProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] =
         msg match {
           case Delete(_) => sender ! "Delete it".getBytes(); Some(this)
@@ -44,7 +44,7 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
         }
     })
 
-    doReturn(stateWorkerProbe.ref).when(spiedAkkaSystem).actorOf(any(classOf[Props]), anyString())
+    doReturn(stateActorProbe.ref).when(spiedAkkaSystem).actorOf(any(classOf[Props]), anyString())
     underTest = new SiriusImpl(mockRequestHandler, spiedAkkaSystem)
   }
 
@@ -57,19 +57,19 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
       val key = "hello"
       val body = "there".getBytes()
       assert("Put it".getBytes() === Await.result(underTest.enqueuePut(key, body), timeout.duration).asInstanceOf[Array[Byte]])
-      stateWorkerProbe.expectMsg(Put(key, body))
+      stateActorProbe.expectMsg(Put(key, body))
     }
 
     it("should forward a GET message to StateWorker when enqueueGet called ") {
       val key = "hello"
       assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
-      stateWorkerProbe.expectMsg(Get(key))
+      stateActorProbe.expectMsg(Get(key))
     }
 
     it("should forward a DELETE message to StateWorker when enqueueDelete called ") {
       val key = "hello"
       assert("Delete it".getBytes() === Await.result(underTest.enqueueDelete(key), timeout.duration).asInstanceOf[Array[Byte]])
-      stateWorkerProbe.expectMsg(Delete(key))
+      stateActorProbe.expectMsg(Delete(key))
     }
   }
 }
