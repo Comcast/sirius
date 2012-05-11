@@ -57,7 +57,9 @@ class SiriusStateWorkerTest extends FunSpec with BeforeAndAfter {
 
     it("should not invoke handler when given invalid message id") {
       testActor ! "derp"
-      verify(mockRequestHandler, Mockito.never()).handle(Matchers.any(classOf[RequestMethod]), Matchers.any(classOf[String]), Matchers.any(classOf[Array[Byte]]))
+      verify(mockRequestHandler, Mockito.never()).handleDelete(Matchers.any(classOf[String]))
+      verify(mockRequestHandler, Mockito.never()).handleGet(Matchers.any(classOf[String]))
+      verify(mockRequestHandler, Mockito.never()).handlePut(Matchers.any(classOf[String]), Matchers.any(classOf[Array[Byte]]))
    }
   }
 }
