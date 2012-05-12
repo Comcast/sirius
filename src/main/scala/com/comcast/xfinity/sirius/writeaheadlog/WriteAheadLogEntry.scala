@@ -15,17 +15,25 @@ class WriteAheadLogEntry extends LogEntry with MD5Checksum with Base64PayloadCod
   val whitespacePattern: Pattern = Pattern.compile("\\s")
   val pipePattern: Pattern = Pattern.compile("\\|")
 
-  private[writeaheadlog] var logEntry: LogData = _
+  private[writeaheadlog] var logData: LogData = _
 
   /**
    * Creates a single log entry for the write ahead log.
    */
   def serialize(): String = {
-    logEntry match {
+    val entryBuilder = new StringBuilder()
+    val rawLogEntry = buildRawLogEntry(logData)
+    entryBuilder.append(rawLogEntry)
+    entryBuilder.append(generateChecksum(rawLogEntry))
+    entryBuilder.append("\r")
+    entryBuilder.toString()
+
+  }
+
+  private def buildRawLogEntry(data: LogData): String = {
+    data match {
       case LogData(actionType, key, sequence, timestamp, payload) =>
-
         validateKey(key)
-
         val entryBuilder = new StringBuilder()
         entryBuilder.append(actionType)
         entryBuilder.append("|")
@@ -37,20 +45,38 @@ class WriteAheadLogEntry extends LogEntry with MD5Checksum with Base64PayloadCod
         entryBuilder.append("|")
         entryBuilder.append(encodePayload(payload))
         entryBuilder.append("|")
-        entryBuilder.append(generateChecksum(entryBuilder.toString()))
-        entryBuilder.append("\r")
         entryBuilder.toString()
       case _ => throw new IllegalStateException("No data to serialize. Must deserialize something first.")
     }
   }
 
-
   /**
-   * Read a single log entry from a String.
+   * Validate a checksum
    */
+  private def validateChecksum(data: LogData, checksum: String) {
+
+    val dataToBeChecksumed = buildRawLogEntry(data)
+
+      if(!validateChecksum(dataToBeChecksumed, checksum)) {
+        throw new SiriusChecksumException("Checksum does not match.")
+      }
+  }
+
+
+  private def cleanChecksum(dirtyChecksum: String): String = {
+    val parts: Array[String] = dirtyChecksum.split("\r")
+    if (parts.size > 2) {
+      throw new IllegalArgumentException("Checksum is dirtier than expected: " + dirtyChecksum)
+    }
+    parts(0)
+  }
+
+
   def deserialize(rawData: String) {
     val Array(actionType, key, sequence, timestamp, payload, checksum) = rawData.split("\\|")
-    logEntry = LogData(actionType, key, sequence.toLong, dateTimeFormatter.parseDateTime(timestamp).getMillis(), decodePayload(payload))
+    logData = LogData(actionType, key, sequence.toLong, dateTimeFormatter.parseDateTime(timestamp).getMillis(), decodePayload(payload))
+
+    validateChecksum(logData, cleanChecksum(checksum))
   }
 
   def validateKey(key: String) = {
