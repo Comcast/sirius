@@ -6,7 +6,6 @@ import org.scalatest.BeforeAndAfter
 import org.scalatest.FunSpec
 import java.security.MessageDigest
 import org.apache.commons.codec.binary.Base64
-import org.mockito.Mockito._
 
 @RunWith(classOf[JUnitRunner])
 class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
@@ -16,7 +15,6 @@ class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
 
   before {
     logEntry = new WriteAheadLogEntry()
-
 
   }
 
