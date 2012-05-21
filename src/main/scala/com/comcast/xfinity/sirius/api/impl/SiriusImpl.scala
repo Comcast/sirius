@@ -24,15 +24,15 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
   /**
    * ${@inheritDoc}
    */
-  def enqueuePut(key: String, body: Array[Byte]) = {
-    (paxosActor ? Put(key, body)).asInstanceOf[Future[Array[Byte]]]
+  def enqueueGet(key: String) = {
+    (stateActor ? Get(key)).asInstanceOf[Future[Array[Byte]]]
   }
-
+  
   /**
    * ${@inheritDoc}
    */
-  def enqueueGet(key: String) = {
-    (stateActor ? Get(key)).asInstanceOf[Future[Array[Byte]]]
+  def enqueuePut(key: String, body: Array[Byte]) = {
+    (paxosActor ? Put(key, body)).asInstanceOf[Future[Array[Byte]]]
   }
 
   /**

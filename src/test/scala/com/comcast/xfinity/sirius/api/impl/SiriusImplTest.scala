@@ -70,17 +70,17 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
   }
 
   describe("a SiriusScalaImpl") {
+    it("should send a Get message to the state actor when enqueueGet is called") {
+      val key = "hello"
+      assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
+      stateActorProbe.expectMsg(Get(key))
+    }
+    
     it("should send a Put message to the persistence actor when enqueuePut is called and get some \"ACK\" back") {
       val key = "hello"
       val body = "there".getBytes()
       assert("Put it".getBytes() === Await.result(underTest.enqueuePut(key, body), timeout.duration).asInstanceOf[Array[Byte]])
       paxosActorProbe.expectMsg(Put(key, body))
-    }
-
-    it("should send a Get message to the state actor when enqueueGet is called") {
-      val key = "hello"
-      assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
-      stateActorProbe.expectMsg(Get(key))
     }
 
     it("should send a Delete message to the persistence worker when enqueueDelete is called and get some \"ACK\" back") {
