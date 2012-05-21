@@ -3,10 +3,13 @@ package com.comcast.xfinity.sirius.writeaheadlog
 import org.apache.commons.codec.binary.Base64
 import java.security.MessageDigest
 
-trait MD5Checksum {
+/**
+ * mixin for Checksumming.  Defaults to a base 64 encoded MD5 hash
+ */
+trait Checksum {
 
   private[writeaheadlog] var checksumCodec = new Base64();
-
+  protected var checksumAlgorithm : String = "MD5"
 
   def generateChecksum(data: String): String = {
     val messageDigest: MessageDigest = getMessageDigest()
@@ -20,6 +23,6 @@ trait MD5Checksum {
   }
 
   def getMessageDigest(): MessageDigest = {
-    MessageDigest.getInstance("MD5")
+    MessageDigest.getInstance(checksumAlgorithm)
   }
 }

@@ -8,9 +8,9 @@ import java.security.MessageDigest
 import org.apache.commons.codec.binary.Base64
 
 @RunWith(classOf[JUnitRunner])
-class MD5ChecksumTest extends FunSpec with BeforeAndAfter {
+class ChecksumTest extends FunSpec with BeforeAndAfter {
 
-  var checksumGenerator: MD5Checksum = _
+  var checksumGenerator: Checksum = _
 
   var mockMessageDigest: MessageDigest = _
   var mockCodec: Base64 = _
@@ -23,7 +23,7 @@ class MD5ChecksumTest extends FunSpec with BeforeAndAfter {
   before {
     mockCodec = mock(classOf[Base64])
     mockMessageDigest = mock(classOf[MessageDigest])
-    checksumGenerator = new MD5ChecksumForTesting(mockMessageDigest)
+    checksumGenerator = new ChecksumForTesting(mockMessageDigest)
     checksumGenerator.checksumCodec = mockCodec
 
   }
@@ -47,14 +47,10 @@ class MD5ChecksumTest extends FunSpec with BeforeAndAfter {
       assert(!checksumGenerator.validateChecksum(DATA, checksum))
     }
 
-    it("should be using an MD5 MessageDigest") {
-      val digest = new MD5Checksum() {}.getMessageDigest()
-      assert(digest.toString().startsWith("MD5"))
-    }
 
   }
 
-  class MD5ChecksumForTesting(mD: MessageDigest) extends MD5Checksum {
+  class ChecksumForTesting(mD: MessageDigest) extends Checksum {
     override def getMessageDigest(): MessageDigest = {
       mD
     }

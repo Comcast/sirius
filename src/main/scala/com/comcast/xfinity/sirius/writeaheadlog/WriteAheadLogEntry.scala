@@ -10,7 +10,7 @@ case class LogData(actionType: String, key: String, sequence: Long, timestamp: L
 /**
  * Responsible for creating entries in the Sirius write ahead log.
  */
-class WriteAheadLogEntry extends LogEntry with MD5Checksum with Base64PayloadCodec {
+class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec {
   val dateTimeFormatter: DateTimeFormatter = ISODateTimeFormat.basicDateTime()
   val whitespacePattern: Pattern = Pattern.compile("\\s")
   val pipePattern: Pattern = Pattern.compile("\\|")
