@@ -46,14 +46,14 @@ class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
       val logData = new LogData("PUT", "key", 123L, 12345L, Array[Byte](65))
       logEntry.logData = logData;
       val expectedLogEntry = "PUT|key|123|19700101T000012.345Z|QQ==|Q6UvDVS1BZtbrPcdyUwakQ==\r"
-      assertLogEntriesEqual(expectedLogEntry, logEntry.serialize())
+      assert(expectedLogEntry == logEntry.serialize())
     }
 
     it("should properly encodes payloads that have a | character when serializing.") {
       val logData = new LogData("PUT", "key", 123L, 12345L, Array[Byte](65, 124, 65))
       logEntry.logData = logData;
       val expectedLogEntry = "PUT|key|123|19700101T000012.345Z|QXxB|Uw81FQiQ3WGGglvYtWG0ew==\r"
-      assertLogEntriesEqual(expectedLogEntry, logEntry.serialize())
+      assert(expectedLogEntry == logEntry.serialize())
     }
 
     it("should throw an exception when attempting to use a key with a | character when serializing.") {
@@ -81,18 +81,5 @@ class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
         logEntry.serialize()
       }
     }
-
-  }
-
-  def assertLogEntriesEqual(expected: String, underTest: String) = {
-    val Array(expectedActionType, expectedKey, expectedSequence, expectedTimestamp, expectedPayload, expectedChecksum) = expected.split("\\|")
-    val Array(testActionType, testKey, testSequence, testTimestamp, testPayload, testChecksum) = underTest.split("\\|")
-
-    assert(testActionType === expectedActionType)
-    assert(testKey === expectedKey)
-    assert(testSequence === expectedSequence)
-    assert(testTimestamp === expectedTimestamp)
-    assert(testPayload === expectedPayload)
-    assert(testChecksum == expectedChecksum)
   }
 }
