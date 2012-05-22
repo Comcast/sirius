@@ -21,13 +21,14 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
    * Creates a single log entry for the write ahead log.
    */
   def serialize(): String = logData match {
-    case Some(data) =>
-      val rawLogEntry = buildRawLogEntry(data)
-      "%s%s\r".format(rawLogEntry, generateChecksum(rawLogEntry))
-    case None =>
+    case Some(data) => checksummedLogEntry(buildRawLogEntry(data))
+    case None => 
       throw new IllegalStateException("No data to serialize. Must deserialize something first.")
   }
 
+  private def checksummedLogEntry(base: String) =
+    "%s%s\r".format(base, generateChecksum(base))
+  
   private def buildRawLogEntry(data: LogData): String = {
     validateKey(data.key)
     "%s|%s|%s|%s|%s|".format(
