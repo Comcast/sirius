@@ -34,18 +34,12 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
     data match {
       case LogData(actionType, key, sequence, timestamp, payload) =>
         validateKey(key)
-        val entryBuilder = new StringBuilder()
-        entryBuilder.append(actionType)
-        entryBuilder.append("|")
-        entryBuilder.append(key)
-        entryBuilder.append("|")
-        entryBuilder.append(sequence)
-        entryBuilder.append("|")
-        entryBuilder.append(dateTimeFormatter.withZone(DateTimeZone.UTC).print(timestamp))
-        entryBuilder.append("|")
-        entryBuilder.append(encodePayload(payload))
-        entryBuilder.append("|")
-        entryBuilder.toString()
+        "%s|%s|%s|%s|%s|".format(
+            actionType,
+            key,
+            sequence,
+            dateTimeFormatter.withZone(DateTimeZone.UTC).print(timestamp),
+            encodePayload(payload))
       case _ => throw new IllegalStateException("No data to serialize. Must deserialize something first.")
     }
   }
