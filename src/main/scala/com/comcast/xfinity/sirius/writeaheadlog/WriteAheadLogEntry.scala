@@ -15,28 +15,27 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
   val whitespacePattern: Pattern = Pattern.compile("\\s")
   val pipePattern: Pattern = Pattern.compile("\\|")
 
-  private[writeaheadlog] var logData: LogData = _
+  private[writeaheadlog] var logData: Option[LogData] = None
 
   /**
    * Creates a single log entry for the write ahead log.
    */
-  def serialize(): String = {
-    val rawLogEntry = buildRawLogEntry(logData)
-    "%s%s\r".format(rawLogEntry, generateChecksum(rawLogEntry))
+  def serialize(): String = logData match {
+    case Some(data) =>
+      val rawLogEntry = buildRawLogEntry(data)
+      "%s%s\r".format(rawLogEntry, generateChecksum(rawLogEntry))
+    case None =>
+      throw new IllegalStateException("No data to serialize. Must deserialize something first.")
   }
 
   private def buildRawLogEntry(data: LogData): String = {
-    data match {
-      case LogData(actionType, key, sequence, timestamp, payload) =>
-        validateKey(key)
-        "%s|%s|%s|%s|%s|".format(
-            actionType,
-            key,
-            sequence,
-            dateTimeFormatter.withZone(DateTimeZone.UTC).print(timestamp),
-            encodePayload(payload))
-      case _ => throw new IllegalStateException("No data to serialize. Must deserialize something first.")
-    }
+    validateKey(data.key)
+    "%s|%s|%s|%s|%s|".format(
+            data.actionType,
+            data.key,
+            data.sequence,
+            dateTimeFormatter.withZone(DateTimeZone.UTC).print(data.timestamp),
+            encodePayload(data.payload))
   }
 
   /**
@@ -63,9 +62,10 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
 
   def deserialize(rawData: String) {
     val Array(actionType, key, sequence, timestamp, payload, checksum) = rawData.split("\\|")
-    logData = LogData(actionType, key, sequence.toLong, dateTimeFormatter.parseDateTime(timestamp).getMillis(), decodePayload(payload))
-
-    validateChecksum(logData, cleanChecksum(checksum))
+    val data = LogData(actionType, key, sequence.toLong, dateTimeFormatter.parseDateTime(timestamp).getMillis(), decodePayload(payload))
+    logData = Some(data)
+    
+    validateChecksum(data, cleanChecksum(checksum))
   }
 
   def validateKey(key: String) = {
