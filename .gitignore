@@ -4,3 +4,6 @@
 .settings/
 .springBeans
 target/
+*.iml
+*.ipr
+*.iws
