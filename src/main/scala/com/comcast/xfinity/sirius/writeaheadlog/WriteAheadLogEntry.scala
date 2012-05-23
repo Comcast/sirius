@@ -11,9 +11,18 @@ case class LogData(actionType: String, key: String, sequence: Long, timestamp: L
  * Responsible for creating entries in the Sirius write ahead log.
  */
 class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec {
-  val dateTimeFormatter: DateTimeFormatter = ISODateTimeFormat.basicDateTime()
   val whitespacePattern: Pattern = Pattern.compile("\\s")
   val pipePattern: Pattern = Pattern.compile("\\|")
+  
+  val (formatTimestamp, parseTimestamp) = {
+    val dateTimeFormatter = ISODateTimeFormat.basicDateTime()
+    val doFormatTimestamp: Long => String = {
+      val utcDateTimeFormatter = dateTimeFormatter.withZoneUTC()
+      utcDateTimeFormatter.print(_)
+    }
+    val doParseTimestamp: String => Long = dateTimeFormatter.parseDateTime(_).getMillis()
+    (doFormatTimestamp, doParseTimestamp)
+  }
 
   private[writeaheadlog] var logData: Option[LogData] = None
 
@@ -35,10 +44,10 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
             data.actionType,
             data.key,
             data.sequence,
-            dateTimeFormatter.withZone(DateTimeZone.UTC).print(data.timestamp),
+            formatTimestamp(data.timestamp),
             encodePayload(data.payload))
   }
-
+  
   /**
    * Validate a checksum
    */
@@ -63,7 +72,7 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
 
   def deserialize(rawData: String) {
     val Array(actionType, key, sequence, timestamp, payload, checksum) = rawData.split("\\|")
-    val data = LogData(actionType, key, sequence.toLong, dateTimeFormatter.parseDateTime(timestamp).getMillis(), decodePayload(payload))
+    val data = LogData(actionType, key, sequence.toLong, parseTimestamp(timestamp), decodePayload(payload))
     logData = Some(data)
     
     validateChecksum(data, cleanChecksum(checksum))
