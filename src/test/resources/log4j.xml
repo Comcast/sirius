@@ -12,7 +12,7 @@
 	
 	<!-- Application Loggers -->
 	<logger name="com.comcast.xfinity">
-		<level value="info" />
+		<level value="trace" />
 	</logger>
 	
 	<!-- 3rdparty Loggers -->
@@ -34,7 +34,7 @@
 
 	<!-- Root Logger -->
 	<root>
-		<priority value="info" />
+		<priority value="trace" />
 		<appender-ref ref="console" />
 	</root>
 	
