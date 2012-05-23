@@ -1,19 +1,16 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import java.util.regex.Pattern
-import scala.collection.mutable.StringBuilder
 import org.joda.time.DateTimeZone
-import org.joda.time.format.{DateTimeFormatter, ISODateTimeFormat}
-
-case class LogData(actionType: String, key: String, sequence: Long, timestamp: Long, payload: Array[Byte])
+import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
 
 /**
  * Responsible for creating entries in the Sirius write ahead log.
  */
-class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec {
+class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCodec {
   val whitespacePattern: Pattern = Pattern.compile("\\s")
   val pipePattern: Pattern = Pattern.compile("\\|")
-  
+
   val (formatTimestamp, parseTimestamp) = {
     val dateTimeFormatter = ISODateTimeFormat.basicDateTime()
     val doFormatTimestamp: Long => String = {
@@ -24,30 +21,24 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
     (doFormatTimestamp, doParseTimestamp)
   }
 
-  private[writeaheadlog] var logData: Option[LogData] = None
-
   /**
    * Creates a single log entry for the write ahead log.
    */
-  def serialize(): String = logData match {
-    case Some(data) => checksummedLogEntry(buildRawLogEntry(data))
-    case None => 
-      throw new IllegalStateException("No data to serialize. Must deserialize something first.")
-  }
+  def serialize(logData: LogData): String = checksummedLogEntry(buildRawLogEntry(logData))
 
   private def checksummedLogEntry(base: String) =
     "%s%s\r".format(base, generateChecksum(base))
-  
+
   private def buildRawLogEntry(data: LogData): String = {
     validateKey(data.key)
     "%s|%s|%s|%s|%s|".format(
-            data.actionType,
-            data.key,
-            data.sequence,
-            formatTimestamp(data.timestamp),
-            encodePayload(data.payload))
+      data.actionType,
+      data.key,
+      data.sequence,
+      formatTimestamp(data.timestamp),
+      encodePayload(data.payload))
   }
-  
+
   /**
    * Validate a checksum
    */
@@ -55,11 +46,10 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
 
     val dataToBeChecksumed = buildRawLogEntry(data)
 
-      if(!validateChecksum(dataToBeChecksumed, checksum)) {
-        throw new SiriusChecksumException("Checksum does not match.")
-      }
+    if (!validateChecksum(dataToBeChecksumed, checksum)) {
+      throw new SiriusChecksumException("Checksum does not match.")
+    }
   }
-
 
   private def cleanChecksum(dirtyChecksum: String): String = {
     val parts: Array[String] = dirtyChecksum.split("\r")
@@ -69,13 +59,11 @@ class WriteAheadLogEntry extends LogEntry with Checksum with Base64PayloadCodec 
     parts(0)
   }
 
-
-  def deserialize(rawData: String) {
+  def deserialize(rawData: String): LogData = {
     val Array(actionType, key, sequence, timestamp, payload, checksum) = rawData.split("\\|")
     val data = LogData(actionType, key, sequence.toLong, parseTimestamp(timestamp), decodePayload(payload))
-    logData = Some(data)
-    
     validateChecksum(data, cleanChecksum(checksum))
+    data
   }
 
   def validateKey(key: String) = {
