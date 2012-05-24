@@ -7,3 +7,6 @@ target/
 *.iml
 *.ipr
 *.iws
+doc/sirius.pdf
+doc/sirius.aux
+doc/sirius.log
