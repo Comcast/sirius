@@ -1,7 +1,5 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-case class LogData(actionType: String, key: String, sequence: Long, timestamp: Long, payload: Array[Byte])
-
 /**
  * An api for serializing and deserializing LogData
  */
