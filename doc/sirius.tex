@@ -37,7 +37,7 @@ The Sirius write-ahead log is designed with the following principles in mind, in
 
 The log file is plain text, UTF-8 encoded.  Fields in an individual log entry are pipe (U+007C) delineated.  Entries in the log are separated by a CR (U+000D).
 
-Pipe characters and all whitespace  are disallowed as parts of the log elements, though the implementer may chose to add whitespace for readability between the pipes and log file elements.  
+Pipe characters and all whitespace\footnote{All characters considered White\_Space in the Unicode character database - http://www.unicode.org/reports/tr44/tr44-8.html} are disallowed as parts of the log elements, though the implementer may chose to add whitespace for readability between the pipes and log file elements.  
 
 An individual log entry would look something like:
 \begin{center}
@@ -54,11 +54,11 @@ A String that represents the type of action to take for a given log entry.  For 
 \begin{tabular}{|l|p{3.5in}|}
 \hline
 \multicolumn{2}{|c|}{Action  Types}\\ \hline
-PUT & An HTTP PUT\\ \hline
-DELETE & An HTTP DELETE\\ \hline
-CONDITIONAL\_PUT & A conditional HTTP PUT, which may or may not have succeeded.   Since the log is write-ahead, we won’t know if the PUT will be successful at log writing time.\\ \hline
-CONDITIONAL\_DELETE & Same as above, but for HTTP DELETE.\\ \hline
-COMPACTION\_HINT & A hint that tells the compaction algorithm whether a particular conditional put or delete that comes earlier in the log was successful.\\ \hline
+\textbf{PUT} & An HTTP PUT\\ \hline
+\textbf{DELETE} & An HTTP DELETE\\ \hline
+\textbf{CONDITIONAL\_PUT} & A conditional HTTP PUT, which may or may not have succeeded.   Since the log is write-ahead, we won’t know if the PUT will be successful at log writing time.\\ \hline
+\textbf{CONDITIONAL\_DELETE} & Same as above, but for HTTP DELETE.\\ \hline
+\textbf{COMPACTION\_HINT} & A hint that tells the compaction algorithm whether a particular conditional put or delete that comes earlier in the log was successful.\\ \hline
 \end{tabular}
 \end{center}
 
@@ -70,7 +70,7 @@ For instance, a PUT to a key of /videos/1234 might add a video represented by th
 Note that pipes and various whitespace are not allowed in the key, though they may be allowed in URIs.
 
 \subsubsection{Sequence}
-Strictly increasing sequence number that defines a total order of requests in the log, across all nodes in the system.  This is a String representation of a twos-complement signed  64 bit integer, and must not fall outside the range representable in that scheme.
+Strictly increasing sequence number that defines a total order of requests in the log, across all nodes in the system.  This is a String representation of a twos-complement \textbf{signed}\footnote{Because Java that’s why.} 64 bit integer, and must not fall outside the range representable in that scheme.
 
 \subsubsection{Timestamp}
 UTC timestamp in some ISO 8601 compliant format.
