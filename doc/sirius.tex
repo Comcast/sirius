@@ -35,13 +35,13 @@ The Sirius write-ahead log is designed with the following principles in mind, in
 
 \subsection{Design Overview}
 
-The log file is plain text, UTF-8 encoded.  Fields in an individual log entry are pipe (U+007C) delineated.  Entries in the log are separated by a CR (U+000D).
+The log file is plain text, UTF-8 encoded.  Fields in an individual log entry are pipe (U+007C) delineated.  Entries in the log are terminated by a LF (U+000A).
 
 Pipe characters and all whitespace\footnote{All characters considered White\_Space in the Unicode character database - http://www.unicode.org/reports/tr44/tr44-8.html} are disallowed as parts of the log elements, though the implementer may chose to add whitespace for readability between the pipes and log file elements.  
 
 An individual log entry would look something like:
 \begin{center}
-Action Type\textbar Key\textbar Sequence\textbar Timestamp\textbar Payload\textbar Checksum
+\em Checksum\textbar Action Type\textbar Key\textbar Sequence\textbar Timestamp\textbar Payload\textbackslash n
 \end{center}
 
 
@@ -79,7 +79,7 @@ UTC timestamp in some ISO 8601 compliant format.
 Base64 encoded binary payload for the log entry.  This is probably some representation of the data needed to do a PUT to a given resource.
 
 \subsubsection{Checksum}
-Base64 encoded MD5 hash of the UTF-8 byte array that represents the rest of the log entry, including the pipes.
+Base64 encoded MD5 hash of the UTF-8 byte array that represents the rest of the log entry, including the pipes and terminating new line.
 
 
 \subsection{Compaction Algorithm}
