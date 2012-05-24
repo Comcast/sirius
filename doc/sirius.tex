@@ -1,0 +1,89 @@
+\documentstyle[11pt]{article}
+\setlength{\topmargin}{-.5in}
+\setlength{\textheight}{9in}
+\setlength{\oddsidemargin}{.125in}
+\setlength{\textwidth}{6.25in}
+
+\begin{document}
+
+\title{Sirius Detailed Design}
+\author{Platform \& APIs Team}
+\maketitle
+
+This document is intended document Sirius’ design, so future developers can understand the system at a reasonable level, and so that we can record important design decisions somewhere in prose.  
+
+This document is being written along with the system, it’s descriptive of the Sirius we are building, rather than prescriptive of the Sirius we will build.  It is not intended to be used as a specification, and does not contain enough detail to be used as such.
+
+\section{Theory of Operation}
+TBD
+
+\section{Design Overview}
+TBD
+
+
+\section{Write Ahead Log Format}
+
+\subsection{Principles of Some Import}
+The Sirius write-ahead log is designed with the following principles in mind, in rough priority order:
+
+\begin{itemize}
+\item It must be possible to reconstruct the entire state of a system built on top of Sirius by replaying the write-ahead log.
+\item The write-ahead log should be easily compactable, so it can serve as our persistent storage format for the state of a system built on Sirius, rather than using a separate snapshot mechanism.
+\item The log should be as human readable as it can be, or, readability by a human is more important than squeezing as much information into a given number of bytes as possible.
+\end{itemize}
+
+
+\subsection{Design Overview}
+
+The log file is plain text, UTF-8 encoded.  Fields in an individual log entry are pipe (U+007C) delineated.  Entries in the log are separated by a CR (U+000D).
+
+Pipe characters and all whitespace  are disallowed as parts of the log elements, though the implementer may chose to add whitespace for readability between the pipes and log file elements.  
+
+An individual log entry would look something like:
+\begin{center}
+Action Type\textbar Key\textbar Sequence\textbar Timestamp\textbar Payload\textbar Checksum
+\end{center}
+
+
+\subsection{Field Definitions}
+
+\subsubsection{Action Type}
+A String that represents the type of action to take for a given log entry.  For the most part, these will mirror HTTP semantics.
+
+\begin{center}
+\begin{tabular}{|l|p{3.5in}|}
+\hline
+\multicolumn{2}{|c|}{Action  Types}\\ \hline
+PUT & An HTTP PUT\\ \hline
+DELETE & An HTTP DELETE\\ \hline
+CONDITIONAL\_PUT & A conditional HTTP PUT, which may or may not have succeeded.   Since the log is write-ahead, we won’t know if the PUT will be successful at log writing time.\\ \hline
+CONDITIONAL\_DELETE & Same as above, but for HTTP DELETE.\\ \hline
+COMPACTION\_HINT & A hint that tells the compaction algorithm whether a particular conditional put or delete that comes earlier in the log was successful.\\ \hline
+\end{tabular}
+\end{center}
+
+\subsubsection{Key}
+A key that’s used to determine what sort of action should be taken.  This is going to be something like a partial URL, so something like /videos/1234.
+
+For instance, a PUT to a key of /videos/1234 might add a video represented by the payload to a map, along with adding it to some secondary indices.  
+
+Note that pipes and various whitespace are not allowed in the key, though they may be allowed in URIs.
+
+\subsubsection{Sequence}
+Strictly increasing sequence number that defines a total order of requests in the log, across all nodes in the system.  This is a String representation of a twos-complement signed  64 bit integer, and must not fall outside the range representable in that scheme.
+
+\subsubsection{Timestamp}
+UTC timestamp in some ISO 8601 compliant format.
+
+\subsubsection{Payload}
+Base64 encoded binary payload for the log entry.  This is probably some representation of the data needed to do a PUT to a given resource.
+
+\subsubsection{Checksum}
+Base64 encoded MD5 hash of the UTF-8 byte array that represents the rest of the log entry, including the pipes.
+
+
+\subsection{Compaction Algorithm}
+TBD
+
+
+\end{document}
