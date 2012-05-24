@@ -28,7 +28,7 @@ class FileLogWriterTest extends FunSpec with BeforeAndAfter with MockitoSugar {
   describe("FileLogWriter") {
     describe(".writeEntry") {
       it("appends a serialized entry to a file") {
-        val logData = new LogData("PUT", "key", 123L, 12345L, Array[Byte](65, 124, 65))
+        val logData = new LogData("PUT", "key", 123L, 12345L, Some(Array[Byte](65, 124, 65)))
         when(mockSerDe.serialize(logData)).thenReturn(SERIALIZED)
         doReturn(mockPath).when(writer).file
 
