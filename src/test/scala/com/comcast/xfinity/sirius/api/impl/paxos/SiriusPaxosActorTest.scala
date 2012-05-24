@@ -7,7 +7,6 @@ import org.scalatest.FunSpec
 import org.junit.Assert.assertTrue
 
 import com.comcast.xfinity.sirius.api.impl.Delete
-import com.comcast.xfinity.sirius.api.impl.Get
 import com.comcast.xfinity.sirius.api.impl.Put
 
 import akka.actor.ActorSystem
