@@ -1,16 +1,12 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.mock.MockitoSugar
-import org.scalatest.{BeforeAndAfter, FunSpec}
 import org.mockito.Mockito._
 import scalax.io.Line.Terminators.CarriageReturn
 import scalax.io.Resource
 import java.io.ByteArrayInputStream
+import com.comcast.xfinity.sirius.NiceTest
 
-@RunWith(classOf[JUnitRunner])
-class FileLogReaderTest extends FunSpec with BeforeAndAfter with MockitoSugar {
+class FileLogReaderTest extends NiceTest{
 
   var reader: FileLogReader = _
   var mockSerDe: LogDataSerDe = _

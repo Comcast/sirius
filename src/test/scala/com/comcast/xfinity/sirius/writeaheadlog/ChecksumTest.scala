@@ -2,13 +2,13 @@ package com.comcast.xfinity.sirius.writeaheadlog
 
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import org.scalatest.{BeforeAndAfter, FunSpec}
 import org.mockito.Mockito._
 import java.security.MessageDigest
 import org.apache.commons.codec.binary.Base64
+import com.comcast.xfinity.sirius.NiceTest
 
 @RunWith(classOf[JUnitRunner])
-class ChecksumTest extends FunSpec with BeforeAndAfter {
+class ChecksumTest extends NiceTest {
 
   var checksumGenerator: Checksum = _
 
@@ -21,8 +21,8 @@ class ChecksumTest extends FunSpec with BeforeAndAfter {
 
 
   before {
-    mockCodec = mock(classOf[Base64])
-    mockMessageDigest = mock(classOf[MessageDigest])
+    mockCodec = mock[Base64]
+    mockMessageDigest = mock[MessageDigest]
     checksumGenerator = new ChecksumForTesting(mockMessageDigest)
     checksumGenerator.checksumCodec = mockCodec
 

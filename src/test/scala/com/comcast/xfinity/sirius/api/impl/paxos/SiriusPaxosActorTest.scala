@@ -1,10 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.BeforeAndAfter
-import org.scalatest.FunSpec
-
 import akka.util.duration._
 
 import org.junit.Assert.assertTrue
@@ -14,9 +9,9 @@ import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete, Put}
+import com.comcast.xfinity.sirius.NiceTest
 
-@RunWith(classOf[JUnitRunner])
-class SiriusPaxosActorTest extends FunSpec with BeforeAndAfter {
+class SiriusPaxosActorTest extends NiceTest {
 
   var actorSystem: ActorSystem = _
   var underTestActor: TestActorRef[SiriusPaxosActor] = _

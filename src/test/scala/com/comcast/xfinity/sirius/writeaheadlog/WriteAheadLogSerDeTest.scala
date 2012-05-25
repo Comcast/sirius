@@ -6,9 +6,9 @@ import org.scalatest.BeforeAndAfter
 import org.scalatest.FunSpec
 import java.security.MessageDigest
 import org.apache.commons.codec.binary.Base64
+import com.comcast.xfinity.sirius.NiceTest
 
-@RunWith(classOf[JUnitRunner])
-class WriteAheadLogSerDeTest extends FunSpec with BeforeAndAfter {
+class WriteAheadLogSerDeTest extends NiceTest {
   var logEntry: WriteAheadLogSerDe = _
   var mockCodec: Base64 = _
   var mockMessageDigest: MessageDigest = _

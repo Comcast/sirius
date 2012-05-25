@@ -1,13 +1,9 @@
 package com.comcast.xfinity.sirius.api.impl.state
 
-import org.junit.runner.RunWith
-import org.mockito.Mockito.mock
 import org.mockito.Mockito.spy
 import org.mockito.Mockito.verify
 import org.mockito.Matchers
 import org.mockito.Mockito
-import org.scalatest.BeforeAndAfter
-import org.scalatest.FunSpec
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.typesafe.config.ConfigFactory
 import akka.actor.ActorSystem
@@ -15,13 +11,12 @@ import akka.testkit.TestActorRef
 import akka.util.Timeout.durationToTimeout
 import akka.util.duration.intToDurationInt
 import akka.util.Timeout
-import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.impl.Get
 import com.comcast.xfinity.sirius.api.impl.Put
+import com.comcast.xfinity.sirius.NiceTest
 
-@RunWith(classOf[JUnitRunner])
-class SiriusStateActorTest extends FunSpec with BeforeAndAfter {
+class SiriusStateActorTest extends NiceTest {
 
   var mockRequestHandler: RequestHandler = _
   var testActor: TestActorRef[SiriusStateActor] = _
@@ -34,7 +29,7 @@ class SiriusStateActorTest extends FunSpec with BeforeAndAfter {
     akka.event-handlers = ["akka.testkit.TestEventListener"]
     """)))
     
-    mockRequestHandler = mock(classOf[RequestHandler])
+    mockRequestHandler = mock[RequestHandler]
     testActor = TestActorRef(new SiriusStateActor(mockRequestHandler))(spiedAkkaSystem)
     underTest = testActor.underlyingActor
   }

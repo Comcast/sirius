@@ -1,15 +1,8 @@
 package com.comcast.xfinity.sirius.api.impl
 
-import org.junit.runner.RunWith
 import org.mockito.Matchers.any
-import org.mockito.Matchers.anyString
-import org.mockito.Matchers.eq
 import org.mockito.Mockito.doReturn
-import org.mockito.Mockito.mock
 import org.mockito.Mockito.spy
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.BeforeAndAfter
-import org.scalatest.FunSpec
 import com.comcast.xfinity.sirius.api.RequestHandler
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
@@ -23,9 +16,9 @@ import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
 import org.mockito.Matchers
+import com.comcast.xfinity.sirius.NiceTest
 
-@RunWith(classOf[JUnitRunner])
-class SiriusImplTest extends FunSpec with BeforeAndAfter {
+class SiriusImplTest extends NiceTest {
 
   var mockRequestHandler: RequestHandler = _
   var stateActorProbe: TestProbe = _
@@ -40,7 +33,7 @@ class SiriusImplTest extends FunSpec with BeforeAndAfter {
     akka.event-handlers = ["akka.testkit.TestEventListener"]
     """)))
 
-    mockRequestHandler = mock(classOf[RequestHandler])
+    mockRequestHandler = mock[RequestHandler]
     stateActorProbe = TestProbe()(spiedAkkaSystem)
     stateActorProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {

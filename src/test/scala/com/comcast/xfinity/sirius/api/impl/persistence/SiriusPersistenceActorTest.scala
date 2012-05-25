@@ -1,13 +1,8 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
-import org.scalatest.BeforeAndAfter
-import org.scalatest.FunSpec
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.mock.MockitoSugar
 import com.comcast.xfinity.sirius.writeaheadlog.{LogData, LogWriter}
 
 
@@ -15,9 +10,9 @@ import org.mockito.Mockito._
 import org.mockito.ArgumentCaptor
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Put, Delete}
+import com.comcast.xfinity.sirius.NiceTest
 
-@RunWith(classOf[JUnitRunner])
-class SiriusPersistenceActorTest extends FunSpec with BeforeAndAfter with MockitoSugar {
+class SiriusPersistenceActorTest extends NiceTest {
 
   var actorSystem: ActorSystem = _
 
