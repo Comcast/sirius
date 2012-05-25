@@ -9,16 +9,19 @@ import akka.pattern.ask
 import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.impl.persistence.SiriusPersistenceActor
 import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
+import com.comcast.xfinity.sirius.writeaheadlog.{WriteAheadLogSerDe, FileLogWriter}
 
 /**
  * A Sirius implementation implemented in Scala using Akka actors
  */
 class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem) extends Sirius with AkkaConfig {
 
+  var logPath = "/tmp/sirius_wal.log"
+
   // TODO: we may want to identify these actors by their class name? make debugging direct
   val stateActor = actorSystem.actorOf(Props(new SiriusStateActor(requestHandler)), "state")
-  
-  val persistenceActor = actorSystem.actorOf(Props(new SiriusPersistenceActor(stateActor)), "persistence")
+  val logWriter = new FileLogWriter(logPath, new WriteAheadLogSerDe())
+  val persistenceActor = actorSystem.actorOf(Props(new SiriusPersistenceActor(stateActor,logWriter)), "persistence")
   val paxosActor = actorSystem.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")
   
   /**

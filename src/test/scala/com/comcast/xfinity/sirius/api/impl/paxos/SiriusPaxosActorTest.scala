@@ -8,7 +8,6 @@ import org.scalatest.FunSpec
 import akka.util.duration._
 
 import org.junit.Assert.assertTrue
-import org.mockito.Mockito._
 
 
 import akka.actor.ActorSystem
