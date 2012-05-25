@@ -8,7 +8,7 @@ import java.security.MessageDigest
 import org.apache.commons.codec.binary.Base64
 
 @RunWith(classOf[JUnitRunner])
-class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
+class WriteAheadLogSerDeTest extends FunSpec with BeforeAndAfter {
   var logEntry: WriteAheadLogSerDe = _
   var mockCodec: Base64 = _
   var mockMessageDigest: MessageDigest = _
