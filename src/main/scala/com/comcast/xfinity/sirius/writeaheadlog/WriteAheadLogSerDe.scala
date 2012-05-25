@@ -1,8 +1,7 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import java.util.regex.Pattern
-import org.joda.time.DateTimeZone
-import org.joda.time.format.{ DateTimeFormatter, ISODateTimeFormat }
+import org.joda.time.format.ISODateTimeFormat
 
 /**
  * Responsible for creating entries in the Sirius write ahead log.

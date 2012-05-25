@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.writeaheadlog
 import java.io.File
 import scalax.io.Line.Terminators.CarriageReturn
 import org.slf4j.LoggerFactory
-import scalax.io.{LongTraversable, Resource}
+import scalax.io.Resource
 
 /**
  * Class that reads a log from a file

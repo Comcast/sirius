@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import akka.actor.Actor
 import akka.actor.ActorRef
-import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, SiriusRequest, Delete, Put}
+import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete, Put}
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.api.impl.NonIdempotentSiriusRequest
 
