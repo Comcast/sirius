@@ -1,3 +1,4 @@
+%% Header, styling stuff
 \documentstyle[11pt]{article}
 \setlength{\topmargin}{-.5in}
 \setlength{\textheight}{9in}
@@ -6,6 +7,9 @@
 
 \begin{document}
 
+%%----------------
+%% Title
+%%----------------
 \title{Sirius Detailed Design}
 \author{Platform \& APIs Team}
 \maketitle
@@ -14,15 +18,29 @@ This document is intended document Sirius’ design, so future developers can un
 
 This document is being written along with the system, it’s descriptive of the Sirius we are building, rather than prescriptive of the Sirius we will build.  It is not intended to be used as a specification, and does not contain enough detail to be used as such.
 
+%%----------------------
+%% Theory of Operation
+%%----------------------
 \section{Theory of Operation}
 TBD
 
+
+%%---------------------
+%% Design Overview
+%%---------------------
 \section{Design Overview}
 TBD
 
 
+%%-------------------------
+%% Write Ahead Log Format
+%%-------------------------
 \section{Write Ahead Log Format}
 
+%%------------------------------
+%% Write Ahead Log Format:
+%%    Principles of Some Import
+%%------------------------------
 \subsection{Principles of Some Import}
 The Sirius write-ahead log is designed with the following principles in mind, in rough priority order:
 
@@ -33,6 +51,10 @@ The Sirius write-ahead log is designed with the following principles in mind, in
 \end{itemize}
 
 
+%%------------------------------
+%% Write Ahead Log Format:
+%%    Design Overview
+%%------------------------------
 \subsection{Design Overview}
 
 The log file is plain text, UTF-8 encoded.  Fields in an individual log entry are pipe (U+007C) delineated.  Entries in the log are terminated by a LF (U+000A).
@@ -45,6 +67,10 @@ An individual log entry would look something like:
 \end{center}
 
 
+%%------------------------------
+%% Write Ahead Log Format:
+%%    Field Definitions
+%%------------------------------
 \subsection{Field Definitions}
 
 \subsubsection{Action Type}
@@ -81,7 +107,10 @@ Base64 encoded binary payload for the log entry.  This is probably some represen
 \subsubsection{Checksum}
 Base64 encoded MD5 hash of the UTF-8 byte array that represents the rest of the log entry, including the pipes and terminating new line.
 
-
+%%------------------------------
+%% Write Ahead Log Format:
+%%    Compaction Algorithm
+%%------------------------------
 \subsection{Compaction Algorithm}
 TBD
 
