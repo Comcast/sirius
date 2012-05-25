@@ -8,4 +8,3 @@ sealed trait NonIdempotentSiriusRequest extends SiriusRequest
 case class Put(key: String, body: Array[Byte]) extends NonIdempotentSiriusRequest
 case class Delete(key: String) extends NonIdempotentSiriusRequest
 
-case class OrderedEvent(sequence :Long,  timestamp: Long, request: NonIdempotentSiriusRequest)
