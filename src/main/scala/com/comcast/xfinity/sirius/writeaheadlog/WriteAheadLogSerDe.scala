@@ -37,13 +37,15 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
     "%s%s".format(generateChecksum(base), base)
 
   private def buildRawLogEntry(data: LogData): String = {
-    validateKey(data.key)
-    "|%s|%s|%s|%s|%s\n".format(
-      data.actionType,
-      data.key,
-      data.sequence,
-      formatTimestamp(data.timestamp),
-      encodePayload(data.payload))
+    if (isKeyValid(data.key))
+      "|%s|%s|%s|%s|%s\n".format(
+        data.actionType,
+        data.key,
+        data.sequence,
+        formatTimestamp(data.timestamp),
+        encodePayload(data.payload))
+    else
+      throw new IllegalStateException("Key contains illegal character")
   }
   
   private def validateAndDeserialize(data: String, checksum: String) = {
@@ -58,18 +60,5 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
       LogData(action, key, seq.toLong, parseTimestamp(ts), decodePayload(payload))
   }
 
-  def validateKey(key: String) = {
-    val whitespaceMatcher = whitespacePattern.matcher(key)
-    val hasWhitespace = whitespaceMatcher.find()
-    val pipeMatcher = pipePattern.matcher(key)
-    val hasPipe = pipeMatcher.find()
-
-    if (hasPipe) {
-      throw new IllegalStateException("Key can't have | in it.")
-    }
-    if (hasWhitespace) {
-      throw new IllegalStateException("Key can't have whitespace in it.")
-    }
-
-  }
+  def isKeyValid(key: String) = key.forall(!_.isWhitespace) && key.forall(_ != '|') 
 }
