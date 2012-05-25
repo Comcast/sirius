@@ -6,7 +6,7 @@ import org.scalatest.mock.MockitoSugar
 import org.scalatest.{BeforeAndAfter, FunSpec}
 import org.mockito.Mockito._
 import scalax.io.Line.Terminators.CarriageReturn
-import scalax.io.{Resource, LineTraversable, LongTraversable}
+import scalax.io.Resource
 import java.io.ByteArrayInputStream
 
 @RunWith(classOf[JUnitRunner])
@@ -16,10 +16,10 @@ class FileLogReaderTest extends FunSpec with BeforeAndAfter with MockitoSugar {
   var mockSerDe: LogDataSerDe = _
 
   val FILENAME = "fake_file"
-  val LOG_DATA1 = LogData("PUT", "key1 foo bar", 123L, 12345L, Array[Byte](65))
+  val LOG_DATA1 = LogData("PUT", "key1 foo bar", 123L, 12345L, Some(Array[Byte](65)))
   val FIRST_RAW_LINE = "firstLine"
   val SECOND_RAW_LINE = "secondLine"
-  val LOG_DATA2 = LogData("PUT", "key2 foo bar", 123L, 12345L, Array[Byte](65))
+  val LOG_DATA2 = LogData("DELETE", "key2 foo bar", 123L, 12345L, None)
 
 
   before {

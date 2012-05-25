@@ -40,19 +40,19 @@ class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
     }
 
     it("should serialize to a string representation of the log contents.") {
-      val logData = new LogData("PUT", "key", 123L, 12345L, Array[Byte](65))
+      val logData = new LogData("PUT", "key", 123L, 12345L, Some(Array[Byte](65)))
       val expectedLogEntry = "PUT|key|123|19700101T000012.345Z|QQ==|Q6UvDVS1BZtbrPcdyUwakQ==\r"
       assert(expectedLogEntry == logEntry.serialize(logData))
     }
 
     it("should properly encodes payloads that have a | character when serializing.") {
-      val logData = new LogData("PUT", "key", 123L, 12345L, Array[Byte](65, 124, 65))
+      val logData = new LogData("PUT", "key", 123L, 12345L, Some(Array[Byte](65, 124, 65)))
       val expectedLogEntry = "PUT|key|123|19700101T000012.345Z|QXxB|Uw81FQiQ3WGGglvYtWG0ew==\r"
       assert(expectedLogEntry == logEntry.serialize(logData))
     }
 
     it("should throw an exception when attempting to use a key with a | character when serializing.") {
-      val logData = new LogData("PUT", "key|foo|bar", 123L, 12345L, Array[Byte](65))
+      val logData = new LogData("PUT", "key|foo|bar", 123L, 12345L, Some(Array[Byte](65)))
       intercept[IllegalStateException] {
         logEntry.serialize(logData)
       }
@@ -61,14 +61,14 @@ class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
     // TODO: Figure out the right way to test that we're not allowing any whitespace
     // using FunSpec w/o a bunch of cut and paste.
     it("should throw an exception when attempting to use a key with Unicode U+0020 in it, when serializing.") {
-      val logData = new LogData("PUT", "key foo bar", 123L, 12345L, Array[Byte](65))
+      val logData = new LogData("PUT", "key foo bar", 123L, 12345L, Some(Array[Byte](65)))
       intercept[IllegalStateException] {
         logEntry.serialize(logData)
       }
     }
 
     it("should throw an exception when attempting to use a key with Unicode U+000A in it when serializing.") {
-      val logData = new LogData("PUT", "key\nfoo\nbar", 123L, 12345L, Array[Byte](65))
+      val logData = new LogData("PUT", "key\nfoo\nbar", 123L, 12345L, Some(Array[Byte](65)))
       intercept[IllegalStateException] {
         logEntry.serialize(logData)
       }

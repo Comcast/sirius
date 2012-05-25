@@ -16,8 +16,8 @@ class Base64PayloadCodecTest extends FunSpec with BeforeAndAfter {
 
   describe("a Base64PayloadCodec") {
     it("should encode and decode to the same thing") {
-      val payload = "something to encode"
-      payload.equals(codec.decodePayload(codec.encodePayload(payload.getBytes("utf-8"))))
+      val payload = Some("something to encode".getBytes("utf-8"))
+      payload.equals(codec.decodePayload(codec.encodePayload(payload)))
     }
 
     it ("should decode and encode to the same thing") {
