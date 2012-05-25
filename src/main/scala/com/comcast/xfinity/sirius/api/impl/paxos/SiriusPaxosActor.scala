@@ -4,6 +4,7 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, SiriusRequest, Delete, Put}
 import org.slf4j.LoggerFactory
+import com.comcast.xfinity.sirius.api.impl.NonIdempotentSiriusRequest
 
 /**
  * Actor for negotiating Paxos rounds locally.
@@ -27,7 +28,7 @@ class SiriusPaxosActor(val persistenceActor: ActorRef) extends Actor {
 
   }
 
-  private def processRequest(req: SiriusRequest) = {
+  private def processRequest(req: NonIdempotentSiriusRequest) = {
     seq = seq + 1
     persistenceActor forward OrderedEvent(seq, System.currentTimeMillis(), req)
   }
