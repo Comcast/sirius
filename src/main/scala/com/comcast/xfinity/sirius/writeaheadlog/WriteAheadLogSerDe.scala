@@ -26,6 +26,13 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
    */
   def serialize(logData: LogData): String = checksummedLogEntry(buildRawLogEntry(logData))
 
+  /**
+   * Retrieve a log entry from the write ahead log
+   */
+  def deserialize(rawData: String): LogData = 
+    validateAndDeserialize(rawData.substring(24), rawData.substring(0, 24))
+
+  
   private def checksummedLogEntry(base: String) =
     "%s%s".format(generateChecksum(base), base)
 
@@ -38,24 +45,17 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
       formatTimestamp(data.timestamp),
       encodePayload(data.payload))
   }
-
-  /**
-   * Validate a checksum
-   */
-  private def validateChecksum(data: LogData, checksum: String) {
-
-    val dataToBeChecksumed = buildRawLogEntry(data)
-
-    if (!validateChecksum(dataToBeChecksumed, checksum)) {
+  
+  private def validateAndDeserialize(data: String, checksum: String) = {
+    if (validateChecksum(data, checksum))
+      logDataOfString(data)
+    else 
       throw new SiriusChecksumException("Checksum does not match.")
-    }
   }
-
-  def deserialize(rawData: String): LogData = {
-    val Array(checksum, actionType, key, sequence, timestamp, payload) = rawData.split("\\|")
-    val data = LogData(actionType, key, sequence.toLong, parseTimestamp(timestamp), decodePayload(payload))
-    validateChecksum(data, checksum)
-    data
+  
+  private def logDataOfString(logDataString: String) = logDataString.split("\\|") match {
+    case Array("", action, key, seq, ts, payload) =>
+      LogData(action, key, seq.toLong, parseTimestamp(ts), decodePayload(payload))
   }
 
   def validateKey(key: String) = {
