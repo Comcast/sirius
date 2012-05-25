@@ -11,12 +11,12 @@ import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete, Put}
  */
 class SiriusPersistenceActor(val stateWorker: ActorRef, logWriter: LogWriter) extends Actor {
   def receive = {
-    case event: OrderedEvent => {
-      event.request match {
-        case put: Put => logWriter.writeEntry(LogData("PUT", put.key, event.sequence, event.timestamp, Some(put.body)))
-        case delete: Delete => logWriter.writeEntry(LogData("DELETE", delete.key, event.sequence, event.timestamp, None))
+    case OrderedEvent(sequence, timestamp, request) => {
+      request match {
+        case Put(key, body) => logWriter.writeEntry(LogData("PUT", key, sequence, timestamp, Some(body)))
+        case Delete(key) => logWriter.writeEntry(LogData("DELETE", key, sequence, timestamp, None))
       }
-      stateWorker forward event.request
+      stateWorker forward request
     }
   }
 }
