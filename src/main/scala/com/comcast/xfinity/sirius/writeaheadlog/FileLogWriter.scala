@@ -21,7 +21,7 @@ class FileLogWriter(logPath: String, serDe: LogDataSerDe) extends LogWriter {
     logger.debug("Wrote logData to file " + logPath + ":  " + rawData)
   }
 
-  private[writeaheadlog] def file = {
+  private[writeaheadlog] val file = {
     Path.fromString(logPath)
   }
 }
