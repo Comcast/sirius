@@ -7,7 +7,7 @@ import java.security.MessageDigest
 import org.apache.commons.codec.binary.Base64
 import com.comcast.xfinity.sirius.NiceTest
 
-@RunWith(classOf[JUnitRunner])
+
 class ChecksumTest extends NiceTest {
 
   var checksumGenerator: Checksum = _

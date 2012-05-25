@@ -4,7 +4,7 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.NiceTest
 
-@RunWith(classOf[JUnitRunner])
+
 class Base64PayloadCodecTest extends NiceTest {
 
   var codec: Base64PayloadCodec = _
