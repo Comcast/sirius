@@ -57,11 +57,11 @@ The Sirius write-ahead log is designed with the following principles in mind, in
 %%------------------------------
 \subsection{Design Overview}
 
-The log file is plain text, UTF-8 encoded.  Fields in an individual log entry are pipe (U+007C) delineated.  Entries in the log are terminated by a LF (U+000A).
+The log file is plain text, UTF-8 encoded.  Each entry begins with a checksum, and is terminated by a line feed (LF/'\textbackslash n'/U+000A). The checksum covers all data from the byte after the checksum to the line feed, inclusive.
 
-Pipe characters and all whitespace\footnote{All characters considered White\_Space in the Unicode character database - http://www.unicode.org/reports/tr44/tr44-8.html} are disallowed as parts of the log elements, though the implementer may chose to add whitespace for readability between the pipes and log file elements.  
+Fields in an individual log entry are pipe (U+007C) delineated. Pipe characters and all whitespace\footnote{All characters considered White\_Space in the Unicode character database - http://www.unicode.org/reports/tr44/tr44-8.html} are disallowed as parts of the log elements.  For convenience, a pipe character is placed immediately after the checksum.
 
-An individual log entry would look something like:
+An typical log entry would look something like:
 \begin{center}
 \em Checksum\textbar Action Type\textbar Key\textbar Sequence\textbar Timestamp\textbar Payload\textbackslash n
 \end{center}
@@ -72,6 +72,9 @@ An individual log entry would look something like:
 %%    Field Definitions
 %%------------------------------
 \subsection{Field Definitions}
+
+\subsubsection{Checksum}
+Base64 encoded MD5 hash of the UTF-8 byte array that represents the rest of the log entry\footnote{It is worth mentioning, this is exactly 24 characters in length}, including the pipes and terminating new line.
 
 \subsubsection{Action Type}
 A String that represents the type of action to take for a given log entry.  For the most part, these will mirror HTTP semantics.
@@ -104,8 +107,6 @@ UTC timestamp in some ISO 8601 compliant format.
 \subsubsection{Payload}
 Base64 encoded binary payload for the log entry.  This is probably some representation of the data needed to do a PUT to a given resource.
 
-\subsubsection{Checksum}
-Base64 encoded MD5 hash of the UTF-8 byte array that represents the rest of the log entry, including the pipes and terminating new line.
 
 %%------------------------------
 %% Write Ahead Log Format:
