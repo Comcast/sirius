@@ -20,7 +20,7 @@ class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
 
   describe("A Sirius write ahead log entry") {
     it("should serialize and deserialize to the same thing") {
-      val rawLogEntry = "PUT|key|123|19700101T000012.345Z|QQ==|Q6UvDVS1BZtbrPcdyUwakQ==\r"
+      val rawLogEntry = "ZXnHgnjaTQHEEwNVOo7wuw==|PUT|key|123|19700101T000012.345Z|QQ==\n"
       assert(rawLogEntry === logEntry.serialize(logEntry.deserialize(rawLogEntry)))
     }
 
@@ -31,7 +31,7 @@ class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
     }
 
     it("should throw a SiriusChecksumException when deserializing a tampered with log entry") {
-      val rawLogEntry = "PUT|tamperedkey|123|19700101T000012.345Z|QQ==|Q6UvDVS1BZtbrPcdyUwakQ==\r"
+      val rawLogEntry = "ZXnHgnjaTQHEEwNVOo7wuw==|PUT|tamperedkey|123|19700101T000012.345Z|QQ==\n"
 
       intercept[SiriusChecksumException] {
         logEntry.deserialize(rawLogEntry)
@@ -41,13 +41,13 @@ class WriteAheadLogEntryTest extends FunSpec with BeforeAndAfter {
 
     it("should serialize to a string representation of the log contents.") {
       val logData = new LogData("PUT", "key", 123L, 12345L, Some(Array[Byte](65)))
-      val expectedLogEntry = "PUT|key|123|19700101T000012.345Z|QQ==|Q6UvDVS1BZtbrPcdyUwakQ==\r"
+      val expectedLogEntry = "ZXnHgnjaTQHEEwNVOo7wuw==|PUT|key|123|19700101T000012.345Z|QQ==\n"
       assert(expectedLogEntry == logEntry.serialize(logData))
     }
 
     it("should properly encodes payloads that have a | character when serializing.") {
       val logData = new LogData("PUT", "key", 123L, 12345L, Some(Array[Byte](65, 124, 65)))
-      val expectedLogEntry = "PUT|key|123|19700101T000012.345Z|QXxB|Uw81FQiQ3WGGglvYtWG0ew==\r"
+      val expectedLogEntry = "FcKBMsXg++2Z44UoYNnmSA==|PUT|key|123|19700101T000012.345Z|QXxB\n"
       assert(expectedLogEntry == logEntry.serialize(logData))
     }
 

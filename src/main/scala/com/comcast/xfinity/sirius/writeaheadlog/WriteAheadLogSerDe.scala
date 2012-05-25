@@ -27,11 +27,11 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
   def serialize(logData: LogData): String = checksummedLogEntry(buildRawLogEntry(logData))
 
   private def checksummedLogEntry(base: String) =
-    "%s%s\r".format(base, generateChecksum(base))
+    "%s%s".format(generateChecksum(base), base)
 
   private def buildRawLogEntry(data: LogData): String = {
     validateKey(data.key)
-    "%s|%s|%s|%s|%s|".format(
+    "|%s|%s|%s|%s|%s\n".format(
       data.actionType,
       data.key,
       data.sequence,
@@ -51,18 +51,10 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
     }
   }
 
-  private def cleanChecksum(dirtyChecksum: String): String = {
-    val parts: Array[String] = dirtyChecksum.split("\r")
-    if (parts.size > 2) {
-      throw new IllegalArgumentException("Checksum is dirtier than expected: " + dirtyChecksum)
-    }
-    parts(0)
-  }
-
   def deserialize(rawData: String): LogData = {
-    val Array(actionType, key, sequence, timestamp, payload, checksum) = rawData.split("\\|")
+    val Array(checksum, actionType, key, sequence, timestamp, payload) = rawData.split("\\|")
     val data = LogData(actionType, key, sequence.toLong, parseTimestamp(timestamp), decodePayload(payload))
-    validateChecksum(data, cleanChecksum(checksum))
+    validateChecksum(data, checksum)
     data
   }
 
