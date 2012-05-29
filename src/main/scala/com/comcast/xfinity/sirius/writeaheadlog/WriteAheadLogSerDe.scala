@@ -1,6 +1,5 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-import java.util.regex.Pattern
 import org.joda.time.format.ISODateTimeFormat
 import org.slf4j.LoggerFactory
 
