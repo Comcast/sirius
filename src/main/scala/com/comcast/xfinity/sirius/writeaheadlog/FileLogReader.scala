@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import java.io.File
-import scalax.io.Line.Terminators.CarriageReturn
+import scalax.io.Line.Terminators.NewLine
 import org.slf4j.LoggerFactory
 import scalax.io.Resource
 
@@ -25,6 +25,6 @@ class FileLogReader(filePath: String, serDe: LogDataSerDe) extends LogReader {
   }
 
   private[writeaheadlog] def lines = {
-    Resource.fromFile(new File(filePath)).lines(CarriageReturn)
+    Resource.fromFile(new File(filePath)).lines(NewLine, true)
   }
 }
