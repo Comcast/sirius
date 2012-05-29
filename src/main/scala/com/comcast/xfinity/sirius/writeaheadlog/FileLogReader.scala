@@ -23,6 +23,15 @@ class FileLogReader(filePath: String, serDe: LogDataSerDe) extends LogReader {
     })
 
   }
+  
+  /**
+   * ${@inheritDoc}
+   */
+  override def foldLeft[T](acc0: T)(foldFun: (T, LogData) => T): T = 
+    lines.foldLeft(acc0)((acc, line) => {
+      foldFun(acc, serDe.deserialize(line))
+    })
+    
 
   private[writeaheadlog] def lines = {
     Resource.fromFile(new File(filePath)).lines(NewLine, true)

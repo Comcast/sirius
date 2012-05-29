@@ -46,7 +46,21 @@ class FileLogReaderTest extends NiceTest{
 
         assert(LOG_DATA1 === actualLogData(0))
         assert(LOG_DATA2 === actualLogData(1))
-
+      }
+    }
+    
+    describe(".foldLeft") {
+      it("deserialize and fold left over the entries in the file in order") {
+        val rawLines = FIRST_RAW_LINE + SECOND_RAW_LINE
+        val lineTraversable = Resource.fromInputStream(new ByteArrayInputStream(rawLines.getBytes)).lines(NewLine, true)
+        doReturn(lineTraversable).when(reader).lines
+        
+        when(mockSerDe.deserialize(FIRST_RAW_LINE)).thenReturn(LOG_DATA1)
+        when(mockSerDe.deserialize(SECOND_RAW_LINE)).thenReturn(LOG_DATA2)
+        
+        val result = reader.foldLeft[List[LogData]](Nil)((acc, logData) => logData :: acc)
+        
+        assert(result.reverse === List(LOG_DATA1, LOG_DATA2))
       }
     }
   }
