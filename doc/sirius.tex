@@ -59,7 +59,7 @@ The Sirius write-ahead log is designed with the following principles in mind, in
 
 The log file is plain text, UTF-8 encoded.  Each entry begins with a checksum, and is terminated by a line feed (LF/'\textbackslash n'/U+000A). The checksum covers all data from the byte after the checksum to the line feed, inclusive.
 
-Fields in an individual log entry are pipe (U+007C) delineated. Pipe characters and all whitespace\footnote{All characters considered White\_Space in the Unicode character database - http://www.unicode.org/reports/tr44/tr44-8.html} are disallowed as parts of the log elements.  For convenience, a pipe character is placed immediately after the checksum.
+Fields in an individual log entry are pipe (U+007C) delineated. Pipe characters and all whitespace\footnote{See http://docs.oracle.com/javase/6/docs/api/java/lang/Character.html\#isWhitespace(char)} are disallowed as parts of the log elements.  For convenience, a pipe character is placed immediately after the checksum.
 
 An typical log entry would look something like:
 \begin{center}
