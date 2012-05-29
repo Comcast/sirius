@@ -9,9 +9,8 @@ import org.apache.commons.codec.binary.Base64
 import com.comcast.xfinity.sirius.NiceTest
 
 class WriteAheadLogSerDeTest extends NiceTest {
+  
   var logEntry: WriteAheadLogSerDe = _
-  var mockCodec: Base64 = _
-  var mockMessageDigest: MessageDigest = _
 
   before {
     logEntry = new WriteAheadLogSerDe()
