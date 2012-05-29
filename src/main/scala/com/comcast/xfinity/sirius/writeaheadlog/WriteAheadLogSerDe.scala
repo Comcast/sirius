@@ -8,10 +8,9 @@ import org.slf4j.LoggerFactory
  * Responsible for creating entries in the Sirius write ahead log.
  */
 class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCodec {
-  private val logger = LoggerFactory.getLogger(classOf[WriteAheadLogSerDe])
-  val whitespacePattern: Pattern = Pattern.compile("\\s")
-  val pipePattern: Pattern = Pattern.compile("\\|")
 
+  private val logger = LoggerFactory.getLogger(classOf[WriteAheadLogSerDe])
+  
   val (formatTimestamp, parseTimestamp) = {
     val dateTimeFormatter = ISODateTimeFormat.basicDateTime()
     val doFormatTimestamp: Long => String = {
