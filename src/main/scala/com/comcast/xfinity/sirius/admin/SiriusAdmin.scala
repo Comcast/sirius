@@ -5,7 +5,7 @@ import javax.management.ObjectName
 import java.net.InetAddress
 
 /**
- * Hooks to register and unregister MBean(s) used for adminstrative purpouses with 
+ * Hooks to register and unregister MBean(s) used for admin stuff with 
  * the passed in MBeanServer
  */
 class SiriusAdmin(val port: Int, val mbeanServer : MBeanServer) {
