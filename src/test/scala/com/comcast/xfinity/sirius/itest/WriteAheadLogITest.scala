@@ -10,7 +10,6 @@ import akka.dispatch.Await
 import akka.util.duration._
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
-import org.junit.Rule
 
 class WriteAheadLogITest extends NiceTest {
 
@@ -44,7 +43,7 @@ class WriteAheadLogITest extends NiceTest {
 
 
   describe("a Sirius Write Ahead Log") {
-    it("should be written to when we PUT") {
+    it("should have 1 entry after a PUT") {
       var logEntries = List[LogData]()
 
       // XXX: hack so that we can track the entries retrieved, in order
@@ -56,8 +55,29 @@ class WriteAheadLogITest extends NiceTest {
       logReader.readEntries(fn)
 
       assert(1 === logEntries.size)
-      assert("some body".getBytes === logEntries(0).payload.get)
+      assert("some body" === new String(logEntries(0).payload.get))
       assert("1" === logEntries(0).key)
+    }
+    it("should have 2 entries after 2 PUTs") {
+      var logEntries = List[LogData]()
+
+      // XXX: hack so that we can track the entries retrieved, in order
+      val fn: LogData => Unit = (logData: LogData) => logEntries = logEntries ::: List(logData)
+
+
+      Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
+      Await.result(sirius.enqueuePut("2", "some other body".getBytes), (5 seconds))
+
+      val logReader: LogReader = new FileLogReader(logFilename, new WriteAheadLogSerDe())
+      logReader.readEntries(fn)
+
+
+
+      assert(2 === logEntries.size)
+      assert("some body" === new String(logEntries(0).payload.get))
+      assert("1" === logEntries(0).key)
+      assert("some other body" === new String(logEntries(1).payload.get))
+      assert("2" === logEntries(1).key)
     }
   }
 
