@@ -1,15 +1,17 @@
 package com.comcast.xfinity.sirius.api.impl
 
+import java.lang.management.ManagementFactory
+import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
+import com.comcast.xfinity.sirius.writeaheadlog.FileLogWriter
+import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
+import com.comcast.xfinity.sirius.writeaheadlog.WriteAheadLogSerDe
 import akka.actor.ActorSystem
-import akka.actor.Props
 import akka.dispatch.Future
 import akka.pattern.ask
-import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
-import com.comcast.xfinity.sirius.api.impl.persistence.SiriusPersistenceActor
-import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
-import com.comcast.xfinity.sirius.writeaheadlog.{LogWriter, WriteAheadLogSerDe, FileLogWriter}
+import akka.actor.Props
+
 
 /**
  * A Sirius implementation implemented in Scala using Akka actors
@@ -20,11 +22,15 @@ class SiriusImpl(val requestHandler: RequestHandler,
                 ) extends Sirius with AkkaConfig {
 
 
-  // TODO: we may want to identify these actors by their class name? make debugging direct
-  val stateActor = actorSystem.actorOf(Props(new SiriusStateActor(requestHandler)), "state")
-  val persistenceActor = actorSystem.actorOf(Props(new SiriusPersistenceActor(stateActor, walWriter)), "persistence")
-  val paxosActor = actorSystem.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")
+  val mbeanServer = ManagementFactory.getPlatformMBeanServer()
+  val admin = new SiriusAdmin(2552, mbeanServer)
 
+  // TODO: we may want to identify these actors by their class name? make debugging direct
+  val supervisor = actorSystem.actorOf(Props(new SiriusSupervisor(admin, requestHandler, walWriter)), "sirius")
+  
+  val stateActor = actorSystem.actorFor("user/sirius/state")
+  val persistenceActor = actorSystem.actorFor("user/sirius/persistance")
+  val paxosActor = actorSystem.actorFor("user/sirius/paxos")
   /**
    * ${@inheritDoc}
    */

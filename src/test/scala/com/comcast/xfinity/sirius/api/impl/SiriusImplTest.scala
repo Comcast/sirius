@@ -50,11 +50,12 @@ class SiriusImplTest extends NiceTest {
     })
 
     doReturn(stateActorProbe.ref).when(spiedAkkaSystem).
-            actorOf(any(classOf[Props]), Matchers.eq("state"))
+            actorFor(Matchers.eq("user/sirius/state"))
     doReturn(persistenceActorProbe.ref).when(spiedAkkaSystem).
-            actorOf(any(classOf[Props]), Matchers.eq("persistence"))
+            actorFor(Matchers.eq("user/sirius/persistence"))
     doReturn(paxosActorProbe.ref).when(spiedAkkaSystem).
-            actorOf(any(classOf[Props]), Matchers.eq("paxos"))
+            actorFor(Matchers.eq("user/sirius/paxos"))
+            
     underTest = new SiriusImpl(mockRequestHandler, spiedAkkaSystem)
   }
 
