@@ -76,11 +76,26 @@ class WriteAheadLogITest extends NiceTest {
       assert("PUT" === logEntries(0).actionType)
       assert("some body" === new String(logEntries(0).payload.get))
       assert("1" === logEntries(0).key)
-
+      
       assert("DELETE" === logEntries(1).actionType)
       assert("" === new String(logEntries(1).payload.get))
       assert("1" === logEntries(1).key)
     }
+    
+    it("should have 2 PUT entries after 2 PUTs and a GET") {
+      Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
+      Await.result(sirius.enqueuePut("2", "some other body".getBytes), (5 seconds))
+      Await.result(sirius.enqueueGet("1"), (5 seconds))
+
+      val logEntries = logReader.foldLeft(List[LogData]())((a: List[LogData], c) => a ::: List(c))
+
+      assert(2 === logEntries.size)
+      assert("some body" === new String(logEntries(0).payload.get))
+      assert("1" === logEntries(0).key)
+      assert("some other body" === new String(logEntries(1).payload.get))
+      assert("2" === logEntries(1).key)
+    }
+
   }
 
 
