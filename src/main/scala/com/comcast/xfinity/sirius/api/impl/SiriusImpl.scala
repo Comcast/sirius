@@ -16,11 +16,9 @@ import akka.actor.Props
 /**
  * A Sirius implementation implemented in Scala using Akka actors
  */
-class SiriusImpl(val requestHandler: RequestHandler, 
-                 val actorSystem: ActorSystem,
-                 val walWriter: LogWriter = new FileLogWriter("/tmp/sirius_wal.log", new WriteAheadLogSerDe())
-                ) extends Sirius with AkkaConfig {
+class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem, val walWriter: LogWriter) extends Sirius with AkkaConfig {
 
+  def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = this (requestHandler, actorSystem, new FileLogWriter("/tmp/sirius_wal.log", new WriteAheadLogSerDe()))
 
   val mbeanServer = ManagementFactory.getPlatformMBeanServer()
   val admin = new SiriusAdmin(2552, mbeanServer)
