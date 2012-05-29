@@ -15,23 +15,24 @@ class WriteAheadLogITest extends NiceTest {
 
   var sirius: SiriusImpl = _
 
-  var requestHandler: RequestHandler = _
-
   var actorSystem: ActorSystem = _
-  val tempFolder = new TemporaryFolder()
 
+  val tempFolder = new TemporaryFolder()
   var logFilename: String = _
 
+  var logReader: LogReader = _
 
   before {
     tempFolder.create
     logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
-    requestHandler = new StringRequestHandler();
+
     actorSystem = ActorSystem.create("Sirius")
 
     val logWriter: FileLogWriter = new FileLogWriter(logFilename, new WriteAheadLogSerDe())
 
-    sirius = new SiriusImpl(requestHandler, actorSystem, logWriter)
+    sirius = new SiriusImpl(new StringRequestHandler(), actorSystem, logWriter)
+
+    logReader = new FileLogReader(logFilename, new WriteAheadLogSerDe())
   }
 
   after {
@@ -44,40 +45,41 @@ class WriteAheadLogITest extends NiceTest {
 
   describe("a Sirius Write Ahead Log") {
     it("should have 1 entry after a PUT") {
-      var logEntries = List[LogData]()
-
-      // XXX: hack so that we can track the entries retrieved, in order
-      val fn: LogData => Unit = (logData: LogData) => logEntries = logEntries ::: List(logData)
-
       Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
-
-      val logReader: LogReader = new FileLogReader(logFilename, new WriteAheadLogSerDe())
-      logReader.readEntries(fn)
+      
+      val logEntries = logReader.foldLeft(List[LogData]())((a: List[LogData], c) => a ::: List(c))
 
       assert(1 === logEntries.size)
       assert("some body" === new String(logEntries(0).payload.get))
       assert("1" === logEntries(0).key)
     }
     it("should have 2 entries after 2 PUTs") {
-      var logEntries = List[LogData]()
-
-      // XXX: hack so that we can track the entries retrieved, in order
-      val fn: LogData => Unit = (logData: LogData) => logEntries = logEntries ::: List(logData)
-
-
       Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
       Await.result(sirius.enqueuePut("2", "some other body".getBytes), (5 seconds))
-
-      val logReader: LogReader = new FileLogReader(logFilename, new WriteAheadLogSerDe())
-      logReader.readEntries(fn)
-
-
+      
+      val logEntries = logReader.foldLeft(List[LogData]())((a: List[LogData], c) => a ::: List(c))
 
       assert(2 === logEntries.size)
       assert("some body" === new String(logEntries(0).payload.get))
       assert("1" === logEntries(0).key)
       assert("some other body" === new String(logEntries(1).payload.get))
       assert("2" === logEntries(1).key)
+    }
+    it("should have a PUT and a DELETE entry after a PUT and a DELETE") {
+      Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
+      Await.result(sirius.enqueueDelete("1"), (5 seconds))
+      
+      val logEntries = logReader.foldLeft(List[LogData]())((a: List[LogData], c) => a ::: List(c))
+      
+      assert(2 === logEntries.size)
+
+      assert("PUT" === logEntries(0).actionType)
+      assert("some body" === new String(logEntries(0).payload.get))
+      assert("1" === logEntries(0).key)
+
+      assert("DELETE" === logEntries(1).actionType)
+      assert("" === new String(logEntries(1).payload.get))
+      assert("1" === logEntries(1).key)
     }
   }
 
