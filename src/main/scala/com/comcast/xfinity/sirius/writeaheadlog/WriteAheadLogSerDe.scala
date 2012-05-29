@@ -64,5 +64,5 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
       LogData(action, key, seq.toLong, parseTimestamp(ts), decodePayload(payload))
   }
 
-  def isKeyValid(key: String) = key.forall(!_.isWhitespace) && key.forall(_ != '|')
+  def isKeyValid(key: String) = key.forall(c => !c.isWhitespace && c != '|') 
 }
