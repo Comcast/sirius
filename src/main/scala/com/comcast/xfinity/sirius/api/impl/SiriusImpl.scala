@@ -12,7 +12,6 @@ import akka.dispatch.Future
 import akka.pattern.ask
 import akka.actor.Props
 
-
 /**
  * A Sirius implementation implemented in Scala using Akka actors
  */
@@ -24,29 +23,27 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
   val admin = new SiriusAdmin(2552, mbeanServer)
 
   // TODO: we may want to identify these actors by their class name? make debugging direct
-  val supervisor = actorSystem.actorOf(Props(new SiriusSupervisor(admin, requestHandler, walWriter)), "sirius")
-  
-  val stateActor = actorSystem.actorFor("user/sirius/state")
-  val persistenceActor = actorSystem.actorFor("user/sirius/persistance")
-  val paxosActor = actorSystem.actorFor("user/sirius/paxos")
+  var supervisor = actorSystem.actorOf(Props(new SiriusSupervisor(admin, requestHandler, walWriter)), "sirius")
+
+
   /**
    * ${@inheritDoc}
    */
   def enqueueGet(key: String) = {
-    (stateActor ? Get(key)).asInstanceOf[Future[Array[Byte]]]
+    (supervisor ? Get(key)).asInstanceOf[Future[Array[Byte]]]
   }
 
   /**
    * ${@inheritDoc}
    */
   def enqueuePut(key: String, body: Array[Byte]) = {
-    (paxosActor ? Put(key, body)).asInstanceOf[Future[Array[Byte]]]
+    (supervisor ? Put(key, body)).asInstanceOf[Future[Array[Byte]]]
   }
 
   /**
    * ${@inheritDoc}
    */
   def enqueueDelete(key: String) = {
-    (paxosActor ? Delete(key)).asInstanceOf[Future[Array[Byte]]]
+    (supervisor ? Delete(key)).asInstanceOf[Future[Array[Byte]]]
   }
 }
