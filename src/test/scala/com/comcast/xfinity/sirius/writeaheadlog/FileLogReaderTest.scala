@@ -5,10 +5,8 @@ import scalax.io.Line.Terminators.NewLine
 import scalax.io.Resource
 import java.io.ByteArrayInputStream
 import com.comcast.xfinity.sirius.NiceTest
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 
-class FileLogReaderTest extends NiceTest{
+class FileLogReaderTest extends NiceTest {
 
   var reader: FileLogReader = _
   var mockSerDe: LogDataSerDe = _
@@ -25,43 +23,19 @@ class FileLogReaderTest extends NiceTest{
     reader = spy(new FileLogReader(FILENAME, mockSerDe))
   }
 
-  describe("FileLogReader") {
-    describe(".readEntries") {
-      it("should read, deserialize and then handle each entry in a file") {
-        when(mockSerDe.deserialize(FIRST_RAW_LINE)).thenReturn(LOG_DATA1)
-        when(mockSerDe.deserialize(SECOND_RAW_LINE)).thenReturn(LOG_DATA2)
 
-        val rawLines = FIRST_RAW_LINE + SECOND_RAW_LINE
-        val lineTraversable = Resource.fromInputStream(new ByteArrayInputStream(rawLines.getBytes)).lines(NewLine, true)
-        doReturn(lineTraversable).when(reader).lines
+  describe(".foldLeft") {
+    it("deserialize and fold left over the entries in the file in order") {
+      val rawLines = FIRST_RAW_LINE + SECOND_RAW_LINE
+      val lineTraversable = Resource.fromInputStream(new ByteArrayInputStream(rawLines.getBytes)).lines(NewLine, true)
+      doReturn(lineTraversable).when(reader).lines
 
-        var actualLogData: List[LogData] = List[LogData]()
+      when(mockSerDe.deserialize(FIRST_RAW_LINE)).thenReturn(LOG_DATA1)
+      when(mockSerDe.deserialize(SECOND_RAW_LINE)).thenReturn(LOG_DATA2)
 
-        val fn: LogData => Unit = (logData: LogData) => {
-          actualLogData = actualLogData ::: List(logData)
+      val result = reader.foldLeft[List[LogData]](Nil)((acc, logData) => logData :: acc)
 
-        }
-
-        reader.readEntries(fn)
-
-        assert(LOG_DATA1 === actualLogData(0))
-        assert(LOG_DATA2 === actualLogData(1))
-      }
-    }
-    
-    describe(".foldLeft") {
-      it("deserialize and fold left over the entries in the file in order") {
-        val rawLines = FIRST_RAW_LINE + SECOND_RAW_LINE
-        val lineTraversable = Resource.fromInputStream(new ByteArrayInputStream(rawLines.getBytes)).lines(NewLine, true)
-        doReturn(lineTraversable).when(reader).lines
-        
-        when(mockSerDe.deserialize(FIRST_RAW_LINE)).thenReturn(LOG_DATA1)
-        when(mockSerDe.deserialize(SECOND_RAW_LINE)).thenReturn(LOG_DATA2)
-        
-        val result = reader.foldLeft[List[LogData]](Nil)((acc, logData) => logData :: acc)
-        
-        assert(result.reverse === List(LOG_DATA1, LOG_DATA2))
-      }
+      assert(result.reverse === List(LOG_DATA1, LOG_DATA2))
     }
   }
 
