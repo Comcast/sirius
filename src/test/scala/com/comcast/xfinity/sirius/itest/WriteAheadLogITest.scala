@@ -6,7 +6,6 @@ import com.comcast.xfinity.sirius.api.RequestHandler
 import collection.mutable.HashMap
 import akka.actor.ActorSystem
 import akka.dispatch.Await
-
 import akka.util.duration._
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
@@ -41,13 +40,11 @@ class WriteAheadLogITest extends NiceTest {
 
   }
 
-
-
   describe("a Sirius Write Ahead Log") {
     it("should have 1 entry after a PUT") {
       Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
       
-      val logEntries = logReader.foldLeft(List[LogData]())((a: List[LogData], c) => a ::: List(c))
+      val logEntries = logReader.foldLeft[List[LogData]](Nil)((a, c) => c :: a).reverse
 
       assert(1 === logEntries.size)
       assert("some body" === new String(logEntries(0).payload.get))
@@ -57,7 +54,7 @@ class WriteAheadLogITest extends NiceTest {
       Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
       Await.result(sirius.enqueuePut("2", "some other body".getBytes), (5 seconds))
       
-      val logEntries = logReader.foldLeft(List[LogData]())((a: List[LogData], c) => a ::: List(c))
+      val logEntries = logReader.foldLeft[List[LogData]](Nil)((a, c) => c :: a).reverse
 
       assert(2 === logEntries.size)
       assert("some body" === new String(logEntries(0).payload.get))
@@ -69,7 +66,7 @@ class WriteAheadLogITest extends NiceTest {
       Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
       Await.result(sirius.enqueueDelete("1"), (5 seconds))
       
-      val logEntries = logReader.foldLeft(List[LogData]())((a: List[LogData], c) => a ::: List(c))
+      val logEntries = logReader.foldLeft[List[LogData]](Nil)((a, c) => c :: a).reverse
       
       assert(2 === logEntries.size)
 
@@ -87,7 +84,7 @@ class WriteAheadLogITest extends NiceTest {
       Await.result(sirius.enqueuePut("2", "some other body".getBytes), (5 seconds))
       Await.result(sirius.enqueueGet("1"), (5 seconds))
 
-      val logEntries = logReader.foldLeft(List[LogData]())((a: List[LogData], c) => a ::: List(c))
+      val logEntries = logReader.foldLeft[List[LogData]](Nil)((a, c) => c :: a).reverse
 
       assert(2 === logEntries.size)
       assert("some body" === new String(logEntries(0).payload.get))
