@@ -35,9 +35,9 @@ class WriteAheadLogITest extends NiceTest {
   }
 
   after {
-    actorSystem.shutdown
-    tempFolder.delete
-
+    actorSystem.shutdown()
+    tempFolder.delete()
+    actorSystem.awaitTermination()
   }
 
   describe("a Sirius Write Ahead Log") {
