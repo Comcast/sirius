@@ -54,6 +54,7 @@ class SiriusImplTest extends NiceTest {
 
   after {
     spiedAkkaSystem.shutdown()
+    spiedAkkaSystem.awaitTermination()
   }
 
   describe("a SiriusScalaImpl") {
