@@ -1,25 +1,24 @@
 package com.comcast.xfinity.sirius.admin
+
+import com.comcast.xfinity.sirius.info.SiriusInfo
+
 import javax.management.MBeanServer
-import java.lang.management.ManagementFactory
 import javax.management.ObjectName
-import java.net.InetAddress
 
 /**
- * Hooks to register and unregister MBean(s) used for admin stuff with 
+ * Hooks to register and unregister MBean(s) used for admin stuff with
  * the passed in MBeanServer
  */
-class SiriusAdmin(val port: Int, val mbeanServer : MBeanServer) {
-    
-  val hostName =  InetAddress.getLocalHost().getHostName();
+class SiriusAdmin(val info: SiriusInfo, val mbeanServer: MBeanServer) {
+
   val mbeanName = new ObjectName("com.comcast.xfinity.sirius:type=SiriusInfo")
 
   def registerMbeans() = {
-    val infoMbean = new SiriusInfo(port, hostName)
-    mbeanServer.registerMBean(infoMbean, mbeanName)
+    mbeanServer.registerMBean(info, mbeanName)
   }
-  
+
   def unregisterMbeans() = {
     mbeanServer.unregisterMBean(mbeanName)
   }
-  
+
 }

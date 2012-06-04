@@ -1,26 +1,28 @@
 package com.comcast.xfinity.sirius.admin
 import org.junit.runner.RunWith
-import org.scalatest.BeforeAndAfter
-import org.scalatest.FunSpec
-import org.scalatest.junit.JUnitRunner
+import org.mockito.Matchers.anyObject
+import org.mockito.Mockito.verify
+
+import com.comcast.xfinity.sirius.info.SiriusInfo
+import com.comcast.xfinity.sirius.NiceTest
+
 import javax.management.MBeanServer
-import org.mockito.Mockito._
-import org.mockito.Matchers._
 import javax.management.ObjectName
 
-@RunWith(classOf[JUnitRunner])
-class SiriusAdminTest extends FunSpec with BeforeAndAfter  {
+class SiriusAdminTest extends NiceTest {
 
-  var mockMBeanServer : MBeanServer = _
-  
+  var mockMBeanServer: MBeanServer = _
+  var mockSiriusInfo: SiriusInfo = _
+
   val mbeanName = new ObjectName("com.comcast.xfinity.sirius:type=SiriusInfo")
-  var siriusAdminUnderTest : SiriusAdmin = _
-  
+  var siriusAdminUnderTest: SiriusAdmin = _
+
   before {
-    mockMBeanServer = mock(classOf[MBeanServer])
-    siriusAdminUnderTest = new SiriusAdmin(4242, mockMBeanServer)
+    mockMBeanServer = mock[MBeanServer]
+    mockSiriusInfo = mock[SiriusInfo]
+    siriusAdminUnderTest = new SiriusAdmin(mockSiriusInfo, mockMBeanServer)
   }
-  
+
   describe("a SiriusAdmin") {
     it("registers its mbeans with the passed in MBeanServer when registerMbeans is called") {
       siriusAdminUnderTest.registerMbeans()
