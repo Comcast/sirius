@@ -11,17 +11,20 @@ import com.comcast.xfinity.sirius.writeaheadlog.FileLogWriter
 import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
 import com.comcast.xfinity.sirius.writeaheadlog.WriteAheadLogSerDe
 
-import akka.actor.ActorSystem
-import akka.actor.Props
-import akka.dispatch.Future
+
 import akka.pattern.ask
+import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.dispatch.Future
 
 /**
  * A Sirius implementation implemented in Scala using Akka actors
  */
-class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem, val walWriter: LogWriter) extends Sirius with AkkaConfig {
+class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem, val walWriter: LogWriter, val nodeToJoin: Option[ActorRef]) extends Sirius with AkkaConfig {
 
-  def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = this(requestHandler, actorSystem, new FileLogWriter("/tmp/sirius_wal.log", new WriteAheadLogSerDe()))
+
+  def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = this (requestHandler, actorSystem, new FileLogWriter("/tmp/sirius_wal.log", new WriteAheadLogSerDe()), None)
+
+  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: LogWriter) = this (requestHandler, actorSystem, walWriter, None)
 
   val mbeanServer = ManagementFactory.getPlatformMBeanServer()
   val info = new SiriusInfo(2552, InetAddress.getLocalHost().getHostName()) // TODO: Pass in the hostname and port (perhaps)
@@ -29,6 +32,19 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
 
   // TODO: we may want to identify these actors by their class name? make debugging direct
   var supervisor = actorSystem.actorOf(Props(new SiriusSupervisor(admin, requestHandler, walWriter)), "sirius")
+
+  /**
+   * Call to have this instance of Sirius join a Sirius cluster.
+   * If this is the first Sirius node of the cluster, it sets itself up as the first node.
+   * 
+   * Since this is a val, it will be called on construction.
+   * 
+   * XXX: If we can think of a better way of calling this on construction of an object, we wouldn't need it as a val.
+   */
+  private val joinCluster = {
+    //TODO Bootstrap Write Ahead Log
+    supervisor ! JoinCluster(nodeToJoin, info)
+  }
 
   /**
    * ${@inheritDoc}

@@ -1,7 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl
 
-import org.mockito.Matchers.any
-import org.mockito.Mockito.doReturn
 import org.mockito.Mockito.spy
 import com.comcast.xfinity.sirius.api.RequestHandler
 import akka.dispatch.Await
@@ -11,7 +9,6 @@ import akka.util.duration.intToDurationInt
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
-import org.mockito.Matchers
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
