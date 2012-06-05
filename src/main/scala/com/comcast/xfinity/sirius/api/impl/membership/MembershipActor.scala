@@ -18,18 +18,18 @@ class MembershipActor extends Actor {
   def receive = {
     case join: Join => {
       //TODO check if node(s) is/are already a member(s) and reject
-      notifyPeers(join.info)
-      updateLocalMembership(join.info)
+      notifyPeers(join.member)
+      updateLocalMembership(join.member)
       sender ! NewMember(membershipMap)
     }
-    case newMember: NewMember => updateLocalMembership(newMember.info)
+    case newMember: NewMember => updateLocalMembership(newMember.member)
     case _ => logger.warn("Unrecognized message.")
   }
 
   /**
    * update local membership data structure
    */
-  def updateLocalMembership(info: Map[SiriusInfo, MembershipData]) = membershipMap ++= info
+  def updateLocalMembership(member: Map[SiriusInfo, MembershipData]) = membershipMap ++= member
 
   /**
    * Notify existing members of the cluster that a new node has joined
