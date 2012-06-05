@@ -12,7 +12,13 @@ import akka.dispatch.Await
 import akka.pattern.ask
 import akka.util.duration._
 import akka.util.Timeout
+import com.comcast.xfinity.sirius.info.SiriusInfo
+import com.comcast.xfinity.sirius.api.impl.membership.NewMember
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipData
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest() extends NiceTest {
 
   var system: ActorSystem = _
@@ -20,14 +26,17 @@ class SiriusSupervisorTest() extends NiceTest {
   var paxosActor: TestProbe = _
   var persistenceActor: TestProbe = _
   var stateActor: TestProbe = _
+  var membershipActor: TestProbe = _
 
   var handler: RequestHandler = _
   var admin: SiriusAdmin = _
   var logWriter: LogWriter = _
+  var siriusInfo: SiriusInfo = _
+  var nodeToJoinExists: Option[ActorRef] = _
+  var nodeToJoinDoesntExists: Option[ActorRef] = _
 
   var supervisor: TestActorRef[SiriusSupervisor] = _
   implicit val timeout: Timeout = (5 seconds)
-
 
   before {
     system = spy(ActorSystem("testsystem", ConfigFactory.parseString("""
@@ -38,9 +47,17 @@ class SiriusSupervisorTest() extends NiceTest {
     handler = mock[RequestHandler]
     admin = mock[SiriusAdmin]
     logWriter = mock[LogWriter]
-
+    siriusInfo = mock[SiriusInfo]
+    nodeToJoinExists = Some(mock[ActorRef])
 
     //setup TestProbes
+    membershipActor = TestProbe()(system)
+    membershipActor.setAutoPilot(new TestActor.AutoPilot {
+      def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
+        case NewMember(x) => sender ! x; Some(this)
+      }
+    })
+
     paxosActor = TestProbe()(system)
     paxosActor.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
@@ -53,7 +70,6 @@ class SiriusSupervisorTest() extends NiceTest {
     stateActor.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case Get(_) => sender ! "Got it".getBytes(); Some(this)
-
       }
     })
 
@@ -63,6 +79,7 @@ class SiriusSupervisorTest() extends NiceTest {
     supervisor.underlyingActor.paxosActor = paxosActor.ref
     supervisor.underlyingActor.persistenceActor = persistenceActor.ref
     supervisor.underlyingActor.stateActor = stateActor.ref
+    supervisor.underlyingActor.membershipActor = membershipActor.ref
 
   }
 
@@ -72,6 +89,16 @@ class SiriusSupervisorTest() extends NiceTest {
   }
 
   describe("a SiriusSupervisor") {
+    it("should send a message to start a new membership map with itself to the membershipActor when nodeToJoin is None") {
+      var res = Await.result(supervisor ? (JoinCluster(None, siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
+      val membershipDataOption: Option[MembershipData] = res.get(siriusInfo)
+      assert(membershipDataOption != None)
+      var expectedMap = Map[SiriusInfo, MembershipData]()
+      expectedMap += siriusInfo -> MembershipData(membershipActor.ref)
+      val membershipData: MembershipData = membershipDataOption.get
+      assert(membershipActor.ref === membershipData.membershipActor)
+      membershipActor.expectMsg(NewMember(expectedMap))
+    }
     it("should forward GET messages to the stateActor") {
       var res = Await.result(supervisor ? (Get("1")), timeout.duration).asInstanceOf[Array[Byte]]
       assert(res != null)
