@@ -16,13 +16,13 @@ class MembershipActor extends Actor {
   var membershipMap = Map[SiriusInfo, MembershipData]() // TODO: Change to an Agent and pull out of Actor
 
   def receive = {
-    case join: Join => {
+    case Join(member) => {
       //TODO check if node(s) is/are already a member(s) and reject
-      notifyPeers(join.member)
-      updateLocalMembership(join.member)
+      notifyPeers(member)
+      updateLocalMembership(member)
       sender ! NewMember(membershipMap)
     }
-    case newMember: NewMember => updateLocalMembership(newMember.member)
+    case NewMember(member) => updateLocalMembership(member)
     case _ => logger.warn("Unrecognized message.")
   }
 
