@@ -15,6 +15,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.WriteAheadLogSerDe
 import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.dispatch.Future
+import membership.MembershipData
 
 /**
  * A Sirius implementation implemented in Scala using Akka actors
@@ -36,14 +37,18 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
   /**
    * Call to have this instance of Sirius join a Sirius cluster.
    * If this is the first Sirius node of the cluster, it sets itself up as the first node.
-   * 
+   *
    * Since this is a val, it will be called on construction.
-   * 
+   *
    * XXX: If we can think of a better way of calling this on construction of an object, we wouldn't need it as a val.
    */
   private val joinCluster = {
     //TODO Bootstrap Write Ahead Log
     supervisor ! JoinCluster(nodeToJoin, info)
+  }
+
+  def getMembershipMap = {
+    (supervisor ? GetMembershipData()).asInstanceOf[Future[Map[SiriusInfo, MembershipData]]]
   }
 
   /**

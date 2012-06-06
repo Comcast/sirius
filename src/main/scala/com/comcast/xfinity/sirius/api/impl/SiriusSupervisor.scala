@@ -9,7 +9,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
 import membership._
 import org.slf4j.LoggerFactory
 import akka.actor.{ActorRef, Actor, Props}
-import akka.dispatch.{Await, Future}
+import akka.dispatch.Await
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.pattern.ask
 
@@ -43,14 +43,17 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
     case joinCluster: JoinCluster => {
       joinCluster.nodeToJoint match {
         case Some(node: ActorRef) => {
+          //join node from a cluster
           val future = node ? Join(Map(joinCluster.info -> MembershipData(membershipActor)))
           val clusterMembershipMap = Await.result(future, timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
+          //update our membership map
           membershipActor forward NewMember(clusterMembershipMap)
         }
         case None => membershipActor forward NewMember(Map(joinCluster.info -> MembershipData(membershipActor)))
       }
     }
-    case _ => logger.warn("SiriusSupervisor Actor received unrecongnized message")
+    case getMembershipData: GetMembershipData => membershipActor forward getMembershipData
+    case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}" , unknown )
   }
 
 }
