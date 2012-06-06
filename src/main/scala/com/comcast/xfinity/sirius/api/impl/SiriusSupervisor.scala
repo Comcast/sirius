@@ -41,7 +41,7 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
     case get: Get => stateActor forward get
     case delete: Delete => paxosActor forward delete
     case joinCluster: JoinCluster => {
-      joinCluster.nodeToJoint match {
+      joinCluster.nodeToJoin match {
         case Some(node: ActorRef) => {
           //join node from a cluster
           val future = node ? Join(Map(joinCluster.info -> MembershipData(membershipActor)))

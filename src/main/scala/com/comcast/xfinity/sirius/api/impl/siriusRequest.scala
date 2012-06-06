@@ -5,7 +5,7 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 sealed trait SiriusRequest
 
 case class Get(key: String) extends SiriusRequest
-case class JoinCluster(nodeToJoint: Option[ActorRef], info: SiriusInfo) extends SiriusRequest // XXX: Is this the best place for this?
+case class JoinCluster(nodeToJoin: Option[ActorRef], info: SiriusInfo) extends SiriusRequest // XXX: Is this the best place for this?
 case class GetMembershipData() extends SiriusRequest
 
 sealed trait NonIdempotentSiriusRequest extends SiriusRequest
