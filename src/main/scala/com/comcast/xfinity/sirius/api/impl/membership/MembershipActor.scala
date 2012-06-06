@@ -6,6 +6,7 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 
 import akka.actor.actorRef2Scala
 import akka.actor.Actor
+import com.comcast.xfinity.sirius.api.impl.GetMembershipData
 
 /**
  * Actor responsible for orchestrating request related to Sirius Cluster Membership
@@ -14,7 +15,6 @@ class MembershipActor extends Actor {
   private val logger = LoggerFactory.getLogger(classOf[MembershipActor])
 
   var membershipMap = Map[SiriusInfo, MembershipData]() // TODO: Change to an Agent and pull out of Actor
-
   def receive = {
     case Join(member) => {
       //TODO check if node(s) is/are already a member(s) and reject
@@ -22,7 +22,11 @@ class MembershipActor extends Actor {
       updateLocalMembership(member)
       sender ! NewMember(membershipMap)
     }
-    case NewMember(member) => updateLocalMembership(member)
+    case NewMember(member) => {
+      updateLocalMembership(member)
+      //TODO should this tell sender its done?
+    }
+    case getMembershipData: GetMembershipData => sender ! membershipMap
     case _ => logger.warn("Unrecognized message.")
   }
 
