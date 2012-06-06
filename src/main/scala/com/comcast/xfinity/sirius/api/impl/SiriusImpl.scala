@@ -28,7 +28,7 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: LogWriter) = this (requestHandler, actorSystem, walWriter, None)
 
   val mbeanServer = ManagementFactory.getPlatformMBeanServer()
-  val info = new SiriusInfo(2552, InetAddress.getLocalHost().getHostName()) // TODO: Pass in the hostname and port (perhaps)
+  val info = new SiriusInfo(DEFAULT_PORT, InetAddress.getLocalHost().getHostName()) // TODO: Pass in the hostname and port (perhaps)
   val admin = new SiriusAdmin(info, mbeanServer)
 
   // TODO: we may want to identify these actors by their class name? make debugging direct
