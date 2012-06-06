@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
-import org.mockito.Matchers.any
-import org.mockito.Mockito.doReturn
+import membership.MembershipData
 import org.mockito.Mockito.spy
 import com.comcast.xfinity.sirius.api.RequestHandler
 import akka.dispatch.Await
@@ -11,10 +10,12 @@ import akka.util.duration.intToDurationInt
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
-import org.mockito.Matchers
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
+import org.mockito.Matchers._
+import org.mockito.Mockito._
+import com.comcast.xfinity.sirius.info.SiriusInfo
 
 class SiriusImplTest extends NiceTest {
 
@@ -26,6 +27,7 @@ class SiriusImplTest extends NiceTest {
   var spiedAkkaSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
   var logWriter: LogWriter = _
+  var membershipMap: Map[SiriusInfo, MembershipData] = _
 
 
   before {
@@ -33,7 +35,7 @@ class SiriusImplTest extends NiceTest {
     akka.event-handlers = ["akka.testkit.TestEventListener"]
     """)))
 
-
+    membershipMap = mock[Map[SiriusInfo, MembershipData]];
 
     supervisorActorProbe = TestProbe()(spiedAkkaSystem)
     supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
@@ -41,15 +43,19 @@ class SiriusImplTest extends NiceTest {
         case Get(_) => sender ! "Got it".getBytes(); Some(this)
         case Delete(_) => sender ! "Delete it".getBytes(); Some(this)
         case Put(_, _) => sender ! "Put it".getBytes(); Some(this)
+        case JoinCluster(_, _) => Some(this)
+        case GetMembershipData() => sender ! membershipMap; Some(this)
       }
     })
 
     logWriter = mock[LogWriter]
-
-
+    doReturn(supervisorActorProbe.ref).when(spiedAkkaSystem).actorOf(any(classOf[Props]), anyString())
 
     underTest = new SiriusImpl(mockRequestHandler, spiedAkkaSystem, logWriter)
-    underTest.supervisor = supervisorActorProbe.ref
+
+
+    supervisorActorProbe.expectMsg(JoinCluster(None, underTest.info))
+
   }
 
   after {
@@ -57,7 +63,7 @@ class SiriusImplTest extends NiceTest {
     spiedAkkaSystem.awaitTermination()
   }
 
-  describe("a SiriusScalaImpl") {
+  describe("a SiriusImpl") {
     it("should send a Get message to the supervisor actor when enqueueGet is called") {
       val key = "hello"
       assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
@@ -75,6 +81,11 @@ class SiriusImplTest extends NiceTest {
       val key = "hello"
       assert("Delete it".getBytes() === Await.result(underTest.enqueueDelete(key), timeout.duration).asInstanceOf[Array[Byte]])
       supervisorActorProbe.expectMsg(Delete(key))
+    }
+
+    it("should issue an \"ask\" GetMembership to the supervisor when getMembershipData is called") {
+      assert(membershipMap === Await.result(underTest.getMembershipMap, timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]])
+      supervisorActorProbe.expectMsg(GetMembershipData())
     }
   }
 }
