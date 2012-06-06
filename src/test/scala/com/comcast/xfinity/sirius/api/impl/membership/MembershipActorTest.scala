@@ -33,11 +33,14 @@ class MembershipActorTest extends NiceTest {
   }
 
   describe("a MembershipActor") {
-    it("should add a new member to the membership map") {
+    it("should add a new member to the membership map if it receives a NewMember message") {
       val newMember = NewMember(expectedMap)
       underTestActor ! newMember
       assert(expectedMap === underTestActor.underlyingActor.membershipMap)
     }
+    it("should report on cluster membership if it receives a GetMembership message")(pending)
+    it("should tell peers, add to member map, and return a NewMembers if it receives a Join message")(pending)
+
 
   }
 }
