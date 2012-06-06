@@ -73,5 +73,7 @@ class SiriusImplTest extends NiceTest {
       assert("Delete it".getBytes() === Await.result(underTest.enqueueDelete(key), timeout.duration).asInstanceOf[Array[Byte]])
       supervisorActorProbe.expectMsg(Delete(key))
     }
+    it("should issue a Join msg when it is created.")(pending)
+    it("should issue an \"ask\" GetMembership to the supervisor when getMembershipData is called")(pending)
   }
 }
