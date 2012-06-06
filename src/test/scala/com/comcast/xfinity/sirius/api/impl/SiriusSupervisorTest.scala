@@ -6,8 +6,8 @@ import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.{ ActorRef, ActorSystem }
-import akka.testkit.{ TestProbe, TestActor, TestActorRef }
+import akka.actor.{ActorRef, ActorSystem}
+import akka.testkit.{TestProbe, TestActor, TestActorRef}
 import akka.dispatch.Await
 import akka.pattern.ask
 import akka.util.duration._
@@ -98,24 +98,30 @@ class SiriusSupervisorTest() extends NiceTest {
   }
 
   describe("a SiriusSupervisor") {
-    describe("joinCluster") {
-      it("should not have an empty membership data") {
-        var res = Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-        assert(res.get(siriusInfo) != None)
+    describe("when receiving a JoinCluster message") {
+      describe("the membershipActor TestProbe") {
+        it("should not provide an empty membership data") {
+          var membershipMap = Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
+          assert(membershipMap.get(siriusInfo) != None)
+        }
+        it("should set the membership actor to itself") {
+          val membershipMap = Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
+          assert(membershipActor.ref === membershipMap.get(siriusInfo).get.membershipActor)
+        }
+        it("should send a message to start a new membership map with the result from the node to join") {
+          Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
+          membershipActor.expectMsg(NewMember(expectedMap))
+        }
       }
-      it("should set the membership actor to itself") {
-        var res = Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-        assert(membershipActor.ref === res.get(siriusInfo).get.membershipActor)
-      }
-      it("should send a message to start a new membership map with the result from the node to join") {
-        var res = Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-        membershipActor.expectMsg(NewMember(expectedMap))
-      }
-      describe("nodeToJoin is another node") {
-        it("should send a message to join itself to nodeToJoin when nodeToJoin is another node") {
-          var res = Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
+      describe("and is given a nodeToJoin") {
+        it("should send a Join message to nodeToJoin's ActorRef") {
+          Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
           nodeToJoin.expectMsg(Join(expectedMap))
         }
+        it("should fail if nodeToJoin equals the current node")(pending)
+      }
+      describe("and is given no nodeToJoin") {
+        it("should forward a NewMember message containing itself to the membershipActor")(pending)
       }
 
     }
