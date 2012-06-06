@@ -15,11 +15,8 @@ import akka.util.Timeout
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.api.impl.membership.NewMember
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipData
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.api.impl.membership.Join
 
-@RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest() extends NiceTest {
 
   var system: ActorSystem = _
@@ -121,7 +118,10 @@ class SiriusSupervisorTest() extends NiceTest {
         it("should fail if nodeToJoin equals the current node")(pending)
       }
       describe("and is given no nodeToJoin") {
-        it("should forward a NewMember message containing itself to the membershipActor")(pending)
+        it("should forward a NewMember message containing itself to the membershipActor"){
+          Await.result(supervisor ? (JoinCluster(None, siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
+          membershipActor.expectMsg(NewMember(expectedMap))
+        }
       }
 
     }
@@ -129,8 +129,8 @@ class SiriusSupervisorTest() extends NiceTest {
       var res = Await.result(supervisor ? (Get("1")), timeout.duration).asInstanceOf[Array[Byte]]
       assert(res != null)
       assert("Got it" === new String(res))
-      paxosActor.expectNoMsg()
-      persistenceActor.expectNoMsg()
+      paxosActor.expectNoMsg(100 millis)
+      persistenceActor.expectNoMsg(100 millis)
       stateActor.expectMsg(Get("1"))
     }
     it("should forward DELETE messages to the paxosActor") {
@@ -138,8 +138,8 @@ class SiriusSupervisorTest() extends NiceTest {
       assert(res != null)
       assert("Delete it" === new String(res))
       paxosActor.expectMsg(Delete("1"))
-      persistenceActor.expectNoMsg()
-      stateActor.expectNoMsg()
+      persistenceActor.expectNoMsg((100 millis) )
+      stateActor.expectNoMsg((100 millis))
     }
     it("should forward PUT messages to the paxosActor") {
       var msgBody = "some body".getBytes()
@@ -147,8 +147,8 @@ class SiriusSupervisorTest() extends NiceTest {
       assert(res != null)
       assert("Put it" === new String(res))
       paxosActor.expectMsg(Put("1", msgBody))
-      persistenceActor.expectNoMsg()
-      stateActor.expectNoMsg()
+      persistenceActor.expectNoMsg((100 millis))
+      stateActor.expectNoMsg((100 millis))
     }
 
   }
