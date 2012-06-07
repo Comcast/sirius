@@ -115,10 +115,9 @@ class SiriusSupervisorTest() extends NiceTest {
           Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
           nodeToJoin.expectMsg(Join(expectedMap))
         }
-        it("should fail if nodeToJoin equals the current node")(pending)
       }
       describe("and is given no nodeToJoin") {
-        it("should forward a NewMember message containing itself to the membershipActor"){
+        it("should forward a NewMember message containing itself to the membershipActor") {
           Await.result(supervisor ? (JoinCluster(None, siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
           membershipActor.expectMsg(AddMembers(expectedMap))
         }
@@ -138,7 +137,7 @@ class SiriusSupervisorTest() extends NiceTest {
       assert(res != null)
       assert("Delete it" === new String(res))
       paxosActor.expectMsg(Delete("1"))
-      persistenceActor.expectNoMsg((100 millis) )
+      persistenceActor.expectNoMsg((100 millis))
       stateActor.expectNoMsg((100 millis))
     }
     it("should forward PUT messages to the paxosActor") {
