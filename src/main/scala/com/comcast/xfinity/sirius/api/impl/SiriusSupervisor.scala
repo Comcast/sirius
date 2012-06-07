@@ -47,9 +47,9 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
           val future = node ? Join(Map(joinCluster.info -> MembershipData(membershipActor)))
           val clusterMembershipMap = Await.result(future, timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
           //update our membership map
-          membershipActor forward NewMember(clusterMembershipMap)
+          membershipActor forward AddMembers(clusterMembershipMap)
         }
-        case None => membershipActor forward NewMember(Map(joinCluster.info -> MembershipData(membershipActor)))
+        case None => membershipActor forward AddMembers(Map(joinCluster.info -> MembershipData(membershipActor)))
       }
     }
     case getMembershipData: GetMembershipData => membershipActor forward getMembershipData

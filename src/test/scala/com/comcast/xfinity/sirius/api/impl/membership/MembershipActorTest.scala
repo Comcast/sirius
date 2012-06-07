@@ -34,7 +34,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
 
   describe("a MembershipActor") {
     it("should add a new member to the membership map if it receives a NewMember message") {
-      val newMember = NewMember(expectedMap)
+      val newMember = AddMembers(expectedMap)
       underTestActor ! newMember
       assert(expectedMap === underTestActor.underlyingActor.membershipMap)
     }
@@ -56,15 +56,15 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       val membership = Map[SiriusInfo, MembershipData](info1 -> MembershipData(probe1.ref), info2 -> MembershipData(probe2.ref))
       underTestActor.underlyingActor.membershipMap = membership
 
-      val newMember = result((underTestActor ? Join(toAdd)), (5 seconds)).asInstanceOf[NewMember]
+      val newMember = result((underTestActor ? Join(toAdd)), (5 seconds)).asInstanceOf[AddMembers]
       //was map updated
       assert(3 === newMember.member.size)
       assert(toAddProbe.ref === newMember.member(toAddInfo).membershipActor)
       assert(underTestActor.underlyingActor.membershipMap === newMember.member)
 
       //where peers notified
-      probe1.expectMsg(NewMember(toAdd))
-      probe2.expectMsg(NewMember(toAdd))
+      probe1.expectMsg(AddMembers(toAdd))
+      probe2.expectMsg(AddMembers(toAdd))
     }
 
   }

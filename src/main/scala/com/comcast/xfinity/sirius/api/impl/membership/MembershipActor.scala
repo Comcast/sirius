@@ -19,11 +19,11 @@ class MembershipActor extends Actor {
     case Join(member) => {
       //TODO check if node(s) is/are already a member(s) and reject
       notifyPeers(member)
-      updateLocalMembership(member)
-      sender ! NewMember(membershipMap)
+      addToLocalMembership(member)
+      sender ! AddMembers(membershipMap)
     }
-    case NewMember(member) => {
-      updateLocalMembership(member)
+    case AddMembers(member) => {
+      addToLocalMembership(member)
       //TODO should this tell sender its done?
     }
     case getMembershipData: GetMembershipData => sender ! membershipMap
@@ -33,14 +33,14 @@ class MembershipActor extends Actor {
   /**
    * update local membership data structure
    */
-  def updateLocalMembership(member: Map[SiriusInfo, MembershipData]) = membershipMap ++= member
+  def addToLocalMembership(member: Map[SiriusInfo, MembershipData]) = membershipMap ++= member
 
   /**
    * Notify existing members of the cluster that a new node has joined
    */
   def notifyPeers(newMember: Map[SiriusInfo, MembershipData]) {
     membershipMap.foreach {
-      case (key, peerRef) => peerRef.membershipActor ! NewMember(newMember)
+      case (key, peerRef) => peerRef.membershipActor ! AddMembers(newMember)
     }
   }
 

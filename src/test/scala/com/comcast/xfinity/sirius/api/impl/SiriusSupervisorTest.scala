@@ -13,7 +13,7 @@ import akka.pattern.ask
 import akka.util.duration._
 import akka.util.Timeout
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.api.impl.membership.NewMember
+import com.comcast.xfinity.sirius.api.impl.membership.AddMembers
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipData
 import com.comcast.xfinity.sirius.api.impl.membership.Join
 
@@ -59,7 +59,7 @@ class SiriusSupervisorTest() extends NiceTest {
     membershipActor = TestProbe()(system)
     membershipActor.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
-        case NewMember(x) => sender ! x; Some(this)
+        case AddMembers(x) => sender ! x; Some(this)
       }
     })
 
@@ -107,7 +107,7 @@ class SiriusSupervisorTest() extends NiceTest {
         }
         it("should send a message to start a new membership map with the result from the node to join") {
           Await.result(supervisor ? (JoinCluster(Some(nodeToJoin.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-          membershipActor.expectMsg(NewMember(expectedMap))
+          membershipActor.expectMsg(AddMembers(expectedMap))
         }
       }
       describe("and is given a nodeToJoin") {
@@ -120,7 +120,7 @@ class SiriusSupervisorTest() extends NiceTest {
       describe("and is given no nodeToJoin") {
         it("should forward a NewMember message containing itself to the membershipActor"){
           Await.result(supervisor ? (JoinCluster(None, siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-          membershipActor.expectMsg(NewMember(expectedMap))
+          membershipActor.expectMsg(AddMembers(expectedMap))
         }
       }
 

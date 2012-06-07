@@ -6,4 +6,4 @@ sealed trait MembershipMessage
 
 case class Join(member: Map[SiriusInfo, MembershipData]) extends MembershipMessage
 
-case class NewMember(member: Map[SiriusInfo, MembershipData]) extends MembershipMessage
+case class AddMembers(member: Map[SiriusInfo, MembershipData]) extends MembershipMessage
