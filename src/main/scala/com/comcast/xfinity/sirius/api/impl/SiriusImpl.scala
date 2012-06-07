@@ -22,7 +22,6 @@ import membership.MembershipData
  */
 class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem, val walWriter: LogWriter, val nodeToJoin: Option[ActorRef]) extends Sirius with AkkaConfig {
 
-
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = this (requestHandler, actorSystem, new FileLogWriter("/tmp/sirius_wal.log", new WriteAheadLogSerDe()), None)
 
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: LogWriter) = this (requestHandler, actorSystem, walWriter, None)
@@ -33,20 +32,10 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
 
   // TODO: we may want to identify these actors by their class name? make debugging direct
   var supervisor = actorSystem.actorOf(Props(new SiriusSupervisor(admin, requestHandler, walWriter)), "sirius")
+  // XXX: automatically join the cluster, are we sure this is right?
+  supervisor ! JoinCluster(nodeToJoin, info)
 
-  /**
-   * Call to have this instance of Sirius join a Sirius cluster.
-   * If this is the first Sirius node of the cluster, it sets itself up as the first node.
-   *
-   * Since this is a val, it will be called on construction.
-   *
-   * XXX: If we can think of a better way of calling this on construction of an object, we wouldn't need it as a val.
-   */
-  private val joinCluster = {
-    //TODO Bootstrap Write Ahead Log
-    supervisor ! JoinCluster(nodeToJoin, info)
-  }
-
+  
   def getMembershipMap = {
     (supervisor ? GetMembershipData()).asInstanceOf[Future[Map[SiriusInfo, MembershipData]]]
   }

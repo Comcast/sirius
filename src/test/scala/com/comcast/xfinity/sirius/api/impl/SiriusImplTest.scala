@@ -16,7 +16,10 @@ import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
 import org.mockito.Matchers._
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.info.SiriusInfo
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
+@RunWith(classOf[JUnitRunner])
 class SiriusImplTest extends NiceTest {
 
   var mockRequestHandler: RequestHandler = _
