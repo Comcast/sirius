@@ -31,7 +31,7 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
   val admin = new SiriusAdmin(info, mbeanServer)
 
   // TODO: we may want to identify these actors by their class name? make debugging direct
-  var supervisor = actorSystem.actorOf(Props(new SiriusSupervisor(admin, requestHandler, walWriter)), "sirius")
+  val supervisor = actorSystem.actorOf(Props(new SiriusSupervisor(admin, requestHandler, walWriter)), "sirius")
   // XXX: automatically join the cluster, are we sure this is right?
   supervisor ! JoinCluster(nodeToJoin, info)
 
