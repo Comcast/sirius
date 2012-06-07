@@ -19,12 +19,11 @@ import akka.pattern.ask
 class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWriter: LogWriter) extends Actor with AkkaConfig {
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
 
-
   /* Startup child actors. */
-  private[impl] var stateActor = context.actorOf(Props(new SiriusStateActor(requestHandler)), "state")
-  private[impl] var persistenceActor = context.actorOf(Props(new SiriusPersistenceActor(stateActor, logWriter)), "persistence")
-  private[impl] var paxosActor = context.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")
-  private[impl] var membershipActor = context.actorOf(Props(new MembershipActor()), "membership")
+  private[impl] var stateActor = createStateActor(requestHandler)
+  private[impl] var persistenceActor = createPersistenceActor(stateActor, logWriter)
+  private[impl] var paxosActor = createPaxosActor(persistenceActor)
+  private[impl] var membershipActor = createMembershipActor()
 
   override def preStart = {
     super.preStart()
@@ -56,4 +55,17 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
     case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}" , unknown )
   }
 
+
+  // hooks for testing
+  private[impl] def createStateActor(theRequestHandler: RequestHandler) =
+    context.actorOf(Props(new SiriusStateActor(theRequestHandler)), "state")
+
+  private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: LogWriter) =
+    context.actorOf(Props(new SiriusPersistenceActor(stateActor, logWriter)), "persistence")
+
+  private[impl] def createPaxosActor(persistenceActor: ActorRef) = 
+    context.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")
+
+  private[impl] def createMembershipActor() =
+    context.actorOf(Props(new MembershipActor()), "membership")
 }
