@@ -19,9 +19,10 @@ import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.api.impl.membership.JoinCluster
 import com.comcast.xfinity.sirius.api.impl.membership.Join
 import com.comcast.xfinity.sirius.api.impl.membership.AddMembers
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipMessage
 
 object SiriusSupervisorTest {
-  
+
   def createProbedTestSupervisor(admin: SiriusAdmin, handler: RequestHandler, logWriter: LogWriter,
                              stateProbe: TestProbe, persistenceProbe: TestProbe,
                              paxosProbe: TestProbe, membershipProbe: TestProbe)(implicit as: ActorSystem) = {
@@ -67,18 +68,10 @@ class SiriusSupervisorTest() extends NiceTest {
     logWriter = mock[LogWriter]
     siriusInfo = mock[SiriusInfo]
 
-    //setup TestProbes
-    nodeToJoinProbe = TestProbe()(actorSystem)
-    nodeToJoinProbe.setAutoPilot(new TestActor.AutoPilot {
-      def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
-        case Join(x) => sender ! x; Some(this)
-      }
-    })
-
     membershipProbe = TestProbe()(actorSystem)
     membershipProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
-        case AddMembers(x) => sender ! x; Some(this)
+        case msg: MembershipMessage => Some(this)
       }
     })
 
@@ -110,50 +103,29 @@ class SiriusSupervisorTest() extends NiceTest {
   }
 
   describe("a SiriusSupervisor") {
-    describe("when receiving a JoinCluster message") {
-      describe("the membershipActor TestProbe") {
-        it("should not provide an empty membership data") {
-          var membershipMap = Await.result(supervisor ? (JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-          assert(membershipMap.get(siriusInfo) != None)
-        }
-        it("should set the membership actor to itself") {
-          val membershipMap = Await.result(supervisor ? (JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-          assert(membershipProbe.ref === membershipMap.get(siriusInfo).get.membershipActor)
-        }
-        it("should send a message to start a new membership map with the result from the node to join") {
-          Await.result(supervisor ? (JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-          membershipProbe.expectMsg(AddMembers(expectedMap))
-        }
-      }
-      describe("and is given a nodeToJoin") {
-        it("should send a Join message to nodeToJoin's ActorRef") {
-          Await.result(supervisor ? (JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-          nodeToJoinProbe.expectMsg(Join(expectedMap))
-        }
-      }
-      describe("and is given no nodeToJoin") {
-        it("should forward a NewMember message containing itself to the membershipActor") {
-          Await.result(supervisor ? (JoinCluster(None, siriusInfo)), timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-          membershipProbe.expectMsg(AddMembers(expectedMap))
-        }
-      }
+    it("should forward Membership messages to the membershipActor") {
+      var msg = JoinCluster(None, new SiriusInfo(1, "yo"))
+      supervisor ! msg
+      membershipProbe.expectMsg(msg)
+      membershipProbe.expectNoMsg((100 millis))
+      paxosProbe.expectNoMsg(100 millis)
+      persistenceProbe.expectNoMsg((100 millis))
+      stateProbe.expectNoMsg((100 millis))
 
     }
     it("should forward GET messages to the stateActor") {
       var res = Await.result(supervisor ? (Get("1")), timeout.duration).asInstanceOf[Array[Byte]]
       assert(res != null)
       assert("Got it" === new String(res))
-      paxosProbe.expectNoMsg(100 millis)
-      persistenceProbe.expectNoMsg(100 millis)
       stateProbe.expectMsg(Get("1"))
+      noMoreMsgs()
     }
     it("should forward DELETE messages to the paxosActor") {
       var res = Await.result(supervisor ? (Delete("1")), timeout.duration).asInstanceOf[Array[Byte]]
       assert(res != null)
       assert("Delete it" === new String(res))
       paxosProbe.expectMsg(Delete("1"))
-      persistenceProbe.expectNoMsg((100 millis))
-      stateProbe.expectNoMsg((100 millis))
+      noMoreMsgs()
     }
     it("should forward PUT messages to the paxosActor") {
       var msgBody = "some body".getBytes()
@@ -161,10 +133,16 @@ class SiriusSupervisorTest() extends NiceTest {
       assert(res != null)
       assert("Put it" === new String(res))
       paxosProbe.expectMsg(Put("1", msgBody))
-      persistenceProbe.expectNoMsg((100 millis))
-      stateProbe.expectNoMsg((100 millis))
+      noMoreMsgs()
     }
 
+  }
+
+  def noMoreMsgs() {
+    membershipProbe.expectNoMsg((100 millis))
+    paxosProbe.expectNoMsg(100 millis)
+    persistenceProbe.expectNoMsg((100 millis))
+    stateProbe.expectNoMsg((100 millis))
   }
 
 }

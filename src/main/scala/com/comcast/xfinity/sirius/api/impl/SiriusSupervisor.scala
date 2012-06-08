@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import org.slf4j.LoggerFactory
-
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
 import com.comcast.xfinity.sirius.api.impl.persistence.SiriusPersistenceActor
@@ -9,17 +8,12 @@ import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
-
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
 import akka.dispatch.Await
 import akka.pattern.ask
-import membership.AddMembers
-import membership.Join
-import membership.JoinCluster
-import membership.MembershipActor
-import membership.MembershipData
+import membership._
 
 /**
  * Supervisor actor for the set of actors needed for Sirius.
@@ -47,20 +41,9 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
     case put: Put => paxosActor forward put
     case get: Get => stateActor forward get
     case delete: Delete => paxosActor forward delete
-    case joinCluster: JoinCluster => {
-      joinCluster.nodeToJoin match {
-        case Some(node: ActorRef) => {
-          //join node from a cluster
-          val future = node ? Join(Map(joinCluster.info -> MembershipData(membershipActor)))
-          val clusterMembershipMap = Await.result(future, timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
-          //update our membership map
-          membershipActor forward AddMembers(clusterMembershipMap)
-        }
-        case None => membershipActor forward AddMembers(Map(joinCluster.info -> MembershipData(membershipActor)))
-      }
-    }
+    case msg: MembershipMessage => membershipActor forward msg
     case GetMembershipData => membershipActor forward GetMembershipData
-    case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}" , unknown )
+    case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
 
@@ -71,7 +54,7 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
   private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: LogWriter) =
     context.actorOf(Props(new SiriusPersistenceActor(stateActor, logWriter)), "persistence")
 
-  private[impl] def createPaxosActor(persistenceActor: ActorRef) = 
+  private[impl] def createPaxosActor(persistenceActor: ActorRef) =
     context.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")
 
   private[impl] def createMembershipActor() =

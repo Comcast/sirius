@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.ActorSystem
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.dispatch.Await._
 import akka.util.duration._
@@ -9,6 +8,9 @@ import akka.pattern.ask
 import akka.testkit.{TestProbe, TestActorRef}
 import com.comcast.xfinity.sirius.api.impl.AkkaConfig
 import com.comcast.xfinity.sirius.api.impl.GetMembershipData
+import akka.actor.ActorSystem
+import akka.testkit.TestActor
+import akka.actor.ActorRef
 
 class MembershipActorTest extends NiceTest with AkkaConfig {
 
@@ -74,7 +76,9 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       val newerCoolServerProbe = new TestProbe(actorSystem)
 
       //stage membership map so that it includes coolserver
-      val membership = Map[SiriusInfo, MembershipData](coolServerInfo -> MembershipData(coolServerProbe.ref), new SiriusInfo(2000,"rad-server") -> MembershipData(new TestProbe(actorSystem).ref))
+      val membership = Map[SiriusInfo, MembershipData](
+          coolServerInfo -> MembershipData(coolServerProbe.ref),
+          new SiriusInfo(2000, "rad-server") -> MembershipData(new TestProbe(actorSystem).ref))
       underTestActor.underlyingActor.membershipMap = membership
 
       //try add cool-server again but with updated MembershipData
@@ -85,7 +89,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       assert(2 === underTestActor.underlyingActor.membershipMap.size)
       assert(newerCoolServerProbe.ref === underTestActor.underlyingActor.membershipMap(coolServerInfo).membershipActor)
     }
-    it ("should handle a Join message when the new node already is a member") {
+    it("should handle a Join message when the new node already is a member") {
       val coolServerInfo = new SiriusInfo(1000, "cool-server")
       val coolServerProbe = new TestProbe(actorSystem)
 
@@ -112,6 +116,43 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       radServerProbe.expectNoMsg((100 millis))
     }
 
+
+
+    describe("when receiving a JoinCluster message") {
+      describe("and is given a nodeToJoin") {
+        it("should send a Join message to nodeToJoin's ActorRef") {
+          //setup TestProbes
+          val nodeToJoinProbe = new TestProbe(actorSystem)
+          val info = new SiriusInfo(100, "dorky-server")
+          nodeToJoinProbe.setAutoPilot(new TestActor.AutoPilot {
+            def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
+              case Join(x) => {
+                sender ! (x ++ Map[SiriusInfo, MembershipData](info -> MembershipData(new TestProbe(actorSystem).ref)))
+                Some(this)
+              }
+              //case JoinCluster(someNode, info) => sender ! AddMembers(Map[SiriusInfo, MembershipData](new SiriusInfo(100, "cool-server") -> MembershipData(new TestProbe(actorSystem).ref)))
+            }
+          })
+
+          underTestActor ! JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)
+          nodeToJoinProbe.expectMsg(Join(expectedMap))
+          //check if result of Join was added locally
+          assert(2 === underTestActor.underlyingActor.membershipMap.size)
+          assert(underTestActor.underlyingActor.membershipMap.contains(info))
+
+        }
+      }
+      describe("and is given no nodeToJoin") {
+        it("should forward a NewMember message containing itself to the membershipActor") {
+          val info = new SiriusInfo(100, "geeky-server")
+          underTestActor ! JoinCluster(None, info)
+          assert(1 === underTestActor.underlyingActor.membershipMap.size)
+          assert(underTestActor.underlyingActor.self === underTestActor.underlyingActor.membershipMap(info).membershipActor)
+
+        }
+      }
+
+    }
 
   }
 }
