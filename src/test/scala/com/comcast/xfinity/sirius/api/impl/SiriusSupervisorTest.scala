@@ -36,7 +36,7 @@ object SiriusSupervisorTest {
 @RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest() extends NiceTest {
 
-  var system: ActorSystem = _
+  var actorSystem: ActorSystem = _
 
   var paxosProbe: TestProbe = _
   var persistenceProbe: TestProbe = _
@@ -55,9 +55,9 @@ class SiriusSupervisorTest() extends NiceTest {
   var expectedMap: Map[SiriusInfo, MembershipData] = _
 
   before {
-    system = spy(ActorSystem("testsystem", ConfigFactory.parseString("""
+    actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
     akka.event-handlers = ["akka.testkit.TestEventListener"]
-    """)))
+    """))
 
     //setup mocks
     handler = mock[RequestHandler]
@@ -66,21 +66,21 @@ class SiriusSupervisorTest() extends NiceTest {
     siriusInfo = mock[SiriusInfo]
 
     //setup TestProbes
-    nodeToJoinProbe = TestProbe()(system)
+    nodeToJoinProbe = TestProbe()(actorSystem)
     nodeToJoinProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case Join(x) => sender ! x; Some(this)
       }
     })
 
-    membershipProbe = TestProbe()(system)
+    membershipProbe = TestProbe()(actorSystem)
     membershipProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case AddMembers(x) => sender ! x; Some(this)
       }
     })
 
-    paxosProbe = TestProbe()(system)
+    paxosProbe = TestProbe()(actorSystem)
     paxosProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case Delete(_) => sender ! "Delete it".getBytes(); Some(this)
@@ -88,24 +88,23 @@ class SiriusSupervisorTest() extends NiceTest {
       }
     })
 
-    stateProbe = TestProbe()(system)
+    stateProbe = TestProbe()(actorSystem)
     stateProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case Get(_) => sender ! "Got it".getBytes(); Some(this)
       }
     })
 
-    persistenceProbe = TestProbe()(system)
+    persistenceProbe = TestProbe()(actorSystem)
 
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(admin, handler, logWriter, 
-        stateProbe, persistenceProbe, paxosProbe, membershipProbe)(system)
+        stateProbe, persistenceProbe, paxosProbe, membershipProbe)(actorSystem)
 
     expectedMap = Map[SiriusInfo, MembershipData](siriusInfo -> MembershipData(membershipProbe.ref))
   }
 
   after {
-    system.shutdown()
-
+    actorSystem.shutdown()
   }
 
   describe("a SiriusSupervisor") {
