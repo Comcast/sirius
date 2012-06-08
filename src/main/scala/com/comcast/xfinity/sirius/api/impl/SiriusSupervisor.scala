@@ -1,17 +1,25 @@
 package com.comcast.xfinity.sirius.api.impl
 
+import org.slf4j.LoggerFactory
+
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
+import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
 import com.comcast.xfinity.sirius.api.impl.persistence.SiriusPersistenceActor
 import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
-import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
-import membership._
-import org.slf4j.LoggerFactory
-import akka.actor.{ActorRef, Actor, Props}
-import akka.dispatch.Await
 import com.comcast.xfinity.sirius.info.SiriusInfo
+import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
+
+import akka.actor.Actor
+import akka.actor.ActorRef
+import akka.actor.Props
+import akka.dispatch.Await
 import akka.pattern.ask
+import membership.AddMembers
+import membership.Join
+import membership.JoinCluster
+import membership.MembershipActor
+import membership.MembershipData
 
 /**
  * Supervisor actor for the set of actors needed for Sirius.

@@ -2,8 +2,6 @@ package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.SiriusImpl
-import com.comcast.xfinity.sirius.api.RequestHandler
-import collection.mutable.HashMap
 import akka.actor.ActorSystem
 import akka.dispatch.Await
 import akka.util.duration._

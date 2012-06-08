@@ -6,8 +6,9 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.dispatch.Await._
 import akka.util.duration._
 import akka.pattern.ask
-import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, GetMembershipData}
 import akka.testkit.{TestProbe, TestActorRef}
+import com.comcast.xfinity.sirius.api.impl.AkkaConfig
+import com.comcast.xfinity.sirius.api.impl.GetMembershipData
 
 class MembershipActorTest extends NiceTest with AkkaConfig {
 

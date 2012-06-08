@@ -13,11 +13,12 @@ import akka.pattern.ask
 import akka.util.duration._
 import akka.util.Timeout
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.api.impl.membership.AddMembers
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipData
-import com.comcast.xfinity.sirius.api.impl.membership.Join
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import com.comcast.xfinity.sirius.api.impl.membership.JoinCluster
+import com.comcast.xfinity.sirius.api.impl.membership.Join
+import com.comcast.xfinity.sirius.api.impl.membership.AddMembers
 
 object SiriusSupervisorTest {
   
@@ -32,6 +33,7 @@ object SiriusSupervisorTest {
     })
   }
 }
+
 
 @RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest() extends NiceTest {

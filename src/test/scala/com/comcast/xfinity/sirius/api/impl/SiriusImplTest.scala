@@ -18,6 +18,7 @@ import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import com.comcast.xfinity.sirius.api.impl.membership.JoinCluster
 
 object SiriusImplTest {
   def createProbedSiriusImpl(handler: RequestHandler, actorSystem: ActorSystem, logWriter: LogWriter, supProbe: TestProbe) = {

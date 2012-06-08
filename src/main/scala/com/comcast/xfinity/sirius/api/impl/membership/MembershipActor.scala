@@ -1,11 +1,9 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import org.slf4j.LoggerFactory
-
 import com.comcast.xfinity.sirius.info.SiriusInfo
-
-import akka.actor.actorRef2Scala
 import akka.actor.Actor
+import akka.actor.actorRef2Scala
 import com.comcast.xfinity.sirius.api.impl.GetMembershipData
 
 /**

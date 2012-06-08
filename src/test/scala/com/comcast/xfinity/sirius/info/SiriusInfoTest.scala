@@ -1,5 +1,4 @@
 package com.comcast.xfinity.sirius.info
-import org.junit.runner.RunWith
 
 import com.comcast.xfinity.sirius.NiceTest
 
