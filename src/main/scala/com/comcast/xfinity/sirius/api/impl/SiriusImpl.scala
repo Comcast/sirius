@@ -20,18 +20,15 @@ import membership.MembershipData
 /**
  * A Sirius implementation implemented in Scala using Akka actors
  */
-class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem, val walWriter: LogWriter, val nodeToJoin: Option[ActorRef]) extends Sirius with AkkaConfig {
+class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem, walWriter: LogWriter, val nodeToJoin: Option[ActorRef]) extends Sirius with AkkaConfig {
 
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = this (requestHandler, actorSystem, new FileLogWriter("/tmp/sirius_wal.log", new WriteAheadLogSerDe()), None)
 
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: LogWriter) = this (requestHandler, actorSystem, walWriter, None)
-
-  val mbeanServer = ManagementFactory.getPlatformMBeanServer()
+  
   val info = new SiriusInfo(DEFAULT_PORT, InetAddress.getLocalHost().getHostName()) // TODO: Pass in the hostname and port (perhaps)
-  val admin = new SiriusAdmin(info, mbeanServer)
 
-  // TODO: we may want to identify these actors by their class name? make debugging direct
-  val supervisor = actorSystem.actorOf(Props(new SiriusSupervisor(admin, requestHandler, walWriter)), "sirius")
+  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, walWriter)
   // XXX: automatically join the cluster, are we sure this is right?
   supervisor ! JoinCluster(nodeToJoin, info)
 
@@ -59,5 +56,14 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
    */
   def enqueueDelete(key: String) = {
     (supervisor ? Delete(key)).asInstanceOf[Future[Array[Byte]]]
+  }
+  
+  
+  // handle for testing
+  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler,
+                                           siriusInfo: SiriusInfo, theWalWriter: LogWriter) = {
+    val mbeanServer = ManagementFactory.getPlatformMBeanServer()
+    val admin = new SiriusAdmin(info, mbeanServer)
+    theActorSystem.actorOf(Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter)), "sirius")
   }
 }
