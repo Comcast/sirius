@@ -19,28 +19,37 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 
+object SiriusImplTest {
+  def createProbedSiriusImpl(handler: RequestHandler, actorSystem: ActorSystem, logWriter: LogWriter, supProbe: TestProbe) = {
+    new SiriusImpl(handler, actorSystem, logWriter) {
+      override def createSiriusSupervisor(_as: ActorSystem, _handler: RequestHandler,
+          _info: SiriusInfo, _writer: LogWriter) = supProbe.ref
+    }
+  }
+}
+
+
 @RunWith(classOf[JUnitRunner])
 class SiriusImplTest extends NiceTest {
 
   var mockRequestHandler: RequestHandler = _
 
-
   var supervisorActorProbe: TestProbe = _
   var underTest: SiriusImpl = _
-  var spiedAkkaSystem: ActorSystem = _
+  var actorSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
   var logWriter: LogWriter = _
   var membershipMap: Map[SiriusInfo, MembershipData] = _
 
 
   before {
-    spiedAkkaSystem = spy(ActorSystem("testsystem", ConfigFactory.parseString("""
-    akka.event-handlers = ["akka.testkit.TestEventListener"]
-    """)))
+    actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
+            akka.event-handlers = ["akka.testkit.TestEventListener"]
+    """))
 
     membershipMap = mock[Map[SiriusInfo, MembershipData]];
 
-    supervisorActorProbe = TestProbe()(spiedAkkaSystem)
+    supervisorActorProbe = TestProbe()(actorSystem)
     supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case Get(_) => sender ! "Got it".getBytes(); Some(this)
@@ -52,18 +61,16 @@ class SiriusImplTest extends NiceTest {
     })
 
     logWriter = mock[LogWriter]
-    doReturn(supervisorActorProbe.ref).when(spiedAkkaSystem).actorOf(any(classOf[Props]), anyString())
 
-    underTest = new SiriusImpl(mockRequestHandler, spiedAkkaSystem, logWriter)
+    underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, actorSystem, logWriter, supervisorActorProbe)
 
-
+    // XXX: on instantiation a message is sent to the supervisor for join
     supervisorActorProbe.expectMsg(JoinCluster(None, underTest.info))
 
   }
 
   after {
-    spiedAkkaSystem.shutdown()
-    spiedAkkaSystem.awaitTermination()
+    actorSystem.shutdown()
   }
 
   describe("a SiriusImpl") {
