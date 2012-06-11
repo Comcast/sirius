@@ -36,6 +36,11 @@
             <artifactId>akka-actor</artifactId>
             <version>${akka-version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-remote</artifactId>
+            <version>${akka-version}</version>
+        </dependency>
         <!-- Logging -->
         <dependency>
             <groupId>org.slf4j</groupId>
