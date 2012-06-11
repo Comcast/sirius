@@ -14,12 +14,13 @@ class SiriusAdminTest extends NiceTest {
   var mockMBeanServer: MBeanServer = _
   var mockSiriusInfo: SiriusInfo = _
 
-  val mbeanName = new ObjectName("com.comcast.xfinity.sirius:type=SiriusInfo")
+  var mbeanName: ObjectName = _
   var siriusAdminUnderTest: SiriusAdmin = _
 
   before {
     mockMBeanServer = mock[MBeanServer]
     mockSiriusInfo = mock[SiriusInfo]
+    mbeanName = new ObjectName("com.comcast.xfinity.sirius:type=SiriusInfo,name=" + mockSiriusInfo.hostName + "|" + mockSiriusInfo.port)
     siriusAdminUnderTest = new SiriusAdmin(mockSiriusInfo, mockMBeanServer)
   }
 
