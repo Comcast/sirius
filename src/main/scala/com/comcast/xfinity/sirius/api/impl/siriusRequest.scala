@@ -4,7 +4,7 @@ sealed trait SiriusRequest
 
 case class Get(key: String) extends SiriusRequest
 
-case class GetMembershipData() extends SiriusRequest
+case object GetMembershipData extends SiriusRequest
 
 sealed trait NonIdempotentSiriusRequest extends SiriusRequest
 

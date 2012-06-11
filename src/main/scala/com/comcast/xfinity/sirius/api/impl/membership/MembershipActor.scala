@@ -20,7 +20,7 @@ class MembershipActor extends Actor {
       sender ! AddMembers(membershipMap)
     }
     case AddMembers(member) => addToLocalMembership(member)
-    case getMembershipData: GetMembershipData => sender ! membershipMap
+    case GetMembershipData => sender ! membershipMap
     case _ => logger.warn("Unrecognized message.")
   }
 

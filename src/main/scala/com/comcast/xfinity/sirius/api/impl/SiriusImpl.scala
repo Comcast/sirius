@@ -32,7 +32,7 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
 
   
   def getMembershipMap = {
-    (supervisor ? GetMembershipData()).asInstanceOf[Future[Map[SiriusInfo, MembershipData]]]
+    (supervisor ? GetMembershipData).asInstanceOf[Future[Map[SiriusInfo, MembershipData]]]
   }
 
   /**

@@ -59,7 +59,7 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
         case None => membershipActor forward AddMembers(Map(joinCluster.info -> MembershipData(membershipActor)))
       }
     }
-    case getMembershipData: GetMembershipData => membershipActor forward getMembershipData
+    case GetMembershipData => membershipActor forward GetMembershipData
     case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}" , unknown )
   }
 

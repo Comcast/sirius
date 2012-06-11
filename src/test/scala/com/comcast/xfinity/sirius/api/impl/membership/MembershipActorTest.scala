@@ -40,7 +40,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       assert(expectedMap === underTestActor.underlyingActor.membershipMap)
     }
     it("should report on cluster membership if it receives a GetMembershipData message") {
-      val members = result((underTestActor ? GetMembershipData()), (5 seconds)).asInstanceOf[Map[SiriusInfo, MembershipData]]
+      val members = result((underTestActor ? GetMembershipData), (5 seconds)).asInstanceOf[Map[SiriusInfo, MembershipData]]
       assert(underTestActor.underlyingActor.membershipMap === members)
     }
     it("should tell peers, add to member map, and return a AddMembers if it receives a Join message") {

@@ -57,7 +57,7 @@ class SiriusImplTest extends NiceTest {
         case Delete(_) => sender ! "Delete it".getBytes(); Some(this)
         case Put(_, _) => sender ! "Put it".getBytes(); Some(this)
         case JoinCluster(_, _) => Some(this)
-        case GetMembershipData() => sender ! membershipMap; Some(this)
+        case GetMembershipData => sender ! membershipMap; Some(this)
       }
     })
 
@@ -96,7 +96,7 @@ class SiriusImplTest extends NiceTest {
 
     it("should issue an \"ask\" GetMembership to the supervisor when getMembershipData is called") {
       assert(membershipMap === Await.result(underTest.getMembershipMap, timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]])
-      supervisorActorProbe.expectMsg(GetMembershipData())
+      supervisorActorProbe.expectMsg(GetMembershipData)
     }
   }
 }
