@@ -1,19 +1,17 @@
 package com.comcast.xfinity.sirius.api.impl
 
+import membership._
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
 import com.comcast.xfinity.sirius.api.impl.persistence.SiriusPersistenceActor
 import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
-import akka.dispatch.Await
-import akka.pattern.ask
-import membership._
+import com.comcast.xfinity.sirius.info.SiriusInfo
 
 /**
  * Supervisor actor for the set of actors needed for Sirius.
@@ -41,8 +39,7 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
     case put: Put => paxosActor forward put
     case get: Get => stateActor forward get
     case delete: Delete => paxosActor forward delete
-    case msg: MembershipMessage => membershipActor forward msg
-    case GetMembershipData => membershipActor forward GetMembershipData
+    case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 

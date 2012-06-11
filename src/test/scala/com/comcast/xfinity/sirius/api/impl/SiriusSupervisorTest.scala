@@ -1,5 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
+import membership._
 import org.mockito.Mockito._
 import com.typesafe.config.ConfigFactory
 import com.comcast.xfinity.sirius.api.RequestHandler
@@ -13,23 +14,25 @@ import akka.pattern.ask
 import akka.util.duration._
 import akka.util.Timeout
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.api.impl.membership.MembershipData
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import com.comcast.xfinity.sirius.api.impl.membership.JoinCluster
-import com.comcast.xfinity.sirius.api.impl.membership.Join
-import com.comcast.xfinity.sirius.api.impl.membership.AddMembers
-import com.comcast.xfinity.sirius.api.impl.membership.MembershipMessage
 
 object SiriusSupervisorTest {
 
-  def createProbedTestSupervisor(admin: SiriusAdmin, handler: RequestHandler, logWriter: LogWriter,
-                             stateProbe: TestProbe, persistenceProbe: TestProbe,
-                             paxosProbe: TestProbe, membershipProbe: TestProbe)(implicit as: ActorSystem) = {
+  def createProbedTestSupervisor(admin: SiriusAdmin,
+      handler: RequestHandler,
+      logWriter: LogWriter,
+      stateProbe: TestProbe,
+      persistenceProbe: TestProbe,
+      paxosProbe: TestProbe,
+      membershipProbe: TestProbe)(implicit as: ActorSystem) = {
     TestActorRef(new SiriusSupervisor(admin, handler, logWriter) {
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
+
       override def createPersistenceActor(_state: ActorRef, _writer: LogWriter) = persistenceProbe.ref
+
       override def createPaxosActor(_persistence: ActorRef) = paxosProbe.ref
+
       override def createMembershipActor() = membershipProbe.ref
     })
   }
@@ -92,8 +95,8 @@ class SiriusSupervisorTest() extends NiceTest {
 
     persistenceProbe = TestProbe()(actorSystem)
 
-    supervisor = SiriusSupervisorTest.createProbedTestSupervisor(admin, handler, logWriter, 
-        stateProbe, persistenceProbe, paxosProbe, membershipProbe)(actorSystem)
+    supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
+        admin, handler, logWriter, stateProbe, persistenceProbe, paxosProbe, membershipProbe)(actorSystem)
 
     expectedMap = Map[SiriusInfo, MembershipData](siriusInfo -> MembershipData(membershipProbe.ref))
   }
@@ -103,16 +106,12 @@ class SiriusSupervisorTest() extends NiceTest {
   }
 
   describe("a SiriusSupervisor") {
-    it("should forward Membership messages to the membershipActor") {
-      var msg = JoinCluster(None, new SiriusInfo(1, "yo"))
-      supervisor ! msg
-      membershipProbe.expectMsg(msg)
-      membershipProbe.expectNoMsg((100 millis))
-      paxosProbe.expectNoMsg(100 millis)
-      persistenceProbe.expectNoMsg((100 millis))
-      stateProbe.expectNoMsg((100 millis))
-
+    it("should forward MembershipMessages to the membershipActor") {
+      val membershipMessage: MembershipMessage = GetMembershipData
+      supervisor ! membershipMessage
+      membershipProbe.expectMsg(membershipMessage)
     }
+
     it("should forward GET messages to the stateActor") {
       var res = Await.result(supervisor ? (Get("1")), timeout.duration).asInstanceOf[Array[Byte]]
       assert(res != null)

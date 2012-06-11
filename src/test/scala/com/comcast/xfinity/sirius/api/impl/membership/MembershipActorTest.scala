@@ -5,12 +5,10 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.dispatch.Await._
 import akka.util.duration._
 import akka.pattern.ask
-import akka.testkit.{TestProbe, TestActorRef}
 import com.comcast.xfinity.sirius.api.impl.AkkaConfig
-import com.comcast.xfinity.sirius.api.impl.GetMembershipData
-import akka.actor.ActorSystem
-import akka.testkit.TestActor
-import akka.actor.ActorRef
+
+import akka.testkit.{TestActor, TestProbe, TestActorRef}
+import akka.actor.{ActorRef, ActorSystem}
 
 class MembershipActorTest extends NiceTest with AkkaConfig {
 
@@ -97,7 +95,9 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       val radServerProbe = new TestProbe(actorSystem)
 
       //stage membership with cool-server and rad-server
-      val membership = Map[SiriusInfo, MembershipData](coolServerInfo -> MembershipData(coolServerProbe.ref), radServerInfo -> MembershipData(radServerProbe.ref))
+      val membership = Map[SiriusInfo, MembershipData](
+          coolServerInfo -> MembershipData(coolServerProbe.ref),
+          radServerInfo -> MembershipData(radServerProbe.ref))
       underTestActor.underlyingActor.membershipMap = membership
 
       val coolServerJoinMsg = Join(Map[SiriusInfo, MembershipData](coolServerInfo -> MembershipData(coolServerProbe.ref)))
@@ -117,7 +117,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
     }
 
 
-
+    //TODO: Verify this is supposed to be here
     describe("when receiving a JoinCluster message") {
       describe("and is given a nodeToJoin") {
         it("should send a Join message to nodeToJoin's ActorRef") {
@@ -127,10 +127,9 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
           nodeToJoinProbe.setAutoPilot(new TestActor.AutoPilot {
             def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
               case Join(x) => {
-                sender ! (x ++ Map[SiriusInfo, MembershipData](info -> MembershipData(new TestProbe(actorSystem).ref)))
+                sender ! AddMembers(x ++ Map[SiriusInfo, MembershipData](info -> MembershipData(new TestProbe(actorSystem).ref)))
                 Some(this)
               }
-              //case JoinCluster(someNode, info) => sender ! AddMembers(Map[SiriusInfo, MembershipData](new SiriusInfo(100, "cool-server") -> MembershipData(new TestProbe(actorSystem).ref)))
             }
           })
 

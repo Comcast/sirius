@@ -1,14 +1,15 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import org.slf4j.LoggerFactory
+
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import akka.actor.Actor
-import akka.actor.actorRef2Scala
-import com.comcast.xfinity.sirius.api.impl.GetMembershipData
-import com.comcast.xfinity.sirius.api.impl.AkkaConfig
-import akka.actor.ActorRef
+
+import akka.actor.{ActorRef, actorRef2Scala, Actor}
+
 import akka.dispatch.Await
+
 import akka.pattern.ask
+import com.comcast.xfinity.sirius.api.impl._
 
 /**
  * Actor responsible for orchestrating request related to Sirius Cluster Membership
@@ -20,12 +21,13 @@ class MembershipActor extends Actor with AkkaConfig {
   def receive = {
     case JoinCluster(nodeToJoin, info) => nodeToJoin match {
       case Some(node: ActorRef) => {
+        logger.debug(self + " joining " + node)
         //join node from a cluster
         val future = node ? Join(Map(info -> MembershipData(self)))
-        val clusterMembershipMap = Await.result(future, timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]]
+        val addMembers = Await.result(future, timeout.duration).asInstanceOf[AddMembers]
         //update our membership map
-        addToLocalMembership(clusterMembershipMap)
-
+        addToLocalMembership(addMembers.member)
+        logger.debug("added " + addMembers.member)
       }
       case None => addToLocalMembership(Map(info -> MembershipData(self)))
     }

@@ -1,7 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl
 
-import membership.MembershipData
-import org.mockito.Mockito.spy
 import com.comcast.xfinity.sirius.api.RequestHandler
 import akka.dispatch.Await
 import akka.testkit.TestProbe
@@ -13,18 +11,15 @@ import akka.testkit.TestActor
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
-import org.mockito.Matchers._
-import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.info.SiriusInfo
+import membership.{GetMembershipData, MembershipData, JoinCluster}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import com.comcast.xfinity.sirius.api.impl.membership.JoinCluster
 
 object SiriusImplTest {
   def createProbedSiriusImpl(handler: RequestHandler, actorSystem: ActorSystem, logWriter: LogWriter, supProbe: TestProbe) = {
     new SiriusImpl(handler, actorSystem, logWriter) {
-      override def createSiriusSupervisor(_as: ActorSystem, _handler: RequestHandler,
-          _info: SiriusInfo, _writer: LogWriter) = supProbe.ref
+      override def createSiriusSupervisor(_as: ActorSystem, _handler: RequestHandler, _info: SiriusInfo, _writer: LogWriter) = supProbe.ref
     }
   }
 }
@@ -65,13 +60,11 @@ class SiriusImplTest extends NiceTest {
 
     underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, actorSystem, logWriter, supervisorActorProbe)
 
-    // XXX: on instantiation a message is sent to the supervisor for join
-    supervisorActorProbe.expectMsg(JoinCluster(None, underTest.info))
-
   }
 
   after {
     actorSystem.shutdown()
+    actorSystem.awaitTermination()
   }
 
   describe("a SiriusImpl") {
@@ -98,5 +91,13 @@ class SiriusImplTest extends NiceTest {
       assert(membershipMap === Await.result(underTest.getMembershipMap, timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]])
       supervisorActorProbe.expectMsg(GetMembershipData)
     }
+
+    it("should issue a JoinCluster message to the supervisor when joinCluster is called") {
+      underTest.joinCluster(None)
+      supervisorActorProbe.expectMsg(JoinCluster(None, underTest.info))
+
+
+    }
+
   }
 }
