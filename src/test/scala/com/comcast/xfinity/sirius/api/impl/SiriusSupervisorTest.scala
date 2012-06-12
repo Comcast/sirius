@@ -16,6 +16,7 @@ import akka.util.Timeout
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import akka.agent.Agent
 
 object SiriusSupervisorTest {
 
@@ -25,15 +26,16 @@ object SiriusSupervisorTest {
       stateProbe: TestProbe,
       persistenceProbe: TestProbe,
       paxosProbe: TestProbe,
-      membershipProbe: TestProbe)(implicit as: ActorSystem) = {
-    TestActorRef(new SiriusSupervisor(admin, handler, logWriter) {
+      membershipProbe: TestProbe,
+      membershipAgent: Agent[Map[SiriusInfo, MembershipData]])(implicit as: ActorSystem) = {
+    TestActorRef(new SiriusSupervisor(admin, handler, logWriter, membershipAgent) {
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
       override def createPersistenceActor(_state: ActorRef, _writer: LogWriter) = persistenceProbe.ref
 
       override def createPaxosActor(_persistence: ActorRef) = paxosProbe.ref
 
-      override def createMembershipActor() = membershipProbe.ref
+      override def createMembershipActor(_membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) = membershipProbe.ref
     })
   }
 }
@@ -49,6 +51,8 @@ class SiriusSupervisorTest() extends NiceTest {
   var stateProbe: TestProbe = _
   var membershipProbe: TestProbe = _
   var nodeToJoinProbe: TestProbe = _
+
+  var membershipAgent: Agent[Map[SiriusInfo,MembershipData]] = _
 
   var handler: RequestHandler = _
   var admin: SiriusAdmin = _
@@ -95,8 +99,10 @@ class SiriusSupervisorTest() extends NiceTest {
 
     persistenceProbe = TestProbe()(actorSystem)
 
+    membershipAgent = mock[Agent[Map[SiriusInfo, MembershipData]]]
+
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
-        admin, handler, logWriter, stateProbe, persistenceProbe, paxosProbe, membershipProbe)(actorSystem)
+        admin, handler, logWriter, stateProbe, persistenceProbe, paxosProbe, membershipProbe, membershipAgent)(actorSystem)
 
     expectedMap = Map[SiriusInfo, MembershipData](siriusInfo -> MembershipData(membershipProbe.ref))
   }

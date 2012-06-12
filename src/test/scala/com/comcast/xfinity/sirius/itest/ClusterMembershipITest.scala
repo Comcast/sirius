@@ -8,6 +8,7 @@ import com.comcast.xfinity.sirius.api.impl.membership.MembershipData
 
 import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, SiriusImpl}
 import java.net.InetAddress
+import akka.actor.ActorRef
 
 class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
@@ -28,8 +29,21 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
   describe("SiriusImpl") {
     it("should create a cluster with only itself if asked to join \"None\"") {
-      sirius.joinCluster(None)
+      joinSelf(sirius)
+
+      //wait till join is complete
+      var start = System.currentTimeMillis()
+      var settled = false
+      while (System.currentTimeMillis() <= start + 1000 && !settled) {
+        if (sirius.membershipAgent.await(timeout).size == 1) {
+          settled = true
+        }
+      }
+      assert(settled, "took too long to Join(None) to complete")
+
+      //ask sirius for membership
       val membershipData = result(sirius.getMembershipMap, (5 seconds)).asInstanceOf[Map[SiriusInfo, MembershipData]]
+
       assert(1 === membershipData.size)
       assert(siriusPort === membershipData.keySet.head.port)
       assert(InetAddress.getLocalHost().getHostName() === membershipData.keySet.head.hostName)
@@ -37,23 +51,22 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
     }
     it("two Sirius nodes should become a cluster when one sends another a JoinCluster message") {
       //cluster of One
-      sirius.joinCluster(None)
+      joinSelf(sirius)
 
 
       //create another Sirius and make it reqeust to join our original sirius node
-      val anotherSirius = SiriusImpl.createSirius(
-          new StringRequestHandler(), new DoNothingLogWriter, InetAddress.getLocalHost().getHostName(), siriusPort + 1)
+      val anotherSirius = SiriusImpl.createSirius(new StringRequestHandler(), new DoNothingLogWriter, InetAddress.getLocalHost().getHostName(), siriusPort + 1)
       val path = "akka://" + SYSTEM_NAME + "@" + InetAddress.getLocalHost().getHostName() + ":" + siriusPort + "/user/" + SUPERVISOR_NAME
+      joinSelf(anotherSirius)
       anotherSirius.joinCluster(Some(sirius.actorSystem.actorFor(path)))
-
 
       //verify
       val start: Long = System.currentTimeMillis()
       var joinConfirmed = false
       while (System.currentTimeMillis() <= start + 1000 && !joinConfirmed) {
-        val siriusMembership = result(sirius.getMembershipMap, (5 seconds)).asInstanceOf[Map[SiriusInfo, MembershipData]]
-        val anotherSiriusMembership = result(anotherSirius.getMembershipMap, (5 seconds)).asInstanceOf[Map[SiriusInfo, MembershipData]]
-        if (anotherSiriusMembership.size == siriusMembership.size) {
+        val siriusMembership = result(sirius.getMembershipMap, (100 millis)).asInstanceOf[Map[SiriusInfo, MembershipData]]
+        val anotherSiriusMembership = result(anotherSirius.getMembershipMap, (100 millis)).asInstanceOf[Map[SiriusInfo, MembershipData]]
+        if (anotherSiriusMembership.size == siriusMembership.size && siriusMembership.size == 2) {
           joinConfirmed = true
         } else {
           Thread.sleep(50)
@@ -63,6 +76,20 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
       anotherSirius.shutdown()
 
     }
+  }
+
+
+  def joinSelf(impl: SiriusImpl) {
+    impl.joinCluster(None)
+    //wait till join is complete
+    var start = System.currentTimeMillis()
+    var settled = false
+    while (System.currentTimeMillis() <= start + 1000 && !settled) {
+      if (impl.membershipAgent.await(timeout).size == 1) {
+        settled = true
+      }
+    }
+    assert(settled, "took too long to Join(None) to complete")
   }
 
 }
