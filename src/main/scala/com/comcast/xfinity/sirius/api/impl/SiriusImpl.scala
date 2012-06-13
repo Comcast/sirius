@@ -13,7 +13,8 @@ import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.dispatch.Future
 import com.typesafe.config.ConfigFactory
-import membership.{GetMembershipData, JoinCluster, MembershipData}
+import membership.{GetMembershipData, MembershipData}
+import akka.agent.Agent
 
 object SiriusImpl extends AkkaConfig {
   def createSirius(requestHandler: RequestHandler, walWriter: LogWriter, hostname: String, port: Int): SiriusImpl = {
@@ -51,8 +52,10 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
 
   val info = new SiriusInfo(port, InetAddress.getLocalHost().getHostName()) // TODO: Pass in the hostname and port (perhaps)
 
+  val membershipAgent: Agent[Map[SiriusInfo, MembershipData]] = Agent(Map[SiriusInfo, MembershipData]()) (actorSystem)
+
   // TODO: we may want to identify these actors by their class name? make debugging direct
-  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, walWriter)
+  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, walWriter, membershipAgent)
 
 
   def joinCluster(nodeToJoin: Option[ActorRef]) = {
@@ -87,15 +90,17 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
 
   def shutdown() = {
     //TODO: Leave cluster
+    membershipAgent.close()
     actorSystem.shutdown()
     actorSystem.awaitTermination()
+
   }
 
 
   // handle for testing
-  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, siriusInfo: SiriusInfo, theWalWriter: LogWriter) = {
+  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, siriusInfo: SiriusInfo, theWalWriter: LogWriter, theMembershipAgent: Agent[Map[SiriusInfo, MembershipData]]) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer()
     val admin = new SiriusAdmin(info, mbeanServer)
-    theActorSystem.actorOf(Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter)), "sirius")
+    theActorSystem.actorOf(Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theMembershipAgent)), "sirius")
   }
 }

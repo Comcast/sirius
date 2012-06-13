@@ -10,14 +10,15 @@ import akka.dispatch.Await
 
 import akka.pattern.ask
 import com.comcast.xfinity.sirius.api.impl._
+import akka.agent.Agent
 
 /**
  * Actor responsible for orchestrating request related to Sirius Cluster Membership
  */
-class MembershipActor extends Actor with AkkaConfig {
+class MembershipActor(membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) extends Actor with AkkaConfig {
   private val logger = LoggerFactory.getLogger(classOf[MembershipActor])
 
-  var membershipMap = Map[SiriusInfo, MembershipData]() // TODO: Change to an Agent and pull out of Actor
+
   def receive = {
     case JoinCluster(nodeToJoin, info) => nodeToJoin match {
       case Some(node: ActorRef) => {
@@ -32,25 +33,26 @@ class MembershipActor extends Actor with AkkaConfig {
       case None => addToLocalMembership(Map(info -> MembershipData(self)))
     }
     case Join(member) => {
-        notifyPeers(member)
-        addToLocalMembership(member)
-        sender ! AddMembers(membershipMap)
+      notifyPeers(member)
+      addToLocalMembership(member)
+      sender ! AddMembers(membershipAgent())
     }
     case AddMembers(member) => addToLocalMembership(member)
-    case GetMembershipData => sender ! membershipMap
+    case GetMembershipData => sender ! membershipAgent()
     case _ => logger.warn("Unrecognized message.")
   }
 
   /**
    * update local membership data structure.  If member already exists then overwrite it.
    */
-  def addToLocalMembership(member: Map[SiriusInfo, MembershipData]) = membershipMap ++= member
+  def addToLocalMembership(member: Map[SiriusInfo, MembershipData]) = membershipAgent send (_ ++ member)
+
 
   /**
    * Notify existing members of the cluster that a new node has joined
    */
   def notifyPeers(newMember: Map[SiriusInfo, MembershipData]) {
-    membershipMap.foreach {
+    membershipAgent().foreach {
       case (key, peerRef) => peerRef.membershipActor ! AddMembers(newMember)
     }
   }

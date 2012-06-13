@@ -15,11 +15,24 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 import membership.{GetMembershipData, MembershipData, JoinCluster}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import akka.agent.Agent
 
 object SiriusImplTest {
-  def createProbedSiriusImpl(handler: RequestHandler, actorSystem: ActorSystem, logWriter: LogWriter, supProbe: TestProbe) = {
+  
+  // Create an extended impl for testing
+  def createProbedSiriusImpl(handler: RequestHandler, 
+                             actorSystem: ActorSystem,
+                             logWriter: LogWriter,
+                             supProbe: TestProbe,
+                             membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) = {
     new SiriusImpl(handler, actorSystem, logWriter) {
-      override def createSiriusSupervisor(_as: ActorSystem, _handler: RequestHandler, _info: SiriusInfo, _writer: LogWriter) = supProbe.ref
+      
+      override def createSiriusSupervisor(_as: ActorSystem, 
+          _handler: RequestHandler, 
+          _info: SiriusInfo, 
+          _writer: LogWriter, 
+          _membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) = supProbe.ref
+          
     }
   }
 }
@@ -36,6 +49,7 @@ class SiriusImplTest extends NiceTest {
   val timeout: Timeout = (5 seconds)
   var logWriter: LogWriter = _
   var membershipMap: Map[SiriusInfo, MembershipData] = _
+  var membershipAgent: Agent[Map[SiriusInfo,MembershipData]] = _
 
 
   before {
@@ -58,7 +72,7 @@ class SiriusImplTest extends NiceTest {
 
     logWriter = mock[LogWriter]
 
-    underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, actorSystem, logWriter, supervisorActorProbe)
+    underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, actorSystem, logWriter, supervisorActorProbe, membershipAgent)
 
   }
 
@@ -95,7 +109,6 @@ class SiriusImplTest extends NiceTest {
     it("should issue a JoinCluster message to the supervisor when joinCluster is called") {
       underTest.joinCluster(None)
       supervisorActorProbe.expectMsg(JoinCluster(None, underTest.info))
-
 
     }
 
