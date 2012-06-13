@@ -15,7 +15,7 @@ import akka.agent.Agent
 /**
  * Actor responsible for orchestrating request related to Sirius Cluster Membership
  */
-class MembershipActor(membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) extends Actor with AkkaConfig {
+class MembershipActor(membershipAgent: Agent[MembershipMap]) extends Actor with AkkaConfig {
   private val logger = LoggerFactory.getLogger(classOf[MembershipActor])
 
 
@@ -45,13 +45,13 @@ class MembershipActor(membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) e
   /**
    * update local membership data structure.  If member already exists then overwrite it.
    */
-  def addToLocalMembership(member: Map[SiriusInfo, MembershipData]) = membershipAgent send (_ ++ member)
+  def addToLocalMembership(member: MembershipMap) = membershipAgent send (_ ++ member)
 
 
   /**
    * Notify existing members of the cluster that a new node has joined
    */
-  def notifyPeers(newMember: Map[SiriusInfo, MembershipData]) {
+  def notifyPeers(newMember: MembershipMap) {
     membershipAgent().foreach {
       case (key, peerRef) => peerRef.membershipActor ! AddMembers(newMember)
     }

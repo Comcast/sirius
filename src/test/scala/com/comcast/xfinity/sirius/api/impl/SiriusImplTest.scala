@@ -12,7 +12,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import membership.{GetMembershipData, MembershipData, JoinCluster}
+import membership._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
@@ -24,14 +24,14 @@ object SiriusImplTest {
                              actorSystem: ActorSystem,
                              logWriter: LogWriter,
                              supProbe: TestProbe,
-                             membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) = {
+                             membershipAgent: Agent[MembershipMap]) = {
     new SiriusImpl(handler, actorSystem, logWriter) {
       
       override def createSiriusSupervisor(_as: ActorSystem, 
           _handler: RequestHandler, 
           _info: SiriusInfo, 
           _writer: LogWriter, 
-          _membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) = supProbe.ref
+          _membershipAgent: Agent[MembershipMap]) = supProbe.ref
           
     }
   }
@@ -48,7 +48,7 @@ class SiriusImplTest extends NiceTest {
   var actorSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
   var logWriter: LogWriter = _
-  var membershipMap: Map[SiriusInfo, MembershipData] = _
+  var membershipMap: MembershipMap = _
   var membershipAgent: Agent[Map[SiriusInfo,MembershipData]] = _
 
 
@@ -57,7 +57,7 @@ class SiriusImplTest extends NiceTest {
             akka.event-handlers = ["akka.testkit.TestEventListener"]
     """))
 
-    membershipMap = mock[Map[SiriusInfo, MembershipData]];
+    membershipMap = mock[MembershipMap];
 
     supervisorActorProbe = TestProbe()(actorSystem)
     supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
@@ -102,7 +102,7 @@ class SiriusImplTest extends NiceTest {
     }
 
     it("should issue an \"ask\" GetMembership to the supervisor when getMembershipData is called") {
-      assert(membershipMap === Await.result(underTest.getMembershipMap, timeout.duration).asInstanceOf[Map[SiriusInfo, MembershipData]])
+      assert(membershipMap === Await.result(underTest.getMembershipMap, timeout.duration).asInstanceOf[MembershipMap])
       supervisorActorProbe.expectMsg(GetMembershipData)
     }
 

@@ -24,19 +24,19 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
   var underTestActor: TestActorRef[MembershipActor] = _
 
   var siriusInfo: SiriusInfo = _
-  var expectedMap: Map[SiriusInfo, MembershipData] = _
+  var expectedMap: MembershipMap = _
 
-  var membershipAgent: Agent[Map[SiriusInfo, MembershipData]] = _
+  var membershipAgent: Agent[MembershipMap] = _
 
   before {
     siriusInfo = mock[SiriusInfo]
 
     actorSystem = ActorSystem("testsystem")
-    membershipAgent = mock[Agent[Map[SiriusInfo, MembershipData]]]
+    membershipAgent = mock[Agent[MembershipMap]]
 
     underTestActor = TestActorRef(new MembershipActor(membershipAgent))(actorSystem)
 
-    expectedMap = Map[SiriusInfo, MembershipData](siriusInfo -> MembershipData(underTestActor))
+    expectedMap = MembershipMap(siriusInfo -> MembershipData(underTestActor))
   }
 
   after {
@@ -48,12 +48,12 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
     it("should add a new member to the membership map if it receives a AddMembers message") {
       val newMember = AddMembers(expectedMap)
       underTestActor ! newMember
-      verify(membershipAgent).send(any(classOf[Map[SiriusInfo, MembershipData] => Map[SiriusInfo, MembershipData]]))
+      verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
 
     }
     it("should report on cluster membership if it receives a GetMembershipData message") {
       when(membershipAgent()).thenReturn(expectedMap)
-      val actualMembers = result((underTestActor ? GetMembershipData), (5 seconds)).asInstanceOf[Map[SiriusInfo, MembershipData]]
+      val actualMembers = result((underTestActor ? GetMembershipData), (5 seconds)).asInstanceOf[MembershipMap]
 
       assert(expectedMap === actualMembers)
     }
@@ -65,15 +65,15 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
 
       val toAddProbe = new TestProbe(actorSystem)
       val toAddInfo = new SiriusInfo(1000, "local-server")
-      val toAdd = Map[SiriusInfo, MembershipData](toAddInfo -> MembershipData(toAddProbe.ref))
+      val toAdd = MembershipMap(toAddInfo -> MembershipData(toAddProbe.ref))
 
 
-      val membership = Map[SiriusInfo, MembershipData](info1 -> MembershipData(probe1.ref), info2 -> MembershipData(probe2.ref))
+      val membership = MembershipMap(info1 -> MembershipData(probe1.ref), info2 -> MembershipData(probe2.ref))
       when(membershipAgent()).thenReturn(membership)
 
       val newMember = result((underTestActor ? Join(toAdd)), (5 seconds)).asInstanceOf[AddMembers]
       //was map updated
-      verify(membershipAgent).send(any(classOf[Map[SiriusInfo, MembershipData] => Map[SiriusInfo, MembershipData]]))
+      verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
 
       //were peers notified
       probe1.expectMsg(AddMembers(toAdd))
@@ -86,15 +86,15 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       val newerCoolServerProbe = new TestProbe(actorSystem)
 
       //stage membership map so that it includes coolserver
-      val membership = Map[SiriusInfo, MembershipData](coolServerInfo -> MembershipData(coolServerProbe.ref), new SiriusInfo(2000, "rad-server") -> MembershipData(new TestProbe(actorSystem).ref))
+      val membership = MembershipMap(coolServerInfo -> MembershipData(coolServerProbe.ref), new SiriusInfo(2000, "rad-server") -> MembershipData(new TestProbe(actorSystem).ref))
       when(membershipAgent()).thenReturn(membership)
 
       //try add cool-server again but with updated MembershipData
-      val toAdd = Map[SiriusInfo, MembershipData](coolServerInfo -> MembershipData(newerCoolServerProbe.ref))
+      val toAdd = MembershipMap(coolServerInfo -> MembershipData(newerCoolServerProbe.ref))
       underTestActor ! AddMembers(toAdd)
 
       //was map updated
-      verify(membershipAgent).send(any(classOf[Map[SiriusInfo, MembershipData] => Map[SiriusInfo, MembershipData]]))
+      verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
     }
     it("should handle a Join message when the new node already is a member") {
       val coolServerInfo = new SiriusInfo(1000, "cool-server")
@@ -104,16 +104,16 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       val radServerProbe = new TestProbe(actorSystem)
 
       //stage membership with cool-server and rad-server
-      val membership = Map[SiriusInfo, MembershipData](coolServerInfo -> MembershipData(coolServerProbe.ref), radServerInfo -> MembershipData(radServerProbe.ref))
+      val membership = MembershipMap(coolServerInfo -> MembershipData(coolServerProbe.ref), radServerInfo -> MembershipData(radServerProbe.ref))
       when(membershipAgent()).thenReturn(membership)
 
-      val coolServerJoinMsg = Join(Map[SiriusInfo, MembershipData](coolServerInfo -> MembershipData(coolServerProbe.ref)))
+      val coolServerJoinMsg = Join(MembershipMap(coolServerInfo -> MembershipData(coolServerProbe.ref)))
       val addMembersMsg = result((underTestActor ? coolServerJoinMsg), (5 seconds)).asInstanceOf[AddMembers]
 
       assert(membership === addMembersMsg.member)
 
       //was map updated
-      verify(membershipAgent).send(any(classOf[Map[SiriusInfo, MembershipData] => Map[SiriusInfo, MembershipData]]))
+      verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
 
       //were peers notified
       coolServerProbe.expectMsg(AddMembers(coolServerJoinMsg.member))
@@ -133,7 +133,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
           nodeToJoinProbe.setAutoPilot(new AutoPilot {
             def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
               case Join(x) => {
-                sender ! AddMembers(x ++ Map[SiriusInfo, MembershipData](info -> MembershipData(new TestProbe(actorSystem).ref)))
+                sender ! AddMembers(x ++ MembershipMap(info -> MembershipData(new TestProbe(actorSystem).ref)))
                 Some(this)
               }
             }
@@ -143,7 +143,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
           underTestActor ! JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)
           nodeToJoinProbe.expectMsg(Join(expectedMap))
           //check if result of Join was added locally
-          verify(membershipAgent).send(any(classOf[Map[SiriusInfo, MembershipData] => Map[SiriusInfo, MembershipData]]))
+          verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
 
 
         }
@@ -152,7 +152,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
         it("should forward a NewMember message containing itself to the membershipActor") {
           val info = new SiriusInfo(100, "geeky-server")
           underTestActor ! JoinCluster(None, info)
-          verify(membershipAgent).send(any(classOf[Map[SiriusInfo, MembershipData] => Map[SiriusInfo, MembershipData]]))
+          verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
 
         }
       }

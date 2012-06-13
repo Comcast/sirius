@@ -17,7 +17,7 @@ import akka.agent.Agent
 /**
  * Supervisor actor for the set of actors needed for Sirius.
  */
-class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWriter: LogWriter, membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) extends Actor with AkkaConfig {
+class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWriter: LogWriter, membershipAgent: Agent[MembershipMap]) extends Actor with AkkaConfig {
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
 
   /* Startup child actors. */
@@ -55,6 +55,6 @@ class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWr
   private[impl] def createPaxosActor(persistenceActor: ActorRef) =
     context.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")
 
-  private[impl] def createMembershipActor(membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) =
+  private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap]) =
     context.actorOf(Props(new MembershipActor(membershipAgent)), "membership")
 }

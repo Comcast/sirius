@@ -4,7 +4,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.dispatch.Await._
 import akka.util.duration._
-import com.comcast.xfinity.sirius.api.impl.membership.MembershipData
+import com.comcast.xfinity.sirius.api.impl.membership._
 
 import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, SiriusImpl}
 import java.net.InetAddress
@@ -42,7 +42,7 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
       assert(settled, "took too long to Join(None) to complete")
 
       //ask sirius for membership
-      val membershipData = result(sirius.getMembershipMap, (5 seconds)).asInstanceOf[Map[SiriusInfo, MembershipData]]
+      val membershipData = result(sirius.getMembershipMap, (5 seconds)).asInstanceOf[MembershipMap]
 
       assert(1 === membershipData.size)
       assert(siriusPort === membershipData.keySet.head.port)
@@ -64,8 +64,8 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
       val start: Long = System.currentTimeMillis()
       var joinConfirmed = false
       while (System.currentTimeMillis() <= start + 1000 && !joinConfirmed) {
-        val siriusMembership = result(sirius.getMembershipMap, (100 millis)).asInstanceOf[Map[SiriusInfo, MembershipData]]
-        val anotherSiriusMembership = result(anotherSirius.getMembershipMap, (100 millis)).asInstanceOf[Map[SiriusInfo, MembershipData]]
+        val siriusMembership = result(sirius.getMembershipMap, (100 millis)).asInstanceOf[MembershipMap]
+        val anotherSiriusMembership = result(anotherSirius.getMembershipMap, (100 millis)).asInstanceOf[MembershipMap]
         if (anotherSiriusMembership.size == siriusMembership.size && siriusMembership.size == 2) {
           joinConfirmed = true
         } else {

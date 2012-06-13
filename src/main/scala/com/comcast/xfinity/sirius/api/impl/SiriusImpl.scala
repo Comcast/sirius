@@ -13,7 +13,7 @@ import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.dispatch.Future
 import com.typesafe.config.ConfigFactory
-import membership.{GetMembershipData, MembershipData}
+import membership._
 import akka.agent.Agent
 
 object SiriusImpl extends AkkaConfig {
@@ -52,7 +52,7 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
 
   val info = new SiriusInfo(port, InetAddress.getLocalHost().getHostName()) // TODO: Pass in the hostname and port (perhaps)
 
-  val membershipAgent: Agent[Map[SiriusInfo, MembershipData]] = Agent(Map[SiriusInfo, MembershipData]()) (actorSystem)
+  val membershipAgent: Agent[MembershipMap] = Agent(MembershipMap()) (actorSystem)
 
   // TODO: we may want to identify these actors by their class name? make debugging direct
   val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, walWriter, membershipAgent)
@@ -64,7 +64,7 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
 
 
   def getMembershipMap = {
-    (supervisor ? GetMembershipData).asInstanceOf[Future[Map[SiriusInfo, MembershipData]]]
+    (supervisor ? GetMembershipData).asInstanceOf[Future[MembershipMap]]
   }
 
   /**
@@ -98,7 +98,7 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
 
 
   // handle for testing
-  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, siriusInfo: SiriusInfo, theWalWriter: LogWriter, theMembershipAgent: Agent[Map[SiriusInfo, MembershipData]]) = {
+  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, siriusInfo: SiriusInfo, theWalWriter: LogWriter, theMembershipAgent: Agent[MembershipMap]) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer()
     val admin = new SiriusAdmin(info, mbeanServer)
     theActorSystem.actorOf(Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theMembershipAgent)), "sirius")

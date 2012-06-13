@@ -27,7 +27,7 @@ object SiriusSupervisorTest {
       persistenceProbe: TestProbe,
       paxosProbe: TestProbe,
       membershipProbe: TestProbe,
-      membershipAgent: Agent[Map[SiriusInfo, MembershipData]])(implicit as: ActorSystem) = {
+      membershipAgent: Agent[MembershipMap])(implicit as: ActorSystem) = {
     TestActorRef(new SiriusSupervisor(admin, handler, logWriter, membershipAgent) {
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
@@ -35,7 +35,7 @@ object SiriusSupervisorTest {
 
       override def createPaxosActor(_persistence: ActorRef) = paxosProbe.ref
 
-      override def createMembershipActor(_membershipAgent: Agent[Map[SiriusInfo, MembershipData]]) = membershipProbe.ref
+      override def createMembershipActor(_membershipAgent: Agent[MembershipMap]) = membershipProbe.ref
     })
   }
 }
@@ -62,7 +62,7 @@ class SiriusSupervisorTest() extends NiceTest {
   var supervisor: TestActorRef[SiriusSupervisor] = _
   implicit val timeout: Timeout = (5 seconds)
 
-  var expectedMap: Map[SiriusInfo, MembershipData] = _
+  var expectedMap: MembershipMap = _
 
   before {
     actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
@@ -99,12 +99,12 @@ class SiriusSupervisorTest() extends NiceTest {
 
     persistenceProbe = TestProbe()(actorSystem)
 
-    membershipAgent = mock[Agent[Map[SiriusInfo, MembershipData]]]
+    membershipAgent = mock[Agent[MembershipMap]]
 
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
         admin, handler, logWriter, stateProbe, persistenceProbe, paxosProbe, membershipProbe, membershipAgent)(actorSystem)
 
-    expectedMap = Map[SiriusInfo, MembershipData](siriusInfo -> MembershipData(membershipProbe.ref))
+    expectedMap = MembershipMap(siriusInfo -> MembershipData(membershipProbe.ref))
   }
 
   after {
