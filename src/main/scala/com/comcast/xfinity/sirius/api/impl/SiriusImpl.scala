@@ -17,7 +17,9 @@ import membership._
 import akka.agent.Agent
 
 object SiriusImpl extends AkkaConfig {
-  def createSirius(requestHandler: RequestHandler, walWriter: LogWriter, hostname: String, port: Int): SiriusImpl = {
+  
+  def createSirius(requestHandler: RequestHandler, walWriter: LogWriter,
+          hostname: String, port: Int): SiriusImpl = {
     val config = ConfigFactory.parseString("""
      akka {
        actor {
@@ -34,27 +36,32 @@ object SiriusImpl extends AkkaConfig {
      }
      """)
 
-    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, ConfigFactory.load(config)), walWriter, port)
+    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, 
+            ConfigFactory.load(config)), walWriter, port)
   }
 
 }
 
-import com.comcast.xfinity.sirius.api.impl.membership.JoinCluster
 /**
  * A Sirius implementation implemented in Scala using Akka actors
  */
-class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSystem, walWriter: LogWriter, val port: Int) extends Sirius with AkkaConfig {
+class SiriusImpl(requestHandler: RequestHandler,
+                 val actorSystem: ActorSystem, 
+                 walWriter: LogWriter,
+                 port: Int) extends Sirius with AkkaConfig {
 
   //TODO: find better way of building SiriusImpl ...
-  def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = this (requestHandler, actorSystem, new FileLogWriter("/tmp/sirius_wal.log", new WriteAheadLogSerDe()), SiriusImpl.DEFAULT_PORT)
+  def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = 
+    this(requestHandler, actorSystem, new FileLogWriter("/tmp/sirius_wal.log",
+        new WriteAheadLogSerDe()), SiriusImpl.DEFAULT_PORT)
 
-  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: LogWriter) = this (requestHandler, actorSystem, walWriter, SiriusImpl.DEFAULT_PORT)
+  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: LogWriter) =
+    this (requestHandler, actorSystem, walWriter, SiriusImpl.DEFAULT_PORT)
 
-  val info = new SiriusInfo(port, InetAddress.getLocalHost().getHostName()) // TODO: Pass in the hostname and port (perhaps)
-
+  // TODO: Pass in the hostname and port (perhaps)
+  val info = new SiriusInfo(port, InetAddress.getLocalHost().getHostName()) 
   val membershipAgent: Agent[MembershipMap] = Agent(MembershipMap()) (actorSystem)
 
-  // TODO: we may want to identify these actors by their class name? make debugging direct
   val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, walWriter, membershipAgent)
 
 
@@ -97,10 +104,12 @@ class SiriusImpl(val requestHandler: RequestHandler, val actorSystem: ActorSyste
   }
 
 
-  // handle for testing
-  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, siriusInfo: SiriusInfo, theWalWriter: LogWriter, theMembershipAgent: Agent[MembershipMap]) = {
+  // XXX: handle for testing
+  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler,
+          siriusInfo: SiriusInfo, theWalWriter: LogWriter, theMembershipAgent: Agent[MembershipMap]) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer()
     val admin = new SiriusAdmin(info, mbeanServer)
-    theActorSystem.actorOf(Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theMembershipAgent)), "sirius")
+    val supProps = Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theMembershipAgent))
+    theActorSystem.actorOf(supProps, "sirius")
   }
 }
