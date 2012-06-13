@@ -62,8 +62,6 @@ class SiriusSupervisorTest() extends NiceTest {
   var supervisor: TestActorRef[SiriusSupervisor] = _
   implicit val timeout: Timeout = (5 seconds)
 
-  var expectedMap: MembershipMap = _
-
   before {
     actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
     akka.event-handlers = ["akka.testkit.TestEventListener"]
@@ -102,9 +100,8 @@ class SiriusSupervisorTest() extends NiceTest {
     membershipAgent = mock[Agent[MembershipMap]]
 
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
-        admin, handler, logWriter, stateProbe, persistenceProbe, paxosProbe, membershipProbe, membershipAgent)(actorSystem)
-
-    expectedMap = MembershipMap(siriusInfo -> MembershipData(membershipProbe.ref))
+        admin, handler, logWriter, stateProbe, persistenceProbe, paxosProbe,
+        membershipProbe, membershipAgent)(actorSystem)
   }
 
   after {
@@ -119,25 +116,28 @@ class SiriusSupervisorTest() extends NiceTest {
     }
 
     it("should forward GET messages to the stateActor") {
-      var res = Await.result(supervisor ? (Get("1")), timeout.duration).asInstanceOf[Array[Byte]]
-      assert(res != null)
-      assert("Got it" === new String(res))
-      stateProbe.expectMsg(Get("1"))
+      val get = Get("1")
+      val getAskFuture = supervisor ? get
+      val res = Await.result(getAskFuture, timeout.duration)
+      assert("Got it".getBytes === res)
+      stateProbe.expectMsg(get)
       noMoreMsgs()
     }
+    
     it("should forward DELETE messages to the paxosActor") {
-      var res = Await.result(supervisor ? (Delete("1")), timeout.duration).asInstanceOf[Array[Byte]]
-      assert(res != null)
-      assert("Delete it" === new String(res))
-      paxosProbe.expectMsg(Delete("1"))
+      val delete = Delete("1")
+      val deleteAskFuture = supervisor ? delete
+      val res = Await.result(deleteAskFuture, timeout.duration)
+      assert("Delete it".getBytes === res)
+      paxosProbe.expectMsg(delete)
       noMoreMsgs()
     }
     it("should forward PUT messages to the paxosActor") {
-      var msgBody = "some body".getBytes()
-      var res = Await.result(supervisor ? (Put("1", msgBody)), timeout.duration).asInstanceOf[Array[Byte]]
-      assert(res != null)
-      assert("Put it" === new String(res))
-      paxosProbe.expectMsg(Put("1", msgBody))
+      val put = Put("1", "someBody".getBytes)
+      val putAskFuture = supervisor ? put
+      val res = Await.result(putAskFuture, timeout.duration)
+      assert("Put it".getBytes === res)
+      paxosProbe.expectMsg(put)
       noMoreMsgs()
     }
 
