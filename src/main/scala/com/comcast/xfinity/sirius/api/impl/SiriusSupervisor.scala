@@ -17,7 +17,11 @@ import akka.agent.Agent
 /**
  * Supervisor actor for the set of actors needed for Sirius.
  */
-class SiriusSupervisor(admin: SiriusAdmin, requestHandler: RequestHandler, logWriter: LogWriter, membershipAgent: Agent[MembershipMap]) extends Actor with AkkaConfig {
+class SiriusSupervisor(admin: SiriusAdmin, 
+                       requestHandler: RequestHandler,
+                       logWriter: LogWriter,
+                       membershipAgent: Agent[MembershipMap]) extends Actor with AkkaConfig {
+  
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
 
   /* Startup child actors. */
