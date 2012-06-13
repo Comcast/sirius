@@ -70,7 +70,7 @@ class SiriusImpl(requestHandler: RequestHandler,
   }
 
 
-  def getMembershipMap = {
+  def getMembershipMap() = {
     (supervisor ? GetMembershipData).asInstanceOf[Future[MembershipMap]]
   }
 

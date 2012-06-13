@@ -72,7 +72,8 @@ class SiriusImplTest extends NiceTest {
 
     logWriter = mock[LogWriter]
 
-    underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, actorSystem, logWriter, supervisorActorProbe, membershipAgent)
+    underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, 
+        actorSystem, logWriter, supervisorActorProbe, membershipAgent)
 
   }
 
@@ -84,25 +85,29 @@ class SiriusImplTest extends NiceTest {
   describe("a SiriusImpl") {
     it("should send a Get message to the supervisor actor when enqueueGet is called") {
       val key = "hello"
-      assert("Got it".getBytes() === Await.result(underTest.enqueueGet(key), timeout.duration).asInstanceOf[Array[Byte]])
+      val getFuture = underTest.enqueueGet(key)
+      assert("Got it".getBytes() === Await.result(getFuture, timeout.duration))
       supervisorActorProbe.expectMsg(Get(key))
     }
 
     it("should send a Put message to the supervisor actor when enqueuePut is called and get some \"ACK\" back") {
       val key = "hello"
       val body = "there".getBytes()
-      assert("Put it".getBytes() === Await.result(underTest.enqueuePut(key, body), timeout.duration).asInstanceOf[Array[Byte]])
+      val putFuture = underTest.enqueuePut(key, body)
+      assert("Put it".getBytes() === Await.result(putFuture, timeout.duration))
       supervisorActorProbe.expectMsg(Put(key, body))
     }
 
     it("should send a Delete message to the supervisor actor when enqueueDelete is called and get some \"ACK\" back") {
       val key = "hello"
-      assert("Delete it".getBytes() === Await.result(underTest.enqueueDelete(key), timeout.duration).asInstanceOf[Array[Byte]])
+      val deleteFuture = underTest.enqueueDelete(key)
+      assert("Delete it".getBytes() === Await.result(deleteFuture, timeout.duration))
       supervisorActorProbe.expectMsg(Delete(key))
     }
 
     it("should issue an \"ask\" GetMembership to the supervisor when getMembershipData is called") {
-      assert(membershipMap === Await.result(underTest.getMembershipMap, timeout.duration).asInstanceOf[MembershipMap])
+      val membershipFuture = underTest.getMembershipMap
+      assert(membershipMap === Await.result(membershipFuture, timeout.duration))
       supervisorActorProbe.expectMsg(GetMembershipData)
     }
 
