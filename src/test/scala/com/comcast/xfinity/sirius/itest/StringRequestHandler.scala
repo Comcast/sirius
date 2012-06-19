@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.api.RequestHandler
 import collection.mutable.HashMap
+import com.comcast.xfinity.sirius.api.SiriusResult
 
 class StringRequestHandler extends RequestHandler {
 
@@ -10,18 +11,27 @@ class StringRequestHandler extends RequestHandler {
   /**
    * Handle a GET request
    */
-  def handleGet(key: String): Array[Byte] = map.get(key).getOrElse(null)
+  def handleGet(key: String) = map.get(key) match {
+    case Some(v) => SiriusResult.some(v)
+    case None => SiriusResult.none
+  }
 
 
   /**
    * Handle a PUT request
    */
-  def handlePut(key: String, body: Array[Byte]): Array[Byte] = map.put(key, body).getOrElse(null)
+  def handlePut(key: String, body: Array[Byte]) = map.put(key, body) match {
+    case Some(v) => SiriusResult.some(v)
+    case None => SiriusResult.none
+  }
 
 
   /**
    * Handle a DELETE request
    */
-  def handleDelete(key: String): Array[Byte] = map.remove(key).getOrElse(null)
+  def handleDelete(key: String) = map.remove(key) match {
+    case Some(v) => SiriusResult.some(v)
+    case None => SiriusResult.none
+  }
 
 }

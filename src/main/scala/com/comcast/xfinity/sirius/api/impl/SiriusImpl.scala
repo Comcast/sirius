@@ -15,6 +15,7 @@ import akka.dispatch.Future
 import com.typesafe.config.ConfigFactory
 import membership._
 import akka.agent.Agent
+import com.comcast.xfinity.sirius.api.SiriusResult
 
 object SiriusImpl extends AkkaConfig {
   
@@ -78,21 +79,21 @@ class SiriusImpl(requestHandler: RequestHandler,
    * ${@inheritDoc}
    */
   def enqueueGet(key: String) = {
-    (supervisor ? Get(key)).asInstanceOf[Future[Array[Byte]]]
+    (supervisor ? Get(key)).asInstanceOf[Future[SiriusResult]]
   }
 
   /**
    * ${@inheritDoc}
    */
   def enqueuePut(key: String, body: Array[Byte]) = {
-    (supervisor ? Put(key, body)).asInstanceOf[Future[Array[Byte]]]
+    (supervisor ? Put(key, body)).asInstanceOf[Future[SiriusResult]]
   }
 
   /**
    * ${@inheritDoc}
    */
   def enqueueDelete(key: String) = {
-    (supervisor ? Delete(key)).asInstanceOf[Future[Array[Byte]]]
+    (supervisor ? Delete(key)).asInstanceOf[Future[SiriusResult]]
   }
 
   def shutdown() = {

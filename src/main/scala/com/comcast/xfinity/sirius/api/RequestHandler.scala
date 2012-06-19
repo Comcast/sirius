@@ -5,16 +5,16 @@ trait RequestHandler {
   /**
    * Handle a GET request
    */
-  def handleGet(key: String): Array[Byte]
+  def handleGet(key: String): SiriusResult
 
   /**
    * Handle a PUT request
    */
-  def handlePut(key: String, body: Array[Byte]): Array[Byte]
+  def handlePut(key: String, body: Array[Byte]): SiriusResult
 
   /**
    * Handle a DELETE request
    */
-  def handleDelete(key: String): Array[Byte]
+  def handleDelete(key: String): SiriusResult
 
 }

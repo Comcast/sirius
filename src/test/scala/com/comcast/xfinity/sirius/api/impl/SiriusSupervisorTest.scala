@@ -17,6 +17,7 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
+import com.comcast.xfinity.sirius.api.SiriusResult
 
 object SiriusSupervisorTest {
 
@@ -83,15 +84,21 @@ class SiriusSupervisorTest() extends NiceTest {
     paxosProbe = TestProbe()(actorSystem)
     paxosProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
-        case Delete(_) => sender ! "Delete it".getBytes(); Some(this)
-        case Put(_, _) => sender ! "Put it".getBytes(); Some(this)
+        case Delete(_) =>
+          sender ! SiriusResult.some("Delete it".getBytes)
+          Some(this)
+        case Put(_, _) =>
+          sender ! SiriusResult.some("Put it".getBytes)
+          Some(this)
       }
     })
 
     stateProbe = TestProbe()(actorSystem)
     stateProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
-        case Get(_) => sender ! "Got it".getBytes(); Some(this)
+        case Get(_) =>
+          sender ! SiriusResult.some("Got it".getBytes)
+          Some(this)
       }
     })
 
@@ -118,8 +125,8 @@ class SiriusSupervisorTest() extends NiceTest {
     it("should forward GET messages to the stateActor") {
       val get = Get("1")
       val getAskFuture = supervisor ? get
-      val res = Await.result(getAskFuture, timeout.duration)
-      assert("Got it".getBytes === res)
+      val expected = SiriusResult.some("Got it".getBytes)
+      assert(expected === Await.result(getAskFuture, timeout.duration))
       stateProbe.expectMsg(get)
       noMoreMsgs()
     }
@@ -127,16 +134,17 @@ class SiriusSupervisorTest() extends NiceTest {
     it("should forward DELETE messages to the paxosActor") {
       val delete = Delete("1")
       val deleteAskFuture = supervisor ? delete
-      val res = Await.result(deleteAskFuture, timeout.duration)
-      assert("Delete it".getBytes === res)
+      val expected = SiriusResult.some("Delete it".getBytes)
+      assert(expected === Await.result(deleteAskFuture, timeout.duration))
       paxosProbe.expectMsg(delete)
       noMoreMsgs()
     }
+
     it("should forward PUT messages to the paxosActor") {
       val put = Put("1", "someBody".getBytes)
       val putAskFuture = supervisor ? put
-      val res = Await.result(putAskFuture, timeout.duration)
-      assert("Put it".getBytes === res)
+      val expected = SiriusResult.some("Put it".getBytes)
+      assert(expected === Await.result(putAskFuture, timeout.duration))
       paxosProbe.expectMsg(put)
       noMoreMsgs()
     }

@@ -16,6 +16,7 @@ import membership._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
+import com.comcast.xfinity.sirius.api.SiriusResult
 
 object SiriusImplTest {
   
@@ -62,11 +63,20 @@ class SiriusImplTest extends NiceTest {
     supervisorActorProbe = TestProbe()(actorSystem)
     supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
-        case Get(_) => sender ! "Got it".getBytes(); Some(this)
-        case Delete(_) => sender ! "Delete it".getBytes(); Some(this)
-        case Put(_, _) => sender ! "Put it".getBytes(); Some(this)
-        case JoinCluster(_, _) => Some(this)
-        case GetMembershipData => sender ! membershipMap; Some(this)
+        case Get(_) =>
+          sender ! SiriusResult.some("Got it".getBytes)
+          Some(this)
+        case Delete(_) =>
+          sender ! SiriusResult.some("Delete it".getBytes)
+          Some(this)
+        case Put(_, _) => 
+          sender ! SiriusResult.some("Put it".getBytes)
+          Some(this)
+        case JoinCluster(_, _) => 
+          Some(this)
+        case GetMembershipData =>
+          sender ! membershipMap
+          Some(this)
       }
     })
 
@@ -86,7 +96,8 @@ class SiriusImplTest extends NiceTest {
     it("should send a Get message to the supervisor actor when enqueueGet is called") {
       val key = "hello"
       val getFuture = underTest.enqueueGet(key)
-      assert("Got it".getBytes() === Await.result(getFuture, timeout.duration))
+      val expected = SiriusResult.some("Got it".getBytes)
+      assert(expected === Await.result(getFuture, timeout.duration))
       supervisorActorProbe.expectMsg(Get(key))
     }
 
@@ -94,14 +105,16 @@ class SiriusImplTest extends NiceTest {
       val key = "hello"
       val body = "there".getBytes()
       val putFuture = underTest.enqueuePut(key, body)
-      assert("Put it".getBytes() === Await.result(putFuture, timeout.duration))
+      val expected = SiriusResult.some("Put it".getBytes)
+      assert(expected === Await.result(putFuture, timeout.duration))
       supervisorActorProbe.expectMsg(Put(key, body))
     }
 
     it("should send a Delete message to the supervisor actor when enqueueDelete is called and get some \"ACK\" back") {
       val key = "hello"
       val deleteFuture = underTest.enqueueDelete(key)
-      assert("Delete it".getBytes() === Await.result(deleteFuture, timeout.duration))
+      val expected = SiriusResult.some("Delete it".getBytes)
+      assert(expected === Await.result(deleteFuture, timeout.duration))
       supervisorActorProbe.expectMsg(Delete(key))
     }
 
