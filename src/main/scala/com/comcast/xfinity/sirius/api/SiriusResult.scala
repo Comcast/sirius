@@ -29,7 +29,7 @@ object SiriusResult {
  * methods {@link SiriusResult#some()} and {@link SiriusResult#none()}
  */
 // TODO: hide this within the scope of the companion object?
-case class SiriusResult(value: Option[Array[Byte]]) {
+case class SiriusResult(private val value: Option[Array[Byte]]) {
   
   /**
    * Does this result contain a value?
