@@ -1,9 +1,11 @@
 %% Header, styling stuff
+
 \documentstyle[11pt]{article}
 \setlength{\topmargin}{-.5in}
 \setlength{\textheight}{9in}
 \setlength{\oddsidemargin}{.125in}
 \setlength{\textwidth}{6.25in}
+
 
 \begin{document}
 
@@ -114,6 +116,57 @@ Base64 encoded binary payload for the log entry.  This is probably some represen
 %%------------------------------
 \subsection{Compaction Algorithm}
 TBD
+
+
+%%------------------------------
+%% Cluster Membership:
+%%    Join Algorithm
+%%------------------------------
+\section{Cluster Membership}
+\subsection{Caveats}
+For now we are ignoring several facts of life.  We are assuming messages sent between nodes always are received in a timely manor and are never lost.  Also that Nodes never disappear or leave unexpectedly.
+\subsection{Cluster Definition}
+Let's define $i$ as a node's unique identifier and $M$ as a non-empty set of $i$ representing a list of the cluster's members.
+
+\begin{itemize}
+\item Axiom (1) - Cluster $C$ has at least one node.  $C \not= \emptyset$
+\item Axiom (2) - A node $N$ is defined as $\{i,M\}$ where $i$ is a unique id, and $M$ is a set of id's of all  node's in the cluster that $N$ is a member of. 
+\end{itemize}
+
+\subsection{Joining a Cluster}
+if $A$ and $B$ are nodes in two separate clusters who do not intersect, $A join B$ works like this.
+
+
+\begin{enumerate}
+\item $\forall M \epsilon B$ , set $M$  to $M\epsilon A \cup M\epsilon B$
+\item set $M \epsilon A$ to $M\epsilon B$
+
+\end{enumerate}
+
+
+
+
+Here is some pseudo-code that describes how a node might handle the joins:
+
+
+\begin{verbatim}
+     class Node()
+          var id = uniqueId()
+          var members = {self().id}
+          for-ever
+               switch receive()
+                    case {"join_cluster", nodeToJoin}
+                         var newMembers := nodeToJoin.send("join",node,self().members)
+                         self().members := newMembers
+                    case {"join",newMembers}
+                         for-all member in members: self().send("add_members", newMembers)
+                         members ++ newMembers
+                         sender().send("add_members",members)
+                    case {"add_members", newMembers }
+                         members ++  newMembers
+          end-for-ever
+\end{verbatim}
+
 
 
 \end{document}
