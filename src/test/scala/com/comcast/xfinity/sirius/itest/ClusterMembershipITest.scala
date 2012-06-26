@@ -18,7 +18,7 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
 
   before {
-    sirius = SiriusImpl.createSirius(new StringRequestHandler(), new DoNothingLogWriter, InetAddress.getLocalHost().getHostName(), siriusPort)
+    sirius = SiriusImpl.createSirius(new StringRequestHandler(), new DoNothingSiriusLog, InetAddress.getLocalHost().getHostName(), siriusPort)
   }
 
   after {
@@ -55,7 +55,7 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
 
       //create another Sirius and make it reqeust to join our original sirius node
-      val anotherSirius = SiriusImpl.createSirius(new StringRequestHandler(), new DoNothingLogWriter, InetAddress.getLocalHost().getHostName(), siriusPort + 1)
+      val anotherSirius = SiriusImpl.createSirius(new StringRequestHandler(), new DoNothingSiriusLog, InetAddress.getLocalHost().getHostName(), siriusPort + 1)
       val path = "akka://" + SYSTEM_NAME + "@" + InetAddress.getLocalHost().getHostName() + ":" + siriusPort + "/user/" + SUPERVISOR_NAME
       joinSelf(anotherSirius)
       anotherSirius.joinCluster(Some(sirius.actorSystem.actorFor(path)))

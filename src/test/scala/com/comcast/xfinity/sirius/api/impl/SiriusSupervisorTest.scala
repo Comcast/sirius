@@ -4,7 +4,7 @@ import membership._
 import org.mockito.Mockito._
 import com.typesafe.config.ConfigFactory
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{ActorRef, ActorSystem}
@@ -23,16 +23,16 @@ object SiriusSupervisorTest {
 
   def createProbedTestSupervisor(admin: SiriusAdmin,
       handler: RequestHandler,
-      logWriter: LogWriter,
+      siriusLog: SiriusLog,
       stateProbe: TestProbe,
       persistenceProbe: TestProbe,
       paxosProbe: TestProbe,
       membershipProbe: TestProbe,
       membershipAgent: Agent[MembershipMap])(implicit as: ActorSystem) = {
-    TestActorRef(new SiriusSupervisor(admin, handler, logWriter, membershipAgent) {
+    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, membershipAgent) {
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
-      override def createPersistenceActor(_state: ActorRef, _writer: LogWriter) = persistenceProbe.ref
+      override def createPersistenceActor(_state: ActorRef, _writer: SiriusLog) = persistenceProbe.ref
 
       override def createPaxosActor(_persistence: ActorRef) = paxosProbe.ref
 
@@ -57,7 +57,7 @@ class SiriusSupervisorTest() extends NiceTest {
 
   var handler: RequestHandler = _
   var admin: SiriusAdmin = _
-  var logWriter: LogWriter = _
+  var siriusLog: SiriusLog = _
   var siriusInfo: SiriusInfo = _
 
   var supervisor: TestActorRef[SiriusSupervisor] = _
@@ -71,7 +71,7 @@ class SiriusSupervisorTest() extends NiceTest {
     //setup mocks
     handler = mock[RequestHandler]
     admin = mock[SiriusAdmin]
-    logWriter = mock[LogWriter]
+    siriusLog = mock[SiriusLog]
     siriusInfo = mock[SiriusInfo]
 
     membershipProbe = TestProbe()(actorSystem)
@@ -107,7 +107,7 @@ class SiriusSupervisorTest() extends NiceTest {
     membershipAgent = mock[Agent[MembershipMap]]
 
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
-        admin, handler, logWriter, stateProbe, persistenceProbe, paxosProbe,
+        admin, handler, siriusLog, stateProbe, persistenceProbe, paxosProbe,
         membershipProbe, membershipAgent)(actorSystem)
   }
 

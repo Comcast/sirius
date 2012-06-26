@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.api.impl.persistence
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
-import com.comcast.xfinity.sirius.writeaheadlog.{LogData, LogWriter}
+import com.comcast.xfinity.sirius.writeaheadlog.{LogData, SiriusLog}
 
 
 import org.mockito.Mockito._
@@ -19,15 +19,15 @@ class SiriusPersistenceActorTest extends NiceTest {
   var underTestActor: TestActorRef[SiriusPersistenceActor] = _
   var testStateWorkerProbe: TestProbe = _
 
-  var mockLogWriter: LogWriter = _
+  var mockSiriusLog: SiriusLog = _
 
   before {
-    mockLogWriter = mock[LogWriter]
+    mockSiriusLog = mock[SiriusLog]
 
     actorSystem = ActorSystem("testsystem")
 
     testStateWorkerProbe = TestProbe()(actorSystem)
-    underTestActor = TestActorRef(new SiriusPersistenceActor(testStateWorkerProbe.ref, mockLogWriter))(actorSystem)
+    underTestActor = TestActorRef(new SiriusPersistenceActor(testStateWorkerProbe.ref, mockSiriusLog))(actorSystem)
 
   }
 
@@ -45,7 +45,7 @@ class SiriusPersistenceActorTest extends NiceTest {
       assert(put === actualPut)
 
       val argument = ArgumentCaptor.forClass(classOf[LogData])
-      verify(mockLogWriter, times(1)).writeEntry(argument.capture())
+      verify(mockSiriusLog, times(1)).writeEntry(argument.capture())
       val logData = argument.getValue()
       assert("PUT" === logData.actionType)
     }
@@ -58,7 +58,7 @@ class SiriusPersistenceActorTest extends NiceTest {
       assert(delete === actualDelete)
 
       val argument = ArgumentCaptor.forClass(classOf[LogData])
-      verify(mockLogWriter, times(1)).writeEntry(argument.capture())
+      verify(mockSiriusLog, times(1)).writeEntry(argument.capture())
       val logData = argument.getValue()
       assert("DELETE" === logData.actionType)
     }

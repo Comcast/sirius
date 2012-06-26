@@ -17,7 +17,7 @@ class WriteAheadLogITest extends NiceTest {
   val tempFolder = new TemporaryFolder()
   var logFilename: String = _
 
-  var logReader: FileLogReader = _
+  var siriusLog: SiriusFileLog = _
 
   before {
     tempFolder.create
@@ -25,11 +25,11 @@ class WriteAheadLogITest extends NiceTest {
 
     actorSystem = ActorSystem.create("Sirius")
 
-    val logWriter: FileLogWriter = new FileLogWriter(logFilename, new WriteAheadLogSerDe())
+    val logWriter: SiriusFileLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
 
     sirius = new SiriusImpl(new StringRequestHandler(), actorSystem, logWriter)
 
-    logReader = new FileLogReader(logFilename, new WriteAheadLogSerDe())
+    siriusLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
   }
 
   after {
@@ -44,7 +44,7 @@ class WriteAheadLogITest extends NiceTest {
    */
   def readEntries(): List[LogData] = {
 
-    logReader.foldLeft[List[LogData]](Nil)((a, c) => c :: a).reverse
+    siriusLog.foldLeft[List[LogData]](Nil)((a, c) => c :: a).reverse
 
   }
 

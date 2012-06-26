@@ -2,13 +2,16 @@ package com.comcast.xfinity.sirius.writeaheadlog
 
 import org.mockito.Mockito._
 import scalax.io.Line.Terminators.NewLine
-import scalax.io.Resource
 import java.io.ByteArrayInputStream
 import com.comcast.xfinity.sirius.NiceTest
+import scalax.file.defaultfs.DefaultPath
+import org.mockito.Matchers
+import scalax.io.{Codec, Resource}
 
 class FileLogReaderTest extends NiceTest {
 
-  var reader: FileLogReader = _
+  var reader: SiriusFileLog = _
+  var mockPath: DefaultPath = _
   var mockSerDe: LogDataSerDe = _
 
   val FILENAME = "fake_file"
@@ -20,7 +23,10 @@ class FileLogReaderTest extends NiceTest {
 
   before {
     mockSerDe = mock[LogDataSerDe]
-    reader = spy(new FileLogReader(FILENAME, mockSerDe))
+    mockPath = mock[DefaultPath]
+    reader = new SiriusFileLog(FILENAME, mockSerDe) {
+      override val file = mockPath
+    }
   }
 
 
@@ -28,7 +34,8 @@ class FileLogReaderTest extends NiceTest {
     it("deserialize and fold left over the entries in the file in order") {
       val rawLines = FIRST_RAW_LINE + SECOND_RAW_LINE
       val lineTraversable = Resource.fromInputStream(new ByteArrayInputStream(rawLines.getBytes)).lines(NewLine, true)
-      doReturn(lineTraversable).when(reader).lines
+      doReturn(lineTraversable).when(mockPath).lines(
+        Matchers.eq(NewLine), Matchers.anyBoolean())(Matchers.any(classOf[Codec]))
 
       when(mockSerDe.deserialize(FIRST_RAW_LINE)).thenReturn(LOG_DATA1)
       when(mockSerDe.deserialize(SECOND_RAW_LINE)).thenReturn(LOG_DATA2)

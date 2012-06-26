@@ -6,7 +6,7 @@ import com.comcast.xfinity.sirius.NiceTest
 
 class FileLogWriterTest extends NiceTest {
 
-  var writer: FileLogWriter = _
+  var writer: SiriusFileLog = _
   var mockSerDe: LogDataSerDe = _
   var mockPath: DefaultPath = _
 
@@ -17,11 +17,11 @@ class FileLogWriterTest extends NiceTest {
   before {
     mockSerDe = mock[LogDataSerDe]
     mockPath = mock[DefaultPath]
-    writer = spy(new FileLogWriter(FILENAME, mockSerDe))
+    writer = spy(new SiriusFileLog(FILENAME, mockSerDe))
 
   }
 
-  describe("FileLogWriter") {
+  describe("SiriusFileLog") {
     describe(".writeEntry") {
       it("appends a serialized entry to a file") {
         val logData = new LogData("PUT", "key", 123L, 12345L, Some(Array[Byte](65, 124, 65)))

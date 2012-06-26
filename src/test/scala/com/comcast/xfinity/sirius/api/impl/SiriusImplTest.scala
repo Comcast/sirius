@@ -10,7 +10,7 @@ import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor._
-import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import membership._
 import org.junit.runner.RunWith
@@ -23,15 +23,15 @@ object SiriusImplTest {
   // Create an extended impl for testing
   def createProbedSiriusImpl(handler: RequestHandler, 
                              actorSystem: ActorSystem,
-                             logWriter: LogWriter,
+                             siriusLog: SiriusLog,
                              supProbe: TestProbe,
                              membershipAgent: Agent[MembershipMap]) = {
-    new SiriusImpl(handler, actorSystem, logWriter) {
+    new SiriusImpl(handler, actorSystem, siriusLog) {
       
       override def createSiriusSupervisor(_as: ActorSystem, 
           _handler: RequestHandler, 
           _info: SiriusInfo, 
-          _writer: LogWriter, 
+          _log: SiriusLog,
           _membershipAgent: Agent[MembershipMap]) = supProbe.ref
           
     }
@@ -48,7 +48,7 @@ class SiriusImplTest extends NiceTest {
   var underTest: SiriusImpl = _
   var actorSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
-  var logWriter: LogWriter = _
+  var siriusLog: SiriusLog = _
   var membershipMap: MembershipMap = _
   var membershipAgent: Agent[Map[SiriusInfo,MembershipData]] = _
 
@@ -80,10 +80,10 @@ class SiriusImplTest extends NiceTest {
       }
     })
 
-    logWriter = mock[LogWriter]
+    siriusLog = mock[SiriusLog]
 
     underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, 
-        actorSystem, logWriter, supervisorActorProbe, membershipAgent)
+        actorSystem, siriusLog, supervisorActorProbe, membershipAgent)
 
   }
 

@@ -7,7 +7,7 @@ import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
 import com.comcast.xfinity.sirius.api.impl.persistence.SiriusPersistenceActor
 import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -19,14 +19,14 @@ import akka.agent.Agent
  */
 class SiriusSupervisor(admin: SiriusAdmin, 
                        requestHandler: RequestHandler,
-                       logWriter: LogWriter,
+                       siriusLog: SiriusLog,
                        membershipAgent: Agent[MembershipMap]) extends Actor with AkkaConfig {
   
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
 
   /* Startup child actors. */
   private[impl] var stateActor = createStateActor(requestHandler)
-  private[impl] var persistenceActor = createPersistenceActor(stateActor, logWriter)
+  private[impl] var persistenceActor = createPersistenceActor(stateActor, siriusLog)
   private[impl] var paxosActor = createPaxosActor(persistenceActor)
   private[impl] var membershipActor = createMembershipActor(membershipAgent)
 
@@ -53,8 +53,8 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] def createStateActor(theRequestHandler: RequestHandler) =
     context.actorOf(Props(new SiriusStateActor(theRequestHandler)), "state")
 
-  private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: LogWriter) =
-    context.actorOf(Props(new SiriusPersistenceActor(stateActor, logWriter)), "persistence")
+  private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: SiriusLog) =
+    context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog)), "persistence")
 
   private[impl] def createPaxosActor(persistenceActor: ActorRef) =
     context.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")

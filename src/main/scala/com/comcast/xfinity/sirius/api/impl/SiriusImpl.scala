@@ -6,8 +6,8 @@ import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.writeaheadlog.FileLogWriter
-import com.comcast.xfinity.sirius.writeaheadlog.LogWriter
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusFileLog
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.WriteAheadLogSerDe
 import akka.pattern.ask
 import akka.actor.{ActorRef, ActorSystem, Props}
@@ -19,7 +19,7 @@ import com.comcast.xfinity.sirius.api.SiriusResult
 
 object SiriusImpl extends AkkaConfig {
   
-  def createSirius(requestHandler: RequestHandler, walWriter: LogWriter,
+  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog,
           hostname: String, port: Int): SiriusImpl = {
     val config = ConfigFactory.parseString("""
      akka {
@@ -38,7 +38,7 @@ object SiriusImpl extends AkkaConfig {
      """)
 
     new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, 
-            ConfigFactory.load(config)), walWriter, port)
+            ConfigFactory.load(config)), siriusLog, port)
   }
 
 }
@@ -48,22 +48,22 @@ object SiriusImpl extends AkkaConfig {
  */
 class SiriusImpl(requestHandler: RequestHandler,
                  val actorSystem: ActorSystem, 
-                 walWriter: LogWriter,
+                 siriusLog: SiriusLog,
                  port: Int) extends Sirius with AkkaConfig {
 
   //TODO: find better way of building SiriusImpl ...
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = 
-    this(requestHandler, actorSystem, new FileLogWriter("/tmp/sirius_wal.log",
+    this(requestHandler, actorSystem, new SiriusFileLog("/tmp/sirius_wal.log",
         new WriteAheadLogSerDe()), SiriusImpl.DEFAULT_PORT)
 
-  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: LogWriter) =
+  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: SiriusLog) =
     this (requestHandler, actorSystem, walWriter, SiriusImpl.DEFAULT_PORT)
 
   // TODO: Pass in the hostname and port (perhaps)
   val info = new SiriusInfo(port, InetAddress.getLocalHost().getHostName()) 
   val membershipAgent: Agent[MembershipMap] = Agent(MembershipMap()) (actorSystem)
 
-  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, walWriter, membershipAgent)
+  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, siriusLog, membershipAgent)
 
 
   def joinCluster(nodeToJoin: Option[ActorRef]) = {
@@ -107,7 +107,7 @@ class SiriusImpl(requestHandler: RequestHandler,
 
   // XXX: handle for testing
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler,
-          siriusInfo: SiriusInfo, theWalWriter: LogWriter, theMembershipAgent: Agent[MembershipMap]) = {
+          siriusInfo: SiriusInfo, theWalWriter: SiriusLog, theMembershipAgent: Agent[MembershipMap]) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer()
     val admin = new SiriusAdmin(info, mbeanServer)
     val supProps = Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theMembershipAgent))
