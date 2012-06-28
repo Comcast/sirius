@@ -115,8 +115,10 @@ Base64 encoded binary payload for the log entry.  This is probably some represen
 %%    Compaction Algorithm
 %%------------------------------
 \subsection{Compaction Algorithm}
-TBD
 
+The log file will increase in size indefinitely with time so we  need to be able to apply certain techniques to compact the number of entries that make up a log file. Compacting the raw log file means that for the same entry in the log file, identified by its unique entry key, we should be able to persist the most recent entry and discard the previous entries from the log file. This applies to both event types: PUT and DELETE. By doing this, the size of the log file will be manageble and we also reduce the time it takes to reconstruct the machine state from the log file.
+
+The current implementation compacts the log file by reading all each line in the log file and storing it in a HashMap where the key is the entry key and the value is the actual entry. Processing all lines in the log file means that we and up with a HashMap that has a unique key set of all the entries in the log file and the most recent entry as its value. We convert the HashMap into a List of entries and we sort it by entry sequence number, just to make sure that the new compacted version of the log file is ordered. The final output of this process is an ordered List of unique log entries. If you replay this compacted log, you should be able to construct the same exact state as if we were to replay the raw log.
 
 %%------------------------------
 %% Cluster Membership:
