@@ -18,6 +18,13 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
     <dependencies>
+        <!-- zookeeper -->
+         <dependency>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>zookeeper</artifactId>
+            <version>3.4.3</version>
+        </dependency>
+
         <!--scala-io-->
         <dependency>
             <groupId>com.github.scala-incubator.io</groupId>
