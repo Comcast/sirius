@@ -28,8 +28,9 @@ object SiriusSupervisorTest {
       persistenceProbe: TestProbe,
       paxosProbe: TestProbe,
       membershipProbe: TestProbe,
+      siriusStateAgent: Agent[SiriusState],
       membershipAgent: Agent[MembershipMap])(implicit as: ActorSystem) = {
-    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, membershipAgent) {
+    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent) {
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
       override def createPersistenceActor(_state: ActorRef, _writer: SiriusLog) = persistenceProbe.ref
@@ -54,6 +55,7 @@ class SiriusSupervisorTest() extends NiceTest {
   var nodeToJoinProbe: TestProbe = _
 
   var membershipAgent: Agent[Map[SiriusInfo,MembershipData]] = _
+  var siriusStateAgent: Agent[SiriusState] = _
 
   var handler: RequestHandler = _
   var admin: SiriusAdmin = _
@@ -105,10 +107,14 @@ class SiriusSupervisorTest() extends NiceTest {
     persistenceProbe = TestProbe()(actorSystem)
 
     membershipAgent = mock[Agent[MembershipMap]]
+    siriusStateAgent = mock[Agent[SiriusState]]
+    val siriusState = new SiriusState
+    siriusState.persistenceActorState = PersistenceActorState.Initialized
+    when(siriusStateAgent.get()).thenReturn(siriusState)
 
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
         admin, handler, siriusLog, stateProbe, persistenceProbe, paxosProbe,
-        membershipProbe, membershipAgent)(actorSystem)
+        membershipProbe, siriusStateAgent, membershipAgent)(actorSystem)
   }
 
   after {

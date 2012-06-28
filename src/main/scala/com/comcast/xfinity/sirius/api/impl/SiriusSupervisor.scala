@@ -11,15 +11,15 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.agent.Agent
 
 /**
  * Supervisor actor for the set of actors needed for Sirius.
  */
-class SiriusSupervisor(admin: SiriusAdmin, 
+class SiriusSupervisor(admin: SiriusAdmin,
                        requestHandler: RequestHandler,
                        siriusLog: SiriusLog,
+                       siriusStateAgent: Agent[SiriusState],
                        membershipAgent: Agent[MembershipMap]) extends Actor with AkkaConfig {
   
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
@@ -30,17 +30,30 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] var paxosActor = createPaxosActor(persistenceActor)
   private[impl] var membershipActor = createMembershipActor(membershipAgent)
 
-  override def preStart = {
+  override def preStart() {
     super.preStart()
     admin.registerMbeans()
   }
 
-  override def postStop = {
+  override def postStop() {
     super.postStop()
     admin.unregisterMbeans()
   }
 
   def receive = {
+    case anyMessage: AnyRef => {
+      val siriusState = siriusStateAgent.get()
+      if (siriusState.persistenceActorState == PersistenceActorState.Initialized) {
+
+        import context.become
+        become(initialized)
+
+        self forward anyMessage
+      }
+    }
+  }
+
+  def initialized: Receive = {
     case put: Put => paxosActor forward put
     case get: Get => stateActor forward get
     case delete: Delete => paxosActor forward delete
@@ -48,13 +61,12 @@ class SiriusSupervisor(admin: SiriusAdmin,
     case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
-
   // hooks for testing
   private[impl] def createStateActor(theRequestHandler: RequestHandler) =
     context.actorOf(Props(new SiriusStateActor(theRequestHandler)), "state")
 
   private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: SiriusLog) =
-    context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog)), "persistence")
+    context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)), "persistence")
 
   private[impl] def createPaxosActor(persistenceActor: ActorRef) =
     context.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")

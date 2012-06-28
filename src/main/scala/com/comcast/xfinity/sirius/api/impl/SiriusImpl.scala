@@ -37,10 +37,9 @@ object SiriusImpl extends AkkaConfig {
      }
      """)
 
-    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, 
+    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME,
             ConfigFactory.load(config)), siriusLog, port)
   }
-
 }
 
 /**
@@ -60,18 +59,19 @@ class SiriusImpl(requestHandler: RequestHandler,
     this (requestHandler, actorSystem, walWriter, SiriusImpl.DEFAULT_PORT)
 
   // TODO: Pass in the hostname and port (perhaps)
-  val info = new SiriusInfo(port, InetAddress.getLocalHost().getHostName()) 
+  val info = new SiriusInfo(port, InetAddress.getLocalHost.getHostName)
   val membershipAgent: Agent[MembershipMap] = Agent(MembershipMap()) (actorSystem)
+  val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
 
-  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, siriusLog, membershipAgent)
+  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, siriusLog, siriusStateAgent, membershipAgent)
 
 
-  def joinCluster(nodeToJoin: Option[ActorRef]) = {
+  def joinCluster(nodeToJoin: Option[ActorRef]) {
     supervisor ! JoinCluster(nodeToJoin, info)
   }
 
 
-  def getMembershipMap() = {
+  def getMembershipMap = {
     (supervisor ? GetMembershipData).asInstanceOf[Future[MembershipMap]]
   }
 
@@ -96,7 +96,7 @@ class SiriusImpl(requestHandler: RequestHandler,
     (supervisor ? Delete(key)).asInstanceOf[Future[SiriusResult]]
   }
 
-  def shutdown() = {
+  def shutdown() {
     //TODO: Leave cluster
     membershipAgent.close()
     actorSystem.shutdown()
@@ -107,10 +107,12 @@ class SiriusImpl(requestHandler: RequestHandler,
 
   // XXX: handle for testing
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler,
-          siriusInfo: SiriusInfo, theWalWriter: SiriusLog, theMembershipAgent: Agent[MembershipMap]) = {
-    val mbeanServer = ManagementFactory.getPlatformMBeanServer()
+          siriusInfo: SiriusInfo, theWalWriter: SiriusLog,
+          theSiriusStateAgent: Agent[SiriusState], theMembershipAgent: Agent[MembershipMap]) = {
+    val mbeanServer = ManagementFactory.getPlatformMBeanServer
     val admin = new SiriusAdmin(info, mbeanServer)
-    val supProps = Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theMembershipAgent))
+    val supProps =
+      Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent))
     theActorSystem.actorOf(supProps, "sirius")
   }
 }

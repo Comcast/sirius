@@ -25,6 +25,7 @@ object SiriusImplTest {
                              actorSystem: ActorSystem,
                              siriusLog: SiriusLog,
                              supProbe: TestProbe,
+                             siriusStateAgent: Agent[SiriusState],
                              membershipAgent: Agent[MembershipMap]) = {
     new SiriusImpl(handler, actorSystem, siriusLog) {
       
@@ -32,6 +33,7 @@ object SiriusImplTest {
           _handler: RequestHandler, 
           _info: SiriusInfo, 
           _log: SiriusLog,
+          _siriusStateAgent: Agent[SiriusState],
           _membershipAgent: Agent[MembershipMap]) = supProbe.ref
           
     }
@@ -50,6 +52,7 @@ class SiriusImplTest extends NiceTest {
   val timeout: Timeout = (5 seconds)
   var siriusLog: SiriusLog = _
   var membershipMap: MembershipMap = _
+  var siriusStateAgent: Agent[SiriusState] = _
   var membershipAgent: Agent[Map[SiriusInfo,MembershipData]] = _
 
 
@@ -83,7 +86,7 @@ class SiriusImplTest extends NiceTest {
     siriusLog = mock[SiriusLog]
 
     underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, 
-        actorSystem, siriusLog, supervisorActorProbe, membershipAgent)
+        actorSystem, siriusLog, supervisorActorProbe, siriusStateAgent, membershipAgent)
 
   }
 

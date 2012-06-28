@@ -9,8 +9,9 @@ import com.comcast.xfinity.sirius.writeaheadlog.{LogData, SiriusLog}
 import org.mockito.Mockito._
 import org.mockito.ArgumentCaptor
 import akka.util.duration._
-import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Put, Delete}
 import com.comcast.xfinity.sirius.NiceTest
+import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Put, Delete}
+import akka.agent.Agent
 
 class SiriusPersistenceActorTest extends NiceTest {
 
@@ -21,13 +22,16 @@ class SiriusPersistenceActorTest extends NiceTest {
 
   var mockSiriusLog: SiriusLog = _
 
+  var mockSiriusStateAgent: Agent[SiriusState] = _
+
   before {
     mockSiriusLog = mock[SiriusLog]
+    mockSiriusStateAgent = mock[Agent[SiriusState]]
 
     actorSystem = ActorSystem("testsystem")
 
     testStateWorkerProbe = TestProbe()(actorSystem)
-    underTestActor = TestActorRef(new SiriusPersistenceActor(testStateWorkerProbe.ref, mockSiriusLog))(actorSystem)
+    underTestActor = TestActorRef(new SiriusPersistenceActor(testStateWorkerProbe.ref, mockSiriusLog, mockSiriusStateAgent))(actorSystem)
 
   }
 

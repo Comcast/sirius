@@ -6,9 +6,9 @@ import akka.dispatch.Await._
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.membership._
 
-import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, SiriusImpl}
 import java.net.InetAddress
 import akka.actor.ActorRef
+import com.comcast.xfinity.sirius.api.impl.{PersistenceActorState, AkkaConfig, SiriusImpl}
 
 class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
@@ -18,7 +18,9 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
 
   before {
-    sirius = SiriusImpl.createSirius(new StringRequestHandler(), new DoNothingSiriusLog, InetAddress.getLocalHost().getHostName(), siriusPort)
+    sirius = SiriusImpl.createSirius(new StringRequestHandler(),
+      new DoNothingSiriusLog, InetAddress.getLocalHost().getHostName(), siriusPort)
+    waitForSiriusToInitialize(sirius)
   }
 
   after {
@@ -55,7 +57,9 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
 
       //create another Sirius and make it reqeust to join our original sirius node
-      val anotherSirius = SiriusImpl.createSirius(new StringRequestHandler(), new DoNothingSiriusLog, InetAddress.getLocalHost().getHostName(), siriusPort + 1)
+      val anotherSirius = SiriusImpl.createSirius(new StringRequestHandler(),
+        new DoNothingSiriusLog, InetAddress.getLocalHost().getHostName(), siriusPort + 1)
+      waitForSiriusToInitialize(sirius)
       val path = "akka://" + SYSTEM_NAME + "@" + InetAddress.getLocalHost().getHostName() + ":" + siriusPort + "/user/" + SUPERVISOR_NAME
       joinSelf(anotherSirius)
       anotherSirius.joinCluster(Some(sirius.actorSystem.actorFor(path)))
@@ -92,4 +96,14 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
     assert(settled, "took too long to Join(None) to complete")
   }
 
+  def waitForSiriusToInitialize(sirius: SiriusImpl) {
+    val start = System.currentTimeMillis()
+    var settled = false
+    while (System.currentTimeMillis() <= start + 1000 && !settled) {
+      if (sirius.siriusStateAgent.await(timeout).persistenceActorState == PersistenceActorState.Initialized) {
+        settled = true
+      }
+    }
+    assert(settled, "took too long for Sirius to Initialize")
+  }
 }

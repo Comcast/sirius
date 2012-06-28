@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.NiceTest
-import com.comcast.xfinity.sirius.api.impl.SiriusImpl
 import akka.actor.ActorSystem
 import akka.dispatch.Await
 import akka.util.duration._
@@ -10,6 +9,7 @@ import com.comcast.xfinity.sirius.writeaheadlog._
 import scalax.file.Path
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
+import com.comcast.xfinity.sirius.api.impl.{PersistenceActorState, SiriusImpl}
 
 @RunWith(classOf[JUnitRunner])
 class LogReplayITest extends NiceTest {
@@ -25,7 +25,7 @@ class LogReplayITest extends NiceTest {
   var stringRequestHandler: StringRequestHandler = _
   
   before {
-    tempFolder.create
+    tempFolder.create()
     logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
     val path = Path.fromString(logFilename)
     path.append("ZXnHgnjaTQHEEwNVOo7wuw==|PUT|key|123|19700101T000012.345Z|QQ==\n");
@@ -47,11 +47,13 @@ class LogReplayITest extends NiceTest {
     actorSystem.awaitTermination()
   }
   
-  /* XXX: we need a way to tell if the whole shebang is intizalised.
   describe("a Sirius Write Ahead Log") {
     it("blah") {
-        assert(2 == stringRequestHandler.map.keySet.size)
+      while (sirius.siriusStateAgent.get().persistenceActorState != PersistenceActorState.Initialized) {
+        Thread.sleep(100)
+      }
+      assert(1 === stringRequestHandler.map.keySet.size)
     }
-  }*/
+  }
 
 }

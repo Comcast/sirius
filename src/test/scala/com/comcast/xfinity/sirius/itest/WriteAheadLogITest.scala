@@ -1,14 +1,14 @@
 package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.NiceTest
-import com.comcast.xfinity.sirius.api.impl.SiriusImpl
 import akka.actor.ActorSystem
 import akka.dispatch.Await
 import akka.util.duration._
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
+import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, PersistenceActorState, SiriusImpl}
 
-class WriteAheadLogITest extends NiceTest {
+class WriteAheadLogITest extends NiceTest with AkkaConfig {
 
   var sirius: SiriusImpl = _
 
@@ -28,6 +28,7 @@ class WriteAheadLogITest extends NiceTest {
     val logWriter: SiriusFileLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
 
     sirius = new SiriusImpl(new StringRequestHandler(), actorSystem, logWriter)
+    waitForSiriusToStart(sirius)
 
     siriusLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
   }
@@ -46,6 +47,16 @@ class WriteAheadLogITest extends NiceTest {
 
     siriusLog.foldLeft[List[LogData]](Nil)((a, c) => c :: a).reverse
 
+  }
+
+  def waitForSiriusToStart(sirius: SiriusImpl) {
+    val start = System.currentTimeMillis()
+    var settled = false
+    while (System.currentTimeMillis() <= start + 1000 && !settled) {
+      if (sirius.siriusStateAgent.await(timeout).persistenceActorState == PersistenceActorState.Initialized) {
+        settled = true
+      }
+    }
   }
 
   describe("a Sirius Write Ahead Log") {
@@ -102,8 +113,4 @@ class WriteAheadLogITest extends NiceTest {
     }
 
   }
-
-
-
-
 }
