@@ -12,6 +12,7 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
 import akka.agent.Agent
+import com.comcast.xfinity.sirius.info.SiriusInfo
 
 /**
  * Supervisor actor for the set of actors needed for Sirius.
@@ -20,8 +21,9 @@ class SiriusSupervisor(admin: SiriusAdmin,
                        requestHandler: RequestHandler,
                        siriusLog: SiriusLog,
                        siriusStateAgent: Agent[SiriusState],
-                       membershipAgent: Agent[MembershipMap]) extends Actor with AkkaConfig {
-  
+                       membershipAgent: Agent[MembershipMap],
+                       siriusInfo: SiriusInfo) extends Actor with AkkaConfig {
+
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
 
   /* Startup child actors. */
@@ -72,5 +74,5 @@ class SiriusSupervisor(admin: SiriusAdmin,
     context.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")
 
   private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap]) =
-    context.actorOf(Props(new MembershipActor(membershipAgent)), "membership")
+    context.actorOf(Props(new MembershipActor(membershipAgent, siriusInfo)), "membership")
 }

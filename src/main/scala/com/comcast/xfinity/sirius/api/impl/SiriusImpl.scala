@@ -111,8 +111,7 @@ class SiriusImpl(requestHandler: RequestHandler,
           theSiriusStateAgent: Agent[SiriusState], theMembershipAgent: Agent[MembershipMap]) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     val admin = new SiriusAdmin(info, mbeanServer)
-    val supProps =
-      Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent))
+    val supProps = Props(new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, info))
     theActorSystem.actorOf(supProps, "sirius")
   }
 }

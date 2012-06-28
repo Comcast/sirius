@@ -16,6 +16,8 @@ import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.{Get, AkkaConfig}
 import akka.testkit.TestActor.AutoPilot
 import scala.Option
+import akka.remote.RemoteProtocol.ActorRefProtocol
+import collection.immutable
 
 class MembershipActorTest extends NiceTest with AkkaConfig {
 
@@ -34,7 +36,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
     actorSystem = ActorSystem("testsystem")
     membershipAgent = mock[Agent[MembershipMap]]
 
-    underTestActor = TestActorRef(new MembershipActor(membershipAgent))(actorSystem)
+    underTestActor = TestActorRef(new MembershipActor(membershipAgent, siriusInfo))(actorSystem)
 
     expectedMap = MembershipMap(siriusInfo -> MembershipData(underTestActor))
   }
@@ -122,6 +124,39 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       radServerProbe.expectNoMsg((100 millis))
     }
 
+    describe("when asked for a random member") {
+      describe("from a GetRandomMember message") {
+        it("should send back a Member != the MembershipActor we asked... 3 times in a row") {
+          val coolServerProbe = new TestProbe(actorSystem)
+          val coolServerInfo = new SiriusInfo(1000, "cool-server")
+
+          val membership = MembershipMap(coolServerInfo -> MembershipData(coolServerProbe.ref),
+                                         siriusInfo -> MembershipData(underTestActor.actorRef))
+          when(membershipAgent()).thenReturn(membership)
+
+          val data = result((underTestActor ? GetRandomMember), (1 seconds)).asInstanceOf[Option[MembershipData]]
+          assert(data.get === MembershipData(coolServerProbe.ref))
+          val data2 = result((underTestActor ? GetRandomMember), (1 seconds)).asInstanceOf[Option[MembershipData]]
+          assert(data2.get === MembershipData(coolServerProbe.ref))
+          val data3 = result((underTestActor ? GetRandomMember), (1 seconds)).asInstanceOf[Option[MembershipData]]
+          assert(data3.get === MembershipData(coolServerProbe.ref))
+        }
+        it("should send back a None if the only ActorRef in the MembershipMap is equal to the caller") {
+          val membership = MembershipMap(siriusInfo -> MembershipData(underTestActor))
+          when(membershipAgent()).thenReturn(membership)
+
+          val data = result((underTestActor ? GetRandomMember), (1 seconds)).asInstanceOf[Option[MembershipData]]
+          assert(data == None)
+        }
+        it("should send back a None if the membershipMap is empty") {
+          val membership: MembershipMap = immutable.Map.empty
+          when(membershipAgent()).thenReturn(membership)
+
+          val data = result((underTestActor ? GetRandomMember), (1 seconds)).asInstanceOf[Option[MembershipData]]
+          assert(data == None)
+        }
+      }
+    }
 
     //TODO: Verify this is supposed to be here
     describe("when receiving a JoinCluster message") {

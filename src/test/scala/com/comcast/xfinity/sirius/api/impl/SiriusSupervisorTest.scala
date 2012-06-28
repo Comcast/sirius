@@ -24,13 +24,15 @@ object SiriusSupervisorTest {
   def createProbedTestSupervisor(admin: SiriusAdmin,
       handler: RequestHandler,
       siriusLog: SiriusLog,
+      siriusInfo: SiriusInfo,
       stateProbe: TestProbe,
       persistenceProbe: TestProbe,
       paxosProbe: TestProbe,
       membershipProbe: TestProbe,
       siriusStateAgent: Agent[SiriusState],
       membershipAgent: Agent[MembershipMap])(implicit as: ActorSystem) = {
-    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent) {
+    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, siriusInfo) {
+
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
       override def createPersistenceActor(_state: ActorRef, _writer: SiriusLog) = persistenceProbe.ref
@@ -113,7 +115,7 @@ class SiriusSupervisorTest() extends NiceTest {
     when(siriusStateAgent.get()).thenReturn(siriusState)
 
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
-        admin, handler, siriusLog, stateProbe, persistenceProbe, paxosProbe,
+        admin, handler, siriusLog, siriusInfo, stateProbe, persistenceProbe, paxosProbe,
         membershipProbe, siriusStateAgent, membershipAgent)(actorSystem)
   }
 

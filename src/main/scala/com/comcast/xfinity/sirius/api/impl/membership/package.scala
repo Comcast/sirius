@@ -16,4 +16,6 @@ package object membership {
   case class AddMembers(member: MembershipMap) extends MembershipMessage
 
   case object GetMembershipData extends MembershipMessage
+
+  case object GetRandomMember extends MembershipMessage
 }
