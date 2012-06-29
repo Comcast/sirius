@@ -13,3 +13,4 @@ doc/sirius.aux
 doc/sirius.log
 atlassian-ide-plugin.xml
 .clover/
+.DS_Store
