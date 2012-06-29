@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.writeaheadlog
 /**
  * Defines the Log Writer
  */
-trait SiriusLog {
+trait SiriusLog extends LogLinesSource {
 
   /**
    * Write an entry to the log

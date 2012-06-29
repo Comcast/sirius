@@ -11,4 +11,6 @@ class DoNothingSiriusLog extends SiriusLog {
   }
 
   override def foldLeft[T](acc0: T)(foldFun: (T, LogData) => T): T = acc0
+
+  override def getLines() = Iterator[String]()
 }
