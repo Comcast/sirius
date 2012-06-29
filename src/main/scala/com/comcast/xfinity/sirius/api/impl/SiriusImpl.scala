@@ -17,6 +17,7 @@ import membership._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
 
+/** Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances. */
 object SiriusImpl extends AkkaConfig {
   
   def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog,
@@ -43,7 +44,7 @@ object SiriusImpl extends AkkaConfig {
 }
 
 /**
- * A Sirius implementation implemented in Scala using Akka actors
+ * A Sirius implementation implemented in Scala using Akka actors.
  */
 class SiriusImpl(requestHandler: RequestHandler,
                  val actorSystem: ActorSystem, 
