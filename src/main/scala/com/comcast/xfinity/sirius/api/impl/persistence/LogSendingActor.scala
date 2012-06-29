@@ -1,10 +1,10 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 import akka.actor.{ActorRef, FSM, Actor}
-import io.Source
 import org.slf4j.LoggerFactory
+import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
 
 // received messages
-case class Start(ref: ActorRef, input: Source, chunkSize: Int)
+case class Start(ref: ActorRef, input: LogLinesSource, chunkSize: Int)
 case object StartSending
 case class Received(seqRecd: Int)
 case class Processed(seqRecd: Int)

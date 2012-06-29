@@ -3,9 +3,9 @@ package com.comcast.xfinity.sirius.api.impl.persistence
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{LoggingFSM, ActorSystem}
 import org.scalatest.BeforeAndAfterAll
-import io.Source
 import akka.testkit.{TestActorRef, TestFSMRef, TestProbe}
 import org.mockito.Mockito._
+import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
 
 class LogSendingITest extends NiceTest with BeforeAndAfterAll {
 
@@ -13,12 +13,12 @@ class LogSendingITest extends NiceTest with BeforeAndAfterAll {
 
   var sender : TestFSMRef[LSState, LSData, LogSendingActor] = _
   var receiver : TestActorRef[LogReceivingActor] = _
-  var mockSource : Source = _
+  var mockSource : LogLinesSource = _
 
   before {
     sender = TestFSMRef(new LogSendingActor)
     receiver = TestActorRef(new LogReceivingActor)
-    mockSource = mock[Source]
+    mockSource = mock[LogLinesSource]
   }
 
   override def afterAll() {

@@ -4,25 +4,31 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestFSMRef, TestProbe, TestActorRef}
 import org.mockito.Mockito._
 import akka.util.duration._
-import akka.actor.ActorSystem
-import io.Source
+import akka.actor.{LoggingFSM, ActorSystem}
 import org.scalatest.BeforeAndAfterAll
+import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
+import org.scalatest.prop.Configuration
+import com.typesafe.config.ConfigFactory
 
 class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
 
-  implicit val actorSystem: ActorSystem = ActorSystem("testsystem")
+  implicit val actorSystem: ActorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
+    akka.debug.lifecycle=on
+    akka.actor.debug.fsm=on
+    akka.loglevel=DEBUG
+    """))
   var actor: TestFSMRef[LSState, LSData, LogSendingActor] = _
   //var actor: TestActorRef[LogSendingActor] = _
   var receiverProbe: TestProbe = _
-  var mockSource: Source = _
-  var mockIterator: Source#LineIterator = _
+  var mockSource: LogLinesSource = _
+  var mockIterator: Iterator[String] = _
 
   before {
-    mockSource = mock[Source]
-    mockIterator = mock[Source#LineIterator]
+    mockSource = mock[LogLinesSource]
+    mockIterator = mock[Iterator[String]]
 
     receiverProbe = TestProbe()(actorSystem)
-    actor = TestFSMRef(new LogSendingActor)
+    actor = TestFSMRef(new LogSendingActor with LoggingFSM[LSState, LSData])
   }
 
   override def afterAll() {
