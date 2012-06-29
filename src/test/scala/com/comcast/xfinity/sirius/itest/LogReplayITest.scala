@@ -9,7 +9,7 @@ import com.comcast.xfinity.sirius.writeaheadlog._
 import scalax.file.Path
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import com.comcast.xfinity.sirius.api.impl.{PersistenceActorState, SiriusImpl}
+import com.comcast.xfinity.sirius.api.impl.SiriusImpl
 
 @RunWith(classOf[JUnitRunner])
 class LogReplayITest extends NiceTest {
@@ -36,7 +36,9 @@ class LogReplayITest extends NiceTest {
     val logWriter: SiriusFileLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
 
     stringRequestHandler = new StringRequestHandler()
+
     sirius = new SiriusImpl(stringRequestHandler, actorSystem, logWriter)
+    assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
 
     siriusLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
   }
@@ -49,9 +51,6 @@ class LogReplayITest extends NiceTest {
   
   describe("a Sirius Write Ahead Log") {
     it("blah") {
-      while (sirius.siriusStateAgent.get().persistenceActorState != PersistenceActorState.Initialized) {
-        Thread.sleep(100)
-      }
       assert(1 === stringRequestHandler.map.keySet.size)
     }
   }

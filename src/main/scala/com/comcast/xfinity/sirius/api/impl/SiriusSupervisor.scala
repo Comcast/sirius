@@ -13,6 +13,8 @@ import akka.actor.ActorRef
 import akka.actor.Props
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.info.SiriusInfo
+import akka.util.Duration
+import java.util.concurrent.TimeUnit
 
 /**
  * Supervisor actor for the set of actors needed for Sirius.
@@ -42,17 +44,29 @@ class SiriusSupervisor(admin: SiriusAdmin,
     admin.unregisterMbeans()
   }
 
+  val initSchedule = context.system.scheduler.schedule(
+    Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest);
+
   def receive = {
-    case anyMessage: AnyRef => {
+    case SiriusSupervisor.IsInitializedRequest => {
       val siriusState = siriusStateAgent.get()
-      if (siriusState.persistenceActorState == PersistenceActorState.Initialized) {
+      val isInitialized = siriusState.persistenceState == SiriusState.PersistenceState.Initialized
+      if (isInitialized) {
 
         import context.become
         become(initialized)
 
-        self forward anyMessage
+        siriusStateAgent send ((state: SiriusState) => {
+          state.updateSupervisorState(SiriusState.SupervisorState.Initialized)
+        })
+
+        initSchedule.cancel();
       }
+      sender ! new SiriusSupervisor.IsInitializedResponse(isInitialized)
     }
+
+    // Ignore other messages until Initialized.
+    case _ =>
   }
 
   def initialized: Receive = {
@@ -60,6 +74,8 @@ class SiriusSupervisor(admin: SiriusAdmin,
     case get: Get => stateActor forward get
     case delete: Delete => paxosActor forward delete
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
+    case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
+
     case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
@@ -75,4 +91,10 @@ class SiriusSupervisor(admin: SiriusAdmin,
 
   private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap]) =
     context.actorOf(Props(new MembershipActor(membershipAgent, siriusInfo)), "membership")
+}
+
+object SiriusSupervisor {
+  sealed trait SupervisorMessage
+  case object IsInitializedRequest extends SupervisorMessage
+  case class IsInitializedResponse(initialized: Boolean)
 }

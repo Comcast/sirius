@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import membership._
-import org.mockito.Mockito._
 import com.typesafe.config.ConfigFactory
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -63,6 +62,7 @@ class SiriusSupervisorTest() extends NiceTest {
   var admin: SiriusAdmin = _
   var siriusLog: SiriusLog = _
   var siriusInfo: SiriusInfo = _
+  var siriusState: SiriusState = _
 
   var supervisor: TestActorRef[SiriusSupervisor] = _
   implicit val timeout: Timeout = (5 seconds)
@@ -109,10 +109,8 @@ class SiriusSupervisorTest() extends NiceTest {
     persistenceProbe = TestProbe()(actorSystem)
 
     membershipAgent = mock[Agent[MembershipMap]]
-    siriusStateAgent = mock[Agent[SiriusState]]
-    val siriusState = new SiriusState
-    siriusState.persistenceActorState = PersistenceActorState.Initialized
-    when(siriusStateAgent.get()).thenReturn(siriusState)
+    siriusState = new SiriusState
+    siriusStateAgent = Agent(siriusState)(actorSystem)
 
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
         admin, handler, siriusLog, siriusInfo, stateProbe, persistenceProbe, paxosProbe,
@@ -123,14 +121,32 @@ class SiriusSupervisorTest() extends NiceTest {
     actorSystem.shutdown()
   }
 
+  def initializeSupervisor(supervisor: ActorRef) {
+    siriusState. updatePersistenceState(SiriusState.PersistenceState.Initialized)
+    val isInitializedFuture = supervisor ? SiriusSupervisor.IsInitializedRequest
+    val expected = SiriusSupervisor.IsInitializedResponse(true)
+    assert(expected === Await.result(isInitializedFuture, timeout.duration))
+  }
+
   describe("a SiriusSupervisor") {
+    it("should start in the uninitialized state") {
+      assert(siriusState.supervisorState === SiriusState.SupervisorState.Uninitialized)
+    }
+
+    it("should transition into the initialized state") {
+      initializeSupervisor(supervisor)
+      assert(siriusStateAgent.await(timeout).supervisorState === SiriusState.SupervisorState.Initialized)
+    }
+
     it("should forward MembershipMessages to the membershipActor") {
+      initializeSupervisor(supervisor)
       val membershipMessage: MembershipMessage = GetMembershipData
       supervisor ! membershipMessage
       membershipProbe.expectMsg(membershipMessage)
     }
 
     it("should forward GET messages to the stateActor") {
+      initializeSupervisor(supervisor)
       val get = Get("1")
       val getAskFuture = supervisor ? get
       val expected = SiriusResult.some("Got it".getBytes)
@@ -140,6 +156,7 @@ class SiriusSupervisorTest() extends NiceTest {
     }
     
     it("should forward DELETE messages to the paxosActor") {
+      initializeSupervisor(supervisor)
       val delete = Delete("1")
       val deleteAskFuture = supervisor ? delete
       val expected = SiriusResult.some("Delete it".getBytes)
@@ -149,6 +166,7 @@ class SiriusSupervisorTest() extends NiceTest {
     }
 
     it("should forward PUT messages to the paxosActor") {
+      initializeSupervisor(supervisor)
       val put = Put("1", "someBody".getBytes)
       val putAskFuture = supervisor ? put
       val expected = SiriusResult.some("Put it".getBytes)
@@ -156,7 +174,6 @@ class SiriusSupervisorTest() extends NiceTest {
       paxosProbe.expectMsg(put)
       noMoreMsgs()
     }
-
   }
 
   def noMoreMsgs() {

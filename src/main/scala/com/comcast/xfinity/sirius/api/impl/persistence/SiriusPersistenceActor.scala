@@ -20,9 +20,7 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
       case (_, LogData("DELETE", key, _, _, _)) => stateActor ! Delete(key)
     }
     siriusStateAgent send ((state: SiriusState) => {
-      state.persistenceActorState = PersistenceActorState.Initialized
-      // Should we be cloning the state here?
-      state
+      state.updatePersistenceState(SiriusState.PersistenceState.Initialized)
     })
   }
   

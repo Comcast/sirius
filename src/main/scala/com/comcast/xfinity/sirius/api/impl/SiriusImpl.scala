@@ -102,9 +102,7 @@ class SiriusImpl(requestHandler: RequestHandler,
     membershipAgent.close()
     actorSystem.shutdown()
     actorSystem.awaitTermination()
-
   }
-
 
   // XXX: handle for testing
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler,
