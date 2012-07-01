@@ -70,8 +70,7 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusInfo: SiriusI
   /**
    * update local membership data structure.  If member already exists then overwrite it.
    */
-  def addToLocalMembership(member: MembershipMap) = membershipAgent send (_ ++ member)
-
+  def addToLocalMembership(member: MembershipMap) { membershipAgent send (_ ++ member) }
 
   /**
    * Notify existing members of the cluster that a new node has joined

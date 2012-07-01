@@ -1,7 +1,5 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import org.mockito.Mockito._
 import java.security.MessageDigest
 import org.apache.commons.codec.binary.Base64
@@ -15,7 +13,7 @@ class ChecksumTest extends NiceTest {
   var mockMessageDigest: MessageDigest = _
   var mockCodec: Base64 = _
 
-  val HASH = "some hash".getBytes()
+  val HASH = "some hash".getBytes
   val ENCODED_HASH = "some encoded hash"
   val DATA = "some thing to checksum"
 
@@ -30,7 +28,7 @@ class ChecksumTest extends NiceTest {
 
   describe("An MD5Checksum") {
     it("should generate a checksum that verfies") {
-      when(mockMessageDigest.digest(DATA.getBytes())).thenReturn(HASH)
+      when(mockMessageDigest.digest(DATA.getBytes)).thenReturn(HASH)
       when(mockCodec.encodeToString(HASH)).thenReturn(ENCODED_HASH)
 
       val checksum = checksumGenerator.generateChecksum(DATA)
@@ -51,7 +49,7 @@ class ChecksumTest extends NiceTest {
   }
 
   class ChecksumForTesting(mD: MessageDigest) extends Checksum {
-    override def getMessageDigest(): MessageDigest = {
+    override def createMessageDigest(): MessageDigest = {
       mD
     }
 

@@ -1,13 +1,11 @@
 package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.NiceTest
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.dispatch.Await._
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.membership._
 
 import java.net.InetAddress
-import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, SiriusImpl}
 
 class ClusterMembershipITest extends NiceTest with AkkaConfig {
@@ -19,7 +17,7 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
   before {
     sirius = SiriusImpl.createSirius(new StringRequestHandler(),
-      new DoNothingSiriusLog, InetAddress.getLocalHost().getHostName(), siriusPort)
+      new DoNothingSiriusLog, InetAddress.getLocalHost.getHostName, siriusPort)
     assert(SiriusItestHelper.waitForInitialization(sirius), "took too long for Sirius to Initialize")
   }
 
@@ -48,7 +46,7 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
       assert(1 === membershipData.size)
       assert(siriusPort === membershipData.keySet.head.port)
-      assert(InetAddress.getLocalHost().getHostName() === membershipData.keySet.head.hostName)
+      assert(InetAddress.getLocalHost.getHostName === membershipData.keySet.head.hostName)
 
     }
     it("two Sirius nodes should become a cluster when one sends another a JoinCluster message") {
@@ -58,10 +56,10 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
 
       //create another Sirius and make it reqeust to join our original sirius node
       val anotherSirius = SiriusImpl.createSirius(new StringRequestHandler(),
-        new DoNothingSiriusLog, InetAddress.getLocalHost().getHostName(), siriusPort + 1)
+        new DoNothingSiriusLog, InetAddress.getLocalHost.getHostName, siriusPort + 1)
       assert(SiriusItestHelper.waitForInitialization(anotherSirius), "took too long for Sirius to Initialize")
 
-      val path = "akka://" + SYSTEM_NAME + "@" + InetAddress.getLocalHost().getHostName() + ":" + siriusPort + "/user/" + SUPERVISOR_NAME
+      val path = "akka://" + SYSTEM_NAME + "@" + InetAddress.getLocalHost.getHostName + ":" + siriusPort + "/user/" + SUPERVISOR_NAME
       joinSelf(anotherSirius)
       anotherSirius.joinCluster(Some(sirius.actorSystem.actorFor(path)))
 

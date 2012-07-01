@@ -50,7 +50,7 @@ class SiriusPersistenceActorTest extends NiceTest {
 
       val argument = ArgumentCaptor.forClass(classOf[LogData])
       verify(mockSiriusLog, times(1)).writeEntry(argument.capture())
-      val logData = argument.getValue()
+      val logData = argument.getValue
       assert("PUT" === logData.actionType)
     }
 
@@ -63,7 +63,7 @@ class SiriusPersistenceActorTest extends NiceTest {
 
       val argument = ArgumentCaptor.forClass(classOf[LogData])
       verify(mockSiriusLog, times(1)).writeEntry(argument.capture())
-      val logData = argument.getValue()
+      val logData = argument.getValue
       assert("DELETE" === logData.actionType)
     }
   }

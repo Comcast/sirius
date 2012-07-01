@@ -13,8 +13,8 @@ trait Checksum {
   protected var checksumAlgorithm: String = "MD5"
 
   def generateChecksum(data: String): String = {
-    val messageDigest: MessageDigest = getMessageDigest()
-    val hash = messageDigest.digest(data.getBytes())
+    val messageDigest: MessageDigest = createMessageDigest()
+    val hash = messageDigest.digest(data.getBytes)
     checksumCodec.encodeToString(hash)
   }
 
@@ -26,7 +26,7 @@ trait Checksum {
 
   }
 
-  def getMessageDigest(): MessageDigest = {
+  def createMessageDigest(): MessageDigest = {
     MessageDigest.getInstance(checksumAlgorithm)
   }
 }

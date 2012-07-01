@@ -20,7 +20,7 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
   var siriusLog: SiriusFileLog = _
 
   before {
-    tempFolder.create
+    tempFolder.create()
     logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
 
     actorSystem = ActorSystem.create("Sirius")

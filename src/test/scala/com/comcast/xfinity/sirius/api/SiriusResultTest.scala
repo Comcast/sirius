@@ -43,7 +43,7 @@ class SiriusResultTest extends NiceTest {
     describe(".equals") {
       it("should return true if both have no value") {
         expect(true) {
-          SiriusResult.none.equals(SiriusResult.none)
+          SiriusResult.none().equals(SiriusResult.none())
         }
       }
       
@@ -61,13 +61,13 @@ class SiriusResultTest extends NiceTest {
       
       it("should return false when the lhs value exists and rhs does not") {
         expect(false) {
-          SiriusResult.some("asdf".getBytes).equals(SiriusResult.none)
+          SiriusResult.some("asdf".getBytes).equals(SiriusResult.none())
         }
       }
       
       it("should return false when the lhs value does not exist and the rhs does") {
         expect(false) {
-          SiriusResult.none.equals(SiriusResult.some("asdf".getBytes))
+          SiriusResult.none().equals(SiriusResult.some("asdf".getBytes))
         }
       }
     }

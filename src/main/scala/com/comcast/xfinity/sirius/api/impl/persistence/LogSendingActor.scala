@@ -33,7 +33,7 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
 
   when(Uninitialized) {
     case Event(Start(target, input, chunkSize), Null) =>
-      goto(Waiting) using SendingData(target, input.getLines(), 0, chunkSize)
+      goto(Waiting) using SendingData(target, input.createLinesIterator(), 0, chunkSize)
   }
 
   when(Waiting) {

@@ -13,8 +13,7 @@ class SiriusAdmin(val info: SiriusInfo, val mbeanServer: MBeanServer) {
 
   val mbeanName = new ObjectName("com.comcast.xfinity.sirius:type=SiriusInfo,name=" + info.hostName + "|" + info.port)
 
-  def registerMbeans() = mbeanServer.registerMBean(info, mbeanName)
+  def registerMbeans() { mbeanServer.registerMBean(info, mbeanName) }
 
-  def unregisterMbeans() = mbeanServer.unregisterMBean(mbeanName)
-
+  def unregisterMbeans() { mbeanServer.unregisterMBean(mbeanName) }
 }

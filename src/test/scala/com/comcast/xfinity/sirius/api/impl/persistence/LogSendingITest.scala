@@ -1,9 +1,9 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.{LoggingFSM, ActorSystem}
+import akka.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
-import akka.testkit.{TestActorRef, TestFSMRef, TestProbe}
+import akka.testkit.{TestActorRef, TestFSMRef}
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
 
@@ -27,7 +27,7 @@ class LogSendingITest extends NiceTest with BeforeAndAfterAll {
 
   describe("Log sender communicatation with log receiver") {
     it("should execute on a very simple input without failure") {
-      when(mockSource.getLines()).thenReturn(Iterator("a", "b", "c", "d", "e"))
+      when(mockSource.createLinesIterator()).thenReturn(Iterator("a", "b", "c", "d", "e"))
       sender ! Start(receiver, mockSource, 2)
       // TODO when we're doing more than printing the output, add more meaningful test to ensure it arrives successfully
     }

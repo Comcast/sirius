@@ -13,7 +13,7 @@ class StringRequestHandler extends RequestHandler {
    */
   def handleGet(key: String) = map.get(key) match {
     case Some(v) => SiriusResult.some(v)
-    case None => SiriusResult.none
+    case None => SiriusResult.none()
   }
 
 
@@ -22,7 +22,7 @@ class StringRequestHandler extends RequestHandler {
    */
   def handlePut(key: String, body: Array[Byte]) = map.put(key, body) match {
     case Some(v) => SiriusResult.some(v)
-    case None => SiriusResult.none
+    case None => SiriusResult.none()
   }
 
 
@@ -31,7 +31,7 @@ class StringRequestHandler extends RequestHandler {
    */
   def handleDelete(key: String) = map.remove(key) match {
     case Some(v) => SiriusResult.some(v)
-    case None => SiriusResult.none
+    case None => SiriusResult.none()
   }
 
 }

@@ -1,11 +1,5 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import org.scalatest.BeforeAndAfter
-import org.scalatest.FunSpec
-import java.security.MessageDigest
-import org.apache.commons.codec.binary.Base64
 import com.comcast.xfinity.sirius.NiceTest
 
 class WriteAheadLogSerDeTest extends NiceTest {

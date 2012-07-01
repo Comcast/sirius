@@ -1,13 +1,12 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.testkit.{TestFSMRef, TestProbe, TestActorRef}
+import akka.testkit.{TestFSMRef, TestProbe}
 import org.mockito.Mockito._
 import akka.util.duration._
 import akka.actor.{LoggingFSM, ActorSystem}
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
-import org.scalatest.prop.Configuration
 import com.typesafe.config.ConfigFactory
 
 class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
@@ -38,7 +37,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
   describe("a logSendingActor") {
     it("should be able to produce two chunks upon a Start call, given enough input") {
 
-      when(mockSource.getLines()).thenReturn(Iterator("a", "b", "c", "d", "e"))
+      when(mockSource.createLinesIterator()).thenReturn(Iterator("a", "b", "c", "d", "e"))
 
       actor ! Start(receiverProbe.ref, mockSource, 2)
       val actualFirstChunk = receiverProbe.receiveOne(5 seconds)
@@ -54,7 +53,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
     }
     it("should return one chunk and then a done message for a single-entry source") {
 
-      when(mockSource.getLines()).thenReturn(Iterator("a"))
+      when(mockSource.createLinesIterator()).thenReturn(Iterator("a"))
 
       actor ! Start(receiverProbe.ref, mockSource, 2)
       val actualFirstChunk = receiverProbe.receiveOne(5 seconds)

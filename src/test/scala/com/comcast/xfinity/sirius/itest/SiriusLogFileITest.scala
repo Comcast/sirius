@@ -16,9 +16,9 @@ class SiriusLogFileITest extends NiceTest {
   }
 
   describe("a SiriusLogFile") {
-    it("should return an iterator of the lines of a file when getLines() is called") {
+    it("should return an iterator of the lines of a file when createLinesIterator() is called") {
       val expectedIter = Source.fromFile(logFileName).getLines()
-      val actualIter = siriusLog.getLines()
+      val actualIter = siriusLog.createLinesIterator()
 
       while(expectedIter.hasNext) {
         assert(expectedIter.next() === actualIter.next())

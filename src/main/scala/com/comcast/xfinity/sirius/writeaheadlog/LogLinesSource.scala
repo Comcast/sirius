@@ -10,5 +10,5 @@ trait LogLinesSource {
    *
    * @return Iterator of lines in one (or more) log file(s)
    */
-  def getLines(): Iterator[String]
+  def createLinesIterator(): Iterator[String]
 }

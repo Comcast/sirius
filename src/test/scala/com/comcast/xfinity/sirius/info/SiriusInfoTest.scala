@@ -12,10 +12,10 @@ class SiriusInfoTest extends NiceTest {
 
   describe("a SiriusInfo") {
     it("returns a name when getName is called") {
-      assert("sirius-foobar:4242" == siriusInfo.getName())
+      assert("sirius-foobar:4242" == siriusInfo.getName)
     }
     it("should return getname when toString is called") {
-      assert(siriusInfo.getName() === siriusInfo.toString())
+      assert(siriusInfo.getName === siriusInfo.toString())
     }
   }
 }

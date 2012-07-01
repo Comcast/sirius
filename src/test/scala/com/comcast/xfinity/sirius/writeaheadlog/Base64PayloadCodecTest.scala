@@ -1,9 +1,6 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.NiceTest
-
 
 class Base64PayloadCodecTest extends NiceTest {
 

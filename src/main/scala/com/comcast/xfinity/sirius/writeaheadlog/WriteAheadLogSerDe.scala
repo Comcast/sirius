@@ -16,7 +16,7 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
       val utcDateTimeFormatter = dateTimeFormatter.withZoneUTC()
       utcDateTimeFormatter.print(_)
     }
-    val doParseTimestamp: String => Long = dateTimeFormatter.parseDateTime(_).getMillis()
+    val doParseTimestamp: String => Long = dateTimeFormatter.parseDateTime(_).getMillis
     (doFormatTimestamp, doParseTimestamp)
   }
 

@@ -2,8 +2,6 @@ package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.ActorSystem
-import akka.dispatch.Await
-import akka.util.duration._
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
 import scalax.file.Path

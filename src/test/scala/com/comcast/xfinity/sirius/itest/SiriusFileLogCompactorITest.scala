@@ -1,15 +1,10 @@
 package com.comcast.xfinity.sirius.itest
 
 import java.io.File
-import com.comcast.xfinity.sirius.api.impl.AkkaConfig
-import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.writeaheadlog.LogDataSerDe
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusFileLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusFileLogCompactor
 import com.comcast.xfinity.sirius.writeaheadlog.WriteAheadLogSerDe
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.ActorRef
-import akka.dispatch.Await._
 import com.comcast.xfinity.sirius.writeaheadlog.LogData
 
 class SiriusFileLogCompactorITest extends NiceTest {
@@ -20,7 +15,7 @@ class SiriusFileLogCompactorITest extends NiceTest {
 
   before {
     FILENAME = File.createTempFile("sirius", ".log")
-    log = new SiriusFileLog(FILENAME.getAbsolutePath(), new WriteAheadLogSerDe())
+    log = new SiriusFileLog(FILENAME.getAbsolutePath, new WriteAheadLogSerDe())
     logCompactor = new SiriusFileLogCompactor(log)
   }
 

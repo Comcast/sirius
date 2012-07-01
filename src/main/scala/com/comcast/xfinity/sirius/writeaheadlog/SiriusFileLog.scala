@@ -33,7 +33,7 @@ class SiriusFileLog(logPath: String, serDe: LogDataSerDe) extends SiriusLog {
   /**
    * ${@inheritDoc}
    */
-  override def getLines(): Iterator[String] = {
+  override def createLinesIterator(): Iterator[String] = {
     val source = Source.fromFile(logPath)
     source.getLines()
   }

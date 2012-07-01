@@ -28,7 +28,7 @@ class SiriusPaxosActor(val persistenceActor: ActorRef) extends Actor {
 
   }
 
-  private def processRequest(req: NonIdempotentSiriusRequest) = {
+  private def processRequest(req: NonIdempotentSiriusRequest) {
     seq = seq + 1
     persistenceActor forward OrderedEvent(seq, System.currentTimeMillis(), req)
   }
