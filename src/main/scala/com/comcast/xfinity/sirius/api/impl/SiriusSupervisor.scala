@@ -44,6 +44,7 @@ class SiriusSupervisor(admin: SiriusAdmin,
     admin.unregisterMbeans()
   }
 
+  //TODO: make this sop when initialized.
   val initSchedule = context.system.scheduler.schedule(
     Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest);
 
