@@ -19,16 +19,19 @@ class LogReplayITest extends NiceTest {
   val tempFolder = new TemporaryFolder()
   var logFilename: String = _
 
-  var siriusLog: SiriusFileLog = _
   var stringRequestHandler: StringRequestHandler = _
-  
-  before {
+
+  private def stageLogFile() = {
     tempFolder.create()
     logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
     val path = Path.fromString(logFilename)
     path.append("ZXnHgnjaTQHEEwNVOo7wuw==|PUT|key|123|19700101T000012.345Z|QQ==\n");
     path.append("FcKBMsXg++2Z44UoYNnmSA==|PUT|key|123|19700101T000012.345Z|QXxB\n");
-    
+  }
+
+  before {
+    stageLogFile()
+
     actorSystem = ActorSystem.create("Sirius")
 
     val logWriter: SiriusFileLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
@@ -38,7 +41,6 @@ class LogReplayITest extends NiceTest {
     sirius = new SiriusImpl(stringRequestHandler, actorSystem, logWriter)
     assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
 
-    siriusLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
   }
 
   after {
@@ -46,10 +48,11 @@ class LogReplayITest extends NiceTest {
     tempFolder.delete()
     actorSystem.awaitTermination()
   }
-  
-  describe("a Sirius Write Ahead Log") {
-    it("blah") {
+
+  describe("a Sirius") {
+    it("once started should have \"handled\" the contents of the wal") {
       assert(1 === stringRequestHandler.map.keySet.size)
+      assert( 2 === stringRequestHandler.cmdsHandledCnt)
     }
   }
 
