@@ -11,6 +11,7 @@ import akka.dispatch.Await
 import akka.pattern.ask
 import com.comcast.xfinity.sirius.api.impl._
 import akka.agent.Agent
+// import persistence.InitiateTransfer
 import util.Random
 
 /**
@@ -43,7 +44,9 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusInfo: SiriusI
     case GetRandomMember =>
       // self here is the MembershipActor we do NOT want to return, since the caller is asking us for a random member
       // (we can generally assume they want a different member than the one they called)
-      sender ! getRandomMember(membershipAgent(), siriusInfo)
+      val randomMember = getRandomMember(membershipAgent(), siriusInfo)
+      sender ! MemberInfo(randomMember)
+    // case initiateTransfer: InitiateTransfer => context.parent forward initiateTransfer
     case _ => logger.warn("Unrecognized message.")
   }
 
