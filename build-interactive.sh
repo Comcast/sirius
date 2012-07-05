@@ -22,7 +22,7 @@ function run {
 }
 
 if [ "$1" != "--skip-mvn" ]; then
-    run mvn clean package dependency:copy-dependencies 
+    run mvn clean package dependency:copy-dependencies -Dmaven.test.skip=true
 fi
 
 targetdir="$base/target"
