@@ -51,7 +51,6 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
 
     // got a seqRecd we did NOT expect
     case Event(Processed(seqRecd: Int), data: SendingData) =>
-
       val reason = "In Waiting, got <Received, SendingData> but Sequence Number is wrong! Expected:"+data.seqNum+" Received:"+seqRecd
       logger.warn(reason)
       stop(FSM.Failure(reason))
@@ -60,21 +59,12 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
   when(Sending) {
     case Event(recv: Received, data: SendingData) if recv.seqRecd == data.seqNum =>
       goto(Waiting) using data
-    // case Event(Sent, data: SendingData) =>
-    case Event(state, data) =>
-      val reason = "In state Sending, unhandled Event <stateName, stateData>: <"+state+", "+data+">"
-      logger.warn(reason)
-      stop(FSM.Failure(reason))
   }
 
   when(Done) {
     case Event(DoneAck, data: SendingData) =>
       // stop happily
       stop(FSM.Normal)
-    case Event(state, data) =>
-      val reason = "In state Done, unhandled Event <stateName, stateData>: <"+state+", "+data+">"
-      logger.warn(reason)
-      stop(FSM.Failure(reason))
   }
 
   def gatherData(lines: Iterator[String], seqNum: Int, chunkSize: Int): Seq[String] = {
@@ -122,6 +112,14 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
           stop(FSM.Failure(reason))
       }
     }
+  }
+
+  whenUnhandled {
+    case Event(event, data) =>
+      val reason = "Received unhandled request " + event + " in state " + stateName + "/" + data
+      logger.debug(reason)
+      context.parent ! TransferFailed(reason)
+      stop(FSM.Failure(reason))
   }
 
   initialize

@@ -10,7 +10,7 @@ import org.mockito.Mockito._
 import org.mockito.Matchers._
 
 import akka.testkit.{TestActor, TestProbe, TestActorRef}
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.{Actor, Props, ActorRef, ActorSystem}
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.{AkkaConfig}
 import akka.testkit.TestActor.AutoPilot
@@ -159,7 +159,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
     //TODO: Verify this is supposed to be here
     describe("when receiving a JoinCluster message") {
       describe("and is given a nodeToJoin") {
-        it("should send a Join message to nodeToJoin's ActorRef") {
+        it("should send a Join message to nodeToJoin's ActorRef containing the actor's parent") {
           //setup TestProbes
           val nodeToJoinProbe = new TestProbe(actorSystem)
           val info = new SiriusInfo(100, "dorky-server")
@@ -172,12 +172,17 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
             }
           })
 
+          val parentProbe = TestProbe()(actorSystem)
+          // make a new MembershipActor with a parent we can test, expect a map containing this parent in response
+          val parentMembershipActor = wrapActorWithMockedSupervisor(
+            Props(new MembershipActor(membershipAgent, info)), parentProbe.ref)
+          val localExpectedMap = MembershipMap(siriusInfo -> MembershipData(parentMembershipActor))
 
-          underTestActor ! JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)
-          nodeToJoinProbe.expectMsg(Join(expectedMap))
+          // sending a message to this parentMembershipActor will fwd it to the inner actor
+          parentMembershipActor ! JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)
+          nodeToJoinProbe.expectMsg(Join(localExpectedMap))
           //check if result of Join was added locally
           verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
-
 
         }
       }
@@ -193,4 +198,17 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
     }
 
   }
+  def wrapActorWithMockedSupervisor(inner: Props, parent: ActorRef): ActorRef = {
+    actorSystem.actorOf(Props(new Actor {
+      val innerRef = context.actorOf(inner)
+      def receive = {
+        case x => if (sender == innerRef) {
+          parent forward x
+        } else {
+          innerRef forward x
+        }
+      }
+    }))
+  }
+
 }

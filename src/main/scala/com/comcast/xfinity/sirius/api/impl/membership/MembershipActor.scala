@@ -11,7 +11,6 @@ import akka.dispatch.Await
 import akka.pattern.ask
 import com.comcast.xfinity.sirius.api.impl._
 import akka.agent.Agent
-// import persistence.InitiateTransfer
 import util.Random
 
 /**
@@ -24,15 +23,15 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusInfo: SiriusI
   def receive = {
     case JoinCluster(nodeToJoin, info) => nodeToJoin match {
       case Some(node: ActorRef) => {
-        logger.debug(self + " joining " + node)
+        logger.debug(context.parent + " joining " + node)
         //join node from a cluster
-        val future = node ? Join(Map(info -> MembershipData(self)))
+        val future = node ? Join(Map(info -> MembershipData(context.parent)))
         val addMembers = Await.result(future, timeout.duration).asInstanceOf[AddMembers]
         //update our membership map
         addToLocalMembership(addMembers.member)
         logger.debug("added " + addMembers.member)
       }
-      case None => addToLocalMembership(Map(info -> MembershipData(self)))
+      case None => addToLocalMembership(Map(info -> MembershipData(context.parent)))
     }
     case Join(member) => {
       notifyPeers(member)
@@ -42,11 +41,8 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusInfo: SiriusI
     case AddMembers(member) => addToLocalMembership(member)
     case GetMembershipData => sender ! membershipAgent()
     case GetRandomMember =>
-      // self here is the MembershipActor we do NOT want to return, since the caller is asking us for a random member
-      // (we can generally assume they want a different member than the one they called)
       val randomMember = getRandomMember(membershipAgent(), siriusInfo)
       sender ! MemberInfo(randomMember)
-    // case initiateTransfer: InitiateTransfer => context.parent forward initiateTransfer
     case _ => logger.warn("Unrecognized message.")
   }
 
@@ -80,7 +76,7 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusInfo: SiriusI
    */
   def notifyPeers(newMember: MembershipMap) {
     membershipAgent().foreach {
-      case (key, peerRef) => peerRef.membershipActor ! AddMembers(newMember)
+      case (key, peerRef) => peerRef.supervisorRef ! AddMembers(newMember)
     }
   }
 

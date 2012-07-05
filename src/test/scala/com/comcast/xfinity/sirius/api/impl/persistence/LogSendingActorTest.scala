@@ -72,6 +72,10 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
 
       assert(actor.isTerminated)
     }
+    it("should fail and die when sent an unexpected message") {
+      actor ! DoneAck
+      assert(actor.isTerminated)
+    }
 
   }
   def testChunk(seq: Int, chunk: Seq[String], realLogChunk: AnyRef) = {

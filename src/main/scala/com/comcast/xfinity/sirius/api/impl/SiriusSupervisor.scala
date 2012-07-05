@@ -4,10 +4,10 @@ import membership._
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
-import com.comcast.xfinity.sirius.api.impl.persistence.SiriusPersistenceActor
+import persistence._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+import com.comcast.xfinity.sirius.writeaheadlog.{LogLinesSource, SiriusLog}
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -27,12 +27,14 @@ class SiriusSupervisor(admin: SiriusAdmin,
                        siriusInfo: SiriusInfo) extends Actor with AkkaConfig {
 
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
+  private val DEFAULT_CHUNK_SIZE = 100 // TODO make chunk size configurable
 
   /* Startup child actors. */
   private[impl] var stateActor = createStateActor(requestHandler)
   private[impl] var persistenceActor = createPersistenceActor(stateActor, siriusLog)
   private[impl] var paxosActor = createPaxosActor(persistenceActor)
   private[impl] var membershipActor = createMembershipActor(membershipAgent)
+  private[impl] var logRequestActor = createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog)
 
   override def preStart() {
     super.preStart()
@@ -81,7 +83,9 @@ class SiriusSupervisor(admin: SiriusAdmin,
     case delete: Delete => paxosActor forward delete
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
-
+    case TransferComplete => logger.info("Log transfer complete")
+    case transferFailed: TransferFailed => logger.info("Log transfer failed, reason: " + transferFailed.reason)
+    case logRequestMessage: LogRequestMessage => logRequestActor forward logRequestMessage
     case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
@@ -97,10 +101,14 @@ class SiriusSupervisor(admin: SiriusAdmin,
 
   private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap]) =
     context.actorOf(Props(new MembershipActor(membershipAgent, siriusInfo)), "membership")
+
+  private[impl] def createLogRequestActor(chunkSize: Int, logLinesSource: LogLinesSource) =
+    context.actorOf(Props(new LogRequestActor(chunkSize, logLinesSource)))
 }
 
 object SiriusSupervisor {
   sealed trait SupervisorMessage
   case object IsInitializedRequest extends SupervisorMessage
   case class IsInitializedResponse(initialized: Boolean)
+
 }
