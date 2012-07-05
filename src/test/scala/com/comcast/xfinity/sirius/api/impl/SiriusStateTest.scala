@@ -17,6 +17,7 @@ class SiriusStateTest extends NiceTest {
     it("should start out uninitialized") {
       assert(underTest.supervisorState === SiriusState.SupervisorState.Uninitialized)
       assert(underTest.persistenceState === SiriusState.PersistenceState.Uninitialized)
+      assert(underTest.stateActorState === SiriusState.StateActorState.Uninitialized)
     }
     it("should update the supervisor state") {
       assert(underTest.supervisorState === SiriusState.SupervisorState.Uninitialized)
@@ -27,6 +28,11 @@ class SiriusStateTest extends NiceTest {
       assert(underTest.persistenceState === SiriusState.PersistenceState.Uninitialized)
       underTest.updatePersistenceState(SiriusState.PersistenceState.Initialized)
       assert(underTest.persistenceState === SiriusState.PersistenceState.Initialized)
+    }
+    it("should update the state actor state") {
+      assert(underTest.stateActorState === SiriusState.StateActorState.Uninitialized)
+      underTest.updateStateActorState(SiriusState.StateActorState.Initialized)
+      assert(underTest.stateActorState === SiriusState.StateActorState.Initialized)
     }
   }
 }

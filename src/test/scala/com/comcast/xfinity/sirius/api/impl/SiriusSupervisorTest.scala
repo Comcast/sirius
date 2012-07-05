@@ -64,7 +64,7 @@ class SiriusSupervisorTest() extends NiceTest {
   var siriusInfo: SiriusInfo = _
   var siriusState: SiriusState = _
 
-  var supervisor: TestActorRef[SiriusSupervisor] = _
+  var supervisor: TestActorRef[SiriusSupervisor {def createStateActor(_handler: RequestHandler): ActorRef; def createPersistenceActor(_state: ActorRef, _writer: SiriusLog): ActorRef; def createPaxosActor(_persistence: ActorRef): ActorRef; def createMembershipActor(_membershipAgent: Agent[_root_.com.comcast.xfinity.sirius.api.impl.membership.MembershipMap]): ActorRef}] = _
   implicit val timeout: Timeout = (5 seconds)
 
   before {
@@ -122,7 +122,8 @@ class SiriusSupervisorTest() extends NiceTest {
   }
 
   def initializeSupervisor(supervisor: ActorRef) {
-    siriusState. updatePersistenceState(SiriusState.PersistenceState.Initialized)
+    siriusState.updateStateActorState(SiriusState.StateActorState.Initialized)
+    siriusState.updatePersistenceState(SiriusState.PersistenceState.Initialized)
     val isInitializedFuture = supervisor ? SiriusSupervisor.IsInitializedRequest
     val expected = SiriusSupervisor.IsInitializedResponse(true)
     assert(expected === Await.result(isInitializedFuture, timeout.duration))

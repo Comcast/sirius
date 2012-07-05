@@ -44,26 +44,31 @@ class SiriusSupervisor(admin: SiriusAdmin,
     admin.unregisterMbeans()
   }
 
-  //TODO: make this sop when initialized.
+  //TODO: make this stop when initialized.
   val initSchedule = context.system.scheduler.schedule(
     Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest);
 
   def receive = {
     case SiriusSupervisor.IsInitializedRequest => {
       val siriusState = siriusStateAgent.get()
-      val isInitialized = siriusState.persistenceState == SiriusState.PersistenceState.Initialized
-      if (isInitialized) {
+      val isStateActorInitialized = siriusState.stateActorState == SiriusState.StateActorState.Initialized
+      if (isStateActorInitialized) {
+        val isPersistenceInitialized = siriusState.persistenceState == SiriusState.PersistenceState.Initialized
+        if (isPersistenceInitialized) {
 
-        import context.become
-        become(initialized)
+          import context.become
+          become(initialized)
 
-        siriusStateAgent send ((state: SiriusState) => {
-          state.updateSupervisorState(SiriusState.SupervisorState.Initialized)
-        })
+          siriusStateAgent send ((state: SiriusState) => {
+            state.updateSupervisorState(SiriusState.SupervisorState.Initialized)
+          })
 
-        initSchedule.cancel();
+          initSchedule.cancel();
+
+          sender ! new SiriusSupervisor.IsInitializedResponse(isPersistenceInitialized)
+        }
+
       }
-      sender ! new SiriusSupervisor.IsInitializedResponse(isInitialized)
     }
 
     // Ignore other messages until Initialized.
@@ -82,7 +87,7 @@ class SiriusSupervisor(admin: SiriusAdmin,
 
   // hooks for testing
   private[impl] def createStateActor(theRequestHandler: RequestHandler) =
-    context.actorOf(Props(new SiriusStateActor(theRequestHandler)), "state")
+    context.actorOf(Props(new SiriusStateActor(theRequestHandler, siriusStateAgent)), "state")
 
   private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: SiriusLog) =
     context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)), "persistence")

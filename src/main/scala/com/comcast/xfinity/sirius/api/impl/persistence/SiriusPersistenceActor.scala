@@ -16,12 +16,13 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
   
   override def preStart() {
     siriusLog.foldLeft(()){
-      case (_, LogData("PUT", key, _, _, Some(body))) => stateActor ! Put(key, body)
-      case (_, LogData("DELETE", key, _, _, _)) => stateActor ! Delete(key)
+        case (_, LogData("PUT", key, _, _, Some(body))) => stateActor ! Put(key, body)
+        case (_, LogData("DELETE", key, _, _, _)) => stateActor ! Delete(key)
     }
     siriusStateAgent send ((state: SiriusState) => {
       state.updatePersistenceState(SiriusState.PersistenceState.Initialized)
     })
+
   }
   
   def receive = {

@@ -11,10 +11,9 @@ import akka.testkit.TestActorRef
 import akka.util.Timeout.durationToTimeout
 import akka.util.duration.intToDurationInt
 import akka.util.Timeout
-import com.comcast.xfinity.sirius.api.impl.Delete
-import com.comcast.xfinity.sirius.api.impl.Get
-import com.comcast.xfinity.sirius.api.impl.Put
+import com.comcast.xfinity.sirius.api.impl.{SiriusState, Delete, Get, Put}
 import com.comcast.xfinity.sirius.NiceTest
+import akka.agent.Agent
 
 class SiriusStateActorTest extends NiceTest {
 
@@ -22,6 +21,7 @@ class SiriusStateActorTest extends NiceTest {
   var testActor: TestActorRef[SiriusStateActor] = _
   var underTest: SiriusStateActor = _
   var spiedAkkaSystem: ActorSystem = _
+  var mockSiriusStateAgent: Agent[SiriusState] = _
   val timeout: Timeout = (5 seconds)
 
   before {
@@ -30,8 +30,11 @@ class SiriusStateActorTest extends NiceTest {
     """)))
     
     mockRequestHandler = mock[RequestHandler]
-    testActor = TestActorRef(new SiriusStateActor(mockRequestHandler))(spiedAkkaSystem)
+    mockSiriusStateAgent = mock[Agent[SiriusState]]
+
+    testActor = TestActorRef(new SiriusStateActor(mockRequestHandler, mockSiriusStateAgent))(spiedAkkaSystem)
     underTest = testActor.underlyingActor
+
   }
 
   after {
@@ -39,6 +42,12 @@ class SiriusStateActorTest extends NiceTest {
   }
 
   describe("a SiriusStateWorker") {
+
+    it("should send an initialized message to StateActor on preStart()") {
+      verify(mockSiriusStateAgent).send(Matchers.any(classOf[SiriusState => SiriusState]
+      ))
+    }
+
     it("should forward proper PUT message to handler") {
       val key = "key"
       val body = "value".getBytes()
