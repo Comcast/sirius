@@ -6,25 +6,35 @@ import com.comcast.xfinity.sirius.writeaheadlog.{LogData, SiriusLog}
 import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl._
+import org.slf4j.LoggerFactory
 
 /**
  * {@link Actor} for persisting data to the write ahead log and forwarding
  * to the state worker.
  */
 class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, siriusStateAgent: Agent[SiriusState])
-    extends Actor {
-  
+  extends Actor {
+  val logger = LoggerFactory.getLogger(classOf[SiriusPersistenceActor])
+
   override def preStart() {
-    siriusLog.foldLeft(()){
-        case (_, LogData("PUT", key, _, _, Some(body))) => stateActor ! Put(key, body)
-        case (_, LogData("DELETE", key, _, _, _)) => stateActor ! Delete(key)
+    logger.info("Bootstrapping Write Ahead Log")
+    siriusLog.foldLeft(()) {
+      case (_, LogData("PUT", key, _, _, Some(body))) => {
+        logger.debug("Read PUT from log: key={} --- body={}", key, body);
+        stateActor ! Put(key, body)
+      }
+      case (_, LogData("DELETE", key, _, _, _)) => {
+        logger.debug("Read DELETE from log: key={}", key);
+        stateActor ! Delete(key)
+      }
     }
+    logger.info("Done Bootstrapping Write Ahead Log")
     siriusStateAgent send ((state: SiriusState) => {
       state.updatePersistenceState(SiriusState.PersistenceState.Initialized)
     })
 
   }
-  
+
   def receive = {
     case OrderedEvent(sequence, timestamp, request) => {
       request match {
@@ -33,6 +43,6 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
       }
       stateActor forward request
     }
-    case _ : SiriusResult =>
+    case _: SiriusResult =>
   }
 }
