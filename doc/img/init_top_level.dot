@@ -1,0 +1,12 @@
+digraph G {
+	a0 -> a1 -> a2 -> a3 -> a4;
+
+	a0[label="start"];
+	a1[label="membership"];
+	a2[label="bootstrap"];
+	a3[label="paxosing"];
+	a4[label="initialized"];
+
+	{ rank=same; a0 a1 a2 a3 a4}
+}
+

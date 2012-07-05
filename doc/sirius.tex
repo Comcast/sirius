@@ -1,11 +1,10 @@
 %% Header, styling stuff
-
-\documentstyle[11pt]{article}
+\documentclass[11pt]{article}
 \setlength{\topmargin}{-.5in}
 \setlength{\textheight}{9in}
 \setlength{\oddsidemargin}{.125in}
 \setlength{\textwidth}{6.25in}
-
+\usepackage{graphicx}
 
 \begin{document}
 
@@ -18,8 +17,6 @@
 
 This document is intended document Sirius’ design, so future developers can understand the system at a reasonable level, and so that we can record important design decisions somewhere in prose.  
 
-This document is being written along with the system, it’s descriptive of the Sirius we are building, rather than prescriptive of the Sirius we will build.  It is not intended to be used as a specification, and does not contain enough detail to be used as such.
-
 %%----------------------
 %% Theory of Operation
 %%----------------------
@@ -31,8 +28,14 @@ TBD
 %% Design Overview
 %%---------------------
 \section{Design Overview}
-TBD
+\subsection{Sirius Interface}
 
+\subsection{Actor Hierarchy}
+\scalebox{0.7}{\includegraphics{img/actor_hierarchy.png}}
+
+\subsubsection{Sirius Supervisor}
+
+\subsection{Initialization}
 
 %%-------------------------
 %% Write Ahead Log Format
