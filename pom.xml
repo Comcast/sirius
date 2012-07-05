@@ -220,6 +220,7 @@
                     </jvmArgs>
                     <args>
                         <arg>-deprecation</arg>
+                        <arg>-unchecked</arg>
                     </args>
                     <launchers>
                         <launcher>
