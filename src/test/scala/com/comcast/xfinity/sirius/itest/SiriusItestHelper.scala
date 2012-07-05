@@ -4,7 +4,7 @@ import annotation.tailrec
 import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, SiriusImpl, SiriusState}
 
 object SiriusItestHelper extends AkkaConfig {
-  def waitForInitialization(sirius: SiriusImpl, maxWait: Int = 1000) : Boolean = {
+  def waitForInitialization(sirius: SiriusImpl, maxWait: Int = 5000) : Boolean = {
     @tailrec
     def waitForInitializationWorker(start: Long,  maxWait: Int): Boolean = {
       if (System.currentTimeMillis() <= start + maxWait) {
