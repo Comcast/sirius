@@ -10,7 +10,7 @@ import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.api.impl.SiriusImpl
 
 @RunWith(classOf[JUnitRunner])
-class LogReplayITest extends NiceTest {
+class BootstrapLogITest extends NiceTest {
 
   var sirius: SiriusImpl = _
 
@@ -50,7 +50,7 @@ class LogReplayITest extends NiceTest {
   }
 
   describe("a Sirius") {
-    it("once started should have \"handled\" the contents of the wal") {
+    it("once started should have \"bootstrapped\" the contents of the wal") {
       assert(1 === stringRequestHandler.map.keySet.size)
       assert( 2 === stringRequestHandler.cmdsHandledCnt)
     }
