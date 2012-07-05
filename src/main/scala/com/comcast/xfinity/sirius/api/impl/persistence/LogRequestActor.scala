@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
 import akka.actor.{Props, ActorRef, Actor}
-import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
+import com.comcast.xfinity.sirius.writeaheadlog.{WriteAheadLogSerDe, LogDataSerDe, LogLinesSource}
 import com.comcast.xfinity.sirius.api.impl.membership.{MemberInfo, GetRandomMember}
 import scala.None
 
@@ -14,13 +14,21 @@ case class TransferFailed(reason: String) extends LogRequestMessage
 object LogRequestActor {
   val NO_MEMBER_FAIL_MSG = "Could not get remote node to request logs from"
 }
-class LogRequestActor(chunkSize: Int, source: LogLinesSource) extends Actor {
+
+/**
+ * Actor responsible for handling requests around remote log bootstrapping.
+ * @param chunkSize number of log lines to ship at once
+ * @param source LogLinesSource for sequential reading of the source log
+ * @param persistenceActor persistence actor, for forwarding received log data
+ */
+class LogRequestActor(chunkSize: Int, source: LogLinesSource, persistenceActor: ActorRef) extends Actor {
+  val serializer: LogDataSerDe = new WriteAheadLogSerDe()
 
   def createSender(): ActorRef =
     context.actorOf(Props(new LogSendingActor))
 
   def createReceiver(): ActorRef =
-    context.actorOf(Props(new LogReceivingActor))
+    context.actorOf(Props(new LogReceivingActor(persistenceActor, serializer)), "logreceiver")
 
   protected def receive = {
     case RequestLogFromRemote(remote) =>

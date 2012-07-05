@@ -26,6 +26,9 @@ sealed trait LSData
 case object Null extends LSData
 case class SendingData(target: ActorRef, lines: Iterator[String], seqNum: Int, chunkSize: Int) extends LSData
 
+/**
+ * FSM that spins up and sends logs in chunks to another actor, usually a LogReceivingActor
+ */
 class LogSendingActor extends Actor with FSM[LSState, LSData] {
   private val logger = LoggerFactory.getLogger(classOf[LogSendingActor])
 
@@ -67,15 +70,14 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
       stop(FSM.Normal)
   }
 
-  def gatherData(lines: Iterator[String], seqNum: Int, chunkSize: Int): Seq[String] = {
-    // TODO redo this with TAIL RECURSION
-    var i = 0
-    var chunk: Seq[String] = Vector.empty
-    while(lines.hasNext && i < chunkSize) {
-      i = i + 1
-      chunk = chunk :+ lines.next
+  def gatherData(lines: Iterator[String], chunkSize: Int): Seq[String] = {
+    def gatherDataAux(lines: Iterator[String], more: Int, accum: Seq[String]): Seq[String] = {
+      if (more == 0 || !lines.hasNext)
+        accum
+      else
+        gatherDataAux(lines, more - 1, accum :+ lines.next())
     }
-    chunk
+    gatherDataAux(lines, chunkSize, Vector.empty[String])
   }
 
   onTransition {
@@ -92,9 +94,9 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
     }
     case Waiting -> Sending => {
       nextStateData match {
-        case SendingData(target: ActorRef, lines: Iterator[String], seqNum: Int, chunkSize: Int) =>
+        case SendingData(target, lines, seqNum, chunkSize) =>
           // send next chunk
-          val logChunk: LogChunk = new LogChunk(seqNum, gatherData(lines, seqNum, chunkSize))
+          val logChunk: LogChunk = new LogChunk(seqNum, gatherData(lines, chunkSize))
           target ! logChunk
         case _ =>
           val reason = "On Waiting -> Sending transition, Unhandled <stateName, stateData>: <"+stateName+", "+stateData+">"
@@ -104,7 +106,7 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
     }
     case Waiting -> Done => {
       stateData match {
-        case SendingData(target: ActorRef, lines: Iterator[String], seqNum: Int, chunkSize) =>
+        case SendingData(target, lines, seqNum, chunkSize) =>
           target ! DoneMsg
         case _ =>
           val reason = "On Waiting -> Done transition, Unhandled <stateName, stateData>: <"+stateName+", "+stateData+">"

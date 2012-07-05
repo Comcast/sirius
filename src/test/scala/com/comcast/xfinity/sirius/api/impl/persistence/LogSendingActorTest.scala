@@ -76,11 +76,28 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
       actor ! DoneAck
       assert(actor.isTerminated)
     }
+    it("should gather data appropriately when there's plenty to grab") {
+      val data = Seq("a", "b", "c", "d", "e", "f", "g")
+      val iter = data.iterator
+      when(mockSource.createLinesIterator()).thenReturn(iter)
 
+      val expected1 = Seq("a", "b", "c")
+
+      actor ! Start(receiverProbe.ref, mockSource, 3)
+      receiverProbe.expectMsg(1 seconds, LogChunk(1, expected1))
+    }
+    it("should gather data appropriately when there's less than chunkSize available") {
+      val data = Seq("a", "b", "c", "d", "e", "f", "g")
+      val iter = data.iterator
+      when(mockSource.createLinesIterator()).thenReturn(iter)
+
+      actor ! Start(receiverProbe.ref, mockSource, 30)
+      receiverProbe.expectMsg(1 seconds, LogChunk(1, data))
+    }
   }
   def testChunk(seq: Int, chunk: Seq[String], realLogChunk: AnyRef) = {
     realLogChunk match {
-      case LogChunk(realSeq: Int, realChunk: Seq[String]) =>
+      case LogChunk(realSeq, realChunk) =>
         assert(seq == realSeq)
         assert(chunk === realChunk)
         true

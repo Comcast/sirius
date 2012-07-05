@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
-import com.comcast.xfinity.sirius.NiceTest
+import com.comcast.xfinity.sirius.{TestHelper, NiceTest}
 import akka.actor._
 import org.mockito.Mockito._
 import akka.util.duration._
@@ -18,21 +18,9 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
   var logRequestWrapper: ActorRef = _
   var senderProbe: TestProbe = _
   var receiverProbe: TestProbe = _
+  var persistenceActorProbe: TestProbe = _
 
   val chunkSize = 2
-
-  def wrapActorWithMockedSupervisor(inner: Props, parent: ActorRef): ActorRef = {
-    actorSystem.actorOf(Props(new Actor {
-      val innerRef = context.actorOf(inner)
-      def receive = {
-        case x => if (sender == innerRef) {
-          parent forward x
-        } else {
-          innerRef forward x
-        }
-      }
-    }))
-  }
 
   before {
     source = mock[LogLinesSource]
@@ -40,9 +28,11 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
 
     senderProbe = TestProbe()(actorSystem)
     receiverProbe = TestProbe()(actorSystem)
+    persistenceActorProbe = TestProbe()(actorSystem)
 
-    logRequestWrapper = wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source)), parentProbe.ref)
-    remoteLogActor = TestActorRef(new LogRequestActor(chunkSize, source))
+    logRequestWrapper = TestHelper.wrapActorWithMockedSupervisor(
+      Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref)), parentProbe.ref, actorSystem)
+    remoteLogActor = TestActorRef(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref))
 
     when(source.createLinesIterator()).thenReturn(Iterator("a", "b", "c", "d", "e", "f", "g"))
   }
@@ -54,9 +44,10 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     }
     it("should use a member sent in a MemberInfo message to fire off a round of log request") {
       val probe = TestProbe()(actorSystem)
-      val localLogRequestWrapper = wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source) {
+      val localLogRequestWrapper = TestHelper.wrapActorWithMockedSupervisor(
+        Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref) {
         override def createReceiver(): ActorRef = probe.ref
-      }), parentProbe.ref)
+      }), parentProbe.ref, actorSystem)
 
       localLogRequestWrapper ! MemberInfo(Some(MembershipData(probe.ref)))
       probe.expectMsg(5 seconds, InitiateTransfer(probe.ref))
@@ -65,9 +56,9 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
       val senderProbe = TestProbe()(actorSystem)
       val receiverProbe = TestProbe()(actorSystem)
       val localLogRequestWrapper =
-        wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source) {
+        TestHelper.wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref) {
           override def createSender(): ActorRef = senderProbe.ref
-        }),  parentProbe.ref)
+        }),  parentProbe.ref, actorSystem)
 
       localLogRequestWrapper ! InitiateTransfer(receiverProbe.ref)
       senderProbe.expectMsg(1 seconds, Start(receiverProbe.ref, source, chunkSize))
@@ -75,21 +66,6 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     it("should ask its parent to go find a random member when RequestLogFromRemote is sent with no remote ref") {
       logRequestWrapper ! RequestLogFromRemote
       parentProbe.expectMsg(5 seconds, GetRandomMember)
-    }
-    it("should start senders/receivers and receive TransferComplete when triggered by a RequestLogFromRemote message") {
-      // TODO this is really an itest
-      logRequestWrapper ! RequestLogFromRemote(remoteLogActor)
-      parentProbe.expectMsg(5 seconds, TransferComplete)
-    }
-    it("should initiate transfer of LogChunks by LogSender to LogReceiver") {
-      // TODO this is really an itest
-      remoteLogActor ! InitiateTransfer(parentProbe.ref)
-      parentProbe.expectMsg(5 seconds, LogChunk(1, Vector("a", "b")))
-    }
-    it("should use a member sent in a MemberInfo message to start and then complete a transfer") {
-      // TODO this is really an itest
-      logRequestWrapper ! MemberInfo(Some(MembershipData(remoteLogActor)))
-      parentProbe.expectMsg(5 seconds, TransferComplete)
     }
   }
 

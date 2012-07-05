@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
-import com.comcast.xfinity.sirius.NiceTest
+import com.comcast.xfinity.sirius.{TestHelper, NiceTest}
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.dispatch.Await._
 import akka.util.duration._
@@ -174,8 +174,8 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
 
           val parentProbe = TestProbe()(actorSystem)
           // make a new MembershipActor with a parent we can test, expect a map containing this parent in response
-          val parentMembershipActor = wrapActorWithMockedSupervisor(
-            Props(new MembershipActor(membershipAgent, info)), parentProbe.ref)
+          val parentMembershipActor = TestHelper.wrapActorWithMockedSupervisor(
+            Props(new MembershipActor(membershipAgent, info)), parentProbe.ref, actorSystem)
           val localExpectedMap = MembershipMap(siriusInfo -> MembershipData(parentMembershipActor))
 
           // sending a message to this parentMembershipActor will fwd it to the inner actor
@@ -196,19 +196,5 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
       }
 
     }
-
   }
-  def wrapActorWithMockedSupervisor(inner: Props, parent: ActorRef): ActorRef = {
-    actorSystem.actorOf(Props(new Actor {
-      val innerRef = context.actorOf(inner)
-      def receive = {
-        case x => if (sender == innerRef) {
-          parent forward x
-        } else {
-          innerRef forward x
-        }
-      }
-    }))
-  }
-
 }
