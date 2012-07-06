@@ -5,8 +5,6 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 
 
 object ReplicaActor {
-  case class Slot(num: Int, command: Command)
-
   def decisionExistsForCommand(decisions: Set[Slot], command: Command): Boolean = decisions.exists {
     case Slot(_, `command`) => true
     case _ => false
@@ -42,7 +40,7 @@ class ReplicaActor(leaders: Set[ActorRef]) extends Actor {
 
   import ReplicaActor._
 
-  var highestPerformedSlot = 1
+  var highestPerformedSlot = 0
 
   var proposals = Set[Slot]()
   var decisions = Set[Slot]()

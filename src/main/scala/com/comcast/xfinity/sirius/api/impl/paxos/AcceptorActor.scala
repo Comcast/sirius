@@ -4,18 +4,18 @@ import akka.actor.Actor
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 
 class Acceptor extends Actor {
-  var ballotNum: Ballot = Ballot(Int.MinValue, "")
-  var accepted = Set[(Ballot, Int, Command)]()
+  var ballotNum: Ballot = Ballot.empty
+  var accepted = Set[PValue]()
 
   def receive = {
     case Phase1A(leader, ballot) =>
       if (ballot > ballotNum) ballotNum = ballot
-      leader ! ('p1b, self, ballotNum, accepted)
+      leader ! Phase1B(self, ballotNum, accepted)
     case Phase2A(leader, PValue(ballot, slot, command)) =>
       if (ballot >= ballotNum) {
         ballotNum = ballot
-        accepted += Tuple3(ballot, slot, command)
+        accepted += PValue(ballot, slot, command)
       }
-      leader ! ('p2b, self, ballotNum)
+      leader ! Phase2B(self, ballotNum)
   }
 }
