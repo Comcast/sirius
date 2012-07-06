@@ -22,12 +22,43 @@ object SiriusImpl extends AkkaConfig {
   
   def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog,
           hostname: String, port: Int): SiriusImpl = {
+   //XXX: make this environment dependent
     val config = ConfigFactory.parseString("""
+
      akka {
+       event-handlers = ["akka.event.slf4j.Slf4jEventHandler"]
+       loglevel = DEBUG
+       log-config-on-startup = on
+
        actor {
          provider = "akka.remote.RemoteActorRefProvider"
+         debug{
+          # enable function of LoggingReceive, which is to log any received message at
+          #receive = on
+
+          # enable DEBUG logging of all AutoReceiveMessages (Kill, PoisonPill and the like)
+          #autoreceive = on
+
+          # enable DEBUG logging of actor lifecycle changes
+          #lifecycle = on
+
+          # enable DEBUG logging of all LoggingFSMs for events, transitions and timers
+          #fsm = on
+
+          # enable DEBUG logging of subscription changes on the eventStream
+          #event-stream = on
+
+         }
        }
        remote {
+         # If this is "on", Akka will log all outbound messages at DEBUG level, if off then
+         #they are not logged
+         log-sent-messages = off
+
+         # If this is "on", Akka will log all inbound messages at DEBUG level, if off then they are not logged
+         log-received-messages = off
+
+
          transport = "akka.remote.netty.NettyRemoteTransport"
          netty {
            hostname = """ + "\"" + hostname + "\"" + """

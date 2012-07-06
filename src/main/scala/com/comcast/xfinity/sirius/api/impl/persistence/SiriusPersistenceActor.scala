@@ -6,7 +6,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.{LogData, SiriusLog}
 import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl._
-import org.slf4j.LoggerFactory
+import akka.event.Logging
 
 /**
  * {@link Actor} for persisting data to the write ahead log and forwarding
@@ -14,7 +14,8 @@ import org.slf4j.LoggerFactory
  */
 class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, siriusStateAgent: Agent[SiriusState])
   extends Actor {
-  val logger = LoggerFactory.getLogger(classOf[SiriusPersistenceActor])
+
+  val logger = Logging(context.system, this)
 
   override def preStart() {
     logger.info("Bootstrapping Write Ahead Log")
