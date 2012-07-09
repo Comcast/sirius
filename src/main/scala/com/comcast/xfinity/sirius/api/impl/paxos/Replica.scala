@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 
 
-object ReplicaActor {
+object Replica {
   def decisionExistsForCommand(decisions: Set[Slot], command: Command): Boolean = decisions.exists {
     case Slot(_, `command`) => true
     case _ => false
@@ -35,10 +35,10 @@ object ReplicaActor {
  * Must persist proposals and decisions to disk.
  * initialState is actually just an ActorRef to the State actor.
  */
-class ReplicaActor(leaders: Set[ActorRef]) extends Actor {
+class Replica(leaders: Set[ActorRef]) extends Actor {
   //var state = initialState
 
-  import ReplicaActor._
+  import Replica._
 
   var highestPerformedSlot = 0
 

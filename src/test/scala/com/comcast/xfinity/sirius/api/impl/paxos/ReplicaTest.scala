@@ -4,8 +4,8 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{Props, Actor, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Slot, Command}
 
-class ReplicaActorTest extends NiceTest {
-  import ReplicaActor._
+class ReplicaTest extends NiceTest {
+  import Replica._
 
   describe("ReplicaActorTest") {
     describe("decisionExistsForCommand") {
