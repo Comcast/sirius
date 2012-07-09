@@ -54,7 +54,7 @@ class WriteAheadLogSerDe extends LogDataSerDe with Checksum with Base64PayloadCo
     if (validateChecksum(data, checksum))
       logDataOfString(data)
     else
-      throw new SiriusChecksumException("Checksum does not match.")
+      throw new SiriusChecksumException("Checksum does not match for entry: \n" + checksum +  data)
   }
 
   private def logDataOfString(logDataString: String) = logDataString.split("\\|") match {

@@ -18,7 +18,9 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
   val logger = Logging(context.system, this)
 
   override def preStart() {
+
     logger.info("Bootstrapping Write Ahead Log")
+    val start = System.currentTimeMillis()
     siriusLog.foldLeft(()) {
       case (_, LogData("PUT", key, _, _, Some(body))) => {
         logger.debug("Read PUT from log: key={} --- body={}", key, body);
@@ -29,7 +31,7 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
         stateActor ! Delete(key)
       }
     }
-    logger.info("Done Bootstrapping Write Ahead Log")
+    logger.info("Done Bootstrapping Write Ahead Log in {} ms", System.currentTimeMillis() - start)
     siriusStateAgent send ((state: SiriusState) => {
       state.updatePersistenceState(SiriusState.PersistenceState.Initialized)
     })
