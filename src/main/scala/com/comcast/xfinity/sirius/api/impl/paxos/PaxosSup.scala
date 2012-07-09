@@ -1,8 +1,15 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import akka.agent.Agent
-import akka.actor.{Props, ActorRef, Actor}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import akka.actor.{ActorSystem, Props, ActorRef, Actor}
+
+object PaxosSup {
+
+  def apply(membership: Agent[Set[ActorRef]])(implicit as: ActorSystem) =
+    as.actorOf(Props(new PaxosSup(membership)))
+
+}
 
 class PaxosSup(membership: Agent[Set[ActorRef]]) extends Actor {
   val leader = context.actorOf(Props(new Leader(membership)))
