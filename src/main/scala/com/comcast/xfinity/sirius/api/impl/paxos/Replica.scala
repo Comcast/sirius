@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import akka.actor.Actor
 import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import akka.agent.Agent
 
 
 object Replica {
@@ -35,26 +36,28 @@ object Replica {
  * Must persist proposals and decisions to disk.
  * initialState is actually just an ActorRef to the State actor.
  */
-class Replica(leaders: Set[ActorRef]) extends Actor {
+class Replica(membership: Agent[Set[ActorRef]]) extends Actor {
   //var state = initialState
 
   import Replica._
+
+  val leaders = membership
 
   var highestPerformedSlot = 0
 
   var proposals = Set[Slot]()
   var decisions = Set[Slot]()
 
-  def propose(command: Command) = {
+  def propose(command: Command) {
     if (!decisionExistsForCommand(decisions, command)) {
       val lowestUnusedSlotNum = getLowestUnusedSlotNum(proposals ++ decisions)
       proposals += Slot(lowestUnusedSlotNum, command)
       // TODO: only route to our leader?
-      leaders.foreach(_ ! Propose(lowestUnusedSlotNum, command))
+      leaders().foreach(_ ! Propose(lowestUnusedSlotNum, command))
     }
   }
 
-  def perform(command: Command) = {
+  def perform(command: Command) {
     // send command to state actor.
     highestPerformedSlot += 1
     // respond to client

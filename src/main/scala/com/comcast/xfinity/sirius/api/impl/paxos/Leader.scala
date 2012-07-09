@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{Props, Actor, ActorRef}
+import akka.agent.Agent
 
 object Leader {
   def proposalExistsForSlot(proposals: Set[Slot], newSlotNum: Int) = proposals.exists {
@@ -25,15 +26,18 @@ object Leader {
   }
 }
 
-class Leader(acceptors: Set[ActorRef], replicas: Set[ActorRef]) extends Actor {
+class Leader(membership: Agent[Set[ActorRef]]) extends Actor {
 
   import Leader._
+
+  val acceptors = membership
+  val replicas = membership
 
   var ballotNum = Ballot(0, self.toString)
   var active = false
   var proposals = Set[Slot]()
 
-  context.actorOf(Props(new Scout(self, acceptors, ballotNum)))
+  context.actorOf(Props(new Scout(self, acceptors(), ballotNum)))
 
   def receive = {
     case Propose(slotNum, command) =>
@@ -58,11 +62,13 @@ class Leader(acceptors: Set[ActorRef], replicas: Set[ActorRef]) extends Actor {
   }
 
   private def startCommander(pval: PValue) {
-    context.actorOf(Props(new Commander(self, acceptors, replicas, pval)))
+    // XXX: more members may show up between when acceptors() and replicas(),
+    //      we may want to combine the two, and just reference membership
+    context.actorOf(Props(new Commander(self, acceptors(), replicas(), pval)))
   }
 
   private def startScout() {
-    context.actorOf(Props(new Scout(self, acceptors, ballotNum)))
+    context.actorOf(Props(new Scout(self, acceptors(), ballotNum)))
   }
 
 }

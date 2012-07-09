@@ -7,15 +7,18 @@ class Acceptor extends Actor {
   var ballotNum: Ballot = Ballot.empty
   var accepted = Set[PValue]()
 
+  // Note that Phase1A and Phase2B requests must return their
+  // parent's address (their PaxosSup) because this is how
+  // the acceptor is known to external nodes
   def receive = {
-    case Phase1A(leader, ballot) =>
+    case Phase1A(scout, ballot) =>
       if (ballot > ballotNum) ballotNum = ballot
-      leader ! Phase1B(self, ballotNum, accepted)
-    case Phase2A(leader, PValue(ballot, slot, command)) =>
+      scout ! Phase1B(context.parent, ballotNum, accepted)
+    case Phase2A(commander, PValue(ballot, slot, command)) =>
       if (ballot >= ballotNum) {
         ballotNum = ballot
         accepted += PValue(ballot, slot, command)
       }
-      leader ! Phase2B(self, ballotNum)
+      commander ! Phase2B(context.parent, ballotNum)
   }
 }
