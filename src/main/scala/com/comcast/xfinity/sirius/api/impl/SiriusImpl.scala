@@ -84,7 +84,7 @@ class SiriusImpl(requestHandler: RequestHandler,
 
   //TODO: find better way of building SiriusImpl ...
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem) = 
-    this(requestHandler, actorSystem, new SiriusFileLog("/tmp/sirius_wal.log",
+    this(requestHandler, actorSystem, new SiriusFileLog("/var/lib/sirius/xfinityapi/wal.log", // TODO: Abstract this to the app using Sirius.
         new WriteAheadLogSerDe()), SiriusImpl.DEFAULT_PORT)
 
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: SiriusLog) =
