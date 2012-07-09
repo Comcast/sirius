@@ -10,7 +10,7 @@ object PaxosMessages {
   case class Request(command: Command)
   case class Decision(slot: Int, command: Command)
 
-  case class Command(k: ActorRef, cid: Int, op: Any => (Any, Any))
+  case class Command(k: ActorRef, cid: Int, op: Int)
   case class PValue(ballot: Ballot, slotNum: Int, proposal: Command)
 
   case class Phase1A(from: ActorRef, ballot: Ballot)
@@ -29,6 +29,8 @@ object PaxosMessages {
       case _ => 0
     }
   }
+
+  case object ScoutTimeout
 
   object Ballot {
     val empty = Ballot(Int.MinValue, "")

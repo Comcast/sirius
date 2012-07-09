@@ -47,18 +47,25 @@ class Leader(membership: Agent[Set[ActorRef]]) extends Actor {
           startCommander(PValue(ballotNum, slotNum, command))
         }
       }
-    case Adopted(ballotNum, pvals) =>
+    case Adopted(newBallotNum, pvals) if ballotNum == newBallotNum =>
       proposals = update(proposals, pmax(pvals))
       proposals.foreach(slot =>
         startCommander(PValue(ballotNum, slot.num, slot.command))
       )
       active = true
+      println(self + " became active with ballot " + ballotNum)
     case Preempted(newBallot) =>
+      println(self + " preempted with " + newBallot + " from " + ballotNum)
       if (newBallot > ballotNum) {
+        println(self + " really preempted with " + newBallot)
         active = false
         ballotNum = Ballot(newBallot.seq + 1, self.toString)
         startScout()
       }
+
+    // if our scout fails to make progress, retry
+    case ScoutTimeout =>
+      context.actorOf(Props(new Scout(self, acceptors(), ballotNum)))
   }
 
   private def startCommander(pval: PValue) {

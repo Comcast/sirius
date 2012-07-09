@@ -6,15 +6,15 @@ import akka.actor.{ActorSystem, Props, ActorRef, Actor}
 
 object PaxosSup {
 
-  def apply(membership: Agent[Set[ActorRef]])(implicit as: ActorSystem) =
-    as.actorOf(Props(new PaxosSup(membership)))
+  def apply(name: String, membership: Agent[Set[ActorRef]])(implicit as: ActorSystem) =
+    as.actorOf(Props(new PaxosSup(membership)), name)
 
 }
 
 class PaxosSup(membership: Agent[Set[ActorRef]]) extends Actor {
-  val leader = context.actorOf(Props(new Leader(membership)))
-  val acceptor = context.actorOf(Props(new Acceptor))
-  val replica = context.actorOf(Props(new Replica(membership)))
+  val leader = context.actorOf(Props(new Leader(membership)), "leader")
+  val acceptor = context.actorOf(Props(new Acceptor), "acceptor")
+  val replica = context.actorOf(Props(new Replica(membership)), "replica")
 
   def receive = {
     // Replica messages

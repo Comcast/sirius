@@ -1,7 +1,8 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import akka.actor.{Actor, ActorRef}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import akka.util.duration._
+import akka.actor.{ReceiveTimeout, Actor, ActorRef}
 
 class Commander(leader: ActorRef, acceptors: Set[ActorRef],
                 replicas: Set[ActorRef], pval: PValue) extends Actor {
@@ -9,6 +10,8 @@ class Commander(leader: ActorRef, acceptors: Set[ActorRef],
   var waitFor = acceptors
 
   acceptors.foreach(_ ! Phase2A(self, pval))
+
+  context.setReceiveTimeout(3 seconds)
 
   def receive = {
     case Phase2B(acceptor, acceptedBallot) =>
@@ -20,6 +23,9 @@ class Commander(leader: ActorRef, acceptors: Set[ActorRef],
         }
       } else {
         leader ! Preempted(acceptedBallot)
+        context.stop(self)
       }
-    }
+    case ReceiveTimeout =>
+      context.stop(self)
+  }
 }

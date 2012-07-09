@@ -66,9 +66,14 @@ class Replica(membership: Agent[Set[ActorRef]]) extends Actor {
   def receive = {
     case Request(command: Command) => propose(command)
     case Decision(slot, command) =>
+      println(self + " received Decision(" + slot + ", " + command + ") from " + sender)
       decisions += Slot(slot, command)
 
       // XXX: is foreach order gaurenteed?
-      getUnperformedDecisions(decisions, highestPerformedSlot).foreach(println(_))
+      val unperformedDecisions = getUnperformedDecisions(decisions, highestPerformedSlot)
+      unperformedDecisions.foreach (slot => {
+        println(self + " " + slot.num + " " + slot.command)
+        highestPerformedSlot = slot.num
+      })
   }
 }
