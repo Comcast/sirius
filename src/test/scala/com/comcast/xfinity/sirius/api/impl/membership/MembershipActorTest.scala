@@ -181,6 +181,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
           // sending a message to this parentMembershipActor will fwd it to the inner actor
           parentMembershipActor ! JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)
           nodeToJoinProbe.expectMsg(Join(localExpectedMap))
+          nodeToJoinProbe.expectNoMsg((1 second))
           //check if result of Join was added locally
           verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
 
