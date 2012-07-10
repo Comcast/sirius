@@ -10,6 +10,10 @@ object PaxosMessages {
   case class Request(command: Command)
   case class Decision(slot: Int, command: Command)
 
+  //XXX: Need to figure out what op actually is, cuz it isn't an int.
+  //Need to ensure that we can compare commands since the algorithm
+  //requires it, though we could punt on it and just rely on the 
+  //fact that commands are idempotent.
   case class Command(k: ActorRef, cid: Int, op: Int)
   case class PValue(ballot: Ballot, slotNum: Int, proposal: Command)
 

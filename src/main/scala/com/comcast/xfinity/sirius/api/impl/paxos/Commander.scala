@@ -18,6 +18,9 @@ class Commander(leader: ActorRef, acceptors: Set[ActorRef],
       if (pval.ballot == acceptedBallot) {
         waitFor -= acceptor
         if (waitFor.size < acceptors.size / 2) {
+          // We may fail to send a decision message to a replica, and we need to handle
+          // that in our catchup algorithm.  The paxos made moderately complex algorithm
+          // assumes guaranteed delivery, because its cool like that.
           replicas.foreach(_ ! Decision(pval.slotNum, pval.proposal))
           context.stop(self)
         }
