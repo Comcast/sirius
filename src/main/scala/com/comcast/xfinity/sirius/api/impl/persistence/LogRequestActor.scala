@@ -7,6 +7,7 @@ import scala.None
 
 sealed trait LogRequestMessage
 case class RequestLogFromRemote(remote: ActorRef) extends LogRequestMessage
+case object RequestLogFromRemote extends LogRequestMessage
 case class InitiateTransfer(receiver: ActorRef) extends LogRequestMessage
 case object TransferComplete extends LogRequestMessage
 case class TransferFailed(reason: String) extends LogRequestMessage
