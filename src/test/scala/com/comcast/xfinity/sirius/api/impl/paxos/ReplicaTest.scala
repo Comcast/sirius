@@ -11,25 +11,21 @@ class ReplicaTest extends NiceTest {
     describe("decisionExistsForCommand") {
       it ("must return true if a decision exists") {
         expect(true) {
-          val op1 = (x: Any) => (x, x)
-          val op2 = (x: Any) => (x, x)
           val decisions = Set(
-            Slot(1, Command(null, 1, op1)),
-            Slot(2, Command(null, 2, op2))
+            Slot(1, Command(null, 1, 1)),
+            Slot(2, Command(null, 2, 2))
           )
-          decisionExistsForCommand(decisions, Command(null, 2, op2))
+          decisionExistsForCommand(decisions, Command(null, 2, 2))
         }
       }
 
       it ("must return false if no such decision exists") {
         expect(false) {
-          val op1 = (x: Any) => (x, x)
-          val op2 = (x: Any) => (x, x)
           val decisions = Set(
-            Slot(1, Command(null, 1, op1)),
-            Slot(2, Command(null, 2, op2))
+            Slot(1, Command(null, 1, 1)),
+            Slot(2, Command(null, 2, 2))
           )
-          decisionExistsForCommand(decisions, Command(null, 100, op2))
+          decisionExistsForCommand(decisions, Command(null, 100, 2))
         }
       }
     }
@@ -43,11 +39,9 @@ class ReplicaTest extends NiceTest {
 
       it ("must return the lowest unused slot number") {
         expect(3) {
-          val op1 = (x: Any) => (x, x)
-          val op2 = (x: Any) => (x, x)
           val slots = Set(
-            Slot(1, Command(null, 1, op1)),
-            Slot(2, Command(null, 2, op2))
+            Slot(1, Command(null, 1, 1)),
+            Slot(2, Command(null, 2, 2))
           )
           getLowestUnusedSlotNum(slots)
         }
