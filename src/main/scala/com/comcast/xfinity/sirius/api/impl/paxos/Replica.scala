@@ -73,7 +73,8 @@ class Replica(membership: Agent[Set[ActorRef]]) extends Actor {
       val unperformedDecisions = getUnperformedDecisions(decisions, highestPerformedSlot)
       unperformedDecisions.foreach (slot => {
         println(self + " " + slot.num + " " + slot.command)
-        highestPerformedSlot = slot.num
+        //highestPerformedSlot = slot.num
+        perform(slot.command)
       })
   }
 }

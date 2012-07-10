@@ -10,6 +10,7 @@ object Leader {
     case _ => false
   }
 
+  //TODO: Isn't this just set union?
   def update[T](x: Set[T], y: Set[T]) = y ++ x.filterNot(y.contains(_))
 
   def pmax(pvals: Set[PValue]): Set[Slot] = {
