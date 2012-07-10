@@ -12,8 +12,8 @@ class LeaderTest extends NiceTest {
       it ("must return false if no proposal exists for the slot") {
         expect(false) {
           val slots = Set(
-            Slot(1, Command(null, 1, (x: Any) => (x, x))),
-            Slot(2, Command(null, 2, (x: Any) => (x, x)))
+            Slot(1, Command(null, 1, 1)),
+            Slot(2, Command(null, 2, 2))
           )
           proposalExistsForSlot(slots, 3)
         }
@@ -22,8 +22,8 @@ class LeaderTest extends NiceTest {
       it ("must return true if a proposal exists for the slot") {
         expect(true) {
           val slots = Set(
-            Slot(1, Command(null, 1, (x: Any) => (x, x))),
-            Slot(2, Command(null, 2, (x: Any) => (x, x)))
+            Slot(1, Command(null, 1, 1)),
+            Slot(2, Command(null, 2, 2))
           )
           proposalExistsForSlot(slots, 2)
         }
@@ -41,14 +41,12 @@ class LeaderTest extends NiceTest {
     describe("pmax") {
       it("must, for each unique slotNum in a Set[PValue], return the Slot(slotNum, proposal) associated with the highest" +
          "ballotNum for that given slotNum") {
-        val op1 = (x: Any) => (x, x)
-        val op2 = (x: Any) => (x, x)
-        val pvals = Set(
-          PValue(Ballot(1, "a"), 1, Command(null, 1234, op1)),
-          PValue(Ballot(2, "a"), 1, Command(null, 12345, op2)),
-          PValue(Ballot(1, "a"), 2, Command(null, 123, op1))
-        )
-        expect(Set(Slot(1, Command(null, 12345, op2)), Slot(2, Command(null, 123, op1)))) {
+        expect(Set(Slot(1, Command(null, 12345, 2)), Slot(2, Command(null, 123, 3)))) {
+          val pvals = Set(
+            PValue(Ballot(1, "a"), 1, Command(null, 1234, 1)),
+            PValue(Ballot(2, "a"), 1, Command(null, 12345, 2)),
+            PValue(Ballot(1, "a"), 2, Command(null, 123, 3))
+          )
           pmax(pvals)
         }
       }
