@@ -1,0 +1,76 @@
+#!/usr/bin/python
+
+import base64
+import getopt
+import hashlib
+import sys
+
+def usage(f):
+    print "usage: %s [-?h] [-i <file>] <command>" % sys.argv[0]
+    print "  -?,-h,--help     : get usage message"
+    print "  -n,--no-checksum : skip checksum verification"
+    print "  -i,--input-file  : read log from file rather than stdin"
+    print "  <command>        : currently must be \"check\""
+
+def check_entry(n, entry):
+    first_pipe = entry.index('|')
+    m = hashlib.md5()
+    m.update(entry[first_pipe:])
+    return entry[:first_pipe] == base64.b64encode(m.digest())
+
+def main(f, check_checksums):
+    entries = 0
+    truncated = 0
+    missing_fields = 0
+    corrupted = 0
+    for line in f:
+        if not line.endswith('\n'):
+            sys.stderr.write("entry %d not terminated by newline\n" % entries)
+            truncated += 1
+        if not len(line.split('|')) == 6:
+            sys.stderr.write("entry %d does not have 6 pipe-delimited fields\n" %
+                             entries)
+            missing_fields += 1
+        if check_checksums and not check_entry(entries, line):
+            sys.stderr.write("entry %d has bad checksum\n" % entries)
+            corrupted += 1
+        entries += 1
+
+    print ("wal: %d total entries" % entries)
+    if truncated > 0: print ("wal: %d truncated entries" % truncated)
+    if missing_fields > 0:
+        print ("wal: %d entries with missing fields" % missing_fields)
+    if corrupted > 0:
+        print ("wal: %d entries with bad checksums" % corrupted)
+
+if __name__ == "__main__":
+    check_checksums = True
+    input_file = sys.stdin
+    try:
+        longopts = ["help", "no-checksum", "input-file="]
+        opts, args = getopt.getopt(sys.argv[1:], "?hni:", longopts)
+    except getopt.GetoptError as e:
+        sys.stderr.write("%s\n" % e)
+        usage(sys.stderr)
+        sys.exit(1)
+    for option, value in opts:
+        if option in ["-?","-h","--help"]:
+            usage(sys.stdout)
+            sys.exit(0)
+        if option in ["-n","--no-checksum"]:
+            sys.stderr.write("Skipping checksum verification.\n")
+            check_checksums = False
+        if option in ["-i","--input-file"]:
+            try:
+                input_file = open(value)
+            except:
+                sys.stderr.write("%s\n" % sys.exc_info()[1])
+                sys.exit(1)
+    if len(args) != 1 or args[0] not in ["check"]:
+        usage(sys.stderr)
+        sys.exit(1)
+            
+    main(input_file, check_checksums)
+
+
+
