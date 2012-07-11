@@ -59,7 +59,7 @@ class ClusterMembershipITest extends NiceTest with AkkaConfig {
         new DoNothingSiriusLog, InetAddress.getLocalHost.getHostName, siriusPort + 1)
       assert(SiriusItestHelper.waitForInitialization(anotherSirius), "took too long for Sirius to Initialize")
 
-      val path = "akka://" + SYSTEM_NAME + "@" + InetAddress.getLocalHost.getHostName + ":" + siriusPort + "/user/" + SUPERVISOR_NAME
+      val path = "akka://" + SYSTEM_NAME + "@" + InetAddress.getLocalHost.getHostAddress + ":" + siriusPort + "/user/" + SUPERVISOR_NAME
       joinSelf(anotherSirius)
       anotherSirius.joinCluster(Some(sirius.actorSystem.actorFor(path)))
 
