@@ -1,5 +1,4 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
-import akka.actor.ActorRef
 import akka.actor.Actor
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 
