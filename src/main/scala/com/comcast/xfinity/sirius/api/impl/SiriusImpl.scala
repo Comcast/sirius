@@ -36,7 +36,7 @@ object SiriusImpl extends AkkaConfig {
 
          transport = "akka.remote.netty.NettyRemoteTransport"
          netty {
-           hostname = """ + hostname + """
+           hostname = """" + hostname + """"
            port = """ + port + """
          }
        }
