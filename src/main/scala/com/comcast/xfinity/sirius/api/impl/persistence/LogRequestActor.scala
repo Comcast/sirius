@@ -29,7 +29,7 @@ class LogRequestActor(chunkSize: Int, source: LogLinesSource, persistenceActor: 
     context.actorOf(Props(new LogSendingActor))
 
   def createReceiver(): ActorRef =
-    context.actorOf(Props(new LogReceivingActor(persistenceActor, serializer)), "logreceiver")
+    context.actorOf(Props(new LogReceivingActor(persistenceActor, serializer)))
 
   protected def receive = {
     case RequestLogFromRemote(remote) =>

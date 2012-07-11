@@ -13,6 +13,8 @@ import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonIdempotentSiriusRequ
  */
 class LogReceivingActor(persistenceActor: ActorRef, logSerializer: LogDataSerDe) extends Actor {
   private val logger = LoggerFactory.getLogger(classOf[LogSendingActor])
+  private val startTime = System.currentTimeMillis()
+  private var numLinesReceived = 0
 
   def getSiriusRequestFromLogData(logData: LogData): NonIdempotentSiriusRequest = {
     val actionType = logData.actionType
@@ -28,7 +30,6 @@ class LogReceivingActor(persistenceActor: ActorRef, logSerializer: LogDataSerDe)
   }
 
   def receive = {
-
     // TODO should keep track of current chunkNum to ensure in-order delivery and enable resends
     case LogChunk(chunkNum, chunk) =>
       sender ! Received(chunkNum)
@@ -39,11 +40,13 @@ class LogReceivingActor(persistenceActor: ActorRef, logSerializer: LogDataSerDe)
         persistenceActor ! event
       })
 
+      numLinesReceived += chunk.size
       logger.debug("Received " + chunk.size + " lines")
       sender ! Processed(chunkNum)
 
     case DoneMsg =>
       logger.debug("Received done message")
+      logger.info("Received {} lines in {} ms", numLinesReceived, System.currentTimeMillis() - startTime)
       sender ! DoneAck
       context.parent ! TransferComplete
   }
