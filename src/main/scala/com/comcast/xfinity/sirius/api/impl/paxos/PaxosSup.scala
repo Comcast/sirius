@@ -3,18 +3,38 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{ActorSystem, Props, ActorRef, Actor}
+import java.lang.Object
+
 
 object PaxosSup {
 
-  def apply(name: String, membership: Agent[Set[ActorRef]])(implicit as: ActorSystem) =
-    as.actorOf(Props(new PaxosSup(membership)), name)
+  /**
+   * A class for injecting children into a PaxosSup
+   */
+  trait ChildProvider {
+    val leader: ActorRef
+    val acceptor: ActorRef
+    val replica: ActorRef
+  }
+
+  /**
+   * Create a PaxosSup instance.  Note this should be called from within a Props
+   * factory on Actor creation due to the requirements of Akka.
+   *
+   * @param membership an {@link akka.agent.Agent} tracking the membership of the cluster
+   */
+  def apply(membership: Agent[Set[ActorRef]]): PaxosSup = {
+    new PaxosSup with ChildProvider {
+      val leader = context.actorOf(Props(new Leader(membership)), "leader")
+      val acceptor = context.actorOf(Props(new Acceptor), "acceptor")
+      val replica = context.actorOf(Props(new Replica(membership)), "replica")
+    }
+  }
 
 }
 
-class PaxosSup(membership: Agent[Set[ActorRef]]) extends Actor {
-  val leader = context.actorOf(Props(new Leader(membership)), "leader")
-  val acceptor = context.actorOf(Props(new Acceptor), "acceptor")
-  val replica = context.actorOf(Props(new Replica(membership)), "replica")
+class PaxosSup extends Actor {
+    this: PaxosSup.ChildProvider =>
 
   def receive = {
     // Replica messages

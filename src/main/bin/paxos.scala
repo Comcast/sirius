@@ -6,9 +6,9 @@ import akka.actor._
 implicit val as = ActorSystem("test")
 val membership = Agent(Set[ActorRef]())
 
-val p1 = PaxosSup("node1", membership)
-val p2 = PaxosSup("node2", membership)
-val p3 = PaxosSup("node3", membership)
+val p1 = as.actorOf(Props(PaxosSup(membership)), "node1")
+val p2 = as.actorOf(Props(PaxosSup(membership)), "node2")
+val p3 = as.actorOf(Props(PaxosSup(membership)), "node3")
 
 membership.send(_ + p1)
 membership.send(_ + p2)
