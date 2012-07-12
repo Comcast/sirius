@@ -6,27 +6,14 @@ import akka.agent.Agent
 
 
 object Replica {
-  def decisionExistsForCommand(decisions: Set[Slot], command: Command): Boolean = decisions.exists {
-    case Slot(_, `command`) => true
-    case _ => false
+  trait HelperProvider {
+    val replicaHelper: ReplicaHelper
   }
 
-  def getLowestUnusedSlotNum(slots: Set[Slot]): Int = slots.foldLeft(0) {
-    case (highestSlotNum, Slot(num, _)) if num > highestSlotNum => num
-    case (highestSlotNum, _) => highestSlotNum
-  } + 1
-
-  def getUnperformedDecisions(decisions: Set[Slot], highestPerformedSlotNum: Int): List[Slot] = {
-    val unperformedDecisions = decisions.filter(_.num > highestPerformedSlotNum).toList.sortWith(_.num < _.num)
-
-    def findContiguousDecisions(currentSlotNum: Int, pendingDecisions: List[Slot],
-                                acc: List[Slot]): List[Slot] = pendingDecisions match {
-      case Nil => acc.reverse
-      case hd :: tl if hd.num == currentSlotNum => findContiguousDecisions(currentSlotNum + 1, tl, hd :: acc)
-      case _ => acc.reverse
+  def apply(membership: Agent[Set[ActorRef]]): Replica = {
+    new Replica(membership) with HelperProvider {
+      val replicaHelper = new ReplicaHelper()
     }
-
-    findContiguousDecisions(highestPerformedSlotNum + 1, unperformedDecisions, Nil)
   }
 }
 
@@ -37,9 +24,8 @@ object Replica {
  * initialState is actually just an ActorRef to the State actor.
  */
 class Replica(membership: Agent[Set[ActorRef]]) extends Actor {
+    this: Replica.HelperProvider =>
   //var state = initialState
-
-  import Replica._
 
   val leaders = membership
 
@@ -49,8 +35,8 @@ class Replica(membership: Agent[Set[ActorRef]]) extends Actor {
   var decisions = Set[Slot]()
 
   def propose(command: Command) {
-    if (!decisionExistsForCommand(decisions, command)) {
-      val lowestUnusedSlotNum = getLowestUnusedSlotNum(proposals ++ decisions)
+    if (!replicaHelper.decisionExistsForCommand(decisions, command)) {
+      val lowestUnusedSlotNum = replicaHelper.getLowestUnusedSlotNum(proposals ++ decisions)
       proposals += Slot(lowestUnusedSlotNum, command)
       // TODO: only route to our leader?
       leaders().foreach(_ ! Propose(lowestUnusedSlotNum, command))
@@ -70,7 +56,7 @@ class Replica(membership: Agent[Set[ActorRef]]) extends Actor {
       decisions += Slot(slot, command)
 
       // XXX: is foreach order gaurenteed?
-      val unperformedDecisions = getUnperformedDecisions(decisions, highestPerformedSlot)
+      val unperformedDecisions = replicaHelper.getUnperformedDecisions(decisions, highestPerformedSlot)
       unperformedDecisions.foreach (slot => {
         println(self + " " + slot.num + " " + slot.command)
         //highestPerformedSlot = slot.num

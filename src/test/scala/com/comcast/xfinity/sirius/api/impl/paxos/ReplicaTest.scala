@@ -1,79 +1,87 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.{Props, Actor, ActorSystem}
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Slot, Command}
+import org.scalatest.BeforeAndAfterAll
+import akka.actor.{ActorRef, Props, Actor, ActorSystem}
+import akka.agent.Agent
+import org.mockito.{Matchers, Mockito}
+import org.mockito.Mockito._
+import org.mockito.Matchers._
+import akka.testkit.{TestActorRef, TestProbe}
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 
-class ReplicaTest extends NiceTest {
-  import Replica._
+object ReplicaTest {
+  def makeReplicaWithMockHelper(membership: Agent[Set[ActorRef]])(implicit as: ActorSystem) = {
+    val mockHelper = mock(classOf[ReplicaHelper])
+    val replica = TestActorRef(
+        new Replica(membership) with Replica.HelperProvider {
+          val replicaHelper = mockHelper
+        })
+    (replica, mockHelper)
+  }
+}
 
-  describe("ReplicaActorTest") {
-    describe("decisionExistsForCommand") {
-      it ("must return true if a decision exists") {
-        expect(true) {
-          val decisions = Set(
-            Slot(1, Command(null, 1, 1)),
-            Slot(2, Command(null, 2, 2))
-          )
-          decisionExistsForCommand(decisions, Command(null, 2, 2))
-        }
+class ReplicaTest extends NiceTest with BeforeAndAfterAll {
+
+  import ReplicaTest._
+
+  implicit val actorSystem = ActorSystem("ReplicaTest")
+
+  override def afterAll {
+    actorSystem.shutdown()
+  }
+
+  describe("A Replica") {
+    describe("when receiving a Request message") {
+      it ("must choose a slot number and send a Propose message to all leaders if " +
+          "no such Request has already been made") {
+        val memberProbes = Set(TestProbe(), TestProbe(), TestProbe())
+        val membership = Agent(memberProbes.map(_.ref))
+        val (replica, mockHelper) = makeReplicaWithMockHelper(membership)
+
+        doReturn(false).when(mockHelper).
+          decisionExistsForCommand(any(classOf[Set[Slot]]), any(classOf[Command]))
+        doReturn(2).when(mockHelper).
+          getLowestUnusedSlotNum(any[Set[Slot]])
+
+        val command = Command(null, 1, 1)
+        replica ! Request(command)
+
+        verify(mockHelper).decisionExistsForCommand(Set[Slot](), command)
+
+        memberProbes.foreach(_.expectMsg(Propose(2, command)))
+        assert(Set(Slot(2, command)) === replica.underlyingActor.proposals)
       }
 
-      it ("must return false if no such decision exists") {
-        expect(false) {
-          val decisions = Set(
-            Slot(1, Command(null, 1, 1)),
-            Slot(2, Command(null, 2, 2))
-          )
-          decisionExistsForCommand(decisions, Command(null, 100, 2))
-        }
+      it ("must ignore the Request if the command already exists") {
+        val memberProbe = TestProbe()
+        val membership = Agent(Set(memberProbe.ref))
+        val (replica, mockHelper) = makeReplicaWithMockHelper(membership)
+
+        doReturn(true).when(mockHelper).
+          decisionExistsForCommand(any(classOf[Set[Slot]]), any(classOf[Command]))
+
+        replica ! Request(Command(null, 1, 1))
+
+        memberProbe.expectNoMsg()
       }
     }
 
-    describe("getLowestUnusedSlotNum") {
-      it ("must return 1 if no slot numbers exist") {
-        expect(1) {
-          getLowestUnusedSlotNum(Set[Slot]())
-        }
-      }
+    describe("when receiving a Decision message") {
+      it ("must add the decision to its state and apply all decisions ready, updating " +
+          "the highest performed slot in the process") {
+        val membership = Agent(Set[ActorRef]())
+        val (replica, mockHelper) = makeReplicaWithMockHelper(membership)
 
-      it ("must return the lowest unused slot number") {
-        expect(3) {
-          val slots = Set(
-            Slot(1, Command(null, 1, 1)),
-            Slot(2, Command(null, 2, 2))
-          )
-          getLowestUnusedSlotNum(slots)
-        }
-      }
-    }
+        replica.underlyingActor.highestPerformedSlot = 5
+        doReturn(List(Slot(6, Command(null, 1, 2)), Slot(7, Command(null, 5, 6)))).when(mockHelper).
+          getUnperformedDecisions(any(classOf[Set[Slot]]), anyInt())
 
-    describe("getUnperformedDecisions") {
-      it ("must return an empty list if no decisions are queued") {
-        expect(Nil) {
-          getUnperformedDecisions(Set[Slot](), 1)
-        }
-      }
+        replica ! Decision(9, Command(null, 0, 9))
 
-      it ("must return an empty list if there exists no decision at the current slot") {
-        expect(Nil) {
-          val slots = Set(
-            Slot(4, null),
-            Slot(3, null)
-          )
-          getUnperformedDecisions(slots, 1)
-        }
-      }
-
-      it ("must return only the decisions ready for execution") {
-        expect(List(Slot(2, null), Slot(3, null))) {
-          val slots = Set(
-            Slot(2, null),
-            Slot(3, null),
-            Slot(5, null)
-          )
-          getUnperformedDecisions(slots, 1)
-        }
+        // TODO: verify that perform actually does something...
+        assert(7 === replica.underlyingActor.highestPerformedSlot)
+        assert(Set(Slot(9, Command(null, 0, 9))) === replica.underlyingActor.decisions)
       }
     }
   }

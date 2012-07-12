@@ -27,7 +27,7 @@ object PaxosSup {
     new PaxosSup with ChildProvider {
       val leader = context.actorOf(Props(new Leader(membership)), "leader")
       val acceptor = context.actorOf(Props(new Acceptor), "acceptor")
-      val replica = context.actorOf(Props(new Replica(membership)), "replica")
+      val replica = context.actorOf(Props(Replica(membership)), "replica")
     }
   }
 
