@@ -2,7 +2,6 @@ package com.comcast.xfinity.sirius.api.impl.persistence
 
 import com.comcast.xfinity.sirius.{TestHelper, NiceTest}
 import akka.actor._
-import org.mockito.Mockito._
 import akka.util.duration._
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestProbe, TestActorRef}
@@ -23,7 +22,6 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
   val chunkSize = 2
 
   before {
-    source = mock[LogLinesSource]
     parentProbe = TestProbe()(actorSystem)
 
     senderProbe = TestProbe()(actorSystem)
@@ -34,7 +32,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
       Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref)), parentProbe.ref, actorSystem)
     remoteLogActor = TestActorRef(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref))
 
-    when(source.createLinesIterator()).thenReturn(Iterator("a", "b", "c", "d", "e", "f", "g"))
+    source = TestHelper.createMockSource("a", "b", "c", "d", "e", "f", "g")
   }
 
   describe("a LogRequestActor") {

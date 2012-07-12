@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
-import com.comcast.xfinity.sirius.NiceTest
+import com.comcast.xfinity.sirius.{TestHelper, NiceTest}
 import akka.testkit.{TestFSMRef, TestProbe}
 import org.mockito.Mockito._
 import akka.util.duration._
@@ -8,6 +8,7 @@ import akka.actor.{LoggingFSM, ActorSystem}
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
 import com.typesafe.config.ConfigFactory
+import scalax.io.CloseableIterator
 
 class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
 
@@ -23,7 +24,6 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
   var mockIterator: Iterator[String] = _
 
   before {
-    mockSource = mock[LogLinesSource]
     mockIterator = mock[Iterator[String]]
 
     receiverProbe = TestProbe()(actorSystem)
@@ -37,7 +37,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
   describe("a logSendingActor") {
     it("should be able to produce two chunks upon a Start call, given enough input") {
 
-      when(mockSource.createLinesIterator()).thenReturn(Iterator("a", "b", "c", "d", "e"))
+      mockSource = TestHelper.createMockSource("a", "b", "c", "d", "e")
 
       actor ! Start(receiverProbe.ref, mockSource, 2)
       val actualFirstChunk = receiverProbe.receiveOne(5 seconds)
@@ -53,7 +53,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
     }
     it("should return one chunk and then a done message for a single-entry source") {
 
-      when(mockSource.createLinesIterator()).thenReturn(Iterator("a"))
+      mockSource = TestHelper.createMockSource("a")
 
       actor ! Start(receiverProbe.ref, mockSource, 2)
       val actualFirstChunk = receiverProbe.receiveOne(5 seconds)
@@ -77,9 +77,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
       assert(actor.isTerminated)
     }
     it("should gather data appropriately when there's plenty to grab") {
-      val data = Seq("a", "b", "c", "d", "e", "f", "g")
-      val iter = data.iterator
-      when(mockSource.createLinesIterator()).thenReturn(iter)
+      mockSource = TestHelper.createMockSource("a", "b", "c", "d", "e", "f", "g")
 
       val expected1 = Seq("a", "b", "c")
 
@@ -88,8 +86,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
     }
     it("should gather data appropriately when there's less than chunkSize available") {
       val data = Seq("a", "b", "c", "d", "e", "f", "g")
-      val iter = data.iterator
-      when(mockSource.createLinesIterator()).thenReturn(iter)
+      mockSource = TestHelper.createMockSource(data.iterator)
 
       actor ! Start(receiverProbe.ref, mockSource, 30)
       receiverProbe.expectMsg(1 seconds, LogChunk(1, data))

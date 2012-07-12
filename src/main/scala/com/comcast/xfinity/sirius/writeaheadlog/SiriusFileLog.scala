@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.writeaheadlog
 import scalax.file.Path
 import org.slf4j.LoggerFactory
 import scalax.io.Line.Terminators.NewLine
-import io.Source
+import scalax.io.CloseableIterator
 
 /**
  * Class that writes a log to a file
@@ -33,8 +33,7 @@ class SiriusFileLog(logPath: String, serDe: LogDataSerDe) extends SiriusLog {
   /**
    * ${@inheritDoc}
    */
-  override def createLinesIterator(): Iterator[String] = {
-    val lines = file.lines(NewLine, true)
-    lines.toIterator
+  override def createLinesIterator(): CloseableIterator[String] = {
+    new CloseableSiriusLineIterator(logPath)
   }
 }

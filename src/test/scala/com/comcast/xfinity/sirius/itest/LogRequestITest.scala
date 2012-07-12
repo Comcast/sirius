@@ -43,7 +43,7 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
     )
     rawEntries = entries.map(serializer.serialize(_))
 
-    when(source.createLinesIterator()).thenReturn(rawEntries.iterator)
+    source = TestHelper.createMockSource(rawEntries.iterator)
 
     logRequestWrapper = TestHelper.wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source, stateActorProbe.ref)), parentProbe.ref, actorSystem)
     remoteLogActor = TestActorRef(new LogRequestActor(chunkSize, source, stateActorProbe.ref))

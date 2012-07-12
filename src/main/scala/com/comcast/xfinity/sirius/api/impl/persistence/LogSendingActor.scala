@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.persistence
 import akka.actor.{ActorRef, FSM, Actor}
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
+import scalax.io.CloseableIterator
 
 // received messages
 case class Start(ref: ActorRef, input: LogLinesSource, chunkSize: Int)
@@ -24,7 +25,7 @@ case object Done extends LSState
 // FSM Data Types
 sealed trait LSData
 case object Null extends LSData
-case class SendingData(target: ActorRef, lines: Iterator[String], seqNum: Int, chunkSize: Int) extends LSData
+case class SendingData(target: ActorRef, lines: CloseableIterator[String], seqNum: Int, chunkSize: Int) extends LSData
 
 /**
  * FSM that spins up and sends logs in chunks to another actor, usually a LogReceivingActor
@@ -46,6 +47,7 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
 
     // if we got the seqRecd we expected AND there's no more to send: we're done
     case Event(Processed(seqRecd: Int), data: SendingData) if seqRecd == data.seqNum && !data.lines.hasNext =>
+      data.lines.close()
       goto(Done) using data
 
     // otherwise, if we got the seqRecd we expected
@@ -70,8 +72,8 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
       stop(FSM.Normal)
   }
 
-  def gatherData(lines: Iterator[String], chunkSize: Int): Seq[String] = {
-    def gatherDataAux(lines: Iterator[String], more: Int, accum: Seq[String]): Seq[String] = {
+  def gatherData(lines: CloseableIterator[String], chunkSize: Int): Seq[String] = {
+    def gatherDataAux(lines: CloseableIterator[String], more: Int, accum: Seq[String]): Seq[String] = {
       if (more == 0 || !lines.hasNext)
         accum
       else
@@ -118,6 +120,12 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
 
   whenUnhandled {
     case Event(event, data) =>
+      data match {
+        case SendingData(target, lines, seqNum, chunkSize) =>
+          // something bad happened; close our data iterator
+          lines.close()
+        case _ =>
+      }
       val reason = "Received unhandled request " + event + " in state " + stateName + "/" + data
       logger.debug(reason)
       context.parent ! TransferFailed(reason)
