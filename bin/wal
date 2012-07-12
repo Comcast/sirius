@@ -6,11 +6,20 @@ import hashlib
 import sys
 
 def usage(f):
-    print "usage: %s [-?h] [-i <file>] <command>" % sys.argv[0]
-    print "  -?,-h,--help     : get usage message"
-    print "  -n,--no-checksum : skip checksum verification"
-    print "  -i,--input-file  : read log from file rather than stdin"
-    print "  <command>        : currently must be \"check\""
+    print """usage: wal [-?h] [-i <file>] [-o <file>] <command>
+  -?,-h,--help     : get usage message
+  -n,--no-checksum : skip checksum verification
+  -i,--input-file  : read log from file rather than stdin
+  -o,--output-file : write modified log to file rather than stdout
+  <command>        : one of : check, repair
+
+COMMANDS:
+  check  : read the log and verify its integrity
+  repair : output the longest prefix of the log that is verified good
+
+EXAMPLES:
+  $ wal check < wal.log
+  $ wal repair < corrupted.log > repaired.log"""
 
 def check_entry(n, entry):
     first_pipe = entry.index('|')
@@ -18,7 +27,7 @@ def check_entry(n, entry):
     m.update(entry[first_pipe:])
     return entry[:first_pipe] == base64.b64encode(m.digest())
 
-def main(f, check_checksums):
+def main(f, outf, check_checksums):
     entries = 0
     truncated = 0
     missing_fields = 0
@@ -27,28 +36,42 @@ def main(f, check_checksums):
         if not line.endswith('\n'):
             sys.stderr.write("entry %d not terminated by newline\n" % entries)
             truncated += 1
-        if not len(line.split('|')) == 6:
+            if outf is not None: outf.flush()
+            outf = None
+        elif not len(line.split('|')) == 6:
             sys.stderr.write("entry %d does not have 6 pipe-delimited fields\n" %
                              entries)
             missing_fields += 1
-        if check_checksums and not check_entry(entries, line):
+            if outf is not None: outf.flush()
+            outf = None
+        elif check_checksums and not check_entry(entries, line):
             sys.stderr.write("entry %d has bad checksum\n" % entries)
             corrupted += 1
+            if outf is not None: outf.flush()
+            outf = None
+        if outf is not None: outf.write(line)
         entries += 1
 
-    print ("wal: %d total entries" % entries)
-    if truncated > 0: print ("wal: %d truncated entries" % truncated)
+    if outf is not None:
+        outf.flush()
+
+    sys.stderr.write("wal: %d total entries\n" % entries)
+    if truncated > 0:
+        sys.stderr.write("wal: %d truncated entries\n" % truncated)
     if missing_fields > 0:
-        print ("wal: %d entries with missing fields" % missing_fields)
+        sys.stderr.write("wal: %d entries with missing fields\n" % missing_fields)
     if corrupted > 0:
-        print ("wal: %d entries with bad checksums" % corrupted)
+        sys.stderr.write("wal: %d entries with bad checksums\n" % corrupted)
+    sys.stderr.flush()
 
 if __name__ == "__main__":
     check_checksums = True
     input_file = sys.stdin
+    output_file = None
+    close_output = False
     try:
-        longopts = ["help", "no-checksum", "input-file="]
-        opts, args = getopt.getopt(sys.argv[1:], "?hni:", longopts)
+        longopts = ["help", "no-checksum", "input-file=", "output-file="]
+        opts, args = getopt.getopt(sys.argv[1:], "?hni:o:", longopts)
     except getopt.GetoptError as e:
         sys.stderr.write("%s\n" % e)
         usage(sys.stderr)
@@ -66,11 +89,21 @@ if __name__ == "__main__":
             except:
                 sys.stderr.write("%s\n" % sys.exc_info()[1])
                 sys.exit(1)
-    if len(args) != 1 or args[0] not in ["check"]:
+        if option in ["-o","--output-file"] and args[0] == "repair":
+            try:
+                output_file = open(value,"w")
+                close_output = True
+            except:
+                sys.stderr.write("%s\n" % sys.exc_info()[1])
+                sys.exit(1)
+    if len(args) != 1 or args[0] not in ["check","repair"]:
         usage(sys.stderr)
         sys.exit(1)
+    elif args[0] == "repair":
+        if output_file is None: output_file = sys.stdout
             
-    main(input_file, check_checksums)
+    main(input_file, output_file, check_checksums)
+    if close_output: output_file.close()
 
 
 
