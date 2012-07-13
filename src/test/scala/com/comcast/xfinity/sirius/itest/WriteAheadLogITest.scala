@@ -2,12 +2,14 @@ package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.ActorSystem
-import akka.dispatch.Await
-import akka.util.duration._
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
+
 import com.comcast.xfinity.sirius.api.impl._
 import java.util.concurrent.TimeUnit
+
+import scalax.file.Path
+
 
 class WriteAheadLogITest extends NiceTest with AkkaConfig {
 
@@ -19,16 +21,20 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
   var logFilename: String = _
 
   var siriusLog: SiriusFileLog = _
+  var clusterConfigPath: Path = _
 
   before {
     tempFolder.create()
     logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
 
+    val clusterConfigFileName = tempFolder.newFile("cluster.conf").getAbsolutePath
+    clusterConfigPath = Path.fromString(clusterConfigFileName)
+
     actorSystem = ActorSystem.create("Sirius")
 
     val logWriter: SiriusFileLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
 
-    sirius = new SiriusImpl(new StringRequestHandler(), actorSystem, logWriter)
+    sirius = new SiriusImpl(new StringRequestHandler(), actorSystem, logWriter, clusterConfigPath)
     assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
 
     siriusLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())

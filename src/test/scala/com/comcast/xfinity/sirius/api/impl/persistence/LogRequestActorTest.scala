@@ -25,11 +25,11 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
   var persistenceActorProbe: TestProbe = _
 
   var source: LogIteratorSource = _
-  var mockSiriusInfo: SiriusInfo = _
   var mockMembershipHelper: MembershipHelper = _
   var mockMembershipAgent: Agent[MembershipMap] = _
 
   val chunkSize = 2
+  val localSiriusId: String = "local:2552"
 
   before {
     parentProbe = TestProbe()(actorSystem)
@@ -37,7 +37,6 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     receiverProbe = TestProbe()(actorSystem)
     persistenceActorProbe = TestProbe()(actorSystem)
 
-    mockSiriusInfo = mock[SiriusInfo]
     mockMembershipHelper = mock[MembershipHelper]
     mockMembershipAgent = mock[Agent[MembershipMap]]
 
@@ -57,7 +56,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
   }
 
   private def createLogRequestActor(): LogRequestActor = {
-    new LogRequestActor(chunkSize, source, mockSiriusInfo, persistenceActorProbe.ref, mockMembershipAgent) {
+    new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
       override def membershipHelper = mockMembershipHelper
     }
   }
@@ -65,7 +64,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
   describe("a LogRequestActor") {
     it("should report a 'no viable member to get logs from' message up to its parent as a failure") {
       when(mockMembershipHelper.getRandomMember(
-        Matchers.any[MembershipMap], Matchers.eq(mockSiriusInfo))).thenReturn(None)
+        Matchers.any[MembershipMap], Matchers.eq(localSiriusId))).thenReturn(None)
       logRequestWrapper ! RequestLogFromAnyRemote(EntireLog)
       parentProbe.expectMsg(5 seconds, TransferFailed(LogRequestActor.NO_MEMBER_FAIL_MSG))
     }
@@ -73,14 +72,14 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     it("should fire off a round of log requests when logs are requested from any remote.") {
       val probe = TestProbe()(actorSystem)
       val localLogRequestWrapper = Helper.wrapActorWithMockedSupervisor(
-        Props(new LogRequestActor(chunkSize, source, mockSiriusInfo, persistenceActorProbe.ref, mockMembershipAgent) {
+        Props(new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
         override def createReceiver(): ActorRef = probe.ref
         override def membershipHelper = mockMembershipHelper
       }), parentProbe.ref, actorSystem)
 
       val membershipData = new MembershipData(probe.ref)
       when(mockMembershipHelper.getRandomMember(
-        Matchers.any[MembershipMap], Matchers.eq(mockSiriusInfo))).thenReturn(Some(membershipData))
+        Matchers.any[MembershipMap], Matchers.eq(localSiriusId))).thenReturn(Some(membershipData))
 
       val logRange = new BoundedLogRange(0, 100)
       localLogRequestWrapper ! RequestLogFromAnyRemote(logRange)
@@ -90,7 +89,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     it("should fire off a round of log requests when logs are requested from a remote.") {
       val probe = TestProbe()(actorSystem)
       val localLogRequestWrapper = Helper.wrapActorWithMockedSupervisor(
-        Props(new LogRequestActor(chunkSize, source, mockSiriusInfo, persistenceActorProbe.ref, mockMembershipAgent) {
+        Props(new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
         override def createReceiver(): ActorRef = probe.ref
       }), parentProbe.ref, actorSystem)
 
@@ -104,7 +103,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
       val receiverProbe = TestProbe()(actorSystem)
       val localLogRequestWrapper =
         Helper.wrapActorWithMockedSupervisor(
-          Props(new LogRequestActor(chunkSize, source, mockSiriusInfo, persistenceActorProbe.ref, mockMembershipAgent) {
+          Props(new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
             override def createSender(): ActorRef = senderProbe.ref
         }),  parentProbe.ref, actorSystem)
 

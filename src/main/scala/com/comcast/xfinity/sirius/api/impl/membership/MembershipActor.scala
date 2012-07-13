@@ -1,60 +1,93 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
-import org.slf4j.LoggerFactory
-
-import com.comcast.xfinity.sirius.info.SiriusInfo
-
-import akka.actor.{ActorRef, actorRef2Scala, Actor}
-
-import akka.dispatch.Await
-
-import akka.pattern.ask
 import com.comcast.xfinity.sirius.api.impl._
 import akka.agent.Agent
+import membership.MembershipActor.CheckClusterConfig
+import scalax.file.Path
+import scalax.io.Line.Terminators.NewLine
+import akka.event.Logging
+import akka.util.Duration
+import java.util.concurrent.TimeUnit
+import akka.actor.{Cancellable, actorRef2Scala, Actor}
+
+object MembershipActor {
+  // message only sent to self
+  case object CheckClusterConfig
+}
 
 /**
  * Actor responsible for orchestrating request related to Sirius Cluster Membership
  */
-class MembershipActor(membershipAgent: Agent[MembershipMap], siriusInfo: SiriusInfo) extends Actor with AkkaConfig {
-  private val logger = LoggerFactory.getLogger(classOf[MembershipActor])
+class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
+                      siriusStateAgent: Agent[SiriusState],
+                      clusterConfigPath: Path) extends Actor with AkkaConfig {
+
 
   def membershipHelper = new MembershipHelper
 
-  def receive = {
-    case JoinCluster(nodeToJoin, info) => nodeToJoin match {
-      case Some(node: ActorRef) => {
-        logger.debug(context.parent + " joining " + node)
-        //join node from a cluster
-        val future = node ? Join(Map(info -> MembershipData(context.parent)))
-        val addMembers = Await.result(future, timeout.duration).asInstanceOf[AddMembers]
-        //update our membership map
-        addToLocalMembership(addMembers.member)
-        logger.debug("added " + addMembers.member)
-      }
-      case None => addToLocalMembership(Map(info -> MembershipData(context.parent)))
-    }
-    case Join(member) => {
-      notifyPeers(member)
-      addToLocalMembership(member)
-      sender ! AddMembers(membershipAgent())
-    }
-    case AddMembers(member) => addToLocalMembership(member)
-    case GetMembershipData => sender ! membershipAgent()
-    case _ => logger.warn("Unrecognized message.")
+  val logger = Logging(context.system, this)
+
+  private var configLastModified = -1L
+
+  // TODO: This should not be hard-coded.
+  private[membership] val checkInterval: Duration = Duration.create(30, TimeUnit.SECONDS)
+
+  var configCheckSchedule: Cancellable = _ // This needs to be set on preStart so checkInterval can be overridden in tests
+
+  override def preStart() {
+    logger.info("Bootstrapping Membership Actor, initializing cluster membership map {}",
+      clusterConfigPath)
+
+    configCheckSchedule = context.system.scheduler.schedule(Duration.Zero, checkInterval, self, CheckClusterConfig)
+
+    updateMembershipMap()
+
+    siriusStateAgent send ((state: SiriusState) => {
+      state.updateMembershipActorState(SiriusState.MembershipActorState.Initialized)
+    })
+  }
+
+  override def postStop() {
+    configCheckSchedule.cancel()
   }
 
   /**
-   * update local membership data structure.  If member already exists then overwrite it.
+   * Creates a MembershipMap from the contents of the clusterConfigPath file.
+   *
+   * @param clusterConfigPath a Path containing cluster members, one per line, host:port
+   * @return MembershipMap of MembershipData
    */
-  def addToLocalMembership(member: MembershipMap) { membershipAgent send (_ ++ member) }
+  def createMembershipMap(clusterConfigPath: Path): MembershipMap = {
+    clusterConfigPath.lines(NewLine,
+      includeTerminator = false).foldLeft(MembershipMap())((map: MembershipMap, hostAndPort: String) => {
 
-  /**
-   * Notify existing members of the cluster that a new node has joined
-   */
-  def notifyPeers(newMember: MembershipMap) {
-    membershipAgent().foreach {
-      case (key, peerRef) => peerRef.supervisorRef ! AddMembers(newMember)
-    }
+      // XXX should use constants for things like /user/sirius ... for chunks of these akka paths
+      // XXX also use those same constants when creating original actors with context.actorOf
+      val akkaString = "akka://" + SYSTEM_NAME + "@" + hostAndPort + "/user/sirius"
+      val data: MembershipData =
+        MembershipData(context.actorFor(akkaString))
+      map + (hostAndPort -> data)
+    })
+  }
+
+  def receive = {
+    // Check the stored lastModifiedTime of the clusterConfigPath file against
+    // the actual file on disk, and rebuild membership map if necessary
+    case CheckClusterConfig =>
+      val currentModifiedTime = clusterConfigPath.lastModified
+      if (currentModifiedTime > configLastModified) {
+        logger.info("CheckClusterConfig detected {} change, updating MembershipMap", clusterConfigPath)
+
+        updateMembershipMap()
+      }
+    case GetMembershipData => sender ! membershipAgent()
+    case _ => logger.warning("Unrecognized message.")
+  }
+
+  private def updateMembershipMap() {
+    val newMap = createMembershipMap(clusterConfigPath)
+    configLastModified = clusterConfigPath.lastModified
+    membershipAgent send newMap
   }
 
 }

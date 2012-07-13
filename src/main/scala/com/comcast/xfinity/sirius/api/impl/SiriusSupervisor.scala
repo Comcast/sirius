@@ -12,9 +12,9 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
+import scalax.file.Path
 
 /**
  * Supervisor actor for the set of actors needed for Sirius.
@@ -24,7 +24,8 @@ class SiriusSupervisor(admin: SiriusAdmin,
                        siriusLog: SiriusLog,
                        siriusStateAgent: Agent[SiriusState],
                        membershipAgent: Agent[MembershipMap],
-                       siriusInfo: SiriusInfo) extends Actor with AkkaConfig {
+                       siriusId: String,
+                       clusterConfigPath: Path) extends Actor with AkkaConfig {
 
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
   private val DEFAULT_CHUNK_SIZE = 100 // TODO make chunk size configurable
@@ -33,9 +34,10 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] var stateActor = createStateActor(requestHandler)
   private[impl] var persistenceActor = createPersistenceActor(stateActor, siriusLog)
   private[impl] var paxosActor = createPaxosActor(persistenceActor)
-  private[impl] var membershipActor = createMembershipActor(membershipAgent)
   private[impl] var logRequestActor =
-    createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, siriusInfo, persistenceActor, membershipAgent)
+    createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, siriusId, persistenceActor, membershipAgent)
+  private[impl] var membershipActor = createMembershipActor(membershipAgent, siriusId, clusterConfigPath)
+
 
   override def preStart() {
     super.preStart()
@@ -47,30 +49,26 @@ class SiriusSupervisor(admin: SiriusAdmin,
     admin.unregisterMbeans()
   }
 
-  //TODO: make this stop when initialized.
   val initSchedule = context.system.scheduler.schedule(
-    Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest);
+    Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest)
 
   def receive = {
     case SiriusSupervisor.IsInitializedRequest => {
       val siriusState = siriusStateAgent.get()
       val isStateActorInitialized = siriusState.stateActorState == SiriusState.StateActorState.Initialized
-      if (isStateActorInitialized) {
-        val isPersistenceInitialized = siriusState.persistenceState == SiriusState.PersistenceState.Initialized
-        if (isPersistenceInitialized) {
+      val isMembershipActorInitialized = siriusState.membershipActorState == SiriusState.MembershipActorState.Initialized
+      val isPersistenceInitialized = siriusState.persistenceState == SiriusState.PersistenceState.Initialized
+      if (isStateActorInitialized && isMembershipActorInitialized && isPersistenceInitialized) {
+        import context.become
+        become(initialized)
 
-          import context.become
-          become(initialized)
+        siriusStateAgent send ((state: SiriusState) => {
+          state.updateSupervisorState(SiriusState.SupervisorState.Initialized)
+        })
 
-          siriusStateAgent send ((state: SiriusState) => {
-            state.updateSupervisorState(SiriusState.SupervisorState.Initialized)
-          })
+        initSchedule.cancel()
 
-          initSchedule.cancel();
-
-          sender ! new SiriusSupervisor.IsInitializedResponse(isPersistenceInitialized)
-        }
-
+        sender ! new SiriusSupervisor.IsInitializedResponse(isPersistenceInitialized)
       }
     }
 
@@ -100,13 +98,14 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] def createPaxosActor(persistenceActor: ActorRef) =
     context.actorOf(Props(new SiriusPaxosActor(persistenceActor)), "paxos")
 
-  private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap]) =
-    context.actorOf(Props(new MembershipActor(membershipAgent, siriusInfo)), "membership")
+  private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, clusterConfigPath: Path) =
+    context.actorOf(Props(new MembershipActor(membershipAgent, siriusId, siriusStateAgent,
+      clusterConfigPath)), "membership")
 
   private[impl] def createLogRequestActor(chunkSize: Int, logLinesSource: LogIteratorSource,
-      theSiriusInfo: SiriusInfo, thePersistenceActor: ActorRef, theMembershipAgent: Agent[MembershipMap]) =
+      siriusId: String, thePersistenceActor: ActorRef, theMembershipAgent: Agent[MembershipMap]) =
     context.actorOf(Props(
-      new LogRequestActor(chunkSize, logLinesSource, theSiriusInfo, thePersistenceActor, theMembershipAgent)))
+      new LogRequestActor(chunkSize, logLinesSource, siriusId, thePersistenceActor, theMembershipAgent)))
 }
 
 object SiriusSupervisor {

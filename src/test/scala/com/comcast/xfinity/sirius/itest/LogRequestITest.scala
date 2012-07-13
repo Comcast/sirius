@@ -32,6 +32,8 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
 
   var logRange: LogRange = _
   val chunkSize = 2
+  val localSiriusId = "local:2552"
+  val remoteSiriusId = "remote:2552"
 
   before {
     siriusInfo = mock[SiriusInfo]
@@ -53,13 +55,12 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
     logRequestWrapper = Helper.wrapActorWithMockedSupervisor(Props(createLogRequestActor()), parentProbe.ref, actorSystem)
     remoteLogActor = TestActorRef(createLogRequestActor())
 
-    val remoteSiriusInfo = mock[SiriusInfo]
     val remoteMembershipData = new MembershipData(remoteLogActor)
-    when(membershipAgent.get()).thenReturn(Map(remoteSiriusInfo -> remoteMembershipData).asInstanceOf[MembershipMap])
+    when(membershipAgent.get()).thenReturn(Map(remoteSiriusId -> remoteMembershipData))
   }
 
   private def createLogRequestActor(): LogRequestActor = {
-    new LogRequestActor(chunkSize, source, siriusInfo, stateActorProbe.ref, membershipAgent)
+    new LogRequestActor(chunkSize, source, localSiriusId, stateActorProbe.ref, membershipAgent)
   }
 
   describe("a logRequestActor") {

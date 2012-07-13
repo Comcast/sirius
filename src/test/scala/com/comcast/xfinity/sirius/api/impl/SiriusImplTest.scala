@@ -12,12 +12,13 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import membership._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
 import java.util.concurrent.TimeUnit
+import scalax.file.Path
+import com.comcast.xfinity.sirius.api.impl.membership._
 
 object SiriusImplTest {
   
@@ -27,15 +28,19 @@ object SiriusImplTest {
                              siriusLog: SiriusLog,
                              supProbe: TestProbe,
                              siriusStateAgent: Agent[SiriusState],
-                             membershipAgent: Agent[MembershipMap]) = {
-    new SiriusImpl(handler, actorSystem, siriusLog) {
+                             membershipAgent: Agent[MembershipMap],
+                             clusterConfigPath: Path) = {
+    new SiriusImpl(handler, actorSystem, siriusLog, clusterConfigPath) {
       
       override def createSiriusSupervisor(_as: ActorSystem, 
-          _handler: RequestHandler, 
-          _info: SiriusInfo, 
+          _handler: RequestHandler,
+          _host: String,
+          _port: Int,
           _log: SiriusLog,
           _siriusStateAgent: Agent[SiriusState],
-          _membershipAgent: Agent[MembershipMap]) = supProbe.ref
+          _membershipAgent: Agent[MembershipMap],
+          _clusterConfigPath: Path
+          ) = supProbe.ref
           
     }
   }
@@ -54,8 +59,8 @@ class SiriusImplTest extends NiceTest {
   var siriusLog: SiriusLog = _
   var membershipMap: MembershipMap = _
   var siriusStateAgent: Agent[SiriusState] = _
-  var membershipAgent: Agent[Map[SiriusInfo,MembershipData]] = _
-
+  var membershipAgent: Agent[Map[String,MembershipData]] = _
+  var clusterConfigPath: Path = Path.fromString("")
 
   before {
     actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
@@ -76,8 +81,6 @@ class SiriusImplTest extends NiceTest {
         case Put(_, _) => 
           sender ! SiriusResult.some("Put it")
           Some(this)
-        case JoinCluster(_, _) => 
-          Some(this)
         case GetMembershipData =>
           sender ! membershipMap
           Some(this)
@@ -87,7 +90,7 @@ class SiriusImplTest extends NiceTest {
     siriusLog = mock[SiriusLog]
 
     underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, 
-        actorSystem, siriusLog, supervisorActorProbe, siriusStateAgent, membershipAgent)
+        actorSystem, siriusLog, supervisorActorProbe, siriusStateAgent, membershipAgent, clusterConfigPath)
 
   }
 
@@ -126,12 +129,6 @@ class SiriusImplTest extends NiceTest {
       val membershipFuture = underTest.getMembershipMap
       assert(membershipMap === Await.result(membershipFuture, timeout.duration))
       supervisorActorProbe.expectMsg(GetMembershipData)
-    }
-
-    it("should issue a JoinCluster message to the supervisor when joinCluster is called") {
-      underTest.joinCluster(None)
-      supervisorActorProbe.expectMsg(JoinCluster(None, underTest.info))
-
     }
 
   }

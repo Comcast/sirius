@@ -18,11 +18,13 @@ import com.comcast.xfinity.sirius.api.SiriusResult
 import com.typesafe.config.ConfigFactory
 import akka.actor._
 import java.util.concurrent.Future
+import scalax.file.Path
 
 /**Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances. */
 object SiriusImpl extends AkkaConfig {
 
-  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostname: String, port: Int): SiriusImpl = {
+  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostname: String, port: Int,
+                   clusterConfigPath: String): SiriusImpl = {
 
 
     val remoteConfig = ConfigFactory.parseString("""
@@ -39,7 +41,7 @@ object SiriusImpl extends AkkaConfig {
          transport = "akka.remote.netty.NettyRemoteTransport"
          netty {
            # if this is set to actual hostname, remote messaging fails... can use empty or the IP address.
-           hostname = ""
+           hostname = """ + hostname + """
            port = """ + port + """
          }
        }
@@ -50,38 +52,34 @@ object SiriusImpl extends AkkaConfig {
 
     val allConfig = remoteConfig.withFallback(config)
 
-    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, allConfig), siriusLog, port)
+    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, allConfig), siriusLog, hostname, port, Path.fromString(clusterConfigPath))
   }
 }
 
 /**
  * A Sirius implementation implemented in Scala using Akka actors.
  */
-class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, siriusLog: SiriusLog, port: Int)
+class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem,
+                 siriusLog: SiriusLog, host: String, port: Int, clusterConfigPath: Path)
   extends Sirius with AkkaConfig {
 
   //TODO: find better way of building SiriusImpl ...
-  def this(requestHandler: RequestHandler, actorSystem: ActorSystem) =
+  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, clusterConfigPath: Path) =
     this (requestHandler, actorSystem,
       new SiriusFileLog("/var/lib/sirius/xfinityapi/wal.log", // TODO: Abstract this to the app using Sirius.
-        new WriteAheadLogSerDe()), SiriusImpl.DEFAULT_PORT)
+      new WriteAheadLogSerDe()), InetAddress.getLocalHost.getHostName,
+      SiriusImpl.DEFAULT_PORT, clusterConfigPath)
 
-  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: SiriusLog) =
-    this (requestHandler, actorSystem, walWriter, SiriusImpl.DEFAULT_PORT)
+  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: SiriusLog, clusterConfigPath: Path) =
+    this (requestHandler, actorSystem, walWriter,  InetAddress.getLocalHost.getHostName,
+          SiriusImpl.DEFAULT_PORT, clusterConfigPath)
 
-  // TODO: Pass in the hostname and port (perhaps)
-  val info = new SiriusInfo(port, InetAddress.getLocalHost.getHostName)
   val membershipAgent: Agent[MembershipMap] = Agent(MembershipMap())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
 
-  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, info, siriusLog, siriusStateAgent,
-    membershipAgent)
-
-
-  def joinCluster(nodeToJoin: Option[ActorRef]) {
-    supervisor ! JoinCluster(nodeToJoin, info)
-  }
-
+  val supervisor = createSiriusSupervisor(actorSystem, requestHandler,
+    host, port, siriusLog, siriusStateAgent,
+    membershipAgent, clusterConfigPath)
 
   def getMembershipMap = {
     (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[MembershipMap]]
@@ -120,13 +118,17 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, s
 
   // XXX: handle for testing
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler,
-                                           siriusInfo: SiriusInfo, theWalWriter: SiriusLog,
+                                           host: String, port: Int, theWalWriter: SiriusLog,
                                            theSiriusStateAgent: Agent[SiriusState],
-                                           theMembershipAgent: Agent[MembershipMap]) = {
+                                           theMembershipAgent: Agent[MembershipMap],
+                                           clusterConfigPath: Path) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
+    val info = new SiriusInfo(port, host)
     val admin = new SiriusAdmin(info, mbeanServer)
+    val siriusId = host + ":" + port
     val supProps = Props(
-      new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, info))
+      new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent,
+        theMembershipAgent, siriusId, clusterConfigPath))
     theActorSystem.actorOf(supProps, "sirius")
   }
 }

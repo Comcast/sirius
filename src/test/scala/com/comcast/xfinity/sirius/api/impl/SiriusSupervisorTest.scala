@@ -8,29 +8,33 @@ import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{TestProbe, TestActor, TestActorRef}
+import org.mockito.Mockito._
 import akka.dispatch.Await
 import akka.pattern.ask
 import akka.util.duration._
 import akka.util.Timeout
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
+import scalax.file.Path
+import scalax.io.Line.Terminators.NewLine
+import scalax.io.LongTraversable
 
 object SiriusSupervisorTest {
 
   def createProbedTestSupervisor(admin: SiriusAdmin,
       handler: RequestHandler,
       siriusLog: SiriusLog,
-      siriusInfo: SiriusInfo,
+      siriusId: String,
       stateProbe: TestProbe,
       persistenceProbe: TestProbe,
       paxosProbe: TestProbe,
       membershipProbe: TestProbe,
       siriusStateAgent: Agent[SiriusState],
-      membershipAgent: Agent[MembershipMap])(implicit as: ActorSystem) = {
-    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, siriusInfo) {
+      membershipAgent: Agent[MembershipMap],
+      clusterConfigPath: Path)(implicit as: ActorSystem) = {
+    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, siriusId, clusterConfigPath) {
 
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
@@ -38,7 +42,7 @@ object SiriusSupervisorTest {
 
       override def createPaxosActor(_persistence: ActorRef) = paxosProbe.ref
 
-      override def createMembershipActor(_membershipAgent: Agent[MembershipMap]) = membershipProbe.ref
+      override def createMembershipActor(_membershipAgent: Agent[MembershipMap], _siriusId: String, _clusterConfigPath: Path) = membershipProbe.ref
     })
   }
 }
@@ -55,16 +59,24 @@ class SiriusSupervisorTest() extends NiceTest {
   var membershipProbe: TestProbe = _
   var nodeToJoinProbe: TestProbe = _
 
-  var membershipAgent: Agent[Map[SiriusInfo,MembershipData]] = _
+  var membershipAgent: Agent[Map[String,MembershipData]] = _
   var siriusStateAgent: Agent[SiriusState] = _
 
   var handler: RequestHandler = _
   var admin: SiriusAdmin = _
   var siriusLog: SiriusLog = _
-  var siriusInfo: SiriusInfo = _
   var siriusState: SiriusState = _
+  var clusterConfigPath: Path = _
 
-  var supervisor: TestActorRef[SiriusSupervisor] = _
+  val siriusId = "local:2552"
+
+  var supervisor: TestActorRef[SiriusSupervisor {
+    def createStateActor(_handler: RequestHandler): ActorRef
+    def createPersistenceActor(_state: ActorRef, _writer: SiriusLog): ActorRef
+    def createPaxosActor(_persistence: ActorRef): ActorRef
+    def createMembershipActor(_membershipAgent: Agent[_root_.com.comcast.xfinity.sirius.api.impl.membership.MembershipMap],
+                              _siriusId: String, _clusterConfigPath: Path): ActorRef
+  }] = _
   implicit val timeout: Timeout = (5 seconds)
 
   before {
@@ -76,7 +88,10 @@ class SiriusSupervisorTest() extends NiceTest {
     handler = mock[RequestHandler]
     admin = mock[SiriusAdmin]
     siriusLog = mock[SiriusLog]
-    siriusInfo = mock[SiriusInfo]
+    clusterConfigPath = mock[Path]
+
+    when(clusterConfigPath.lastModified).thenReturn(1L)
+    when(clusterConfigPath.lines(NewLine, includeTerminator = false)).thenReturn(LongTraversable("dummyhost:8080"))
 
     membershipProbe = TestProbe()(actorSystem)
     membershipProbe.setAutoPilot(new TestActor.AutoPilot {
@@ -113,8 +128,8 @@ class SiriusSupervisorTest() extends NiceTest {
     siriusStateAgent = Agent(siriusState)(actorSystem)
 
     supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
-        admin, handler, siriusLog, siriusInfo, stateProbe, persistenceProbe, paxosProbe,
-        membershipProbe, siriusStateAgent, membershipAgent)(actorSystem)
+        admin, handler, siriusLog, siriusId, stateProbe, persistenceProbe, paxosProbe,
+        membershipProbe, siriusStateAgent, membershipAgent, clusterConfigPath)(actorSystem)
   }
 
   after {
@@ -124,6 +139,7 @@ class SiriusSupervisorTest() extends NiceTest {
   def initializeSupervisor(supervisor: ActorRef) {
     siriusState.updateStateActorState(SiriusState.StateActorState.Initialized)
     siriusState.updatePersistenceState(SiriusState.PersistenceState.Initialized)
+    siriusState.updateMembershipActorState(SiriusState.MembershipActorState.Initialized)
     val isInitializedFuture = supervisor ? SiriusSupervisor.IsInitializedRequest
     val expected = SiriusSupervisor.IsInitializedResponse(true)
     assert(expected === Await.result(isInitializedFuture, timeout.duration))

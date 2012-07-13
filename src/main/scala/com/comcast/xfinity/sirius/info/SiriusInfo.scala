@@ -12,5 +12,4 @@ class SiriusInfo(val port: Int, val hostName: String) extends SiriusInfoMBean {
   def getName: String = "sirius-" + hostName + ":" + port
 
   override def toString : String = getName
-
 }

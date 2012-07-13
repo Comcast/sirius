@@ -1,19 +1,23 @@
 package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.ActorSystem
 import org.junit.rules.TemporaryFolder
-import com.comcast.xfinity.sirius.writeaheadlog._
 import scalax.file.Path
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import com.comcast.xfinity.sirius.api.impl.SiriusImpl
 import com.comcast.xfinity.sirius.api.impl.membership._
+import akka.actor.{Props, ActorSystem}
+import akka.agent.Agent
+import com.comcast.xfinity.sirius.api.impl.{SiriusState, SiriusImpl}
+import akka.util.Duration
+import java.util.concurrent.TimeUnit
+import org.junit.Assert.assertTrue
+import akka.testkit.TestActorRef
 import org.mockito.Mockito._
 import org.mockito.Matchers._
 
 @RunWith(classOf[JUnitRunner])
-class BootstrapLogITest extends NiceTest {
+class MembershipITest extends NiceTest {
 
   var sirius: SiriusImpl = _
 
@@ -27,7 +31,6 @@ class BootstrapLogITest extends NiceTest {
 
   private def stageFiles() {
     tempFolder.create()
-    stageLogFile()
     stageClusterConfigFile()
   }
   private def stageLogFile() {
@@ -44,18 +47,21 @@ class BootstrapLogITest extends NiceTest {
     clusterConfigPath.append("host2:2552\n")
   }
 
+  var membershipAgent: Agent[MembershipMap] = _
+  var stateAgent: Agent[SiriusState] = _
+  var underTestActor: TestActorRef[MembershipActor] = _
+
   before {
     stageFiles()
 
     actorSystem = ActorSystem.create("Sirius")
 
-    val logWriter: SiriusFileLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
+    membershipAgent = Agent[MembershipMap](MembershipMap())(actorSystem)
+    stateAgent = mock[Agent[SiriusState]]
 
-    stringRequestHandler = new StringRequestHandler()
-
-    sirius = new SiriusImpl(stringRequestHandler, actorSystem, logWriter, clusterConfigPath)
-    assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
-
+    underTestActor = TestActorRef(new MembershipActor(membershipAgent, "local:2552", stateAgent, clusterConfigPath) {
+      override val checkInterval: Duration = Duration.create(100, TimeUnit.MILLISECONDS)
+    })(actorSystem)
   }
 
   after {
@@ -64,10 +70,18 @@ class BootstrapLogITest extends NiceTest {
     actorSystem.awaitTermination()
   }
 
-  describe("a Sirius") {
-    it("once started should have \"bootstrapped\" the contents of the wal") {
-      assert(1 === stringRequestHandler.map.keySet.size)
-      assert( 2 === stringRequestHandler.cmdsHandledCnt)
+  describe("a MembershipActor") {
+    it("updates its membership map after an alloted time from change on disk") {
+      Thread.sleep(500L) // waiting for preStart to complete.
+
+      assertTrue(membershipAgent.get().keys.exists("host1:2552" == _))
+      assertTrue(membershipAgent.get().keys.exists("host2:2552" == _))
+
+      clusterConfigPath.append("host3:2552\n")
+
+      Thread.sleep(500L) // waiting for interval to expire.
+
+      assertTrue(membershipAgent.get().keys.exists("host3:2552" == _))
     }
 
   }

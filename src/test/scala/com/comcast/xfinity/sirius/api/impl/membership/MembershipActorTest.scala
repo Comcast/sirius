@@ -1,21 +1,19 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
-import com.comcast.xfinity.sirius.{Helper, NiceTest}
-import com.comcast.xfinity.sirius.info.SiriusInfo
+import com.comcast.xfinity.sirius.NiceTest
 import akka.dispatch.Await._
 import akka.util.duration._
 import akka.pattern.ask
-
 import org.mockito.Mockito._
-import org.mockito.Matchers._
-
-import akka.testkit.{TestActor, TestProbe, TestActorRef}
-import akka.actor.{Actor, Props, ActorRef, ActorSystem}
+import akka.testkit.TestActorRef
+import akka.actor.ActorSystem
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.impl.{AkkaConfig}
-import akka.testkit.TestActor.AutoPilot
-import scala.Option
-import collection.immutable
+import com.comcast.xfinity.sirius.api.impl.{SiriusState, AkkaConfig}
+import scalax.file.Path
+import scalax.io.Line.Terminators.NewLine
+import scalax.io.LongTraversable
+import org.mockito.Matchers._
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 
 class MembershipActorTest extends NiceTest with AkkaConfig {
 
@@ -23,145 +21,62 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
 
   var underTestActor: TestActorRef[MembershipActor] = _
 
-  var siriusInfo: SiriusInfo = _
   var expectedMap: MembershipMap = _
-
+  var siriusStateAgent: Agent[SiriusState] = _
+  var clusterConfigPath: Path = _
   var membershipAgent: Agent[MembershipMap] = _
 
-  before {
-    siriusInfo = mock[SiriusInfo]
+  val localSiriusId: String = "local:2552"
 
+  before {
     actorSystem = ActorSystem("testsystem")
     membershipAgent = mock[Agent[MembershipMap]]
+    siriusStateAgent = mock[Agent[SiriusState]]
+    clusterConfigPath = mock[Path]
 
-    underTestActor = TestActorRef(new MembershipActor(membershipAgent, siriusInfo))(actorSystem)
+    when(clusterConfigPath.lastModified).thenReturn(1L)
+    when(clusterConfigPath.lines(NewLine, false)).thenReturn(LongTraversable("dummyhost:8080"))
 
-    expectedMap = MembershipMap(siriusInfo -> MembershipData(underTestActor))
+    underTestActor = TestActorRef(new MembershipActor(membershipAgent, localSiriusId,
+      siriusStateAgent, clusterConfigPath))(actorSystem)
+
+    expectedMap = MembershipMap(localSiriusId -> MembershipData(underTestActor))
   }
 
   after {
     actorSystem.shutdown()
   }
 
-
   describe("a MembershipActor") {
-    it("should add a new member to the membership map if it receives a AddMembers message") {
-      val newMember = AddMembers(expectedMap)
-      underTestActor ! newMember
-      verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
-
-    }
     it("should report on cluster membership if it receives a GetMembershipData message") {
       when(membershipAgent()).thenReturn(expectedMap)
       val actualMembers = result((underTestActor ? GetMembershipData), (5 seconds)).asInstanceOf[MembershipMap]
 
       assert(expectedMap === actualMembers)
     }
-    it("should tell peers, add to member map, and return a AddMembers if it receives a Join message") {
-      val probe1 = new TestProbe(actorSystem)
-      val probe2 = new TestProbe(actorSystem)
-      val info1 = new SiriusInfo(1000, "cool-server")
-      val info2 = new SiriusInfo(1000, "rad-server")
 
-      val toAddProbe = new TestProbe(actorSystem)
-      val toAddInfo = new SiriusInfo(1000, "local-server")
-      val toAdd = MembershipMap(toAddInfo -> MembershipData(toAddProbe.ref))
-
-
-      val membership = MembershipMap(info1 -> MembershipData(probe1.ref), info2 -> MembershipData(probe2.ref))
-      when(membershipAgent()).thenReturn(membership)
-
-      val newMember = result((underTestActor ? Join(toAdd)), (5 seconds)).asInstanceOf[AddMembers]
-      //was map updated
-      verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
-
-      //were peers notified
-      probe1.expectMsg(AddMembers(toAdd))
-      probe2.expectMsg(AddMembers(toAdd))
-    }
-    it("should update membership map when it receives AddMembers with a node that is already a member") {
-      val coolServerProbe = new TestProbe(actorSystem)
-      val coolServerInfo = new SiriusInfo(1000, "cool-server")
-
-      val newerCoolServerProbe = new TestProbe(actorSystem)
-
-      //stage membership map so that it includes coolserver
-      val membership = MembershipMap(coolServerInfo -> MembershipData(coolServerProbe.ref), new SiriusInfo(2000, "rad-server") -> MembershipData(new TestProbe(actorSystem).ref))
-      when(membershipAgent()).thenReturn(membership)
-
-      //try add cool-server again but with updated MembershipData
-      val toAdd = MembershipMap(coolServerInfo -> MembershipData(newerCoolServerProbe.ref))
-      underTestActor ! AddMembers(toAdd)
-
-      //was map updated
-      verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
-    }
-    it("should handle a Join message when the new node already is a member") {
-      val coolServerInfo = new SiriusInfo(1000, "cool-server")
-      val coolServerProbe = new TestProbe(actorSystem)
-
-      val radServerInfo = new SiriusInfo(1000, "rad-server")
-      val radServerProbe = new TestProbe(actorSystem)
-
-      //stage membership with cool-server and rad-server
-      val membership = MembershipMap(coolServerInfo -> MembershipData(coolServerProbe.ref), radServerInfo -> MembershipData(radServerProbe.ref))
-      when(membershipAgent()).thenReturn(membership)
-
-      val coolServerJoinMsg = Join(MembershipMap(coolServerInfo -> MembershipData(coolServerProbe.ref)))
-      val addMembersMsg = result((underTestActor ? coolServerJoinMsg), (5 seconds)).asInstanceOf[AddMembers]
-
-      assert(membership === addMembersMsg.member)
-
-      //was map updated
-      verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
-
-      //were peers notified
-      coolServerProbe.expectMsg(AddMembers(coolServerJoinMsg.member))
-      coolServerProbe.expectNoMsg((100 millis))
-      radServerProbe.expectMsg(AddMembers(coolServerJoinMsg.member))
-      radServerProbe.expectNoMsg((100 millis))
+    it("should attempt to read in the cluster configuration and set the MembershipMap") {
+      // preStart will send a membership map to the membership agent
+      verify(membershipAgent).send(any(classOf[MembershipMap]))
     }
 
-    //TODO: Verify this is supposed to be here
-    describe("when receiving a JoinCluster message") {
-      describe("and is given a nodeToJoin") {
-        it("should send a Join message to nodeToJoin's ActorRef containing the actor's parent") {
-          //setup TestProbes
-          val nodeToJoinProbe = new TestProbe(actorSystem)
-          val info = new SiriusInfo(100, "dorky-server")
-          nodeToJoinProbe.setAutoPilot(new AutoPilot {
-            def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
-              case Join(x) => {
-                sender ! AddMembers(x ++ MembershipMap(info -> MembershipData(new TestProbe(actorSystem).ref)))
-                Some(this)
-              }
-            }
-          })
-
-          val parentProbe = TestProbe()(actorSystem)
-          // make a new MembershipActor with a parent we can test, expect a map containing this parent in response
-          val parentMembershipActor = Helper.wrapActorWithMockedSupervisor(
-            Props(new MembershipActor(membershipAgent, info)), parentProbe.ref, actorSystem)
-          val localExpectedMap = MembershipMap(siriusInfo -> MembershipData(parentMembershipActor))
-
-          // sending a message to this parentMembershipActor will fwd it to the inner actor
-          parentMembershipActor ! JoinCluster(Some(nodeToJoinProbe.ref), siriusInfo)
-          nodeToJoinProbe.expectMsg(Join(localExpectedMap))
-          nodeToJoinProbe.expectNoMsg((1 second))
-          //check if result of Join was added locally
-          verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
-
-        }
-      }
-      describe("and is given no nodeToJoin") {
-        it("should forward a NewMember message containing itself to the membershipActor") {
-          val info = new SiriusInfo(100, "geeky-server")
-          underTestActor ! JoinCluster(None, info)
-          verify(membershipAgent).send(any(classOf[MembershipMap => MembershipMap]))
-
-        }
-      }
+    it("should attempt to read in the cluster configuration when a CheckClusterConfig message is recieved") {
+      verify(membershipAgent, times(1)).send(any(classOf[MembershipMap]))
+      when(clusterConfigPath.lastModified).thenReturn(2L)
+      when(clusterConfigPath.lines(NewLine, false)).thenReturn(LongTraversable("dummyhost2:8080", "dummyhost:8080"))
+      underTestActor.receive(CheckClusterConfig)
+      verify(membershipAgent, times(2)).send(any(classOf[MembershipMap]))
 
     }
+
+    it("should correctly create a new membership map when given a cluster config") {
+      when(clusterConfigPath.lastModified).thenReturn(2L)
+      when(clusterConfigPath.lines(NewLine, false)).thenReturn(LongTraversable("dummyhost2:8080", "dummyhost:8080"))
+      val membershipMap = underTestActor.underlyingActor.createMembershipMap(clusterConfigPath)
+      assert(true == membershipMap.keys.exists("dummyhost2:8080" == _))
+      assert(true == membershipMap.keys.exists("dummyhost:8080" == _))
+      assert(false == membershipMap.keys.exists("nodummyhost:8080" == _))
+    }
+
   }
 }

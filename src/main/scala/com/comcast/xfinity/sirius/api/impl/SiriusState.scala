@@ -10,9 +10,15 @@ class SiriusState {
   var supervisorState = SiriusState.SupervisorState.Uninitialized
   var persistenceState = SiriusState.PersistenceState.Uninitialized
   var stateActorState = SiriusState.StateActorState.Uninitialized
+  var membershipActorState = SiriusState.MembershipActorState.Uninitialized
 
   def updateSupervisorState(state: SiriusState.SupervisorState.Value): SiriusState = {
     supervisorState = state
+    this
+  }
+
+  def updateMembershipActorState(state: SiriusState.MembershipActorState.Value): SiriusState = {
+    membershipActorState = state
     this
   }
 
@@ -29,6 +35,11 @@ class SiriusState {
 
 
 object SiriusState {
+  object MembershipActorState extends Enumeration {
+    type State = Value
+    val Uninitialized, Initialized = Value
+  }
+
   object StateActorState extends Enumeration {
     type State = Value
     val Uninitialized, Initialized = Value
