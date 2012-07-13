@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.writeaheadlog
 
 import java.io.{FileReader, BufferedReader}
 import scalax.io.CloseableIterator
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 
 /**
  * Implementation of CloseableIterator[String] for sirius logs, which uses a BufferedReader in
@@ -10,8 +11,10 @@ import scalax.io.CloseableIterator
  * beginning of the file.
  * @param filePath path to sirius WAL file
  */
-class CloseableSiriusLineIterator(filePath: String) extends CloseableIterator[String] {
-  val br: BufferedReader = new BufferedReader(new FileReader(filePath))
+class CloseableSiriusEventIterator(filePath: String,
+                                  serDe: WALSerDe) extends CloseableIterator[OrderedEvent] {
+
+  val br = new BufferedReader(new FileReader(filePath))
 
   /**
    * @{inheritDoc}
@@ -32,11 +35,9 @@ class CloseableSiriusLineIterator(filePath: String) extends CloseableIterator[St
   /**
    * @{inheritDoc}
    *
-   * Grab the next line, including the line terminator.
+   * Get the next OrderedEvent from the file
    */
-  override def next() =  {
-    br.readLine() + "\n"
-  }
+  override def next() = serDe.deserialize(br.readLine() + "\n")
 
   /**
    * @{inheritDoc}
@@ -46,10 +47,10 @@ class CloseableSiriusLineIterator(filePath: String) extends CloseableIterator[St
   override def doClose() = {
     try {
       br.close()
-      List[Throwable]()
+      Nil
     } catch {
       case throwable: Throwable =>
-        List[Throwable](throwable)
+        List(throwable)
     }
   }
 }

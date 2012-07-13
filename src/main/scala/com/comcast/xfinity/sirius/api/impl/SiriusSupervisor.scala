@@ -7,7 +7,7 @@ import com.comcast.xfinity.sirius.api.impl.paxos.SiriusPaxosActor
 import persistence._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.writeaheadlog.{LogLinesSource, SiriusLog}
+import com.comcast.xfinity.sirius.writeaheadlog.{LogIteratorSource, SiriusLog}
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -102,7 +102,7 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap]) =
     context.actorOf(Props(new MembershipActor(membershipAgent, siriusInfo)), "membership")
 
-  private[impl] def createLogRequestActor(chunkSize: Int, logLinesSource: LogLinesSource, thePersistenceActor: ActorRef) =
+  private[impl] def createLogRequestActor(chunkSize: Int, logLinesSource: LogIteratorSource, thePersistenceActor: ActorRef) =
     context.actorOf(Props(new LogRequestActor(chunkSize, logLinesSource, thePersistenceActor)))
 }
 

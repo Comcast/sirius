@@ -5,15 +5,17 @@ import akka.actor._
 import akka.util.duration._
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestProbe, TestActorRef}
-import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
+import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
 import com.comcast.xfinity.sirius.api.impl.membership.{MemberInfo, GetRandomMember, MembershipData}
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.Delete
 
 class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
   implicit val actorSystem = ActorSystem("actorSystem")
 
   var remoteLogActor: TestActorRef[LogRequestActor] = _
   var parentProbe: TestProbe = _
-  var source: LogLinesSource = _
+  var source: LogIteratorSource = _
   var logRequestWrapper: ActorRef = _
   var senderProbe: TestProbe = _
   var receiverProbe: TestProbe = _
@@ -32,7 +34,15 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
       Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref)), parentProbe.ref, actorSystem)
     remoteLogActor = TestActorRef(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref))
 
-    source = TestHelper.createMockSource("a", "b", "c", "d", "e", "f", "g")
+    source = TestHelper.createMockSource(
+        OrderedEvent(1, 1, Delete("a")),
+        OrderedEvent(2, 1, Delete("b")),
+        OrderedEvent(3, 1, Delete("c")),
+        OrderedEvent(4, 1, Delete("d")),
+        OrderedEvent(6, 1, Delete("e")),
+        OrderedEvent(7, 1, Delete("f")),
+        OrderedEvent(8, 1, Delete("g"))
+    )
   }
 
   describe("a LogRequestActor") {

@@ -6,7 +6,7 @@ import akka.dispatch.Await
 import akka.util.duration._
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
-import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, SiriusImpl}
+import com.comcast.xfinity.sirius.api.impl._
 
 class WriteAheadLogITest extends NiceTest with AkkaConfig {
 
@@ -40,14 +40,11 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
   }
 
   /**
-   * Convenience method that returns a List[LogData] containing the contents of a Log
+   * Convenience method that returns a List[OrderedEvent] containing the contents of a Log
    *
    */
-  def readEntries(): List[LogData] = {
-
-    siriusLog.foldLeft[List[LogData]](Nil)((a, c) => c :: a).reverse
-
-  }
+  def readEntries(): List[OrderedEvent] =
+    siriusLog.foldLeft[List[OrderedEvent]](Nil)((a, c) => c :: a).reverse
 
   describe("a Sirius Write Ahead Log") {
     it("should have 1 entry after a PUT") {
@@ -56,9 +53,12 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
       val logEntries = readEntries()
 
       assert(1 === logEntries.size)
-      assert("some body" === new String(logEntries(0).payload.get))
-      assert("1" === logEntries(0).key)
+
+      val put = logEntries(0).request.asInstanceOf[Put]
+      assert("1" === put.key)
+      assert("some body" === new String(put.body))
     }
+
     it("should have 2 entries after 2 PUTs") {
       Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
       Await.result(sirius.enqueuePut("2", "some other body".getBytes), (5 seconds))
@@ -66,11 +66,16 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
       val logEntries = readEntries()
 
       assert(2 === logEntries.size)
-      assert("some body" === new String(logEntries(0).payload.get))
-      assert("1" === logEntries(0).key)
-      assert("some other body" === new String(logEntries(1).payload.get))
-      assert("2" === logEntries(1).key)
+
+      val put1 = logEntries(0).request.asInstanceOf[Put]
+      assert("1" === put1.key)
+      assert("some body" === new String(put1.body))
+
+      val put2 = logEntries(1).request.asInstanceOf[Put]
+      assert("2" === put2.key)
+      assert("some other body" === new String(put2.body))
     }
+
     it("should have a PUT and a DELETE entry after a PUT and a DELETE") {
       Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
       Await.result(sirius.enqueueDelete("1"), (5 seconds))
@@ -79,13 +84,12 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
 
       assert(2 === logEntries.size)
 
-      assert("PUT" === logEntries(0).actionType)
-      assert("some body" === new String(logEntries(0).payload.get))
-      assert("1" === logEntries(0).key)
+      val put = logEntries(0).request.asInstanceOf[Put]
+      assert("1" === put.key)
+      assert("some body" === new String(put.body))
 
-      assert("DELETE" === logEntries(1).actionType)
-      assert("" === new String(logEntries(1).payload.get))
-      assert("1" === logEntries(1).key)
+      val delete = logEntries(1).request.asInstanceOf[Delete]
+      assert("1" === delete.key)
     }
 
     it("should have 2 PUT entries after 2 PUTs and a GET") {
@@ -96,10 +100,14 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
       val logEntries = readEntries()
 
       assert(2 === logEntries.size)
-      assert("some body" === new String(logEntries(0).payload.get))
-      assert("1" === logEntries(0).key)
-      assert("some other body" === new String(logEntries(1).payload.get))
-      assert("2" === logEntries(1).key)
+
+      val put1 = logEntries(0).request.asInstanceOf[Put]
+      assert("1" === put1.key)
+      assert("some body" === new String(put1.body))
+
+      val put2 = logEntries(1).request.asInstanceOf[Put]
+      assert("2" === put2.key)
+      assert("some other body" === new String(put2.body))
     }
 
   }

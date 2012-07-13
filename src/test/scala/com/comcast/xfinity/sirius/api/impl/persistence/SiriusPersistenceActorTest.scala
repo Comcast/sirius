@@ -3,17 +3,14 @@ package com.comcast.xfinity.sirius.api.impl.persistence
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
-import com.comcast.xfinity.sirius.writeaheadlog.{LogData, SiriusLog}
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 
 
 import org.mockito.Mockito._
 import org.mockito.Matchers._
-import org.mockito.ArgumentCaptor
-import akka.util.duration._
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Put, Delete}
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.writeaheadlog.LogData
 
 class SiriusPersistenceActorTest extends NiceTest {
 
@@ -49,27 +46,21 @@ class SiriusPersistenceActorTest extends NiceTest {
     it("should forward Put's to the state actor") {
       val put = Put("key", "body".getBytes)
       val event = OrderedEvent(0L, 0L, put)
-      underTestActor ! event
-      val actualPut = testStateWorkerProbe.receiveOne(5 seconds)
-      assert(put === actualPut)
 
-      val argument = ArgumentCaptor.forClass(classOf[LogData])
-      verify(mockSiriusLog, times(1)).writeEntry(argument.capture())
-      val logData = argument.getValue
-      assert("PUT" === logData.actionType)
+      underTestActor ! event
+      testStateWorkerProbe.expectMsg(put)
+
+      verify(mockSiriusLog, times(1)).writeEntry(event)
     }
 
     it("should forward Delete's to the state actor") {
       val delete = Delete("key")
       val event = OrderedEvent(0L, 0L, delete)
-      underTestActor ! event
-      val actualDelete = testStateWorkerProbe.receiveOne(5 seconds)
-      assert(delete === actualDelete)
 
-      val argument = ArgumentCaptor.forClass(classOf[LogData])
-      verify(mockSiriusLog, times(1)).writeEntry(argument.capture())
-      val logData = argument.getValue
-      assert("DELETE" === logData.actionType)
+      underTestActor ! event
+      testStateWorkerProbe.expectMsg(delete)
+
+      verify(mockSiriusLog, times(1)).writeEntry(event)
     }
   }
 

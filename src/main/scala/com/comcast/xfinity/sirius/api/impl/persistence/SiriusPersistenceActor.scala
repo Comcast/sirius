@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.persistence
 
 import akka.actor.Actor
 import akka.actor.ActorRef
-import com.comcast.xfinity.sirius.writeaheadlog.{LogData, SiriusLog}
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl._
@@ -21,16 +21,13 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
 
     logger.info("Bootstrapping Write Ahead Log")
     val start = System.currentTimeMillis()
-    siriusLog.foldLeft(()) {
-      case (_, LogData("PUT", key, _, _, Some(body))) => {
-        logger.debug("Read PUT from log: key={} --- body={}", key, body);
-        stateActor ! Put(key, body)
-      }
-      case (_, LogData("DELETE", key, _, _, _)) => {
-        logger.debug("Read DELETE from log: key={}", key);
-        stateActor ! Delete(key)
-      }
-    }
+    // XXX: replace accum Unit with Any? then we don't have to worry
+    //      about returning a unit in the end
+    siriusLog.foldLeft(Unit)((acc, orderedEvent) => {
+      logger.debug("Read {} from log", orderedEvent.request)
+      stateActor ! orderedEvent.request
+      acc
+    })
     logger.info("Done Bootstrapping Write Ahead Log in {} ms", System.currentTimeMillis() - start)
     siriusStateAgent send ((state: SiriusState) => {
       state.updatePersistenceState(SiriusState.PersistenceState.Initialized)
@@ -39,12 +36,9 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
   }
 
   def receive = {
-    case OrderedEvent(sequence, timestamp, request) => {
-      request match {
-        case Put(key, body) => siriusLog.writeEntry(LogData("PUT", key, sequence, timestamp, Some(body)))
-        case Delete(key) => siriusLog.writeEntry(LogData("DELETE", key, sequence, timestamp, None))
-      }
-      stateActor forward request
+    case event: OrderedEvent => {
+      siriusLog.writeEntry(event)
+      stateActor forward event.request
     }
     case _: SiriusResult =>
   }

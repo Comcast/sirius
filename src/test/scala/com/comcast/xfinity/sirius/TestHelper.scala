@@ -1,7 +1,8 @@
 package com.comcast.xfinity.sirius
 
 import akka.actor.{Actor, Props, ActorRef, ActorSystem}
-import com.comcast.xfinity.sirius.writeaheadlog.LogLinesSource
+import api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
 import org.mockito.Mockito._
 import scalax.io.CloseableIterator
 
@@ -27,12 +28,12 @@ object TestHelper extends NiceTest {
       }
     }))
   }
-  def createMockSource(iter: Iterator[String]): LogLinesSource = {
-    val mockSource = mock[LogLinesSource]
-    when(mockSource.createLinesIterator()).thenReturn(CloseableIterator(iter))
+
+  def createMockSource(iter: Iterator[OrderedEvent]): LogIteratorSource = {
+    val mockSource = mock[LogIteratorSource]
+    when(mockSource.createIterator()).thenReturn(CloseableIterator(iter))
     mockSource
   }
-  def createMockSource(seq: String*): LogLinesSource = {
-    createMockSource(seq.iterator)
-  }
+
+  def createMockSource(seq: OrderedEvent*): LogIteratorSource = createMockSource(seq.iterator)
 }
