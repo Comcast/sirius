@@ -1,6 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Ballot
 import com.comcast.xfinity.sirius.NiceTest
 
 class BallotTest extends NiceTest {
