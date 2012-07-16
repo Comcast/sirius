@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
-import com.comcast.xfinity.sirius.{TestHelper, NiceTest}
+import com.comcast.xfinity.sirius.{Helper, NiceTest}
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.dispatch.Await._
 import akka.util.duration._
@@ -174,7 +174,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
 
           val parentProbe = TestProbe()(actorSystem)
           // make a new MembershipActor with a parent we can test, expect a map containing this parent in response
-          val parentMembershipActor = TestHelper.wrapActorWithMockedSupervisor(
+          val parentMembershipActor = Helper.wrapActorWithMockedSupervisor(
             Props(new MembershipActor(membershipAgent, info)), parentProbe.ref, actorSystem)
           val localExpectedMap = MembershipMap(siriusInfo -> MembershipData(parentMembershipActor))
 

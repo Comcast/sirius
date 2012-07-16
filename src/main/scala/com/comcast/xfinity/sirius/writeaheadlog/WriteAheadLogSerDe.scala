@@ -27,7 +27,7 @@ class WriteAheadLogSerDe extends WALSerDe with Checksum with Base64PayloadCodec 
    * Retrieve a log entry from the write ahead log
    */
   def deserialize(rawData: String): OrderedEvent = {
-    validateAndDeserialize(rawData.substring(24), rawData.substring(0, 24))
+    validateAndDeserialize(rawData.substring(CHECKSUM_LENGTH), rawData.substring(0, CHECKSUM_LENGTH))
   }
 
   private def checksummedLogEntry(base: String) =
@@ -54,12 +54,12 @@ class WriteAheadLogSerDe extends WALSerDe with Checksum with Base64PayloadCodec 
 
   private def validateAndDeserialize(data: String, checksum: String) = {
     if (validateChecksum(data, checksum))
-      orederedEventOfString(data)
+      orderedEventOfString(data)
     else
       throw new SiriusChecksumException("Checksum does not match for entry: \n" + checksum +  data)
   }
 
-  private def orederedEventOfString(str: String) = str.split("\\|") match {
+  private def orderedEventOfString(str: String) = str.split("\\|") match {
     case Array("", "PUT", key, seq, ts, payload) =>
       // XXX: payload may not be None
       OrderedEvent(seq.toLong, parseTimestamp(ts), Put(key, decodePayload(payload).get))

@@ -6,7 +6,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
 import org.mockito.Mockito._
 import scalax.io.CloseableIterator
 
-object TestHelper extends NiceTest {
+object Helper extends NiceTest {
   /**
    * Wraps an actor inside another, for the purposes of testing things sent to context.parent.  Messages sent
    * to this actor from outside are forwarded to the "inner" actor, messages sent to the context.parent

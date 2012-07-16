@@ -1,20 +1,15 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-import org.apache.commons.codec.binary.Base64
-import java.security.MessageDigest
 import org.slf4j.LoggerFactory
 
 /**
  * mixin for Checksumming.  Defaults to a base 64 encoded MD5 hash
  */
 trait Checksum {
-  private[writeaheadlog] var checksumCodec = new Base64();
-  protected var checksumAlgorithm: String = "MD5"
+  val CHECKSUM_LENGTH = 16
 
   def generateChecksum(data: String): String = {
-    val messageDigest: MessageDigest = createMessageDigest()
-    val hash = messageDigest.digest(data.getBytes)
-    checksumCodec.encodeToString(hash)
+    "%016x".format(fnv1(data))
   }
 
   def validateChecksum(data: String, checksum: String): Boolean = {
@@ -22,7 +17,15 @@ trait Checksum {
     checksum.equals(expectedChecksum)
   }
 
-  def createMessageDigest(): MessageDigest = {
-    MessageDigest.getInstance(checksumAlgorithm)
+  /**
+   * Implementation of the FNV-1 hash
+   *
+   * http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash#FNV-1_hash
+   */
+  private def fnv1(data: String) = {
+    val fnvOffsetBasis = -3750763034362895579L
+    val fnvPrime = 1099511628211L
+    
+    data.getBytes.foldLeft(fnvOffsetBasis)((hash, b) => fnvPrime * (hash ^ (b.toLong & 0x00ff)))
   }
 }

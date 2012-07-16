@@ -25,8 +25,8 @@ class BootstrapLogITest extends NiceTest {
     tempFolder.create()
     logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
     val path = Path.fromString(logFilename)
-    path.append("ZXnHgnjaTQHEEwNVOo7wuw==|PUT|key|123|19700101T000012.345Z|QQ==\n");
-    path.append("FcKBMsXg++2Z44UoYNnmSA==|PUT|key|123|19700101T000012.345Z|QXxB\n");
+    path.append("38a3d11c36c4c4e1|PUT|key|123|19700101T000012.345Z|QQ==\n");
+    path.append("8e8ca658d0c63868|PUT|key|123|19700101T000012.345Z|QXxB\n");
   }
 
   before {

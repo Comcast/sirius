@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
-import com.comcast.xfinity.sirius.{TestHelper, NiceTest}
+import com.comcast.xfinity.sirius.{Helper, NiceTest}
 import akka.actor._
 import akka.util.duration._
 import org.scalatest.BeforeAndAfterAll
@@ -30,11 +30,11 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     receiverProbe = TestProbe()(actorSystem)
     persistenceActorProbe = TestProbe()(actorSystem)
 
-    logRequestWrapper = TestHelper.wrapActorWithMockedSupervisor(
+    logRequestWrapper = Helper.wrapActorWithMockedSupervisor(
       Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref)), parentProbe.ref, actorSystem)
     remoteLogActor = TestActorRef(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref))
 
-    source = TestHelper.createMockSource(
+    source = Helper.createMockSource(
         OrderedEvent(1, 1, Delete("a")),
         OrderedEvent(2, 1, Delete("b")),
         OrderedEvent(3, 1, Delete("c")),
@@ -52,7 +52,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     }
     it("should use a member sent in a MemberInfo message to fire off a round of log request") {
       val probe = TestProbe()(actorSystem)
-      val localLogRequestWrapper = TestHelper.wrapActorWithMockedSupervisor(
+      val localLogRequestWrapper = Helper.wrapActorWithMockedSupervisor(
         Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref) {
         override def createReceiver(): ActorRef = probe.ref
       }), parentProbe.ref, actorSystem)
@@ -64,7 +64,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
       val senderProbe = TestProbe()(actorSystem)
       val receiverProbe = TestProbe()(actorSystem)
       val localLogRequestWrapper =
-        TestHelper.wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref) {
+        Helper.wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source, persistenceActorProbe.ref) {
           override def createSender(): ActorRef = senderProbe.ref
         }),  parentProbe.ref, actorSystem)
 

@@ -13,7 +13,7 @@ class WriteAheadLogSerDeTest extends NiceTest {
 
   describe("A Sirius write ahead log entry") {
     it("should serialize and deserialize to the same thing") {
-      val rawLogEntry = "ZXnHgnjaTQHEEwNVOo7wuw==|PUT|key|123|19700101T000012.345Z|QQ==\n"
+      val rawLogEntry = "38a3d11c36c4c4e1|PUT|key|123|19700101T000012.345Z|QQ==\n"
       assert(rawLogEntry === logEntry.serialize(logEntry.deserialize(rawLogEntry)))
     }
 
@@ -24,7 +24,7 @@ class WriteAheadLogSerDeTest extends NiceTest {
     }
 
     it("should throw a SiriusChecksumException when deserializing a tampered with log entry") {
-      val rawLogEntry = "ZXnHgnjaTQHEEwNVOo7wuw==|PUT|tamperedkey|123|19700101T000012.345Z|QQ==\n"
+      val rawLogEntry = "38a3d11c36c4c4e1|PUT|tamperedkey|123|19700101T000012.345Z|QQ==\n"
 
       intercept[SiriusChecksumException] {
         logEntry.deserialize(rawLogEntry)
@@ -34,13 +34,13 @@ class WriteAheadLogSerDeTest extends NiceTest {
 
     it("should serialize to a string representation of the log contents.") {
       val event = OrderedEvent(123L, 12345L, Put("key", "A".getBytes))
-      val expectedLogEntry = "ZXnHgnjaTQHEEwNVOo7wuw==|PUT|key|123|19700101T000012.345Z|QQ==\n"
+      val expectedLogEntry = "38a3d11c36c4c4e1|PUT|key|123|19700101T000012.345Z|QQ==\n"
       assert(expectedLogEntry == logEntry.serialize(event))
     }
 
     it("should properly encodes payloads that have a | character when serializing.") {
       val event = OrderedEvent(123L, 12345L, Put("key", "A|A".getBytes))
-      val expectedLogEntry = "FcKBMsXg++2Z44UoYNnmSA==|PUT|key|123|19700101T000012.345Z|QXxB\n"
+      val expectedLogEntry = "8e8ca658d0c63868|PUT|key|123|19700101T000012.345Z|QXxB\n"
       assert(expectedLogEntry == logEntry.serialize(event))
     }
 
