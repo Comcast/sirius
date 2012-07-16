@@ -7,6 +7,7 @@ import akka.util.duration._
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
 import com.comcast.xfinity.sirius.api.impl._
+import java.util.concurrent.TimeUnit
 
 class WriteAheadLogITest extends NiceTest with AkkaConfig {
 
@@ -48,7 +49,7 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
 
   describe("a Sirius Write Ahead Log") {
     it("should have 1 entry after a PUT") {
-      Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
+      sirius.enqueuePut("1", "some body".getBytes).get(1, TimeUnit.SECONDS)
 
       val logEntries = readEntries()
 
@@ -60,8 +61,8 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
     }
 
     it("should have 2 entries after 2 PUTs") {
-      Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
-      Await.result(sirius.enqueuePut("2", "some other body".getBytes), (5 seconds))
+      sirius.enqueuePut("1", "some body".getBytes).get(1, TimeUnit.SECONDS)
+      sirius.enqueuePut("2", "some other body".getBytes).get(1, TimeUnit.SECONDS)
 
       val logEntries = readEntries()
 
@@ -77,8 +78,8 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
     }
 
     it("should have a PUT and a DELETE entry after a PUT and a DELETE") {
-      Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
-      Await.result(sirius.enqueueDelete("1"), (5 seconds))
+      sirius.enqueuePut("1", "some body".getBytes).get(1, TimeUnit.SECONDS)
+      sirius.enqueueDelete("1").get(1, TimeUnit.SECONDS)
 
       val logEntries = readEntries()
 
@@ -93,9 +94,9 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig {
     }
 
     it("should have 2 PUT entries after 2 PUTs and a GET") {
-      Await.result(sirius.enqueuePut("1", "some body".getBytes), (5 seconds))
-      Await.result(sirius.enqueuePut("2", "some other body".getBytes), (5 seconds))
-      Await.result(sirius.enqueueGet("1"), (5 seconds))
+      sirius.enqueuePut("1", "some body".getBytes).get(1, TimeUnit.SECONDS)
+      sirius.enqueuePut("2", "some other body".getBytes).get(1, TimeUnit.SECONDS)
+      sirius.enqueueGet("1").get(1, TimeUnit.SECONDS)
 
       val logEntries = readEntries()
 

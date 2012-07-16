@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api
 
-import akka.dispatch.Future
+import java.util.concurrent.Future
 
 trait Sirius {
   

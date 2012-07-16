@@ -1,5 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
+import compat.AkkaFutureAdapter
 import java.lang.management.ManagementFactory
 import java.net.InetAddress
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
@@ -10,12 +11,13 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusFileLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.WriteAheadLogSerDe
 import akka.pattern.ask
-import akka.dispatch.Future
+import akka.dispatch.{Future => AkkaFuture}
 import membership._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
 import com.typesafe.config.ConfigFactory
 import akka.actor._
+import java.util.concurrent.Future
 
 /**Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances. */
 object SiriusImpl extends AkkaConfig {
@@ -82,28 +84,31 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, s
 
 
   def getMembershipMap = {
-    (supervisor ? GetMembershipData).asInstanceOf[Future[MembershipMap]]
+    (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[MembershipMap]]
   }
 
   /**
    * ${@inheritDoc}
    */
-  def enqueueGet(key: String) = {
-    (supervisor ? Get(key)).asInstanceOf[Future[SiriusResult]]
+  def enqueueGet(key: String): Future[SiriusResult] = {
+    val akkaFuture = (supervisor ? Get(key)).asInstanceOf[AkkaFuture[SiriusResult]]
+    new AkkaFutureAdapter(akkaFuture)
   }
 
   /**
    * ${@inheritDoc}
    */
-  def enqueuePut(key: String, body: Array[Byte]) = {
-    (supervisor ? Put(key, body)).asInstanceOf[Future[SiriusResult]]
+  def enqueuePut(key: String, body: Array[Byte]): Future[SiriusResult] = {
+    val akkaFuture = (supervisor ? Put(key, body)).asInstanceOf[AkkaFuture[SiriusResult]]
+    new AkkaFutureAdapter(akkaFuture)
   }
 
   /**
    * ${@inheritDoc}
    */
-  def enqueueDelete(key: String) = {
-    (supervisor ? Delete(key)).asInstanceOf[Future[SiriusResult]]
+  def enqueueDelete(key: String): Future[SiriusResult] = {
+    val akkaFuture = (supervisor ? Delete(key)).asInstanceOf[AkkaFuture[SiriusResult]]
+    new AkkaFutureAdapter(akkaFuture)
   }
 
   def shutdown() {

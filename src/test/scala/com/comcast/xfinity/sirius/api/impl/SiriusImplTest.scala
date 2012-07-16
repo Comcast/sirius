@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
+import java.util.concurrent.TimeUnit
 
 object SiriusImplTest {
   
@@ -100,7 +101,7 @@ class SiriusImplTest extends NiceTest {
       val key = "hello"
       val getFuture = underTest.enqueueGet(key)
       val expected = SiriusResult.some("Got it".getBytes)
-      assert(expected === Await.result(getFuture, timeout.duration))
+      assert(expected === getFuture.get(1, TimeUnit.SECONDS))
       supervisorActorProbe.expectMsg(Get(key))
     }
 
@@ -109,7 +110,7 @@ class SiriusImplTest extends NiceTest {
       val body = "there".getBytes()
       val putFuture = underTest.enqueuePut(key, body)
       val expected = SiriusResult.some("Put it".getBytes)
-      assert(expected === Await.result(putFuture, timeout.duration))
+      assert(expected === putFuture.get(1, TimeUnit.SECONDS))
       supervisorActorProbe.expectMsg(Put(key, body))
     }
 
@@ -117,7 +118,7 @@ class SiriusImplTest extends NiceTest {
       val key = "hello"
       val deleteFuture = underTest.enqueueDelete(key)
       val expected = SiriusResult.some("Delete it".getBytes)
-      assert(expected === Await.result(deleteFuture, timeout.duration))
+      assert(expected === deleteFuture.get(1, TimeUnit.SECONDS))
       supervisorActorProbe.expectMsg(Delete(key))
     }
 
