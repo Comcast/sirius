@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import org.joda.time.format.ISODateTimeFormat
-import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonIdempotentSiriusRequest, OrderedEvent}
 
 /**
@@ -9,8 +8,6 @@ import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonIdempotentSiriusRequ
  */
 class WriteAheadLogSerDe extends WALSerDe with Checksum with Base64PayloadCodec {
 
-  private val logger = LoggerFactory.getLogger(classOf[WriteAheadLogSerDe])
-  
   val (formatTimestamp, parseTimestamp) = {
     val dateTimeFormatter = ISODateTimeFormat.basicDateTime()
     val doFormatTimestamp: Long => String = {
@@ -30,8 +27,6 @@ class WriteAheadLogSerDe extends WALSerDe with Checksum with Base64PayloadCodec 
    * Retrieve a log entry from the write ahead log
    */
   def deserialize(rawData: String): OrderedEvent = {
-    logger.debug("Raw Data: {}", rawData)
-    logger.debug("data: {} -- {}", rawData.substring(24), rawData.substring(0, 24))
     validateAndDeserialize(rawData.substring(24), rawData.substring(0, 24))
   }
 

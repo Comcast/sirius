@@ -24,7 +24,6 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
     // XXX: replace accum Unit with Any? then we don't have to worry
     //      about returning a unit in the end
     siriusLog.foldLeft(Unit)((acc, orderedEvent) => {
-      logger.debug("Read {} from log", orderedEvent.request)
       stateActor ! orderedEvent.request
       acc
     })

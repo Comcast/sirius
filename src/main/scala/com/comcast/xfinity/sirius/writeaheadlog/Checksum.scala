@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory
  * mixin for Checksumming.  Defaults to a base 64 encoded MD5 hash
  */
 trait Checksum {
-  private val logger = LoggerFactory.getLogger(classOf[Checksum])
   private[writeaheadlog] var checksumCodec = new Base64();
   protected var checksumAlgorithm: String = "MD5"
 
@@ -19,11 +18,8 @@ trait Checksum {
   }
 
   def validateChecksum(data: String, checksum: String): Boolean = {
-
     val expectedChecksum = generateChecksum(data)
-    logger.debug("Checksum compare expected: {} + actual: {}", expectedChecksum, checksum)
     checksum.equals(expectedChecksum)
-
   }
 
   def createMessageDigest(): MessageDigest = {
