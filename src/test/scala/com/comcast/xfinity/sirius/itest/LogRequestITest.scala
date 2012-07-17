@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.itest
 
-import com.comcast.xfinity.sirius.{Helper, NiceTest}
+import com.comcast.xfinity.sirius.{TestHelper, NiceTest}
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
 import akka.util.duration._
@@ -39,9 +39,9 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
       OrderedEvent(3, 300329, Put("key1", "A".getBytes))
     )
 
-    source = Helper.createMockSource(entries.iterator)
+    source = TestHelper.createMockSource(entries.iterator)
 
-    logRequestWrapper = Helper.wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source, stateActorProbe.ref)), parentProbe.ref, actorSystem)
+    logRequestWrapper = TestHelper.wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source, stateActorProbe.ref)), parentProbe.ref, actorSystem)
     remoteLogActor = TestActorRef(new LogRequestActor(chunkSize, source, stateActorProbe.ref))
   }
 
