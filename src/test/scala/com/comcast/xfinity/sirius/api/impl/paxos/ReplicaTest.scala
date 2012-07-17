@@ -9,6 +9,7 @@ import org.mockito.Mockito._
 import org.mockito.Matchers._
 import akka.testkit.{ TestActorRef, TestProbe }
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import com.comcast.xfinity.sirius.api.impl.Delete
 
 class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
@@ -25,7 +26,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         val membership = Agent(memberProbes.map(_.ref))
         val replica = TestActorRef(Replica(membership))
 
-        val command = Command(null, 1, 1)
+        val command = Command(null, 1, Delete("1"))
         replica.underlyingActor.lowestUnusedSlotNum = 1
 
         replica ! Request(command)
@@ -42,13 +43,13 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
         replica.underlyingActor.lowestUnusedSlotNum = 2
         
-        replica ! Decision(1, Command(null, 1, 1))
+        replica ! Decision(1, Command(null, 1, Delete("1")))
         assert(2 == replica.underlyingActor.lowestUnusedSlotNum)
         
-        replica ! Decision(2, Command(null, 1, 1))
+        replica ! Decision(2, Command(null, 1, Delete("1")))
         assert(3 === replica.underlyingActor.lowestUnusedSlotNum)
 
-        replica ! Decision(4, Command(null, 2, 2))
+        replica ! Decision(4, Command(null, 2, Delete("2")))
         assert(5 === replica.underlyingActor.lowestUnusedSlotNum)
       }
     }

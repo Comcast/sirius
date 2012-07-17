@@ -5,6 +5,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestProbe, TestKit, ImplicitSender}
 import akka.actor.{Props, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import com.comcast.xfinity.sirius.api.impl.Delete
 
 class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
 
@@ -29,17 +30,17 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
 
       val senderProbe = TestProbe()
 
-      val request = Request(Command(null, 1, 1))
+      val request = Request(Command(null, 1, Delete("1")))
       senderProbe.send(paxosSup, request)
       replicaProbe.expectMsg(request)
       assert(senderProbe.ref === replicaProbe.lastSender)
 
-      val decision = Decision(1, Command(null, 1, 2))
+      val decision = Decision(1, Command(null, 1, Delete("2")))
       senderProbe.send(paxosSup, decision)
       replicaProbe.expectMsg(decision)
       assert(senderProbe.ref === replicaProbe.lastSender)
 
-      val propose = Propose(1, Command(null, 1, 2))
+      val propose = Propose(1, Command(null, 1, Delete("2")))
       senderProbe.send(paxosSup, propose)
       leaderProbe.expectMsg(propose)
       assert(senderProbe.ref === leaderProbe.lastSender)
@@ -49,7 +50,7 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
       acceptorProbe.expectMsg(phase1A)
       assert(senderProbe.ref === acceptorProbe.lastSender)
 
-      val phase2A = Phase2A(senderProbe.ref, PValue(Ballot(1, "a"), 1, Command(null, 1, 2)))
+      val phase2A = Phase2A(senderProbe.ref, PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2"))))
       senderProbe.send(paxosSup, phase2A)
       acceptorProbe.expectMsg(phase2A)
       assert(senderProbe.ref === acceptorProbe.lastSender)

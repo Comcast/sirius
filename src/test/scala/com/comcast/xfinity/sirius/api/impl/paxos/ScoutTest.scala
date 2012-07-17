@@ -5,6 +5,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.ActorSystem
 import akka.testkit.{TestProbe, TestActorRef}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import com.comcast.xfinity.sirius.api.impl.Delete
 
 
 class ScoutTest extends NiceTest with BeforeAndAfterAll {
@@ -60,12 +61,12 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
 
       assert(Set[PValue]() === scout.underlyingActor.pvalues)
 
-      val acceptor1sPValues = Set(PValue(Ballot(0, "a"), 1, Command(null, 1, 2)))
+      val acceptor1sPValues = Set(PValue(Ballot(0, "a"), 1, Command(null, 1, Delete("2"))))
       scout ! Phase1B(anAcceptorProbe1.ref, ballot, acceptor1sPValues)
       leaderProbe.expectNoMsg()
       assert(acceptor1sPValues == scout.underlyingActor.pvalues)
 
-      val acceptor2sPValues = Set(PValue(Ballot(0, "b"), 2, Command(null, 1, 2)))
+      val acceptor2sPValues = Set(PValue(Ballot(0, "b"), 2, Command(null, 1, Delete("2"))))
       scout ! Phase1B(anAcceptorProbe2.ref, ballot, acceptor2sPValues)
       leaderProbe.expectNoMsg()
 

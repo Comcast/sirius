@@ -1,11 +1,16 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import org.scalatest.BeforeAndAfterAll
-import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.ActorSystem
-import akka.testkit.{TestActorRef, TestProbe}
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{PValue, Command}
+
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.PValue
+import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.NiceTest
+
+import akka.actor.ActorSystem
+import akka.testkit.TestActorRef
+import akka.testkit.TestProbe
 
 
 class CommanderTest extends NiceTest with BeforeAndAfterAll {
@@ -20,7 +25,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val acceptorProbes = Set(TestProbe(), TestProbe(), TestProbe())
       val replicaProbes = Set[TestProbe]()
       println(acceptorProbes)
-      val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, 2))
+      val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
@@ -34,7 +39,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val acceptorProbes = Set(anAcceptorProbe)
       val replicaProbes = Set[TestProbe]()
       println(acceptorProbes)
-      val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, 2))
+      val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
@@ -51,7 +56,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val acceptorProbes = Set(TestProbe(), TestProbe(), TestProbe())
       val replicaProbes = Set(TestProbe(), TestProbe(), TestProbe())
       println(acceptorProbes)
-      val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, 2))
+      val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),

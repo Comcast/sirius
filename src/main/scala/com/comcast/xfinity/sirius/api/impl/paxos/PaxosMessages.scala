@@ -1,5 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 import akka.actor._
+import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
 
 object PaxosMessages {
 
@@ -14,7 +15,7 @@ object PaxosMessages {
   //Need to ensure that we can compare commands since the algorithm
   //requires it, though we could punt on it and just rely on the 
   //fact that commands are idempotent.
-  case class Command(k: ActorRef, cid: Int, op: Int)
+  case class Command(k: ActorRef, cid: Int, op: NonCommutativeSiriusRequest)
   case class PValue(ballot: Ballot, slotNum: Long, proposal: Command)
 
   case class Phase1A(from: ActorRef, ballot: Ballot)

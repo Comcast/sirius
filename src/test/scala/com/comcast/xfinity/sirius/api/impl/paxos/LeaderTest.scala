@@ -10,6 +10,7 @@ import akka.testkit.TestProbe
 import org.mockito.Mockito._
 import org.mockito.Matchers._
 import akka.actor.{ActorRef, actorRef2Scala, ActorSystem}
+import com.comcast.xfinity.sirius.api.impl.Delete
 
 object LeaderTest {
   def makeMockedUpLeader(membership: Agent[Set[ActorRef]],
@@ -68,8 +69,8 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
 
 
         val proposals = Set(
-            Slot(1, Command(null, 1, 2)),
-            Slot(2, Command(null, 2, 3))
+            Slot(1, Command(null, 1, Delete("2"))),
+            Slot(2, Command(null, 2, Delete("3")))
           )
 
         doReturn(Set()).
@@ -102,7 +103,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           when(mockHelper).proposalExistsForSlot(any(classOf[Set[Slot]]), anyInt())
 
         intercept[MatchError] {
-          leader.underlyingActor.receive(Propose(1, Command(null, 1, 2)))
+          leader.underlyingActor.receive(Propose(1, Command(null, 1, Delete("2"))))
         }
       }
 
@@ -122,7 +123,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           when(mockHelper).proposalExistsForSlot(any(classOf[Set[Slot]]), anyInt())
 
         val slotNum = 1
-        val command = Command(null, 1, 2)
+        val command = Command(null, 1, Delete("2"))
 
         leader ! Propose(slotNum, command)
 
@@ -147,7 +148,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           when(mockHelper).proposalExistsForSlot(any(classOf[Set[Slot]]), anyInt())
 
         val slotNum = 1
-        val command = Command(null, 1, 2)
+        val command = Command(null, 1, Delete("2"))
 
         leader ! Propose(slotNum, command)
 
