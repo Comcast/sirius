@@ -20,26 +20,27 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
     it ("must start off with a clean slate") {
       val acceptor = TestActorRef[Acceptor]
       assert(acceptor.underlyingActor.ballotNum === Ballot.empty)
-      assert(acceptor.underlyingActor.accepted === Set[PValue]())
+      assert(acceptor.underlyingActor.accepted === Map[Long, PValue]())
     }
 
     describe("in response to Phase1A") {
-      it ("must retain its ballotNum and respond appropriately if the incoming Ballot is lesser than or equal to its own") {
+      it ("must retain its ballotNum and respond appropriately if the incoming Ballot " +
+          "is lesser than or equal to its own") {
         val acceptor = TestActorRef[Acceptor]
         val ballotNum = Ballot(1, "a")
-        val accepted = Set(PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = Map(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
 
         val scoutProbe = TestProbe()
         acceptor ! Phase1A(scoutProbe.ref, Ballot(0, "a"))
-        scoutProbe.expectMsg(Phase1B(acceptor.getParent, ballotNum, accepted))
+        scoutProbe.expectMsg(Phase1B(acceptor.getParent, ballotNum, accepted.values.toSet))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
 
         acceptor ! Phase1A(scoutProbe.ref, ballotNum)
-        scoutProbe.expectMsg(Phase1B(acceptor.getParent, ballotNum, accepted))
+        scoutProbe.expectMsg(Phase1B(acceptor.getParent, ballotNum, accepted.values.toSet))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
       }
@@ -48,7 +49,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "Ballot is greater than its own") {
         val acceptor = TestActorRef[Acceptor]
         val ballotNum = Ballot(1, "a")
-        val accepted = Set(PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = Map(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -56,7 +57,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val scoutProbe = TestProbe()
         val biggerBallotNum = Ballot(2, "a")
         acceptor ! Phase1A(scoutProbe.ref, biggerBallotNum)
-        scoutProbe.expectMsg(Phase1B(acceptor.getParent, biggerBallotNum, accepted))
+        scoutProbe.expectMsg(Phase1B(acceptor.getParent, biggerBallotNum, accepted.values.toSet))
         assert(acceptor.underlyingActor.ballotNum === biggerBallotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
       }
@@ -66,7 +67,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       it ("must not update its state if the incoming Ballot is outdated") {
         val acceptor = TestActorRef[Acceptor]
         val ballotNum = Ballot(1, "a")
-        val accepted = Set(PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = Map(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -78,11 +79,11 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         assert(acceptor.underlyingActor.accepted === accepted)
       }
 
-      it ("must update its ballotNum and accepted PValues if the incoming ballotNum " +
-          "is greater than or equal to its own") {
+      it ("must update its ballotNum and accepted PValues, choosing the one with the most recent ballot, " +
+          "if the incoming ballotNum is greater than or equal to its own") {
         val acceptor = TestActorRef[Acceptor]
         val ballotNum = Ballot(1, "a")
-        val accepted = Set(PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = Map(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -93,14 +94,21 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         acceptor ! Phase2A(commanderProbe.ref, newPValue1)
         commanderProbe.expectMsg(Phase2B(acceptor.getParent, ballotNum))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
-        assert(acceptor.underlyingActor.accepted === accepted + newPValue1)
+        assert(acceptor.underlyingActor.accepted === accepted + (2L -> newPValue1))
 
         val biggerBallot = Ballot(2, "a")
         val newPValue2 = PValue(biggerBallot, 3, Command(null, 3, Delete("4")))
         acceptor ! Phase2A(commanderProbe.ref, newPValue2)
         commanderProbe.expectMsg(Phase2B(acceptor.getParent, biggerBallot))
         assert(acceptor.underlyingActor.ballotNum === biggerBallot)
-        assert(acceptor.underlyingActor.accepted === accepted + newPValue1 + newPValue2)
+        assert(acceptor.underlyingActor.accepted === accepted + (2L -> newPValue1) + (3L -> newPValue2))
+
+        val evenBiggerBallot = Ballot(3, "a")
+        val newPValue3 = PValue(evenBiggerBallot, 3, Command(null, 3, Delete("5")))
+        acceptor ! Phase2A(commanderProbe.ref, newPValue3)
+        commanderProbe.expectMsg(Phase2B(acceptor.getParent, evenBiggerBallot))
+        assert(acceptor.underlyingActor.ballotNum === evenBiggerBallot)
+        assert(acceptor.underlyingActor.accepted === accepted + (2L -> newPValue1) + (3L -> newPValue3))
       }
     }
   }
