@@ -21,7 +21,8 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
   describe("A Replica") {
     describe("when receiving a Request message") {
-      it("must choose a slot number, send a Propose message to all leaders and update its lowest unused slot") {
+      it("must choose a slot number, send a Propose message to all leaders, update its lowest unused slot and" +
+      		"store the proposal") {
         val memberProbes = Set(TestProbe(), TestProbe(), TestProbe())
         val membership = Agent(memberProbes.map(_.ref))
         val replica = TestActorRef(Replica(membership))
@@ -31,7 +32,6 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
         replica ! Request(command)
         memberProbes.foreach(_.expectMsg(Propose(1, command)))
-        assert(Set(Slot(1, command)) === replica.underlyingActor.proposals)
         assert(2 === replica.underlyingActor.lowestUnusedSlotNum)
       }
     }
