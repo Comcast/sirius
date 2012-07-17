@@ -17,10 +17,9 @@ object PaxosMessages {
 
   case class Decision(slot: Long, command: Command) extends PaxosMessage
 
-  //XXX: Need to figure out what op actually is, cuz it isn't an int.
-  //Need to ensure that we can compare commands since the algorithm
-  //requires it, though we could punt on it and just rely on the 
-  //fact that commands are idempotent.
+  // TODO: we don't actually use cid, we can commandeer that for a retry
+  // field when we get to that point to avoid having to change a ton of code,
+  // though that will make comparison weird
   case class Command(k: ActorRef, cid: Int, op: NonCommutativeSiriusRequest) extends PaxosMessage
 
   case class PValue(ballot: Ballot, slotNum: Long, proposal: Command) extends PaxosMessage
