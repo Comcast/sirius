@@ -6,11 +6,11 @@ import io.Source
 import org.mockito.Mockito
 
 class CloseableSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
-  val fileName = "src/test/resources/fakeLogFile.txt"
+  val filename = "src/test/resources/fakeLogFile.txt"
   var iterator: CloseableSiriusEventIterator = _
   var mockSerDe = mock[WALSerDe]
   before {
-    iterator = new CloseableSiriusEventIterator(fileName, mockSerDe)
+    iterator = new CloseableSiriusEventIterator(filename, mockSerDe)
   }
   after {
     iterator.close()
@@ -18,7 +18,7 @@ class CloseableSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
 
   describe("a CloseableSiriusEventIterator") {
     it("should pull a line of data from a file and try to deserialize it") {
-      val source = Source.fromFile(fileName)
+      val source = Source.fromFile(filename)
       val lines = source.getLines()
 
       // XXX: will this work?
@@ -29,7 +29,7 @@ class CloseableSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it("should properly report hasNext") {
-      val source = Source.fromFile(fileName)
+      val source = Source.fromFile(filename)
       val lines = source.getLines()
 
       while(lines.hasNext) {
@@ -46,5 +46,11 @@ class CloseableSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
         iterator.next()
       }
     }
+
+    it("should keep track of the constructor parameters") {
+      assert(iterator.filePath === filename)
+      assert(iterator.serDe === mockSerDe)
+    }
+
   }
 }

@@ -7,10 +7,11 @@ import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 class RangedSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
   
   var iterator: RangedSiriusEventIterator = _
-  var serDe: WALSerDe = _
+  var mockSerDe: WALSerDe = _
+  val filename = "src/test/resources/fakeRangedLogFile.txt"
 
   before {
-    serDe = new WALSerDe {
+    mockSerDe = new WALSerDe {
       def deserialize(rawData: String): OrderedEvent = {
         val fields = rawData.split("\\|");
         if (fields.length < 4) {
@@ -29,7 +30,7 @@ class RangedSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
   describe("a RangedSiriusEventIterator") {
     it("should find the first line of a range") {
       
-      iterator = new RangedSiriusEventIterator("src/test/resources/fakeRangedLogFile.txt", serDe, 5, 14)
+      iterator = new RangedSiriusEventIterator(filename, mockSerDe, 5, 14)
       iterator.hasNext
       val event = iterator.next()
       assert(event.sequence === 5)
@@ -37,7 +38,7 @@ class RangedSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
     
     it("should stop at the last line of a range") {
       
-      iterator = new RangedSiriusEventIterator("src/test/resources/fakeRangedLogFile.txt", serDe, 5, 15)
+      iterator = new RangedSiriusEventIterator(filename, mockSerDe, 5, 15)
       var event:OrderedEvent = null
       while (iterator.hasNext) {
         event = iterator.next()
@@ -47,7 +48,7 @@ class RangedSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
     
     it("should stop at the end of the file even if its before the end of the range") {
       
-      iterator = new RangedSiriusEventIterator("src/test/resources/fakeRangedLogFile.txt", serDe, 5, 50)
+      iterator = new RangedSiriusEventIterator(filename, mockSerDe, 5, 50)
       var event:OrderedEvent = null
       while (iterator.hasNext) {
         event = iterator.next()
@@ -57,9 +58,19 @@ class RangedSiriusEventIteratorTest extends NiceTest with BeforeAndAfterAll {
     
     it("should stop at the beginning of the file if it begins past endRange") {
       
-      iterator = new RangedSiriusEventIterator("src/test/resources/fakeRangedLogFile.txt", serDe, 1, 2)
+      iterator = new RangedSiriusEventIterator(filename, mockSerDe, 1, 2)
       assert(iterator.hasNext === false)
-    }       
+    }
+
+    it("should keep track of the constructor parameters") {
+      val startRange = 52
+      val endRange = 995
+      iterator = new RangedSiriusEventIterator(filename, mockSerDe, startRange, endRange)
+      assert(iterator.filePath === filename)
+      assert(iterator.serDe === mockSerDe)
+      assert(iterator.startRange == startRange)
+      assert(iterator.endRange == endRange)
+    }
   }
   
 }

@@ -11,8 +11,7 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
  * beginning of the file.
  * @param filePath path to sirius WAL file
  */
-class CloseableSiriusEventIterator(filePath: String,
-                                  serDe: WALSerDe) extends CloseableIterator[OrderedEvent] {
+class CloseableSiriusEventIterator(val filePath: String, val serDe: WALSerDe) extends CloseableIterator[OrderedEvent] {
 
   val br = new BufferedReader(new FileReader(filePath))
 

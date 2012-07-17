@@ -14,7 +14,7 @@ import annotation.tailrec
  * @param filePath path to sirius WAL file
  * @param serDe the WALSerDe to use to de-serialize the WAL file
  */
-class RangedSiriusEventIterator(filePath: String, serDe: WALSerDe, startRange: Long, endRange: Long)
+class RangedSiriusEventIterator(filePath: String, serDe: WALSerDe, val startRange: Long, val endRange: Long)
         extends CloseableSiriusEventIterator(filePath, serDe) {
 
   private var hasMoreEvents: Boolean = true

@@ -37,4 +37,11 @@ class SiriusFileLog(logPath: String, serDe: WALSerDe) extends SiriusLog {
   override def createIterator(): CloseableIterator[OrderedEvent] = {
     new CloseableSiriusEventIterator(logPath, serDe)
   }
+
+  /**
+   * ${@inheritDoc}
+   */
+  override def createRangedIterator(startRange: Long,  endRange: Long): CloseableIterator[OrderedEvent] = {
+    new RangedSiriusEventIterator(logPath, serDe, startRange, endRange)
+  }
 }
