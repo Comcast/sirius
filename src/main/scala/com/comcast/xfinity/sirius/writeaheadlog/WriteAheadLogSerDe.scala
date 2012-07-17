@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import org.joda.time.format.ISODateTimeFormat
-import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonIdempotentSiriusRequest, OrderedEvent}
+import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonCommutativeSiriusRequest, OrderedEvent}
 
 /**
  * Responsible for creating entries in the Sirius write ahead log.
@@ -47,7 +47,7 @@ class WriteAheadLogSerDe extends WALSerDe with Checksum with Base64PayloadCodec 
   }
 
   // XXX: here for transition
-  private def extractFields(request: NonIdempotentSiriusRequest) = request match {
+  private def extractFields(request: NonCommutativeSiriusRequest) = request match {
     case Put(key, body) => ("PUT", key, Some(body))
     case Delete(key) => ("DELETE", key, None)
   }

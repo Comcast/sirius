@@ -6,13 +6,13 @@ sealed trait SiriusRequest
 
 case class Get(key: String) extends SiriusRequest
 
-sealed trait NonIdempotentSiriusRequest extends SiriusRequest
+sealed trait NonCommutativeSiriusRequest extends SiriusRequest
 
-case class Put(key: String, body: Array[Byte]) extends NonIdempotentSiriusRequest {
+case class Put(key: String, body: Array[Byte]) extends NonCommutativeSiriusRequest {
   override def equals(that: Any) = that match {
     case Put(`key`, thatBody) if Arrays.equals(body, thatBody) => true
     case _ => false
   }
 }
 
-case class Delete(key: String) extends NonIdempotentSiriusRequest
+case class Delete(key: String) extends NonCommutativeSiriusRequest
