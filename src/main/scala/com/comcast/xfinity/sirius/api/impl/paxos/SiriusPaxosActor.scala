@@ -9,7 +9,7 @@ import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
 /**
  * Actor for negotiating Paxos rounds locally.
  *
- * For now this Actor only accepts {@link Put} and {@link Get}
+ * For now this Actor only accepts {@link Put} and {@link Delete}
  * messages. Behaviour for other messages is undefined.
  *
  * TODO: Currently this is just a placeholder for the Paxos layer,
