@@ -7,7 +7,7 @@ import org.mockito.Mockito._
 import scalax.io.CloseableIterator
 import org.scalatest.mock.MockitoSugar
 
-object TestHelper extends MockitoSugar {
+object Helper extends MockitoSugar {
   /**
    * Wraps an actor inside another, for the purposes of testing things sent to context.parent.  Messages sent
    * to this actor from outside are forwarded to the "inner" actor, messages sent to the context.parent

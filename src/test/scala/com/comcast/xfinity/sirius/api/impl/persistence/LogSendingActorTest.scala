@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
-import com.comcast.xfinity.sirius.{TestHelper, NiceTest}
+import com.comcast.xfinity.sirius.{Helper, NiceTest}
 import akka.testkit.{TestFSMRef, TestProbe}
 import org.mockito.Mockito._
 import akka.util.duration._
@@ -38,7 +38,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
 
   describe("a logSendingActor") {
     it("should be able to produce two chunks upon a Start call, given enough input") {
-      mockSource = TestHelper.createMockSource(
+      mockSource = Helper.createMockSource(
         OrderedEvent(1, 1, Delete("a")),
         OrderedEvent(2, 1, Delete("b")),
         OrderedEvent(3, 1, Delete("c")),
@@ -63,7 +63,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
 
     it("should return one chunk and then a done message for a single-entry source") {
 
-      mockSource = TestHelper.createMockSource(OrderedEvent(1, 1, Delete("a")))
+      mockSource = Helper.createMockSource(OrderedEvent(1, 1, Delete("a")))
 
       actor ! Start(receiverProbe.ref, mockSource, 2)
       val actualFirstChunk = receiverProbe.receiveOne(5 seconds)
@@ -89,7 +89,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it("should gather data appropriately when there's plenty to grab") {
-      mockSource = TestHelper.createMockSource(
+      mockSource = Helper.createMockSource(
         OrderedEvent(1, 1, Delete("a")),
         OrderedEvent(2, 1, Delete("b")),
         OrderedEvent(3, 1, Delete("c")),
@@ -119,7 +119,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
         OrderedEvent(7, 1, Delete("f")),
         OrderedEvent(8, 1, Delete("g"))
       )
-      mockSource = TestHelper.createMockSource(data.iterator)
+      mockSource = Helper.createMockSource(data.iterator)
 
       actor ! Start(receiverProbe.ref, mockSource, 30)
       receiverProbe.expectMsg(1 seconds, LogChunk(1, data))
