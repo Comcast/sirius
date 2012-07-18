@@ -8,10 +8,12 @@ import akka.actor.{ActorRef, Props, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.persistence._
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.impl.persistence.RequestLogFromRemote
-import scala.Some
 import com.comcast.xfinity.sirius.api.impl.persistence.InitiateTransfer
-import com.comcast.xfinity.sirius.api.impl.membership.{MembershipData, MemberInfo}
-import com.comcast.xfinity.sirius.api.impl.{Put, OrderedEvent}
+import com.comcast.xfinity.sirius.info.SiriusInfo
+import akka.agent.Agent
+import com.comcast.xfinity.sirius.api.impl.{membership, Put, OrderedEvent}
+import membership._
+import org.mockito.Mockito._
 
 
 class LogRequestITest extends NiceTest with BeforeAndAfterAll {
@@ -20,6 +22,8 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
 
   var remoteLogActor: TestActorRef[LogRequestActor] = _
   var source: LogIteratorSource = _
+  var siriusInfo: SiriusInfo = _
+  var membershipAgent: Agent[membership.MembershipMap] = _
   var logRequestWrapper: ActorRef = _
   var parentProbe: TestProbe = _
   var stateActorProbe: TestProbe = _
@@ -30,6 +34,8 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
 
   before {
     source = mock[LogIteratorSource]
+    siriusInfo = mock[SiriusInfo]
+    membershipAgent = mock[Agent[membership.MembershipMap]]
     parentProbe = TestProbe()(actorSystem)
     stateActorProbe = TestProbe()(actorSystem)
 
@@ -41,8 +47,16 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
 
     source = Helper.createMockSource(entries.iterator)
 
-    logRequestWrapper = Helper.wrapActorWithMockedSupervisor(Props(new LogRequestActor(chunkSize, source, stateActorProbe.ref)), parentProbe.ref, actorSystem)
-    remoteLogActor = TestActorRef(new LogRequestActor(chunkSize, source, stateActorProbe.ref))
+    logRequestWrapper = Helper.wrapActorWithMockedSupervisor(Props(createLogRequestActor()), parentProbe.ref, actorSystem)
+    remoteLogActor = TestActorRef(createLogRequestActor())
+
+    val remoteSiriusInfo = mock[SiriusInfo]
+    val remoteMembershipData = new MembershipData(remoteLogActor)
+    when(membershipAgent.get()).thenReturn(Map(remoteSiriusInfo -> remoteMembershipData).asInstanceOf[MembershipMap])
+  }
+
+  private def createLogRequestActor(): LogRequestActor = {
+    new LogRequestActor(chunkSize, source, siriusInfo, stateActorProbe.ref, membershipAgent)
   }
 
   describe("a logRequestActor") {
@@ -50,13 +64,15 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
       logRequestWrapper ! RequestLogFromRemote(remoteLogActor)
       parentProbe.expectMsg(5 seconds, TransferComplete)
     }
+
+    it("should start senders/receivers and receive TransferComplete when triggered by a RequestLogFromAnyRemote message") {
+      logRequestWrapper ! RequestLogFromAnyRemote
+      parentProbe.expectMsg(5 seconds, TransferComplete)
+    }
+
     it("should initiate transfer of LogChunks by LogSender to LogReceiver") {
       remoteLogActor ! InitiateTransfer(parentProbe.ref)
       parentProbe.expectMsg(5 seconds, LogChunk(1, Vector(entries(0), entries(1))))
-    }
-    it("should use a member sent in a MemberInfo message to start and then complete a transfer") {
-      logRequestWrapper ! MemberInfo(Some(MembershipData(remoteLogActor)))
-      parentProbe.expectMsg(5 seconds, TransferComplete)
     }
   }
 
