@@ -10,7 +10,7 @@ object SiriusResult {
    *        
    * @return SiriusResult
    */
-  def some(value: Array[Byte]): SiriusResult = SiriusResult(Some(value))
+  def some(value: Object): SiriusResult = SiriusResult(Some(value))
   
   /**
    * Factory method for creating a SiriusResult with no value
@@ -29,7 +29,7 @@ object SiriusResult {
  * methods {@link SiriusResult#some()} and {@link SiriusResult#none()}
  */
 // TODO: hide this within the scope of the companion object?
-case class SiriusResult(private val value: Option[Array[Byte]]) {
+case class SiriusResult(private val value: Object) {
   
   /**
    * Does this result contain a value?
@@ -43,17 +43,15 @@ case class SiriusResult(private val value: Option[Array[Byte]]) {
    * @return the value wrapped by this instance if it exists
    * @throws IllegalStateException if no such value exists
    */
-  def getValue: Array[Byte] = value match {
-    case Some(v) => v
+  def getValue: Object = value match {
+    case Some(v: Object) => v
     case None => 
       throw new IllegalStateException("Result has no value")
   }
   
   override def equals(that: Any) = that match {
     case SiriusResult(None) if this.value == None => true
-    case SiriusResult(thatValue) =>
-      (for (a1 <- this.value; a2 <- thatValue)
-        yield java.util.Arrays.equals(a1, a2)).getOrElse(false)
+    case SiriusResult(thatValue) => this.value == thatValue
     case _ => false
   }
   

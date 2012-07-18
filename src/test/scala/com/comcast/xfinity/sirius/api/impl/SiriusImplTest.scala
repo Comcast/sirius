@@ -68,13 +68,13 @@ class SiriusImplTest extends NiceTest {
     supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case Get(_) =>
-          sender ! SiriusResult.some("Got it".getBytes)
+          sender ! SiriusResult.some("Got it")
           Some(this)
         case Delete(_) =>
-          sender ! SiriusResult.some("Delete it".getBytes)
+          sender ! SiriusResult.some("Delete it")
           Some(this)
         case Put(_, _) => 
-          sender ! SiriusResult.some("Put it".getBytes)
+          sender ! SiriusResult.some("Put it")
           Some(this)
         case JoinCluster(_, _) => 
           Some(this)
@@ -100,7 +100,7 @@ class SiriusImplTest extends NiceTest {
     it("should send a Get message to the supervisor actor when enqueueGet is called") {
       val key = "hello"
       val getFuture = underTest.enqueueGet(key)
-      val expected = SiriusResult.some("Got it".getBytes)
+      val expected = SiriusResult.some("Got it")
       assert(expected === getFuture.get(1, TimeUnit.SECONDS))
       supervisorActorProbe.expectMsg(Get(key))
     }
@@ -109,7 +109,7 @@ class SiriusImplTest extends NiceTest {
       val key = "hello"
       val body = "there".getBytes()
       val putFuture = underTest.enqueuePut(key, body)
-      val expected = SiriusResult.some("Put it".getBytes)
+      val expected = SiriusResult.some("Put it")
       assert(expected === putFuture.get(1, TimeUnit.SECONDS))
       supervisorActorProbe.expectMsg(Put(key, body))
     }
@@ -117,7 +117,7 @@ class SiriusImplTest extends NiceTest {
     it("should send a Delete message to the supervisor actor when enqueueDelete is called and get some \"ACK\" back") {
       val key = "hello"
       val deleteFuture = underTest.enqueueDelete(key)
-      val expected = SiriusResult.some("Delete it".getBytes)
+      val expected = SiriusResult.some("Delete it")
       assert(expected === deleteFuture.get(1, TimeUnit.SECONDS))
       supervisorActorProbe.expectMsg(Delete(key))
     }

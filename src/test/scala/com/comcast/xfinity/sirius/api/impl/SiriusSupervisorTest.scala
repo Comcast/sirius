@@ -89,10 +89,10 @@ class SiriusSupervisorTest() extends NiceTest {
     paxosProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case Delete(_) =>
-          sender ! SiriusResult.some("Delete it".getBytes)
+          sender ! SiriusResult.some("Delete it")
           Some(this)
         case Put(_, _) =>
-          sender ! SiriusResult.some("Put it".getBytes)
+          sender ! SiriusResult.some("Put it")
           Some(this)
       }
     })
@@ -101,7 +101,7 @@ class SiriusSupervisorTest() extends NiceTest {
     stateProbe.setAutoPilot(new TestActor.AutoPilot {
       def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
         case Get(_) =>
-          sender ! SiriusResult.some("Got it".getBytes)
+          sender ! SiriusResult.some("Got it")
           Some(this)
       }
     })
@@ -150,7 +150,7 @@ class SiriusSupervisorTest() extends NiceTest {
       initializeSupervisor(supervisor)
       val get = Get("1")
       val getAskFuture = supervisor ? get
-      val expected = SiriusResult.some("Got it".getBytes)
+      val expected = SiriusResult.some("Got it")
       assert(expected === Await.result(getAskFuture, timeout.duration))
       stateProbe.expectMsg(get)
       noMoreMsgs()
@@ -160,7 +160,7 @@ class SiriusSupervisorTest() extends NiceTest {
       initializeSupervisor(supervisor)
       val delete = Delete("1")
       val deleteAskFuture = supervisor ? delete
-      val expected = SiriusResult.some("Delete it".getBytes)
+      val expected = SiriusResult.some("Delete it")
       assert(expected === Await.result(deleteAskFuture, timeout.duration))
       paxosProbe.expectMsg(delete)
       noMoreMsgs()
@@ -170,7 +170,7 @@ class SiriusSupervisorTest() extends NiceTest {
       initializeSupervisor(supervisor)
       val put = Put("1", "someBody".getBytes)
       val putAskFuture = supervisor ? put
-      val expected = SiriusResult.some("Put it".getBytes)
+      val expected = SiriusResult.some("Put it")
       assert(expected === Await.result(putAskFuture, timeout.duration))
       paxosProbe.expectMsg(put)
       noMoreMsgs()
