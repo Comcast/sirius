@@ -1,4 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
+
 import akka.actor.Actor
 import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
@@ -56,6 +57,7 @@ class Replica(membership: Agent[Set[ActorRef]],
   val log = Logging(context.system, this)
 
   val leaders = membership
+
   var lowestUnusedSlotNum: Long = startingSeqNum
   
   def propose(command: Command) {
@@ -63,7 +65,7 @@ class Replica(membership: Agent[Set[ActorRef]],
     leaders().foreach(_ ! Propose(lowestUnusedSlotNum, command))
     lowestUnusedSlotNum = lowestUnusedSlotNum + 1
   }
-  
+
   def receive = {
     case Request(command: Command) => propose(command)
     case Decision(slot, command) =>

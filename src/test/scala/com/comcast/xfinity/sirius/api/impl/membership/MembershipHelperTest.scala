@@ -16,27 +16,28 @@ class MembershipHelperTest extends NiceTest {
     describe("getRandomMember") {
       val localSiriusId = "local:2552"
       val localActorRef = mock[ActorRef]
-      val localMembershipData = new MembershipData(localActorRef)
+      val paxosActorRef = mock[ActorRef]
+      val localMembershipData = new MembershipData(localActorRef, paxosActorRef)
 
       val remoteSiriusId = "remote:2552"
       val remoteActorRef = mock[ActorRef]
-      val remoteMembershipData = new MembershipData(remoteActorRef)
+      val remoteMembershipData = new MembershipData(remoteActorRef, paxosActorRef)
 
       it("should send back a Member != the MembershipActor we asked...3 times in a row") {
         val membership = MembershipMap(remoteSiriusId -> remoteMembershipData, localSiriusId -> localMembershipData)
 
         val data = membershipHelper.getRandomMember(membership, localSiriusId)
-        assert(data.get === MembershipData(remoteActorRef))
+        assert(data.get === MembershipData(remoteActorRef, paxosActorRef))
 
         val data2 = membershipHelper.getRandomMember(membership, localSiriusId)
-        assert(data2.get === MembershipData(remoteActorRef))
+        assert(data2.get === MembershipData(remoteActorRef, paxosActorRef))
 
         val data3 = membershipHelper.getRandomMember(membership, localSiriusId)
-        assert(data3.get === MembershipData(remoteActorRef))
+        assert(data3.get === MembershipData(remoteActorRef, paxosActorRef))
       }
 
       it("should send back a None if the only ActorRef in the MembershipMap is equal to the caller") {
-        val membership = MembershipMap(localSiriusId -> MembershipData(localActorRef))
+        val membership = MembershipMap(localSiriusId -> MembershipData(localActorRef, paxosActorRef))
 
         val data = membershipHelper.getRandomMember(membership, localSiriusId)
         assert(data === None)

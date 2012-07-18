@@ -21,6 +21,7 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
   implicit val actorSystem = ActorSystem("actorSystem")
 
   var remoteLogActor: TestActorRef[LogRequestActor] = _
+  var paxosProbe : TestProbe = _
   var siriusInfo: SiriusInfo = _
   var source: LogIteratorSource = _
   var logRequestWrapper: ActorRef = _
@@ -54,8 +55,9 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
 
     logRequestWrapper = Helper.wrapActorWithMockedSupervisor(Props(createLogRequestActor()), parentProbe.ref, actorSystem)
     remoteLogActor = TestActorRef(createLogRequestActor())
+    paxosProbe = TestProbe()(actorSystem)
 
-    val remoteMembershipData = new MembershipData(remoteLogActor)
+    val remoteMembershipData = new MembershipData(remoteLogActor, paxosProbe.ref)
     when(membershipAgent.get()).thenReturn(Map(remoteSiriusId -> remoteMembershipData))
   }
 

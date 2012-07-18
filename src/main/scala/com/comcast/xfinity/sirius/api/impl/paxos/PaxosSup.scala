@@ -49,11 +49,10 @@ object PaxosSup {
       val replica = context.actorOf(Props(Replica(membership, startingSeqNum, performFun)), "replica")
     }
   }
-
 }
 
 class PaxosSup extends Actor {
-    this: PaxosSup.ChildProvider =>
+  this: PaxosSup.ChildProvider =>
 
   def receive = {
     // Replica messages
@@ -66,7 +65,6 @@ class PaxosSup extends Actor {
     // Leader messages
     case p: Propose => leader forward p
     // Adopted and Preempted are internal
-
     // Acceptor messages
     case p1a: Phase1A => acceptor forward p1a
     case p2A: Phase2A => acceptor forward p2A

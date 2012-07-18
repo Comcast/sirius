@@ -71,13 +71,14 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
 
     it("should fire off a round of log requests when logs are requested from any remote.") {
       val probe = TestProbe()(actorSystem)
+      val paxosProbe = TestProbe()(actorSystem)
       val localLogRequestWrapper = Helper.wrapActorWithMockedSupervisor(
         Props(new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
         override def createReceiver(): ActorRef = probe.ref
         override def membershipHelper = mockMembershipHelper
       }), parentProbe.ref, actorSystem)
 
-      val membershipData = new MembershipData(probe.ref)
+      val membershipData = new MembershipData(probe.ref, paxosProbe.ref)
       when(mockMembershipHelper.getRandomMember(
         Matchers.any[MembershipMap], Matchers.eq(localSiriusId))).thenReturn(Some(membershipData))
 

@@ -5,7 +5,6 @@ import akka.dispatch.Await._
 import akka.util.duration._
 import akka.pattern.ask
 import org.mockito.Mockito._
-import akka.testkit.TestActorRef
 import akka.actor.ActorSystem
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, AkkaConfig}
@@ -13,12 +12,14 @@ import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
 import scalax.io.LongTraversable
 import org.mockito.Matchers._
+import akka.testkit.{TestProbe, TestActorRef}
 
 class MembershipActorTest extends NiceTest with AkkaConfig {
 
   var actorSystem: ActorSystem = _
 
   var underTestActor: TestActorRef[MembershipActor] = _
+  var paxosProbe: TestProbe = _
 
   var expectedMap: MembershipMap = _
   var siriusStateAgent: Agent[SiriusState] = _
@@ -36,10 +37,11 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
     when(clusterConfigPath.lastModified).thenReturn(1L)
     when(clusterConfigPath.lines(NewLine, false)).thenReturn(LongTraversable("dummyhost:8080"))
 
+    paxosProbe =  TestProbe()(actorSystem);
     underTestActor = TestActorRef(new MembershipActor(membershipAgent, localSiriusId,
       siriusStateAgent, clusterConfigPath))(actorSystem)
 
-    expectedMap = MembershipMap(localSiriusId -> MembershipData(underTestActor))
+    expectedMap = MembershipMap(localSiriusId -> MembershipData(underTestActor, paxosProbe.ref))
   }
 
   after {

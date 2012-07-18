@@ -39,6 +39,7 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, s
     configCheckSchedule.cancel()
   }
 
+
   def receive = {
     // Check the stored lastModifiedTime of the clusterConfigPath file against
     // the actual file on disk, and rebuild membership map if necessary
@@ -68,8 +69,9 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, s
     // XXX also use those same constants when creating original actors with context.actorOf
     lines.foldLeft(MembershipMap())(
       (membershipMap: MembershipMap, hostAndPort: String) => {
-        val actorPath = "akka://%s@%s/user/sirius".format(SYSTEM_NAME, hostAndPort)
-        val membershipData = MembershipData(context.actorFor(actorPath))
+        val supervisorPath = "akka://%s@%s/user/sirius".format(SYSTEM_NAME, hostAndPort)
+        val paxosPath = "akka://%s@%s/user/sirius/paxos".format(SYSTEM_NAME, hostAndPort)
+        val membershipData = MembershipData(context.actorFor(supervisorPath), context.actorFor(paxosPath))
         membershipMap + (hostAndPort -> membershipData)
       }
     )

@@ -1,10 +1,12 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import akka.actor.Actor
-import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete, Put}
-import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
+import com.comcast.xfinity.sirius.api.impl.membership._
+import akka.agent.Agent
+import akka.event.Logging
+import scala.Predef._
+import akka.actor.{Props, Actor, ActorRef}
 
 /**
  * Actor for negotiating Paxos rounds locally.
@@ -15,21 +17,44 @@ import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
  * TODO: Currently this is just a placeholder for the Paxos layer,
  *       here to draw a cutoff point
  */
-class SiriusPaxosActor(val persistenceActor: ActorRef) extends Actor {
-  private val logger = LoggerFactory.getLogger(classOf[SiriusPaxosActor])
+class SiriusPaxosActor(val persistenceActor: ActorRef, membershipAgent: Agent[MembershipMap]) extends Actor {
+  private val logger = Logging(context.system, this)
 
   var seq: Long = 0L
+
+  val performDecision = (slot: Long, request: NonCommutativeSiriusRequest) => {
+    persistenceActor forward OrderedEvent(seq, System.currentTimeMillis(), request)
+    true
+  }
+
+  private val paxosSupervisor = createPaxosSupervisor(membershipAgent, performDecision)
 
   def receive = {
     case put: Put => processRequest(put)
     case delete: Delete => processRequest(delete)
+    case paxosMsg: PaxosMessages.PaxosMessage =>
+      logger.warning("Got a Paxos Message but paxos is not yet implemented.")
     case _ =>
-      logger.warn("SiriusPaxosActor only accepts PUT's and DELETE's")
+      logger.warning("SiriusPaxosActor only accepts PUT's and DELETE's and PaxosMessages")
 
   }
 
   private def processRequest(req: NonCommutativeSiriusRequest) {
     seq = seq + 1
-    persistenceActor forward OrderedEvent(seq, System.currentTimeMillis(), req)
+    performDecision(seq, req)
+
   }
+
+
+  def createPaxosSupervisor(memAgent: Agent[MembershipMap],
+                            perfDec: Replica.PerformFun): ActorRef = {
+    val memberIter = memAgent.get().values
+    val memberSet: Set[ActorRef] = memberIter.foldLeft(Set[ActorRef]()) {
+      _ + _.paxosSupervisorRef
+    }
+    val agent = new Agent[Set[ActorRef]](memberSet, context.system)
+
+    context.actorOf(Props(PaxosSup(agent, perfDec)), "paxos-supervisor")
+  }
+
 }
