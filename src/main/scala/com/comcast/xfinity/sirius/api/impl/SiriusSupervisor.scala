@@ -34,7 +34,8 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] var persistenceActor = createPersistenceActor(stateActor, siriusLog)
   private[impl] var paxosActor = createPaxosActor(persistenceActor)
   private[impl] var membershipActor = createMembershipActor(membershipAgent)
-  private[impl] var logRequestActor = createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, persistenceActor)
+  private[impl] var logRequestActor =
+    createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, siriusInfo, persistenceActor, membershipAgent)
 
   override def preStart() {
     super.preStart()
@@ -102,8 +103,10 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap]) =
     context.actorOf(Props(new MembershipActor(membershipAgent, siriusInfo)), "membership")
 
-  private[impl] def createLogRequestActor(chunkSize: Int, logLinesSource: LogIteratorSource, thePersistenceActor: ActorRef) =
-    context.actorOf(Props(new LogRequestActor(chunkSize, logLinesSource, thePersistenceActor)))
+  private[impl] def createLogRequestActor(chunkSize: Int, logLinesSource: LogIteratorSource,
+      theSiriusInfo: SiriusInfo, thePersistenceActor: ActorRef, theMembershipAgent: Agent[MembershipMap]) =
+    context.actorOf(Props(
+      new LogRequestActor(chunkSize, logLinesSource, theSiriusInfo, thePersistenceActor, theMembershipAgent)))
 }
 
 object SiriusSupervisor {
