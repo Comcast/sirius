@@ -2,14 +2,14 @@ package com.comcast.xfinity.sirius.api.impl.persistence
 
 import com.comcast.xfinity.sirius.{Helper, NiceTest}
 import akka.testkit.{TestFSMRef, TestProbe}
-import org.mockito.Mockito._
 import akka.util.duration._
 import akka.actor.{LoggingFSM, ActorSystem}
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
 import com.typesafe.config.ConfigFactory
+import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
+import org.mockito.Mockito._
 import scalax.io.CloseableIterator
-import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent, Put}
 
 class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
 
@@ -20,13 +20,10 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
     """))
 
   var actor: TestFSMRef[LSState, LSData, LogSendingActor] = _
-  //var actor: TestActorRef[LogSendingActor] = _
   var receiverProbe: TestProbe = _
   var mockSource: LogIteratorSource = _
-  var mockIterator: Iterator[String] = _
 
   before {
-    mockIterator = mock[Iterator[String]]
 
     receiverProbe = TestProbe()
     actor = TestFSMRef(new LogSendingActor with LoggingFSM[LSState, LSData])
@@ -37,6 +34,18 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
   }
 
   describe("a logSendingActor") {
+    it("should create an iterator for the log source with the logRange") {
+      val mockIterator = mock[CloseableIterator[OrderedEvent]]
+      when(mockIterator.hasNext).thenReturn(false)
+      mockSource = mock[LogIteratorSource]
+      val logRange = new BoundedLogRange(0, 100)
+      when(mockSource.createIterator(logRange)).thenReturn(mockIterator)
+
+      actor ! Start(receiverProbe.ref, mockSource, logRange, 2)
+
+      verify(mockSource).createIterator(logRange)
+    }
+
     it("should be able to produce two chunks upon a Start call, given enough input") {
       mockSource = Helper.createMockSource(
         OrderedEvent(1, 1, Delete("a")),
@@ -46,7 +55,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
         OrderedEvent(5, 1, Delete("e"))
       )
 
-      actor ! Start(receiverProbe.ref, mockSource, 2)
+      actor ! Start(receiverProbe.ref, mockSource, EntireLog, 2)
       val actualFirstChunk = receiverProbe.receiveOne(5 seconds)
       testChunk(1, List(OrderedEvent(1, 1, Delete("a")),
                         OrderedEvent(2, 1, Delete("b"))), actualFirstChunk)
@@ -65,7 +74,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
 
       mockSource = Helper.createMockSource(OrderedEvent(1, 1, Delete("a")))
 
-      actor ! Start(receiverProbe.ref, mockSource, 2)
+      actor ! Start(receiverProbe.ref, mockSource, EntireLog, 2)
       val actualFirstChunk = receiverProbe.receiveOne(5 seconds)
       testChunk(1, List(OrderedEvent(1, 1, Delete("a"))), actualFirstChunk)
       actor ! Received(1)
@@ -105,7 +114,7 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
         OrderedEvent(3, 1, Delete("c"))
       )
 
-      actor ! Start(receiverProbe.ref, mockSource, 3)
+      actor ! Start(receiverProbe.ref, mockSource, EntireLog, 3)
       receiverProbe.expectMsg(1 seconds, LogChunk(1, expected1))
     }
 
@@ -119,9 +128,10 @@ class LogSendingActorTest extends NiceTest with BeforeAndAfterAll {
         OrderedEvent(7, 1, Delete("f")),
         OrderedEvent(8, 1, Delete("g"))
       )
-      mockSource = Helper.createMockSource(data.iterator)
+      val logRange = new BoundedLogRange(0, 100)
+      mockSource = Helper.createMockSource(data.iterator, logRange)
 
-      actor ! Start(receiverProbe.ref, mockSource, 30)
+      actor ! Start(receiverProbe.ref, mockSource, logRange, 30)
       receiverProbe.expectMsg(1 seconds, LogChunk(1, data))
     }
   }

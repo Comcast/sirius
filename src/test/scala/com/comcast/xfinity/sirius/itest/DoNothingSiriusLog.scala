@@ -4,6 +4,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import org.slf4j.LoggerFactory
 import scalax.io.CloseableIterator
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
 
 class DoNothingSiriusLog extends SiriusLog {
   private val logger = LoggerFactory.getLogger(classOf[DoNothingSiriusLog])
@@ -14,7 +15,6 @@ class DoNothingSiriusLog extends SiriusLog {
 
   override def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T = acc0
 
-  override def createIterator(): CloseableIterator[OrderedEvent] = null
-
-  override def createRangedIterator(startRange: Long,  endRange: Long): CloseableIterator[OrderedEvent] = null
+  override def createIterator(logRange: LogRange): CloseableIterator[OrderedEvent] =
+    CloseableIterator(Iterator[OrderedEvent]())
 }

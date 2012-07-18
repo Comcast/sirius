@@ -1,6 +1,7 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import scalax.io.CloseableIterator
+import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 
 /**
@@ -9,16 +10,10 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 trait LogIteratorSource {
 
   /**
-   * Retrieve events of entire log for sequential reading
+   * Retrieve a specified range of events from the log for sequential reading
    *
+   * @param logRange the LogRange for the events to iterate
    * @return Iterator of events in one (or more) log file(s)
    */
-  def createIterator(): CloseableIterator[OrderedEvent]
-
-  /**
-   * Retrieve events for a range of the log file
-   *
-   * @return Iterator of events within the specified range from the log file(s)
-   */
-  def createRangedIterator(startRange: Long, endRange: Long) : CloseableIterator[OrderedEvent]
+  def createIterator(logRange: LogRange): CloseableIterator[OrderedEvent]
 }

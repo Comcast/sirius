@@ -5,6 +5,8 @@ import org.slf4j.LoggerFactory
 import scalax.io.Line.Terminators.NewLine
 import scalax.io.CloseableIterator
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, EntireLog, LogRange}
+import java.io.IOException
 
 /**
  * Class that writes a log to a file
@@ -34,14 +36,12 @@ class SiriusFileLog(logPath: String, serDe: WALSerDe) extends SiriusLog {
   /**
    * ${@inheritDoc}
    */
-  override def createIterator(): CloseableIterator[OrderedEvent] = {
-    new CloseableSiriusEventIterator(logPath, serDe)
-  }
-
-  /**
-   * ${@inheritDoc}
-   */
-  override def createRangedIterator(startRange: Long,  endRange: Long): CloseableIterator[OrderedEvent] = {
-    new RangedSiriusEventIterator(logPath, serDe, startRange, endRange)
+  override def createIterator(logRange: LogRange): CloseableIterator[OrderedEvent] = {
+    logRange match {
+      case boundedLogRange: BoundedLogRange =>
+        new RangedSiriusEventIterator(logPath, serDe, boundedLogRange.start, boundedLogRange.end)
+      case EntireLog => new CloseableSiriusEventIterator(logPath, serDe)
+      case _ => throw new IOException("Unknown LogRange type")
+    }
   }
 }

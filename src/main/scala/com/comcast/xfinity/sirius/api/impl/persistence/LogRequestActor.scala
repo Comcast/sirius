@@ -1,16 +1,17 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
 import akka.actor.{Props, ActorRef, Actor}
-import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
-import com.comcast.xfinity.sirius.api.impl.membership.{MembershipHelper, MembershipMap}
-import com.comcast.xfinity.sirius.info.SiriusInfo
-import akka.agent.Agent
 import scala.None
+import akka.agent.Agent
+import com.comcast.xfinity.sirius.api.impl.membership._
+import com.comcast.xfinity.sirius.info.SiriusInfo
+import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
+
 
 sealed trait LogRequestMessage
-case class RequestLogFromRemote(remote: ActorRef) extends LogRequestMessage
-case object RequestLogFromAnyRemote extends LogRequestMessage
-case class InitiateTransfer(receiver: ActorRef) extends LogRequestMessage
+case class RequestLogFromRemote(remote: ActorRef, logRange: LogRange) extends LogRequestMessage
+case class RequestLogFromAnyRemote(logRange: LogRange) extends LogRequestMessage
+case class InitiateTransfer(receiver: ActorRef, logRange: LogRange) extends LogRequestMessage
 case object TransferComplete extends LogRequestMessage
 case class TransferFailed(reason: String) extends LogRequestMessage
 
@@ -36,21 +37,21 @@ class LogRequestActor(chunkSize: Int, source: LogIteratorSource,
     context.actorOf(Props(new LogReceivingActor(persistenceActor)))
 
   protected def receive = {
-    case RequestLogFromRemote(remote) =>
+    case RequestLogFromRemote(remote, logRange) =>
       val receiver = createReceiver()
-      remote ! InitiateTransfer(receiver)
+      remote ! InitiateTransfer(receiver, logRange)
 
-    case RequestLogFromAnyRemote => {
+    case RequestLogFromAnyRemote(logRange) => {
       val membershipData = membershipHelper.getRandomMember(membershipAgent.get(), siriusInfo)
       membershipData match {
         case None => context.parent ! TransferFailed(LogRequestActor.NO_MEMBER_FAIL_MSG)
-        case Some(member) => self ! RequestLogFromRemote(member.supervisorRef)
+        case Some(member) => self ! RequestLogFromRemote(member.supervisorRef, logRange)
       }
     }
 
-    case InitiateTransfer(receiver) =>
+    case InitiateTransfer(receiver, logRange) =>
       val logSender = createSender()
-      logSender ! Start(receiver, source, chunkSize)
+      logSender ! Start(receiver, source, logRange, chunkSize)
 
     case TransferComplete =>
       context.parent ! TransferComplete
