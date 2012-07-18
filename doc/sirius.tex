@@ -79,7 +79,7 @@ An typical log entry would look something like:
 \subsection{Field Definitions}
 
 \subsubsection{Checksum}
-Base64 encoded MD5 hash of the UTF-8 byte array that represents the rest of the log entry\footnote{It is worth mentioning, this is exactly 24 characters in length}, including the pipes and terminating new line.
+Hex encoded FNV-1a\footnote{See http://en.wikipedia.org/wiki/Fowler\%E2\%80\%93Noll\%E2\%80\%93Vo\_hash\_function} hash of the byte array that represents the rest of the log entry, including the pipes and terminating new line.
 
 \subsubsection{Action Type}
 A String that represents the type of action to take for a given log entry.  For the most part, these will mirror HTTP semantics.
