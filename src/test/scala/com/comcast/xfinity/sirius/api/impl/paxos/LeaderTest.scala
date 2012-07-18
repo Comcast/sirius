@@ -76,7 +76,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         doReturn(Set()).
           when(mockHelper).pmax(any(classOf[Set[PValue]]))
         doReturn(proposals).
-          when(mockHelper).update(any(classOf[Set[PValue]]), any(classOf[Set[PValue]]))
+          when(mockHelper).update(any(classOf[Set[Slot]]), any(classOf[Set[Slot]]))
 
         leader ! Adopted(leader.underlyingActor.ballotNum, Set())
 

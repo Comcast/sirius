@@ -33,10 +33,24 @@ class LeaderHelperTest extends NiceTest {
     }
 
     describe("update") {
-      it ("must return the set of all items in y and all items in x not in y") {
-        expect(Set(1, 2, 3, 4)) {
-          leaderHelper.update(Set(1, 2), Set(3, 4))
-        }
+      it ("must return the set of all Slots in y union all Slots in x whos number is not occupied by y") {
+        val expected = Set(
+          Slot(1, Command(null, 0, Delete("A"))),
+          Slot(2, Command(null, 0, Delete("B"))),
+          Slot(3, Command(null, 0, Delete("C")))
+        )
+
+        val x = Set(
+          Slot(1, Command(null, 0, Delete("Z"))),
+          Slot(3, Command(null, 0, Delete("C")))
+        )
+
+        val y = Set(
+          Slot(1, Command(null, 0, Delete("A"))),
+          Slot(2, Command(null, 0, Delete("B")))
+        )
+
+        assert(expected === leaderHelper.update(x, y))
       }
     }
 

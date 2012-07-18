@@ -7,8 +7,13 @@ class LeaderHelper {
     case _ => false
   }
 
-  //TODO: Isn't this just set union?
-  def update[T](x: Set[T], y: Set[T]) = y ++ x.filterNot(y.contains(_))
+  def update(x: Set[Slot], y: Set[Slot]) = {
+    val slotsInXNotInY = x.filterNot(slot => y.exists {
+      case Slot(slotNum, _) if slotNum == slot.num => true
+      case _ => false
+    })
+    y ++ slotsInXNotInY
+  }
 
   def pmax(pvals: Set[PValue]): Set[Slot] = {
     def updateWithMaxBallot(acc: Map[Long, PValue], pval: PValue) = acc.get(pval.slotNum) match {
