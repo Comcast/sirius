@@ -40,9 +40,6 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusInfo: SiriusI
     }
     case AddMembers(member) => addToLocalMembership(member)
     case GetMembershipData => sender ! membershipAgent()
-    case GetRandomMember =>
-      val randomMember = membershipHelper.getRandomMember(membershipAgent(), siriusInfo)
-      sender ! MemberInfo(randomMember)
     case _ => logger.warn("Unrecognized message.")
   }
 
