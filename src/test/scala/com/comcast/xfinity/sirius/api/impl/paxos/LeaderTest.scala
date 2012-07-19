@@ -209,6 +209,44 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         assert(initialBallot === leader.underlyingActor.ballotNum)
       }
     }
+
+    describe("when receiving a Reap message") {
+      it ("must clean out all expired proposals and update its lowestAcceptableSlot") {
+        val now = System.currentTimeMillis()
+        val keepers = SortedMap[Long, Command](
+          (4L -> Command(null, now, Delete("A"))),
+          (5L -> Command(null, 1L, Delete("Z"))),
+          (6L -> Command(null, now - 1000, Delete("B")))
+        )
+
+        val leader = makeMockedUpLeader(Agent(Set[ActorRef]()))
+
+        leader.underlyingActor.proposals = SortedMap[Long, Command](
+          (1L -> Command(null, now - (31 * 60 * 1000), Delete("C"))),
+          (3L -> Command(null, 1, Delete("D")))
+        ) ++ keepers
+
+        leader ! Leader.Reap
+
+        assert(4L === leader.underlyingActor.lowestAcceptableSlot)
+        assert(keepers === leader.underlyingActor.proposals)
+      }
+
+      it ("must not update its lowestAcceptableSlotNumber if nothing is reaped") {
+        val leader = makeMockedUpLeader(Agent(Set[ActorRef]()))
+
+        leader.underlyingActor.proposals = SortedMap[Long, Command]()
+        leader.underlyingActor.lowestAcceptableSlot = 10
+        leader ! Leader.Reap
+        assert(10 === leader.underlyingActor.lowestAcceptableSlot)
+
+        leader.underlyingActor.proposals = SortedMap[Long, Command](
+          11L -> Command(null, System.currentTimeMillis(), Delete("Z"))
+        )
+        leader ! Leader.Reap
+        assert(10 === leader.underlyingActor.lowestAcceptableSlot)
+      }
+    }
   }
 
 }
