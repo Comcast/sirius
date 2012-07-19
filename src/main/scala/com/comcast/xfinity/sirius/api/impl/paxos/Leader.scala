@@ -36,21 +36,22 @@ class Leader(membership: Agent[Set[ActorRef]]) extends Actor {
 
   var ballotNum = Ballot(0, self.toString)
   var active = false
-  var proposals = Set[Slot]()
+  var proposals = Map[Long, Command]()
 
   startScout()
 
   def receive = {
-    case Propose(slotNum, command) if !leaderHelper.proposalExistsForSlot(proposals, slotNum) =>
-      proposals += Slot(slotNum, command)
+    case Propose(slotNum, command) if !proposals.contains(slotNum) =>
+      proposals += (slotNum -> command)
       if (active) {
         startCommander(PValue(ballotNum, slotNum, command))
       }
 
     case Adopted(newBallotNum, pvals) if ballotNum == newBallotNum =>
       proposals = leaderHelper.update(proposals, leaderHelper.pmax(pvals))
-      proposals.foreach(slot =>
-        startCommander(PValue(ballotNum, slot.num, slot.command)))
+      proposals.foreach {
+        case (slot, command) => startCommander(PValue(ballotNum, slot, command))
+      }
       active = true
 
     case Preempted(newBallot) if newBallot > ballotNum =>

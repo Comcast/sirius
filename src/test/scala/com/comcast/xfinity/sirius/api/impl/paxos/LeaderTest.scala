@@ -1,6 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import org.junit.runner.RunWith
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.NiceTest
@@ -44,7 +43,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         val membership = Agent(Set[ActorRef]())
         val scoutProbe = TestProbe()
 
-        val leader = makeMockedUpLeader(
+        makeMockedUpLeader(
           membership,
           startScoutFun = { scoutProbe.ref ! 'hi }
         )
@@ -68,20 +67,22 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         )
 
 
-        val proposals = Set(
-            Slot(1, Command(null, 1, Delete("2"))),
-            Slot(2, Command(null, 2, Delete("3")))
+        val proposals = Map(
+            (1L -> Command(null, 1, Delete("2"))),
+            (2L -> Command(null, 2, Delete("3")))
           )
 
-        doReturn(Set()).
+        doReturn(Map[Long, Command]()).
           when(mockHelper).pmax(any(classOf[Set[PValue]]))
         doReturn(proposals).
-          when(mockHelper).update(any(classOf[Set[Slot]]), any(classOf[Set[Slot]]))
+          when(mockHelper).update(any(classOf[Map[Long, Command]]),
+                                  any(classOf[Map[Long, Command]]))
 
         leader ! Adopted(leader.underlyingActor.ballotNum, Set())
 
-        val expectedPvalsCommandered = proposals.map {
-          case Slot(num, cmd) => PValue(leader.underlyingActor.ballotNum, num, cmd)
+        val expectedPvalsCommandered = proposals.foldLeft(Set[PValue]()){
+          case (acc, (slot, cmd)) =>
+            acc + PValue(leader.underlyingActor.ballotNum, slot, cmd)
         }
 
         assert(expectedPvalsCommandered === pvalsCommandered)
@@ -99,8 +100,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           helper = mockHelper
         )
 
-        doReturn(true).
-          when(mockHelper).proposalExistsForSlot(any(classOf[Set[Slot]]), anyInt())
+        leader.underlyingActor.proposals = Map((1L -> Command(null, 2, Delete("3"))))
 
         intercept[MatchError] {
           leader.underlyingActor.receive(Propose(1, Command(null, 1, Delete("2"))))
@@ -119,15 +119,12 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           startCommanderFun = p => commanderStarted = true
         )
 
-        doReturn(false).
-          when(mockHelper).proposalExistsForSlot(any(classOf[Set[Slot]]), anyInt())
-
-        val slotNum = 1
+        val slotNum = 1L
         val command = Command(null, 1, Delete("2"))
 
         leader ! Propose(slotNum, command)
 
-        assert(Set(Slot(slotNum, command)) === leader.underlyingActor.proposals)
+        assert(Map((slotNum -> command)) === leader.underlyingActor.proposals)
         assert(false === commanderStarted)
       }
 
@@ -144,15 +141,13 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         )
 
         leader.underlyingActor.active = true
-        doReturn(false).
-          when(mockHelper).proposalExistsForSlot(any(classOf[Set[Slot]]), anyInt())
 
-        val slotNum = 1
+        val slotNum = 1L
         val command = Command(null, 1, Delete("2"))
 
         leader ! Propose(slotNum, command)
 
-        assert(Set(Slot(slotNum, command)) === leader.underlyingActor.proposals)
+        assert(Map((slotNum -> command)) === leader.underlyingActor.proposals)
         assert(true === commanderStarted)
       }
     }
