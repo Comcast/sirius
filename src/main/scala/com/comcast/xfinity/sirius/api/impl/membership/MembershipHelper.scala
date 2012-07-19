@@ -4,6 +4,7 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 import util.Random
 
 class MembershipHelper {
+
   /**
    * Get a random value from a map whose key does not equal via keyToAvoid
    * @param map membershipMap we're searching
@@ -14,13 +15,19 @@ class MembershipHelper {
   def getRandomMember(map: MembershipMap, keyToAvoid: SiriusInfo): Option[MembershipData] = {
     val viableMap = map - keyToAvoid
     val keys = viableMap.keySet.toIndexedSeq
+
     // if there is nothing in the map OR vToAvoid is the only thing in the map, there is no viable member
     if (keys.isEmpty) {
       None
-    } else {
-      val random = Random.nextInt(keys.size)
+    }
+    else {
+      val random = chooseRandomValue(keys.size)
       val v = map.get(keys(random))
       Some(v.get)
     }
+  }
+
+  private[membership] def chooseRandomValue(size: Int): Int = {
+    Random.nextInt(size)
   }
 }
