@@ -3,6 +3,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{ Props, Actor, ActorRef }
 import akka.agent.Agent
+import collection.immutable.SortedMap
 
 object Leader {
   trait HelperProvider {
@@ -36,7 +37,7 @@ class Leader(membership: Agent[Set[ActorRef]]) extends Actor {
 
   var ballotNum = Ballot(0, self.toString)
   var active = false
-  var proposals = Map[Long, Command]()
+  var proposals = SortedMap[Long, Command]()
 
   startScout()
 

@@ -10,6 +10,7 @@ import org.mockito.Mockito._
 import org.mockito.Matchers._
 import akka.actor.{ActorRef, actorRef2Scala, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.Delete
+import collection.immutable.SortedMap
 
 object LeaderTest {
   def makeMockedUpLeader(membership: Agent[Set[ActorRef]],
@@ -70,16 +71,16 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         )
 
 
-        val proposals = Map(
+        val proposals = SortedMap(
             (1L -> Command(null, 1, Delete("2"))),
             (2L -> Command(null, 2, Delete("3")))
           )
 
-        doReturn(Map[Long, Command]()).
+        doReturn(SortedMap[Long, Command]()).
           when(mockHelper).pmax(any(classOf[Set[PValue]]))
         doReturn(proposals).
-          when(mockHelper).update(any(classOf[Map[Long, Command]]),
-                                  any(classOf[Map[Long, Command]]))
+          when(mockHelper).update(any(classOf[SortedMap[Long, Command]]),
+                                  any(classOf[SortedMap[Long, Command]]))
 
         leader ! Adopted(leader.underlyingActor.ballotNum, Set())
 
@@ -103,7 +104,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           helper = mockHelper
         )
 
-        leader.underlyingActor.proposals = Map((1L -> Command(null, 2, Delete("3"))))
+        leader.underlyingActor.proposals = SortedMap((1L -> Command(null, 2, Delete("3"))))
 
         intercept[MatchError] {
           leader.underlyingActor.receive(Propose(1, Command(null, 1, Delete("2"))))
