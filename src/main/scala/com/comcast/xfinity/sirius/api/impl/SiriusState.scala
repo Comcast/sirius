@@ -1,5 +1,11 @@
 package com.comcast.xfinity.sirius.api.impl
 
+/**
+ * Keeps track of what actors have been initalized.  
+ * 
+ * XXX: We should ditch this in favor of making SiriusSupervisor and its child supervisors
+ * an FSM, which just change states based on message passing..  
+ */
 class SiriusState {
   var supervisorState = SiriusState.SupervisorState.Uninitialized
   var persistenceState = SiriusState.PersistenceState.Uninitialized

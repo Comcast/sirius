@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.writeaheadlog
 import org.slf4j.LoggerFactory
 
 /**
- * mixin for Checksumming.  Defaults to a base 64 encoded MD5 hash
+ * mixin for Checksumming.  Defaults to a hex encoded FNV-1 hash
  */
 trait Checksum {
   val CHECKSUM_LENGTH = 16

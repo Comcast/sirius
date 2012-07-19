@@ -7,7 +7,7 @@ import javax.management.ObjectName
 
 /**
  * Hooks to register and unregister MBean(s) used for admin stuff with
- * the passed in MBeanServer
+ * the passed in MBeanServer.
  */
 class SiriusAdmin(val info: SiriusInfo, val mbeanServer: MBeanServer) {
 

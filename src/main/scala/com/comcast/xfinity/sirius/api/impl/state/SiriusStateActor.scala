@@ -6,7 +6,8 @@ import com.comcast.xfinity.sirius.api.impl._
 import akka.agent.Agent
 
 /**
- * Actor wrapping a {@link RequestHandler} for single threaded, actor like access
+ * Actor responsible for a applying changes to our in memory state.  It does this by
+ * delegating to the passed in {@link RequestHandler}.
  */
 class SiriusStateActor(val requestHandler: RequestHandler, siriusStateAgent: Agent[SiriusState])
   extends Actor {
