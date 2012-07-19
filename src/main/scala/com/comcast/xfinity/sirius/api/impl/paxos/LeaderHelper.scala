@@ -17,7 +17,7 @@ class LeaderHelper {
     }
 
     val maxBallotMap = pvals.foldLeft(Map[Long, PValue]())(updateWithMaxBallot)
-    maxBallotMap.mapValues(pval => pval.proposal)
+    maxBallotMap.mapValues(pval => pval.proposedCommand)
   }
 
 }

@@ -26,7 +26,7 @@ object PaxosSup {
   def apply(membership: Agent[Set[ActorRef]]): PaxosSup = {
     new PaxosSup with ChildProvider {
       val leader = context.actorOf(Props(Leader(membership)), "leader")
-      val acceptor = context.actorOf(Props(new Acceptor), "acceptor")
+      val acceptor = context.actorOf(Props(Acceptor()), "acceptor")
       val replica = context.actorOf(Props(Replica(membership)), "replica")
     }
   }
