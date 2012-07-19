@@ -2,8 +2,20 @@ import com.comcast.xfinity.sirius.api.impl.paxos._
 import PaxosMessages._
 import akka.agent._
 import akka.actor._
+import com.typesafe.config._
 
-implicit val as = ActorSystem("test")
+val config = ConfigFactory.parseString("""
+  akka {
+    loglevel = DEBUG
+
+    debug {
+      receive = on
+      autoreceive = on
+      lifecycle = on
+    }
+  }""")
+
+implicit val as = ActorSystem("test", ConfigFactory.load(config))
 val membership = Agent(Set[ActorRef]())
 
 val p1 = as.actorOf(Props(PaxosSup(membership)), "node1")
@@ -21,6 +33,4 @@ class PrintingActor extends Actor {
 }
 
 val dummy = as.actorOf(Props[PrintingActor])
-
-val req = Request(Command(dummy, 1234, 1))
 
