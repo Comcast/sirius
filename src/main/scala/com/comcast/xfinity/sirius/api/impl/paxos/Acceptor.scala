@@ -4,6 +4,7 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import scala.collection.immutable.SortedMap
 import akka.util.duration._
 import annotation.tailrec
+import akka.event.Logging
 
 object Acceptor {
   case object Reap
@@ -19,6 +20,8 @@ object Acceptor {
 
 class Acceptor extends Actor {
   import Acceptor._
+
+  val log = Logging(context.system, this)
 
   var ballotNum: Ballot = Ballot.empty
   var accepted = SortedMap[Long, PValue]()
@@ -79,6 +82,8 @@ class Acceptor extends Actor {
       }
       case _ => false
     }
+
+    log.debug("Reaped PValues for all commands between {} and {}", currentLowestSlot - 1, highestReapedSlot)
 
     (highestReapedSlot + 1, newAccepted)
   }

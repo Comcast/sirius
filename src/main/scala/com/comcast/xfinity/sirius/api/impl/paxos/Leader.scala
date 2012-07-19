@@ -6,6 +6,7 @@ import akka.agent.Agent
 import collection.immutable.SortedMap
 import annotation.tailrec
 import akka.util.duration._
+import akka.event.Logging
 
 object Leader {
   object Reap
@@ -42,6 +43,8 @@ class Leader(membership: Agent[Set[ActorRef]]) extends Actor {
     this: Leader.HelperProvider =>
 
   import Leader.Reap
+
+  val log = Logging(context.system, this)
 
   val acceptors = membership
   val replicas = membership
@@ -111,6 +114,9 @@ class Leader(membership: Agent[Set[ActorRef]]) extends Actor {
       case (slot, _) =>
         false
     }
+
+    log.debug("Reaped proposals for slots {} through {}", currentLowestSlot - 1, highestReapedSlot)
+
     (highestReapedSlot + 1, cleaned)
   }
 }
