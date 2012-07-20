@@ -63,7 +63,10 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         val leader = makeMockedUpLeader(
           membership,
           helper = mockHelper,
-          startCommanderFun = pvalsCommandered += _
+          startCommanderFun = (pval =>
+            // ignore ts, because we don't care
+            pvalsCommandered += PValue(pval.ballot, pval.slotNum, pval.proposedCommand)
+          )
         )
 
 

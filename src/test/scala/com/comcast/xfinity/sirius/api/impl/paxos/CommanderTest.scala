@@ -64,7 +64,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
 
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
 
-      replicaProbes.foreach(_.expectMsg(Decision(pvalue.slotNum, pvalue.proposal)))
+      replicaProbes.foreach(_.expectMsg(Decision(pvalue.slotNum, pvalue.proposedCommand)))
       assert(commander.isTerminated)
     }
   }

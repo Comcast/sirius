@@ -4,10 +4,13 @@ import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.ActorSystem
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.testkit.{TestProbe, TestActorRef}
+import akka.testkit.{ TestProbe, TestActorRef }
 import com.comcast.xfinity.sirius.api.impl.Delete
+import scala.collection.immutable.SortedMap
+import org.junit.runner.RunWith
+import org.scalatest.junit.JUnitRunner
 
-
+@RunWith(classOf[JUnitRunner])
 class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("AcceptorTest")
@@ -20,7 +23,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
     it ("must start off with a clean slate") {
       val acceptor = TestActorRef[Acceptor]
       assert(acceptor.underlyingActor.ballotNum === Ballot.empty)
-      assert(acceptor.underlyingActor.accepted === Map[Long, PValue]())
+      assert(acceptor.underlyingActor.accepted === SortedMap[Long, PValue]())
     }
 
     describe("in response to Phase1A") {
@@ -28,7 +31,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "is lesser than or equal to its own") {
         val acceptor = TestActorRef[Acceptor]
         val ballotNum = Ballot(1, "a")
-        val accepted = Map(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = SortedMap(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -49,7 +52,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "Ballot is greater than its own") {
         val acceptor = TestActorRef[Acceptor]
         val ballotNum = Ballot(1, "a")
-        val accepted = Map(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = SortedMap(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -67,7 +70,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       it ("must not update its state if the incoming Ballot is outdated") {
         val acceptor = TestActorRef[Acceptor]
         val ballotNum = Ballot(1, "a")
-        val accepted = Map(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = SortedMap(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -83,7 +86,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "if the incoming ballotNum is greater than or equal to its own") {
         val acceptor = TestActorRef[Acceptor]
         val ballotNum = Ballot(1, "a")
-        val accepted = Map(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = SortedMap(1L -> PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -109,6 +112,59 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         commanderProbe.expectMsg(Phase2B(acceptor.getParent, evenBiggerBallot))
         assert(acceptor.underlyingActor.ballotNum === evenBiggerBallot)
         assert(acceptor.underlyingActor.accepted === accepted + (2L -> newPValue1) + (3L -> newPValue3))
+      }
+
+      it ("must ignore the message if the slot is below its dignity") {
+        val acceptor = TestActorRef[Acceptor]
+        val commanderProbe = TestProbe()
+
+        acceptor.underlyingActor.lowestAcceptableSlotNumber = 5
+
+        val unnacceptablePval = PValue(Ballot(1, "a"), 4, Command(null, 1, Delete("3")))
+
+        intercept[MatchError] {
+          acceptor.underlyingActor.receive(Phase2A(commanderProbe.ref, unnacceptablePval))
+        }
+      }
+    }
+
+    describe("in response to a Reap message") {
+      it ("must truncate the collection of pvalues it contains") {
+        val acceptor = TestActorRef[Acceptor]
+
+        val now = System.currentTimeMillis()
+        val keepers = SortedMap[Long, PValue](
+          4L -> PValue(Ballot(3, "b"), 4, Command(null, now - 1000, Delete("3"))),
+          5L -> PValue(Ballot(3, "b"), 5, Command(null, 1L, Delete("Z"))),
+          6L -> PValue(Ballot(4, "b"), 6, Command(null, now, Delete("R")))
+        )
+
+        val accepted = SortedMap(
+          1L -> PValue(Ballot(1, "a"), 1, Command(null, 100L, Delete("1"))),
+          2L -> PValue(Ballot(2, "b"), 2, Command(null, 105L, Delete("2")))
+        ) ++ keepers
+
+        acceptor.underlyingActor.accepted = accepted
+
+        acceptor ! Acceptor.Reap
+
+        assert(keepers === acceptor.underlyingActor.accepted)
+        assert(3L === acceptor.underlyingActor.lowestAcceptableSlotNumber)
+      }
+
+      it ("must not update its lowestAcceptableSlotNumber if nothing is reaped") {
+        val acceptor = TestActorRef[Acceptor]
+
+        acceptor.underlyingActor.accepted = SortedMap[Long, PValue]()
+        acceptor.underlyingActor.lowestAcceptableSlotNumber = 10
+        acceptor ! Acceptor.Reap
+        assert(10 === acceptor.underlyingActor.lowestAcceptableSlotNumber)
+
+        acceptor.underlyingActor.accepted = SortedMap[Long, PValue](
+          1L -> PValue(Ballot(1, "A"), 11, Command(null, System.currentTimeMillis(), Delete("Z")))
+        )
+        acceptor ! Acceptor.Reap
+        assert(10 === acceptor.underlyingActor.lowestAcceptableSlotNumber)
       }
     }
   }

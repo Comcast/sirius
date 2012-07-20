@@ -17,12 +17,9 @@ object PaxosMessages {
 
   case class Decision(slot: Long, command: Command) extends PaxosMessage
 
-  // TODO: we don't actually use cid, we can commandeer that for a retry
-  // field when we get to that point to avoid having to change a ton of code,
-  // though that will make comparison weird
-  case class Command(k: ActorRef, cid: Int, op: NonCommutativeSiriusRequest) extends PaxosMessage
+  case class Command(k: ActorRef, ts: Long, op: NonCommutativeSiriusRequest) extends PaxosMessage
 
-  case class PValue(ballot: Ballot, slotNum: Long, proposal: Command) extends PaxosMessage
+  case class PValue(ballot: Ballot, slotNum: Long, proposedCommand: Command) extends PaxosMessage
 
   case class Phase1A(from: ActorRef, ballot: Ballot) extends PaxosMessage
 
