@@ -6,7 +6,7 @@ import scalax.io.CloseableIterator
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 
 // received messages
-case class Start(ref: ActorRef, input: LogIteratorSource, chunkSize: Int)
+case class Start(ref: ActorRef, input: LogIteratorSource, logRange: LogRange,  chunkSize: Int)
 case object StartSending
 case class Received(seqRecd: Int)
 case class Processed(seqRecd: Int)
@@ -37,8 +37,8 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
   startWith(Uninitialized, Null)
 
   when(Uninitialized) {
-    case Event(Start(target, input, chunkSize), Null) =>
-      goto(Waiting) using SendingData(target, input.createIterator(), 0, chunkSize)
+    case Event(Start(target, input, logRange, chunkSize), Null) =>
+      goto(Waiting) using SendingData(target, input.createIterator(logRange), 0, chunkSize)
   }
 
   when(Waiting) {

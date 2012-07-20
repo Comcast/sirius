@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.writeaheadlog.{RangedSiriusEventIterator, CloseableSiriusEventIterator, WALSerDe, SiriusFileLog}
+import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, EntireLog}
 
 class SiriusFileLogITest extends NiceTest {
 
@@ -18,13 +19,13 @@ class SiriusFileLogITest extends NiceTest {
 
     describe(".createIterator") {
       it("should create an iterator that traverses the entire file") {
-        val iterator = log.createIterator()
+        val iterator = log.createIterator(EntireLog)
 
         assert(iterator.getClass === classOf[CloseableSiriusEventIterator])
         val castedIterator = iterator.asInstanceOf[CloseableSiriusEventIterator]
 
         assert(castedIterator.serDe === mockSerDe)
-        assert(castedIterator.filePath == filename)
+        assert(castedIterator.filePath === filename)
       }
     }
 
@@ -33,15 +34,15 @@ class SiriusFileLogITest extends NiceTest {
       it("should create an iterator that traverses the specified range of events") {
         val startRange = 52
         val endRange = 992
-        val iterator = log.createRangedIterator(startRange, endRange)
+        val iterator = log.createIterator(new BoundedLogRange(startRange, endRange))
 
         assert(iterator.getClass === classOf[RangedSiriusEventIterator])
         val castedIterator = iterator.asInstanceOf[RangedSiriusEventIterator]
 
         assert(castedIterator.serDe === mockSerDe)
-        assert(castedIterator.filePath == filename)
-        assert(castedIterator.startRange == startRange)
-        assert(castedIterator.endRange == endRange)
+        assert(castedIterator.filePath === filename)
+        assert(castedIterator.startRange === startRange)
+        assert(castedIterator.endRange === endRange)
       }
     }
   }

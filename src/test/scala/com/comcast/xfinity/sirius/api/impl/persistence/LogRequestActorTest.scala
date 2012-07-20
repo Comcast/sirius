@@ -66,7 +66,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     it("should report a 'no viable member to get logs from' message up to its parent as a failure") {
       when(mockMembershipHelper.getRandomMember(
         Matchers.any[MembershipMap], Matchers.eq(mockSiriusInfo))).thenReturn(None)
-      logRequestWrapper ! RequestLogFromAnyRemote
+      logRequestWrapper ! RequestLogFromAnyRemote(EntireLog)
       parentProbe.expectMsg(5 seconds, TransferFailed(LogRequestActor.NO_MEMBER_FAIL_MSG))
     }
 
@@ -78,13 +78,13 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
         override def membershipHelper = mockMembershipHelper
       }), parentProbe.ref, actorSystem)
 
-
       val membershipData = new MembershipData(probe.ref)
       when(mockMembershipHelper.getRandomMember(
         Matchers.any[MembershipMap], Matchers.eq(mockSiriusInfo))).thenReturn(Some(membershipData))
 
-      localLogRequestWrapper ! RequestLogFromAnyRemote
-      probe.expectMsg(5 seconds, InitiateTransfer(probe.ref))
+      val logRange = new BoundedLogRange(0, 100)
+      localLogRequestWrapper ! RequestLogFromAnyRemote(logRange)
+      probe.expectMsg(5 seconds, InitiateTransfer(probe.ref, logRange))
     }
 
     it("should fire off a round of log requests when logs are requested from a remote.") {
@@ -94,8 +94,9 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
         override def createReceiver(): ActorRef = probe.ref
       }), parentProbe.ref, actorSystem)
 
-      localLogRequestWrapper ! RequestLogFromRemote(probe.ref)
-      probe.expectMsg(5 seconds, InitiateTransfer(probe.ref))
+      val logRange = new BoundedLogRange(0, 100)
+      localLogRequestWrapper ! RequestLogFromRemote(probe.ref, logRange)
+      probe.expectMsg(5 seconds, InitiateTransfer(probe.ref, logRange))
     }
 
     it("should create a LogSender and send it a Start message when InitiateTransfer is received") {
@@ -107,8 +108,9 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
             override def createSender(): ActorRef = senderProbe.ref
         }),  parentProbe.ref, actorSystem)
 
-      localLogRequestWrapper ! InitiateTransfer(receiverProbe.ref)
-      senderProbe.expectMsg(1 seconds, Start(receiverProbe.ref, source, chunkSize))
+      val logRange = new BoundedLogRange(0, 100)
+      localLogRequestWrapper ! InitiateTransfer(receiverProbe.ref, logRange)
+      senderProbe.expectMsg(1 seconds, Start(receiverProbe.ref, source, logRange, chunkSize))
     }
   }
 
