@@ -2,14 +2,11 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.NiceTest
 import org.scalatest.BeforeAndAfterAll
-import akka.actor.{ ActorRef, Props, Actor, ActorSystem }
+import akka.actor.{ ActorRef, ActorSystem }
 import akka.agent.Agent
-import org.mockito.{ Matchers, Mockito }
-import org.mockito.Mockito._
-import org.mockito.Matchers._
 import akka.testkit.{ TestActorRef, TestProbe }
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.api.impl.{Put, NonCommutativeSiriusRequest, Delete}
 
 class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
@@ -25,7 +22,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
       		"store the proposal") {
         val memberProbes = Set(TestProbe(), TestProbe(), TestProbe())
         val membership = Agent(memberProbes.map(_.ref))
-        val replica = TestActorRef(Replica(membership))
+        val replica = TestActorRef(Replica(membership, (s, r) => ()))
 
         val command = Command(null, 1, Delete("1"))
         replica.underlyingActor.lowestUnusedSlotNum = 1
@@ -39,7 +36,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
     describe("when receiving a Decision message") {
       it("must update its lowest unused slot number iff the decision is greater than or equal to the current unused slot") {
         val membership = Agent(Set[ActorRef]())
-        val replica = TestActorRef(Replica(membership))
+        val replica = TestActorRef(Replica(membership, (s, r) => ()))
 
         replica.underlyingActor.lowestUnusedSlotNum = 2
         
@@ -51,6 +48,22 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
         replica ! Decision(4, Command(null, 2, Delete("2")))
         assert(5 === replica.underlyingActor.lowestUnusedSlotNum)
+      }
+
+      it("must pass the decision and slot number to the delegated function") {
+        val membership = Agent(Set[ActorRef]())
+        var appliedDecisions = Set[(Long, NonCommutativeSiriusRequest)]()
+        val replica = TestActorRef(Replica(membership,
+          (s, r) => appliedDecisions += Tuple2(s, r)
+        ))
+
+        val request1 = Delete("1")
+        val request2 = Put("asdf", "1234".getBytes)
+
+        replica ! Decision(1, Command(null, 1, request1))
+        assert(Set((1L, request1)) === appliedDecisions)
+
+        replica ! Decision(1, Command(null, 1, request1))
       }
     }
   }
