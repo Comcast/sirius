@@ -30,9 +30,9 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
   private var configLastModified = -1L
 
   // TODO: This should not be hard-coded.
-  private[membership] val checkInterval: Duration = Duration.create(30, TimeUnit.SECONDS)
+  private[membership] lazy val checkInterval: Duration = Duration.create(30, TimeUnit.SECONDS)
 
-  lazy val configCheckSchedule = context.system.scheduler.schedule(Duration.Zero, checkInterval, self, CheckClusterConfig)
+  val configCheckSchedule = context.system.scheduler.schedule(Duration.Zero, checkInterval, self, CheckClusterConfig)
 
   override def preStart() {
     logger.info("Bootstrapping Membership Actor, initializing cluster membership map {}",

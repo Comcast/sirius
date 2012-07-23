@@ -6,16 +6,16 @@ import scalax.file.Path
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.api.impl.membership._
-import akka.actor.{Props, ActorSystem}
+import akka.actor.ActorSystem
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, SiriusImpl}
-import akka.util.Duration
+import akka.util.{Timeout, Duration}
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertTrue
 import akka.testkit.TestActorRef
 import org.mockito.Mockito._
 import org.mockito.Matchers._
-import org.scalatest.Ignore
+import annotation.tailrec
 
 @RunWith(classOf[JUnitRunner])
 class MembershipITest extends NiceTest {
@@ -61,7 +61,7 @@ class MembershipITest extends NiceTest {
     stateAgent = mock[Agent[SiriusState]]
 
     underTestActor = TestActorRef(new MembershipActor(membershipAgent, "local:2552", stateAgent, clusterConfigPath) {
-      override val checkInterval: Duration = Duration.create(100, TimeUnit.MILLISECONDS)
+      override lazy val checkInterval: Duration = Duration.create(200, TimeUnit.MILLISECONDS)
     })(actorSystem)
   }
 
@@ -71,20 +71,29 @@ class MembershipITest extends NiceTest {
     actorSystem.awaitTermination()
   }
 
-  describe("a MembershipActor") {
-    it("updates its membership map after an alloted time from change on disk")(pendingUntilFixed({
-      Thread.sleep(500L) // waiting for preStart to complete.
-
-      assertTrue(membershipAgent.get().keys.exists("host1:2552" == _))
-      assertTrue(membershipAgent.get().keys.exists("host2:2552" == _))
-
-      clusterConfigPath.append("host3:2552\n")
-
-      Thread.sleep(500L) // waiting for interval to expire.
-
-      assertTrue(membershipAgent.get().keys.exists("host3:2552" == _))
-    }))
-
+  @tailrec
+  private def waitForTrue(test: (Any => Boolean), timeout: Long, waitBetween: Long): Boolean = {
+    if (timeout < 0) {
+      false
+    } else if (test())
+      true
+    else {
+      Thread.sleep(waitBetween)
+      waitForTrue(test, timeout - waitBetween, waitBetween)
+    }
   }
 
+  describe("a MembershipActor") {
+    it("updates its membership map after an alloted time from change on disk") {
+      verify(stateAgent, timeout(1000).atLeastOnce).send(any(classOf[SiriusState => SiriusState]))
+
+      assertTrue(membershipAgent.get().keySet.contains("host1:2552"))
+      assertTrue(membershipAgent.get().keySet.contains("host2:2552"))
+
+      Thread.sleep(1000) // wait a hot second before appending
+      clusterConfigPath.append("host3:2552\n")
+
+      assertTrue(waitForTrue(_ => membershipAgent.get().keySet.contains("host3:2552"), 3000L, 200))
+    }
+  }
 }
