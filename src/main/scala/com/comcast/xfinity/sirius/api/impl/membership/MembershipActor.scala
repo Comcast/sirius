@@ -32,13 +32,11 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
   // TODO: This should not be hard-coded.
   private[membership] val checkInterval: Duration = Duration.create(30, TimeUnit.SECONDS)
 
-  var configCheckSchedule: Cancellable = _ // This needs to be set on preStart so checkInterval can be overridden in tests
+  lazy val configCheckSchedule = context.system.scheduler.schedule(Duration.Zero, checkInterval, self, CheckClusterConfig)
 
   override def preStart() {
     logger.info("Bootstrapping Membership Actor, initializing cluster membership map {}",
       clusterConfigPath)
-
-    configCheckSchedule = context.system.scheduler.schedule(Duration.Zero, checkInterval, self, CheckClusterConfig)
 
     updateMembershipMap()
 
