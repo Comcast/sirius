@@ -49,6 +49,6 @@ class Replica(membership: Agent[Set[ActorRef]], performFun: Replica.PerformFun) 
       log.debug("Received decision slot {} for {}", slot, command)
       if (slot >= lowestUnusedSlotNum) lowestUnusedSlotNum = slot + 1
       performFun(slot, command.op)
-    //reply to client
+      command.client ! RequestPerformed
   }
 }

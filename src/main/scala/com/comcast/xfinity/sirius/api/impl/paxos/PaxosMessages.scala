@@ -17,7 +17,9 @@ object PaxosMessages {
 
   case class Decision(slot: Long, command: Command) extends PaxosMessage
 
-  case class Command(k: ActorRef, ts: Long, op: NonCommutativeSiriusRequest) extends PaxosMessage
+  case class Command(client: ActorRef, ts: Long, op: NonCommutativeSiriusRequest) extends PaxosMessage
+
+  case object RequestPerformed
 
   case class PValue(ballot: Ballot, slotNum: Long, proposedCommand: Command) extends PaxosMessage
 
