@@ -8,11 +8,28 @@ import akka.event.Logging
 
 object Replica {
 
-  type PerformFun = (Long, NonCommutativeSiriusRequest) => Unit
+  /**
+   * Clients must implement a function of this type and pass it in on
+   * construction.  The function takes the slot number assigned to an
+   * operation and the operation itself, and should return a Boolean
+   * indicating that the operation was performed and we may reply to
+   * the client.
+   */
+  type PerformFun = (Long, NonCommutativeSiriusRequest) => Boolean
 
   /**
-   * Create a Replica instance.  Note this should be called from within a Props
-   * factory on Actor creation due to the requirements of Akka.
+   * Create a Replica instance.
+   *
+   * The performFun argument must apply the operation, and return true indicating
+   * that the operation was successfully performed/acknowledged, or return false
+   * indicating that the operation was ignored.  When true is returned the initiating
+   * actor of this request is sent the RequestPerformed message.  It is expected that
+   * there is one actor per request.  When false is returned no such message is sent.
+   * The reason for this is that multiple decisions may arrive for an individual slot.
+   * While not absolutely necessary, this helps reduce chatter.
+   *
+   * Note this should be called from within a Props factory on Actor creation
+   * due to the requirements of Akka.
    *
    * @param membership an {@link akka.agent.Agent} tracking the membership of the cluster
    * @param performFun function specified by
@@ -47,8 +64,11 @@ class Replica(membership: Agent[Set[ActorRef]], performFun: Replica.PerformFun) 
     case Request(command: Command) => propose(command)
     case Decision(slot, command) =>
       log.debug("Received decision slot {} for {}", slot, command)
-      if (slot >= lowestUnusedSlotNum) lowestUnusedSlotNum = slot + 1
-      performFun(slot, command.op)
-      command.client ! RequestPerformed
+      if (slot >= lowestUnusedSlotNum) {
+        lowestUnusedSlotNum = slot + 1
+      }
+      if (performFun(slot, command.op)) {
+        command.client ! RequestPerformed
+      }
   }
 }
