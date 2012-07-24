@@ -52,37 +52,41 @@ object SiriusImpl extends AkkaConfig {
 
     val allConfig = remoteConfig.withFallback(config)
 
-    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, allConfig), siriusLog, hostname, port, Path.fromString(clusterConfigPath))
+    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, allConfig), siriusLog, hostname, port,
+      Path.fromString(clusterConfigPath))
   }
 }
 
 /**
  * A Sirius implementation implemented in Scala using Akka actors.
  */
-class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem,
-                 siriusLog: SiriusLog, host: String, port: Int, clusterConfigPath: Path)
+class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, siriusLog: SiriusLog, host: String,
+                 port: Int, clusterConfigPath: Path)
   extends Sirius with AkkaConfig {
 
   //TODO: find better way of building SiriusImpl ...
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem, clusterConfigPath: Path) =
     this (requestHandler, actorSystem,
       new SiriusFileLog("/var/lib/sirius/xfinityapi/wal.log", // TODO: Abstract this to the app using Sirius.
-      new WriteAheadLogSerDe()), InetAddress.getLocalHost.getHostName,
-      SiriusImpl.DEFAULT_PORT, clusterConfigPath)
+        new WriteAheadLogSerDe()), InetAddress.getLocalHost.getHostName, SiriusImpl.DEFAULT_PORT, clusterConfigPath)
 
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: SiriusLog, clusterConfigPath: Path) =
-    this (requestHandler, actorSystem, walWriter,  InetAddress.getLocalHost.getHostName,
-          SiriusImpl.DEFAULT_PORT, clusterConfigPath)
+    this (requestHandler, actorSystem, walWriter, InetAddress.getLocalHost.getHostName, SiriusImpl.DEFAULT_PORT,
+      clusterConfigPath)
 
   val membershipAgent: Agent[MembershipMap] = Agent(MembershipMap())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
 
-  val supervisor = createSiriusSupervisor(actorSystem, requestHandler,
-    host, port, siriusLog, siriusStateAgent,
+  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, host, port, siriusLog, siriusStateAgent,
     membershipAgent, clusterConfigPath)
 
   def getMembershipMap = {
-    (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[MembershipMap]]
+    val akkaFuture = (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[MembershipMap]]
+    new AkkaFutureAdapter(akkaFuture)
+  }
+
+  def checkClusterConfig = {
+    supervisor ! CheckClusterConfig
   }
 
   /**
@@ -117,18 +121,16 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem,
   }
 
   // XXX: handle for testing
-  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler,
-                                           host: String, port: Int, theWalWriter: SiriusLog,
-                                           theSiriusStateAgent: Agent[SiriusState],
-                                           theMembershipAgent: Agent[MembershipMap],
-                                           clusterConfigPath: Path) = {
+  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, host: String,
+                                           port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
+                                           theMembershipAgent: Agent[MembershipMap], clusterConfigPath: Path) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     val info = new SiriusInfo(port, host)
     val admin = new SiriusAdmin(info, mbeanServer)
     val siriusId = host + ":" + port
-    val supProps = Props(
-      new SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent,
-        theMembershipAgent, siriusId, clusterConfigPath))
+    val supProps = Props(new
+        SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, siriusId,
+          clusterConfigPath))
     theActorSystem.actorOf(supProps, "sirius")
   }
 }

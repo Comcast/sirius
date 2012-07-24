@@ -9,12 +9,7 @@ import com.comcast.xfinity.sirius.api.impl.membership._
 import akka.actor.ActorSystem
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, SiriusImpl}
-import akka.util.{Timeout, Duration}
-import java.util.concurrent.TimeUnit
-import org.junit.Assert.assertTrue
 import akka.testkit.TestActorRef
-import org.mockito.Mockito._
-import org.mockito.Matchers._
 import annotation.tailrec
 
 @RunWith(classOf[JUnitRunner])
@@ -26,6 +21,7 @@ class MembershipITest extends NiceTest {
 
   val tempFolder = new TemporaryFolder()
   var logFilename: String = _
+  var clusterConfigFileName: String = _
 
   var stringRequestHandler: StringRequestHandler = _
   var clusterConfigPath: Path = _
@@ -34,18 +30,12 @@ class MembershipITest extends NiceTest {
     tempFolder.create()
     stageClusterConfigFile()
   }
-  private def stageLogFile() {
-    logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
-    val path = Path.fromString(logFilename)
-    path.append("38a3d11c36c4c4e1|PUT|key|123|19700101T000012.345Z|QQ==\n")
-    path.append("8e8ca658d0c63868|PUT|key|123|19700101T000012.345Z|QXxB\n")
-  }
 
   private def stageClusterConfigFile() {
-    val clusterConfigFileName = tempFolder.newFile("cluster.conf").getAbsolutePath
+    clusterConfigFileName = tempFolder.newFile("cluster.conf").getAbsolutePath
     clusterConfigPath = Path.fromString(clusterConfigFileName)
-    clusterConfigPath.append("host1:2552\n")
-    clusterConfigPath.append("host2:2552\n")
+    clusterConfigPath.append("localhost:2552\n")
+    clusterConfigPath.append("localhost:2553\n")
   }
 
   var membershipAgent: Agent[MembershipMap] = _
@@ -57,12 +47,8 @@ class MembershipITest extends NiceTest {
 
     actorSystem = ActorSystem.create("Sirius")
 
-    membershipAgent = Agent[MembershipMap](MembershipMap())(actorSystem)
-    stateAgent = mock[Agent[SiriusState]]
-
-    underTestActor = TestActorRef(new MembershipActor(membershipAgent, "local:2552", stateAgent, clusterConfigPath) {
-      override lazy val checkInterval: Duration = Duration.create(200, TimeUnit.MILLISECONDS)
-    })(actorSystem)
+    sirius = SiriusImpl
+      .createSirius(new StringRequestHandler(), new DoNothingSiriusLog(), "localhost", 2552, clusterConfigFileName)
   }
 
   after {
@@ -71,29 +57,41 @@ class MembershipITest extends NiceTest {
     actorSystem.awaitTermination()
   }
 
+  describe("a SiriusImpl") {
+    it("updates its membershipMap after the cluster config file is changed and checkClusterConfig is invoked.") {
+      assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
+
+      assert(sirius.getMembershipMap.get.keys.exists("localhost:2552" == _))
+      assert(sirius.getMembershipMap.get.keys.exists("localhost:2553" == _))
+      assert(!sirius.getMembershipMap.get.keys.exists("localhost:2554" == _))
+
+      //put some time between initial file update and subsequent update
+      Thread.sleep(1000L)
+      //update cluster config
+      clusterConfigPath.append("localhost:2554\n")
+      sirius.checkClusterConfig
+
+
+      assert(waitForTrue(Any => {
+
+        sirius.getMembershipMap.get.keys.exists("localhost:2554" == _)
+      }, 1000L, 50L))
+
+    }
+
+  }
+
   @tailrec
   private def waitForTrue(test: (Any => Boolean), timeout: Long, waitBetween: Long): Boolean = {
     if (timeout < 0) {
       false
-    } else if (test())
+
+    } else if (test()) {
       true
-    else {
+    } else {
       Thread.sleep(waitBetween)
       waitForTrue(test, timeout - waitBetween, waitBetween)
     }
-  }
 
-  describe("a MembershipActor") {
-    it("updates its membership map after an alloted time from change on disk") {
-      verify(stateAgent, timeout(1000).atLeastOnce).send(any(classOf[SiriusState => SiriusState]))
-
-      assertTrue(membershipAgent.get().keySet.contains("host1:2552"))
-      assertTrue(membershipAgent.get().keySet.contains("host2:2552"))
-
-      Thread.sleep(1000) // wait a hot second before appending
-      clusterConfigPath.append("host3:2552\n")
-
-      assertTrue(waitForTrue(_ => membershipAgent.get().keySet.contains("host3:2552"), 3000L, 200))
-    }
   }
 }

@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import com.comcast.xfinity.sirius.api.RequestHandler
-import akka.dispatch.Await
 import akka.testkit.TestProbe
 import akka.util.Timeout.durationToTimeout
 import akka.util.duration.intToDurationInt
@@ -11,7 +10,6 @@ import akka.testkit.TestActor
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
@@ -84,6 +82,8 @@ class SiriusImplTest extends NiceTest {
         case GetMembershipData =>
           sender ! membershipMap
           Some(this)
+        case CheckClusterConfig =>
+          Some(this)
       }
     })
 
@@ -127,8 +127,14 @@ class SiriusImplTest extends NiceTest {
 
     it("should issue an \"ask\" GetMembership to the supervisor when getMembershipData is called") {
       val membershipFuture = underTest.getMembershipMap
-      assert(membershipMap === Await.result(membershipFuture, timeout.duration))
+      assert(membershipMap === membershipFuture.get)
       supervisorActorProbe.expectMsg(GetMembershipData)
+    }
+
+    it("should issue a \"tell\" CheckClusterConfig when checkClusterConfig is called"){
+      underTest.checkClusterConfig
+      supervisorActorProbe.expectMsg(CheckClusterConfig)
+
     }
 
   }

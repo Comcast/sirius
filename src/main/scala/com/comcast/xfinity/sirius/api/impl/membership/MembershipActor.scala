@@ -2,18 +2,12 @@ package com.comcast.xfinity.sirius.api.impl.membership
 
 import com.comcast.xfinity.sirius.api.impl._
 import akka.agent.Agent
-import membership.MembershipActor.CheckClusterConfig
 import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
 import akka.event.Logging
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
-import akka.actor.{Cancellable, actorRef2Scala, Actor}
-
-object MembershipActor {
-  // message only sent to self
-  case object CheckClusterConfig
-}
+import akka.actor.{actorRef2Scala, Actor}
 
 /**
  * Actor responsible for orchestrating request related to Sirius Cluster Membership
@@ -73,10 +67,13 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
     // the actual file on disk, and rebuild membership map if necessary
     case CheckClusterConfig =>
       val currentModifiedTime = clusterConfigPath.lastModified
+      logger.info("{} - {}",currentModifiedTime, configLastModified)
       if (currentModifiedTime > configLastModified) {
         logger.info("CheckClusterConfig detected {} change, updating MembershipMap", clusterConfigPath)
 
         updateMembershipMap()
+      }else{
+        logger.info("CheckClusterConfig did not check for change.")
       }
     case GetMembershipData => sender ! membershipAgent()
     case _ => logger.warning("Unrecognized message.")
@@ -86,6 +83,7 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
     val newMap = createMembershipMap(clusterConfigPath)
     configLastModified = clusterConfigPath.lastModified
     membershipAgent send newMap
+    logger.info("Updated Cluster Config")
   }
 
 }

@@ -13,7 +13,6 @@ import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
 import scalax.io.LongTraversable
 import org.mockito.Matchers._
-import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 
 class MembershipActorTest extends NiceTest with AkkaConfig {
 
