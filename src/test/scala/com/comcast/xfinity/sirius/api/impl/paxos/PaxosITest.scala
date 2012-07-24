@@ -17,7 +17,7 @@ object PaxosITest {
     var decisions = Set[(Long, NonCommutativeSiriusRequest)]()
 
     val paxosSup = as.actorOf(Props(
-      PaxosSup(membership, {
+      PaxosSup(membership, 1, {
         case decision if decisions.contains(decision) =>
           false
         case decision =>

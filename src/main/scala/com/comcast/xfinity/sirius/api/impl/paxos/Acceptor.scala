@@ -9,16 +9,17 @@ import akka.event.Logging
 object Acceptor {
   case object Reap
 
-  def apply(): Acceptor =
-    new Acceptor {
+  def apply(startingSeqNum: Long): Acceptor = {
+    new Acceptor(startingSeqNum) {
       val reapCancellable =
         context.system.scheduler.schedule(30 seconds, 30 seconds , self, Reap)
 
       override def postStop() { reapCancellable.cancel() }
     }
+  }
 }
 
-class Acceptor extends Actor {
+class Acceptor(startingSeqNum: Long) extends Actor {
   import Acceptor._
 
   val log = Logging(context.system, this)
@@ -28,7 +29,7 @@ class Acceptor extends Actor {
 
   // if we receive a Phase2A for a slot less than this we refuse to
   // handle it since it is out of date by our terms
-  var lowestAcceptableSlotNumber: Long = 1
+  var lowestAcceptableSlotNumber: Long = startingSeqNum
 
   // Note that Phase1A and Phase2B requests must return their
   // parent's address (their PaxosSup) because this is how

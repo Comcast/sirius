@@ -22,10 +22,9 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
          "store the proposal") {
         val memberProbes = Set(TestProbe(), TestProbe(), TestProbe())
         val membership = Agent(memberProbes.map(_.ref))
-        val replica = TestActorRef(Replica(membership, (s, r) => false))
+        val replica = TestActorRef(new Replica(membership, 1, (s, r) => false))
 
         val command = Command(null, 1, Delete("1"))
-        replica.underlyingActor.lowestUnusedSlotNum = 1
 
         replica ! Request(command)
         memberProbes.foreach(_.expectMsg(Propose(1, command)))
@@ -37,9 +36,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
       it("must update its lowest unused slot number iff the decision is greater than or equal to the " +
          "current unused slot") {
         val membership = Agent(Set[ActorRef]())
-        val replica = TestActorRef(Replica(membership, (s, r) => false))
-
-        replica.underlyingActor.lowestUnusedSlotNum = 2
+        val replica = TestActorRef(new Replica(membership, 2, (s, r) => false))
 
         replica ! Decision(1, Command(null, 1, Delete("1")))
         assert(2 == replica.underlyingActor.lowestUnusedSlotNum)
@@ -54,12 +51,11 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
       it("must pass the decision and slot number to the delegated function") {
         val membership = Agent(Set[ActorRef]())
         var appliedDecisions = Set[(Long, NonCommutativeSiriusRequest)]()
-        val replica = TestActorRef(Replica(membership,
+        val replica = TestActorRef(new Replica(membership, 1,
           (s, r) => {
             appliedDecisions += Tuple2(s, r)
             true
-          }
-        ))
+          }))
 
         val requester1 = TestProbe()
         val request1 = Delete("1")
@@ -76,7 +72,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
       it("must notify the originator of the request if performFun function says so") {
         val membership = Agent(Set[ActorRef]())
-        val replica = TestActorRef(Replica(membership,
+        val replica = TestActorRef(new Replica(membership, 1,
           (s, r) => s%2 == 0L
         ))
 

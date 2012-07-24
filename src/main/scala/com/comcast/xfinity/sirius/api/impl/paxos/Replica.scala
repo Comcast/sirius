@@ -36,8 +36,10 @@ object Replica {
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
    *          decisions as they arrive
    */
-  def apply(membership: Agent[Set[ActorRef]], performFun: PerformFun): Replica =
-    new Replica(membership, performFun)
+  def apply(membership: Agent[Set[ActorRef]],
+            startingSeqNum: Long,
+            performFun: PerformFun): Replica =
+    new Replica(membership, startingSeqNum, performFun)
 }
 
 /**
@@ -47,12 +49,14 @@ object Replica {
  * initialState is actually just an ActorRef to the State actor.
  * Keep track of old proposals and re-propose them, if we need to.
  */
-class Replica(membership: Agent[Set[ActorRef]], performFun: Replica.PerformFun) extends Actor {
+class Replica(membership: Agent[Set[ActorRef]],
+              startingSeqNum: Long,
+              performFun: Replica.PerformFun) extends Actor {
 
   val log = Logging(context.system, this)
 
   val leaders = membership
-  var lowestUnusedSlotNum : Long = 1
+  var lowestUnusedSlotNum: Long = startingSeqNum
   
   def propose(command: Command) {
     log.debug("Received proposal: assigning {} to {}", lowestUnusedSlotNum, command)

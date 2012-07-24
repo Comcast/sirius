@@ -26,19 +26,27 @@ object PaxosSup {
   }
 
   /**
+   * Same as the 3 arg constructor, except defaults startingSeqNum to 1
+   */
+  @deprecated
+  def apply(membership: Agent[Set[ActorRef]], performFun: Replica.PerformFun): PaxosSup =
+    apply(membership, 1, performFun)
+
+  /**
    * Create a PaxosSup instance.  Note this should be called from within a Props
    * factory on Actor creation due to the requirements of Akka.
    *
    * @param membership an {@link akka.agent.Agent} tracking the membership of the cluster
+   * @param startingSeqNum the sequence number at which this node will begin issuing/acknowledging
    * @param performFun function specified by
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
    *          decisions as they arrive
    */
-  def apply(membership: Agent[Set[ActorRef]], performFun: Replica.PerformFun): PaxosSup = {
+  def apply(membership: Agent[Set[ActorRef]], startingSeqNum: Long, performFun: Replica.PerformFun): PaxosSup = {
     new PaxosSup with ChildProvider {
-      val leader = context.actorOf(Props(Leader(membership)), "leader")
-      val acceptor = context.actorOf(Props(Acceptor()), "acceptor")
-      val replica = context.actorOf(Props(Replica(membership, performFun)), "replica")
+      val leader = context.actorOf(Props(Leader(membership, startingSeqNum)), "leader")
+      val acceptor = context.actorOf(Props(Acceptor(startingSeqNum)), "acceptor")
+      val replica = context.actorOf(Props(Replica(membership, startingSeqNum, performFun)), "replica")
     }
   }
 

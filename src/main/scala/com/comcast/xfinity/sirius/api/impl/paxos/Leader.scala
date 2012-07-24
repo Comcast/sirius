@@ -17,8 +17,9 @@ object Leader {
     def startScout(): Unit
   }
 
-  def apply(membership: Agent[Set[ActorRef]]): Leader = {
-    new Leader(membership) with HelperProvider {
+  def apply(membership: Agent[Set[ActorRef]],
+            startingSeqNum: Long): Leader = {
+    new Leader(membership, startingSeqNum) with HelperProvider {
       val reapCancellable =
         context.system.scheduler.schedule(30 seconds, 30 seconds, self, Reap)
 
@@ -39,7 +40,8 @@ object Leader {
   }
 }
 
-class Leader(membership: Agent[Set[ActorRef]]) extends Actor {
+class Leader(membership: Agent[Set[ActorRef]],
+             startingSeqNum: Long) extends Actor {
     this: Leader.HelperProvider =>
 
   import Leader.Reap
@@ -52,7 +54,7 @@ class Leader(membership: Agent[Set[ActorRef]]) extends Actor {
   var ballotNum = Ballot(0, self.toString)
   var active = false
   var proposals = SortedMap[Long, Command]()
-  var lowestAcceptableSlot: Long = 1
+  var lowestAcceptableSlot: Long = startingSeqNum
 
   startScout()
 

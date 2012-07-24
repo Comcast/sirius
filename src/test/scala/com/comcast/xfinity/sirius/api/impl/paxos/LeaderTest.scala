@@ -14,12 +14,13 @@ import collection.immutable.SortedMap
 
 object LeaderTest {
   def makeMockedUpLeader(membership: Agent[Set[ActorRef]],
+                         startingSeqNum: Long = 1,
                          helper: LeaderHelper = mock(classOf[LeaderHelper]),
                          startScoutFun: => Unit = {},
                          startCommanderFun: (PValue) => Unit = p => {})
                         (implicit as: ActorSystem) = {
     TestActorRef(
-      new Leader(membership) with Leader.HelperProvider {
+      new Leader(membership, startingSeqNum) with Leader.HelperProvider {
         val leaderHelper = helper
         def startCommander(pval: PValue) { startCommanderFun(pval) }
         def startScout() { startScoutFun }
@@ -233,10 +234,11 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it ("must not update its lowestAcceptableSlotNumber if nothing is reaped") {
-        val leader = makeMockedUpLeader(Agent(Set[ActorRef]()))
+        val leader = makeMockedUpLeader(Agent(Set[ActorRef]()),
+          startingSeqNum = 10
+        )
 
         leader.underlyingActor.proposals = SortedMap[Long, Command]()
-        leader.underlyingActor.lowestAcceptableSlot = 10
         leader ! Leader.Reap
         assert(10 === leader.underlyingActor.lowestAcceptableSlot)
 
