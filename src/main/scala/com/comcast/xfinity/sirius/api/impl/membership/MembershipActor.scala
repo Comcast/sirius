@@ -12,8 +12,7 @@ import akka.actor.{actorRef2Scala, Actor}
 /**
  * Actor responsible for orchestrating request related to Sirius Cluster Membership
  */
-class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
-                      siriusStateAgent: Agent[SiriusState],
+class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, siriusStateAgent: Agent[SiriusState],
                       clusterConfigPath: Path) extends Actor with AkkaConfig {
 
 
@@ -29,8 +28,7 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
   val configCheckSchedule = context.system.scheduler.schedule(Duration.Zero, checkInterval, self, CheckClusterConfig)
 
   override def preStart() {
-    logger.info("Bootstrapping Membership Actor, initializing cluster membership map {}",
-      clusterConfigPath)
+    logger.info("Bootstrapping Membership Actor, initializing cluster membership map {}", clusterConfigPath)
 
     updateMembershipMap()
 
@@ -50,9 +48,8 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
    * @return MembershipMap of MembershipData
    */
   def createMembershipMap(clusterConfigPath: Path): MembershipMap = {
-    clusterConfigPath.lines(NewLine,
-      includeTerminator = false).foldLeft(MembershipMap())((map: MembershipMap, hostAndPort: String) => {
-
+    clusterConfigPath.lines(NewLine, includeTerminator = false)
+      .foldLeft(MembershipMap())((map: MembershipMap, hostAndPort: String) => {
       // XXX should use constants for things like /user/sirius ... for chunks of these akka paths
       // XXX also use those same constants when creating original actors with context.actorOf
       val akkaString = "akka://" + SYSTEM_NAME + "@" + hostAndPort + "/user/sirius"
@@ -67,13 +64,9 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String,
     // the actual file on disk, and rebuild membership map if necessary
     case CheckClusterConfig =>
       val currentModifiedTime = clusterConfigPath.lastModified
-      logger.info("{} - {}",currentModifiedTime, configLastModified)
       if (currentModifiedTime > configLastModified) {
         logger.info("CheckClusterConfig detected {} change, updating MembershipMap", clusterConfigPath)
-
         updateMembershipMap()
-      }else{
-        logger.info("CheckClusterConfig did not check for change.")
       }
     case GetMembershipData => sender ! membershipAgent()
     case _ => logger.warning("Unrecognized message.")

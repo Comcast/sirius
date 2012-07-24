@@ -61,9 +61,9 @@ class MembershipITest extends NiceTest {
     it("updates its membershipMap after the cluster config file is changed and checkClusterConfig is invoked.") {
       assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
 
-      assert(sirius.getMembershipMap.get.keys.exists("localhost:2552" == _))
-      assert(sirius.getMembershipMap.get.keys.exists("localhost:2553" == _))
-      assert(!sirius.getMembershipMap.get.keys.exists("localhost:2554" == _))
+      assert(sirius.getMembershipMap.get.keySet.contains("localhost:2552"))
+      assert(sirius.getMembershipMap.get.keySet.contains("localhost:2553"))
+      assert(!sirius.getMembershipMap.get.keySet.contains("localhost:2554"))
 
       //put some time between initial file update and subsequent update
       Thread.sleep(1000L)
@@ -71,12 +71,10 @@ class MembershipITest extends NiceTest {
       clusterConfigPath.append("localhost:2554\n")
       sirius.checkClusterConfig
 
+      assert( waitForTrue(Any => {
 
-      assert(waitForTrue(Any => {
-
-        sirius.getMembershipMap.get.keys.exists("localhost:2554" == _)
-      }, 1000L, 50L))
-
+        sirius.getMembershipMap.get.keySet.contains("localhost:2554")
+      }, 1000L, 50L), "Membership map should contain new entry within a certain amount of time")
     }
 
   }
