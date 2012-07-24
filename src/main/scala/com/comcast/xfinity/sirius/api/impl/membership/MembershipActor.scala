@@ -41,24 +41,6 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, s
     configCheckSchedule.cancel()
   }
 
-  /**
-   * Creates a MembershipMap from the contents of the clusterConfigPath file.
-   *
-   * @param clusterConfigPath a Path containing cluster members, one per line, host:port
-   * @return MembershipMap of MembershipData
-   */
-  def createMembershipMap(clusterConfigPath: Path): MembershipMap = {
-    clusterConfigPath.lines(NewLine, includeTerminator = false)
-      .foldLeft(MembershipMap())((map: MembershipMap, hostAndPort: String) => {
-      // XXX should use constants for things like /user/sirius ... for chunks of these akka paths
-      // XXX also use those same constants when creating original actors with context.actorOf
-      val akkaString = "akka://" + SYSTEM_NAME + "@" + hostAndPort + "/user/sirius"
-      val data: MembershipData =
-        MembershipData(context.actorFor(akkaString))
-      map + (hostAndPort -> data)
-    })
-  }
-
   def receive = {
     // Check the stored lastModifiedTime of the clusterConfigPath file against
     // the actual file on disk, and rebuild membership map if necessary
@@ -77,6 +59,25 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, s
     configLastModified = clusterConfigPath.lastModified
     membershipAgent send newMap
     logger.info("Updated Cluster Config")
+  }
+
+  /**
+   * Creates a MembershipMap from the contents of the clusterConfigPath file.
+   *
+   * @param clusterConfigPath a Path containing cluster members, one per line, host:port
+   * @return MembershipMap of MembershipData
+   */
+  private[membership] def createMembershipMap(clusterConfigPath: Path): MembershipMap = {
+    val lines = clusterConfigPath.lines(NewLine, includeTerminator = false)
+    // XXX should use constants for things like /user/sirius ... for chunks of these akka paths
+    // XXX also use those same constants when creating original actors with context.actorOf
+    lines.foldLeft(MembershipMap())(
+      (membershipMap: MembershipMap, hostAndPort: String) => {
+        val actorPath = "akka://%s@%s/user/sirius".format(SYSTEM_NAME, hostAndPort)
+        val membershipData = MembershipData(context.actorFor(actorPath))
+        membershipMap + (hostAndPort -> membershipData)
+      }
+    )
   }
 
 }
