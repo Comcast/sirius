@@ -2,10 +2,11 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
-import akka.testkit.{TestProbe, TestKit, ImplicitSender}
+import akka.testkit.{TestProbe}
 import akka.actor.{Props, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import com.comcast.xfinity.sirius.api.impl.Delete
+import akka.util.duration._
+import com.comcast.xfinity.sirius.api.impl.{Put, Delete}
 
 class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
 
@@ -54,6 +55,40 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
       senderProbe.send(paxosSup, phase2A)
       acceptorProbe.expectMsg(phase2A)
       assert(senderProbe.ref === acceptorProbe.lastSender)
+    }
+
+    it ("must properly translate a Submit message to a Request and forward it " +
+        "into the system") {
+      val replicaProbe = TestProbe()
+
+      val paxosSup = actorSystem.actorOf(Props(
+          new PaxosSup with PaxosSup.ChildProvider {
+            val leader = TestProbe().ref
+            val acceptor = TestProbe().ref
+            val replica = replicaProbe.ref
+          }))
+
+      val senderProbe = TestProbe()
+
+      val delete = Delete("a")
+      senderProbe.send(paxosSup, PaxosSup.Submit(delete))
+      replicaProbe.receiveOne(1 second) match {
+        case Request(Command(sender, ts, req)) =>
+          assert(senderProbe.ref === sender)
+          // accept some tolerance on timestamp
+          assert(System.currentTimeMillis() - ts < 5000)
+          assert(req === delete)
+      }
+
+      val put = Put("a", "bc".getBytes)
+      senderProbe.send(paxosSup, PaxosSup.Submit(put))
+      replicaProbe.receiveOne(1 second) match {
+        case Request(Command(sender, ts, req)) =>
+          assert(senderProbe.ref === sender)
+          // accept some tolerance on timestamp
+          assert(System.currentTimeMillis() - ts < 5000)
+          assert(req === put)
+      }
     }
   }
 }

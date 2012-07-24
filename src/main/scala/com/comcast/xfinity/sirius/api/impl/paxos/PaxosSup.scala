@@ -3,8 +3,18 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{Props, ActorRef, Actor}
+import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
 
 object PaxosSup {
+
+  /**
+   * Case class for submitting a request for ordering to the Paxos
+   * subsystem
+   *
+   * @param client the initiating ActorRef
+   * @param req the request to submit
+   */
+  case class Submit(req: NonCommutativeSiriusRequest)
 
   /**
    * A class for injecting children into a PaxosSup
@@ -39,11 +49,14 @@ class PaxosSup extends Actor {
 
   def receive = {
     // Replica messages
-    case r: Request => replica forward r
+    case PaxosSup.Submit(req) =>
+      val command = Command(sender, System.currentTimeMillis(), req)
+      replica forward Request(command)
+    case r: Request => replica forward r // <-- not used, to be removed later
     case d: Decision => replica forward d
 
     // Leader messages
-    case p: Propose => leader forward  p
+    case p: Propose => leader forward p
     // Adopted and Preempted are internal
 
     // Acceptor messages
