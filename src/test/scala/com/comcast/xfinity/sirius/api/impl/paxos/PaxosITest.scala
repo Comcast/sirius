@@ -11,7 +11,30 @@ import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestLatch, TestProbe}
 import akka.dispatch.Await
 
+
+object PaxosITest {
+  class TestNode(membership: Agent[Set[ActorRef]], decisionLatch: TestLatch)(implicit as: ActorSystem) {
+    var decisions = Set[(Long, NonCommutativeSiriusRequest)]()
+
+    val paxosSup = as.actorOf(Props(
+      PaxosSup(membership, {
+        case decision if decisions.contains(decision) =>
+          false
+        case decision =>
+          decisions += decision
+          decisionLatch.countDown()
+          true
+      })
+    ))
+
+    def hasDecisionFor(req: NonCommutativeSiriusRequest): Boolean =
+      decisions.exists(req == _._2)
+  }
+}
+
 class PaxosITest extends NiceTest with BeforeAndAfterAll {
+
+  import PaxosITest._
 
   val config = ConfigFactory.parseString("""
       akka {
@@ -33,51 +56,18 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       // 3 nodes x 3 requests = 9 applied decisions
       val decisionLatch = TestLatch(9)
 
-      // each node has an associated set which it updates
-      // when it receives a deicion. Also, upon receiving
-      // a new decision it updates the countdown latch
-      // this can probably be refactored out to be pretty,
-      // but for the time being it works
-      var node1Decisions = Set[(Long, NonCommutativeSiriusRequest)]()
-      val node1 = as.actorOf(Props(
-        PaxosSup(membership, {
-          case decision if node1Decisions.contains(decision) =>
-            false
-          case decision =>
-            node1Decisions += decision
-            decisionLatch.countDown()
-            true
-        })
-      ))
-
-      var node2Decisions = Set[(Long, NonCommutativeSiriusRequest)]()
-      val node2 = as.actorOf(Props(
-        PaxosSup(membership, {
-          case decision if node2Decisions.contains(decision) =>
-            false
-          case decision =>
-            node2Decisions += decision
-            decisionLatch.countDown()
-            true
-        })
-      ))
-
-      var node3Decisions = Set[(Long, NonCommutativeSiriusRequest)]()
-      val node3 = as.actorOf(Props(
-        PaxosSup(membership, {
-          case decision if node3Decisions.contains(decision) =>
-            false
-          case decision =>
-            node3Decisions += decision
-            decisionLatch.countDown()
-            true
-        })
-      ))
+      // Each of these TestNodes contains a paxos system and
+      // set of performed decisions.  The set of decisions is
+      // updated and the decisionLatch is counted down when
+      // a new decision arrives
+      val node1 = new TestNode(membership, decisionLatch)
+      val node2 = new TestNode(membership, decisionLatch)
+      val node3 = new TestNode(membership, decisionLatch)
 
       // with the nodes created, establish membership
-      membership send (_ + node1)
-      membership send (_ + node2)
-      membership send (_ + node3)
+      membership send (_ + node1.paxosSup)
+      membership send (_ + node2.paxosSup)
+      membership send (_ + node3.paxosSup)
 
       // stage and send requests
       val req1 = Delete("A")
@@ -90,9 +80,9 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       val requester2 = TestProbe()
       val requester3 = TestProbe()
 
-      requester1.send(node1, PaxosSup.Submit(req1))
-      requester2.send(node1, PaxosSup.Submit(req2))
-      requester3.send(node1, PaxosSup.Submit(req3))
+      requester1.send(node1.paxosSup, PaxosSup.Submit(req1))
+      requester2.send(node1.paxosSup, PaxosSup.Submit(req2))
+      requester3.send(node1.paxosSup, PaxosSup.Submit(req3))
 
       // Wait for the each decision to complete
       // Give these extra time, the first scout round
@@ -108,24 +98,21 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       // received and processed the decision
       Await.ready(decisionLatch, 3 seconds)
 
-
       // assure that all nodes have the same decisions,
       // and that all requests were decided on
-
-      // Associative property y'all
-      assert(node1Decisions === node2Decisions,
+      assert(node1.decisions === node2.decisions,
         "Node 1 & Node 2's decisions did not match")
-      assert(node2Decisions === node3Decisions,
+      assert(node2.decisions === node3.decisions,
         "Node 2 & Node 3's decisions did not match")
+      // comparing 1 and 3 isn't necessary due to the
+      // transitive property
 
-      List(node1Decisions, node2Decisions, node3Decisions).foreach(
-        (decisions) => {
-          assert(decisions.exists((decision) => req1 == decision._2),
-            req1 + " was missing from " + decisions)
-          assert(decisions.exists((decision) => req2 == decision._2),
-            req2 + " was missing from " + decisions)
-          assert(decisions.exists((decision) => req3 == decision._2),
-            req3 + " was missing from " + decisions)
+      // now check that each decision exists on each node
+      List(node1, node2, node3).foreach(
+        (node) => {
+          assert(node.hasDecisionFor(req1))
+          assert(node.hasDecisionFor(req2))
+          assert(node.hasDecisionFor(req3))
         }
       )
 
