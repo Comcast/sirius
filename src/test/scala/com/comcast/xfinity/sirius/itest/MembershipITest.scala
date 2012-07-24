@@ -17,8 +17,6 @@ class MembershipITest extends NiceTest {
 
   var sirius: SiriusImpl = _
 
-  var actorSystem: ActorSystem = _
-
   val tempFolder = new TemporaryFolder()
   var logFilename: String = _
   var clusterConfigFileName: String = _
@@ -38,23 +36,16 @@ class MembershipITest extends NiceTest {
     clusterConfigPath.append("localhost:2553\n")
   }
 
-  var membershipAgent: Agent[MembershipMap] = _
-  var stateAgent: Agent[SiriusState] = _
-  var underTestActor: TestActorRef[MembershipActor] = _
-
   before {
     stageFiles()
-
-    actorSystem = ActorSystem.create("Sirius")
 
     sirius = SiriusImpl
       .createSirius(new StringRequestHandler(), new DoNothingSiriusLog(), "localhost", 2552, clusterConfigFileName)
   }
 
   after {
-    actorSystem.shutdown()
+    sirius.shutdown()
     tempFolder.delete()
-    actorSystem.awaitTermination()
   }
 
   describe("a SiriusImpl") {
