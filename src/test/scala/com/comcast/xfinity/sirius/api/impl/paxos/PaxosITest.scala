@@ -4,13 +4,12 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.agent.Agent
 import akka.actor.{Props, ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonCommutativeSiriusRequest}
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Request, Command, RequestPerformed}
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.RequestPerformed
 import akka.util.duration._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestLatch, TestProbe}
 import akka.dispatch.Await
-import java.util.concurrent.TimeoutException
 
 class PaxosITest extends NiceTest with BeforeAndAfterAll {
 
@@ -91,10 +90,9 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       val requester2 = TestProbe()
       val requester3 = TestProbe()
 
-      val now = System.currentTimeMillis()
-      node1 ! Request(Command(requester1.ref, now, req1))
-      node1 ! Request(Command(requester2.ref, now, req2))
-      node1 ! Request(Command(requester3.ref, now, req3))
+      requester1.send(node1, PaxosSup.Submit(req1))
+      requester2.send(node1, PaxosSup.Submit(req2))
+      requester3.send(node1, PaxosSup.Submit(req3))
 
       // Wait for the each decision to complete
       // Give these extra time, the first scout round
