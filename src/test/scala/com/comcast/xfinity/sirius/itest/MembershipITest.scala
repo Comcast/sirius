@@ -56,8 +56,6 @@ class MembershipITest extends NiceTest {
       assert(sirius.getMembershipMap.get.keySet.contains("localhost:2553"))
       assert(!sirius.getMembershipMap.get.keySet.contains("localhost:2554"))
 
-      //put some time between initial file update and subsequent update
-      Thread.sleep(1000L)
       //update cluster config
       clusterConfigPath.append("localhost:2554\n")
       sirius.checkClusterConfig

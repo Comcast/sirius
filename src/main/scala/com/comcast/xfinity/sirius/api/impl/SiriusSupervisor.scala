@@ -67,7 +67,7 @@ class SiriusSupervisor(admin: SiriusAdmin,
         })
 
         initSchedule.cancel()
-
+        membershipActor ! CheckClusterConfig
         sender ! new SiriusSupervisor.IsInitializedResponse(isPersistenceInitialized)
       }
     }

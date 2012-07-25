@@ -61,7 +61,7 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
 
     it("should attempt to read in the cluster configuration when a CheckClusterConfig message is recieved") {
       verify(membershipAgent, times(1)).send(any(classOf[MembershipMap]))
-      when(clusterConfigPath.lastModified).thenReturn(2L)
+
       when(clusterConfigPath.lines(NewLine, false)).thenReturn(LongTraversable("dummyhost2:8080", "dummyhost:8080"))
       underTestActor.receive(CheckClusterConfig)
       verify(membershipAgent, times(2)).send(any(classOf[MembershipMap]))

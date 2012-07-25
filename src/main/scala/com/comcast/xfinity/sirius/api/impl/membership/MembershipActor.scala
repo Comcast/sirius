@@ -20,8 +20,6 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, s
 
   val logger = Logging(context.system, this)
 
-  private var configLastModified = -1L
-
   // TODO: This should not be hard-coded.
   private[membership] lazy val checkInterval: Duration = Duration.create(30, TimeUnit.SECONDS)
 
@@ -45,18 +43,15 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, s
     // Check the stored lastModifiedTime of the clusterConfigPath file against
     // the actual file on disk, and rebuild membership map if necessary
     case CheckClusterConfig =>
-      val currentModifiedTime = clusterConfigPath.lastModified
-      if (currentModifiedTime > configLastModified) {
-        logger.info("CheckClusterConfig detected {} change, updating MembershipMap", clusterConfigPath)
-        updateMembershipMap()
-      }
+
+      logger.info("updated membershipMap from config {}", clusterConfigPath)
+      updateMembershipMap()
     case GetMembershipData => sender ! membershipAgent()
     case _ => logger.warning("Unrecognized message.")
   }
 
   private def updateMembershipMap() {
     val newMap = createMembershipMap(clusterConfigPath)
-    configLastModified = clusterConfigPath.lastModified
     membershipAgent send newMap
     logger.info("Updated Cluster Config")
   }

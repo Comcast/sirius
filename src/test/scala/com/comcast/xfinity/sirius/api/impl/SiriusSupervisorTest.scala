@@ -21,7 +21,7 @@ import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
 import scalax.io.LongTraversable
 
-object SiriusSupervisorTest {
+object SiriusSupervisorTestCompanion {
 
   def createProbedTestSupervisor(admin: SiriusAdmin,
       handler: RequestHandler,
@@ -127,7 +127,7 @@ class SiriusSupervisorTest() extends NiceTest {
     siriusState = new SiriusState
     siriusStateAgent = Agent(siriusState)(actorSystem)
 
-    supervisor = SiriusSupervisorTest.createProbedTestSupervisor(
+    supervisor = SiriusSupervisorTestCompanion.createProbedTestSupervisor(
         admin, handler, siriusLog, siriusId, stateProbe, persistenceProbe, paxosProbe,
         membershipProbe, siriusStateAgent, membershipAgent, clusterConfigPath)(actorSystem)
   }
@@ -143,6 +143,7 @@ class SiriusSupervisorTest() extends NiceTest {
     val isInitializedFuture = supervisor ? SiriusSupervisor.IsInitializedRequest
     val expected = SiriusSupervisor.IsInitializedResponse(true)
     assert(expected === Await.result(isInitializedFuture, timeout.duration))
+    membershipProbe.expectMsg(CheckClusterConfig)
   }
 
   describe("a SiriusSupervisor") {
@@ -153,6 +154,7 @@ class SiriusSupervisorTest() extends NiceTest {
     it("should transition into the initialized state") {
       initializeSupervisor(supervisor)
       assert(siriusStateAgent.await(timeout).supervisorState === SiriusState.SupervisorState.Initialized)
+
     }
 
     it("should forward MembershipMessages to the membershipActor") {
