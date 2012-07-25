@@ -41,7 +41,7 @@ object SiriusImpl extends AkkaConfig {
          transport = "akka.remote.netty.NettyRemoteTransport"
          netty {
            # if this is set to actual hostname, remote messaging fails... can use empty or the IP address.
-           hostname = """ + hostname + """
+           hostname = """" + hostname + """"
            port = """ + port + """
          }
        }
