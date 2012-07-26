@@ -1,52 +1,52 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.ActorRef
 import collection.immutable
+import akka.actor.{ActorSystem, ActorRef}
+import org.scalatest.BeforeAndAfterAll
+import akka.testkit.TestProbe
 
-class MembershipHelperTest extends NiceTest {
+class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
 
-  var membershipHelper: MembershipHelper = _
+  implicit val as = ActorSystem("MembershipHelperTest")
 
-  before {
-    membershipHelper = new MembershipHelper
+  override def afterAll {
+    as.shutdown()
   }
+
+  val membershipHelper: MembershipHelper = new MembershipHelper
 
   describe("MembershipHelper") {
     describe("getRandomMember") {
-      val localSiriusId = "local:2552"
-      val localActorRef = mock[ActorRef]
-      val paxosActorRef = mock[ActorRef]
-      val localMembershipData = new MembershipData(localActorRef, paxosActorRef)
+      val localActorRef = TestProbe().ref
+      val localSirius = localActorRef
 
-      val remoteSiriusId = "remote:2552"
-      val remoteActorRef = mock[ActorRef]
-      val remoteMembershipData = new MembershipData(remoteActorRef, paxosActorRef)
+      val remoteActorRef = TestProbe().ref
 
       it("should send back a Member != the MembershipActor we asked...3 times in a row") {
-        val membership = MembershipMap(remoteSiriusId -> remoteMembershipData, localSiriusId -> localMembershipData)
+        val membership =  Set(localActorRef, remoteActorRef)
 
-        val data = membershipHelper.getRandomMember(membership, localSiriusId)
-        assert(data.get === MembershipData(remoteActorRef, paxosActorRef))
+        val data = membershipHelper.getRandomMember(membership, localSirius)
+        assert(data.get === remoteActorRef)
 
-        val data2 = membershipHelper.getRandomMember(membership, localSiriusId)
-        assert(data2.get === MembershipData(remoteActorRef, paxosActorRef))
+        val data2 = membershipHelper.getRandomMember(membership, localSirius)
+        assert(data2.get === remoteActorRef)
 
-        val data3 = membershipHelper.getRandomMember(membership, localSiriusId)
-        assert(data3.get === MembershipData(remoteActorRef, paxosActorRef))
+        val data3 = membershipHelper.getRandomMember(membership, localSirius)
+        assert(data3.get === remoteActorRef)
       }
 
       it("should send back a None if the only ActorRef in the MembershipMap is equal to the caller") {
-        val membership = MembershipMap(localSiriusId -> MembershipData(localActorRef, paxosActorRef))
+        val membership = Set(localActorRef)
 
-        val data = membershipHelper.getRandomMember(membership, localSiriusId)
+        val data = membershipHelper.getRandomMember(membership, localSirius)
         assert(data === None)
       }
 
       it("should send back a None if the membershipMap is empty") {
-        val membership: MembershipMap = immutable.Map.empty
+        val membership = Set[ActorRef]()
 
-        val data = membershipHelper.getRandomMember(membership, localSiriusId)
+        val data = membershipHelper.getRandomMember(membership, localSirius)
         assert(data === None)
       }
     }

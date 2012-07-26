@@ -29,21 +29,19 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
   var stateActorProbe: TestProbe = _
   var entries: List[OrderedEvent] = _
   var rawEntries: List[String] = _
-  var membershipAgent: Agent[MembershipMap] = _
+  var membershipAgent: Agent[Set[ActorRef]] = _
 
   var logRange: LogRange = _
   val chunkSize = 2
-  val localSiriusId = "local:2552"
-  val remoteSiriusId = "remote:2552"
+  val localSiriusRef = TestProbe().ref
 
   before {
     siriusInfo = mock[SiriusInfo]
     source = mock[LogIteratorSource]
     siriusInfo = mock[SiriusInfo]
-    membershipAgent = mock[Agent[membership.MembershipMap]]
-    parentProbe = TestProbe()(actorSystem)
-    stateActorProbe = TestProbe()(actorSystem)
-    membershipAgent = mock[Agent[MembershipMap]]
+    membershipAgent = mock[Agent[Set[ActorRef]]]
+    parentProbe = TestProbe()
+    stateActorProbe = TestProbe()
     entries = List(
       OrderedEvent(1, 300329, Put("key1", "A".getBytes)),
       OrderedEvent(2, 300329, Put("key1", "A".getBytes)),
@@ -57,12 +55,11 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
     remoteLogActor = TestActorRef(createLogRequestActor())
     paxosProbe = TestProbe()(actorSystem)
 
-    val remoteMembershipData = new MembershipData(remoteLogActor, paxosProbe.ref)
-    when(membershipAgent.get()).thenReturn(Map(remoteSiriusId -> remoteMembershipData))
+    when(membershipAgent()).thenReturn(Set[ActorRef](remoteLogActor, localSiriusRef))
   }
 
   private def createLogRequestActor(): LogRequestActor = {
-    new LogRequestActor(chunkSize, source, localSiriusId, stateActorProbe.ref, membershipAgent)
+    new LogRequestActor(chunkSize, source, localSiriusRef, stateActorProbe.ref, membershipAgent)
   }
 
   describe("a logRequestActor") {

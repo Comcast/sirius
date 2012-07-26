@@ -8,10 +8,17 @@ class DevTool {
       actor {
         provider = "akka.remote.RemoteActorRefProvider"
       }
+      remote {
+        transport = "akka.remote.netty.NettyRemoteTransport"
+        netty {
+          hostname = "127.0.0.1"
+          port = 2552
+        }
+      }
     }
   """)
 
-  private val as = ActorSystem("DevTool", ConfigFactory.load(config))
+  val as = ActorSystem("DevTool", ConfigFactory.load(config))
 
   val dstr02x = as.actorFor("akka://sirius-system@dstr02x-dxc1.cimops.net:2552/user/sirius")
   val dstr03x = as.actorFor("akka://sirius-system@dstr03x-dxc1.cimops.net:2552/user/sirius")

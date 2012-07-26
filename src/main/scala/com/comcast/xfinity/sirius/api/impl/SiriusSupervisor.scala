@@ -25,7 +25,7 @@ class SiriusSupervisor(admin: SiriusAdmin,
                        requestHandler: RequestHandler,
                        siriusLog: SiriusLog,
                        siriusStateAgent: Agent[SiriusState],
-                       membershipAgent: Agent[MembershipMap],
+                       membershipAgent: Agent[Set[ActorRef]],
                        siriusId: String,
                        clusterConfigPath: Path) extends Actor with AkkaConfig {
 
@@ -37,8 +37,8 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] var persistenceActor = createPersistenceActor(stateActor, siriusLog)
   private[impl] var paxosActor = createPaxosActor(persistenceActor, membershipAgent)
   private[impl] var logRequestActor =
-    createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, siriusId, persistenceActor, membershipAgent)
-  private[impl] var membershipActor = createMembershipActor(membershipAgent, siriusId, clusterConfigPath)
+    createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, self, persistenceActor, membershipAgent)
+  private[impl] var membershipActor = createMembershipActor(membershipAgent, clusterConfigPath)
 
 
   override def preStart() {
@@ -98,17 +98,17 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: SiriusLog) =
     context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)), "persistence")
 
-  private[impl] def createPaxosActor(persistenceActor: ActorRef, agent: Agent[MembershipMap]) =
+  private[impl] def createPaxosActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]]) =
     context.actorOf(Props(new SiriusPaxosActor(persistenceActor, agent)), "paxos" )
 
-  private[impl] def createMembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, clusterConfigPath: Path) =
-    context.actorOf(Props(new MembershipActor(membershipAgent, siriusId, siriusStateAgent,
+  private[impl] def createMembershipActor(membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path) =
+    context.actorOf(Props(new MembershipActor(membershipAgent, siriusStateAgent,
       clusterConfigPath)), "membership")
 
   private[impl] def createLogRequestActor(chunkSize: Int, logLinesSource: LogIteratorSource,
-      siriusId: String, thePersistenceActor: ActorRef, theMembershipAgent: Agent[MembershipMap]) =
+      localSiriusRef: ActorRef, thePersistenceActor: ActorRef, theMembershipAgent: Agent[Set[ActorRef]]) =
     context.actorOf(Props(
-      new LogRequestActor(chunkSize, logLinesSource, siriusId, thePersistenceActor, theMembershipAgent)))
+      new LogRequestActor(chunkSize, logLinesSource, localSiriusRef, thePersistenceActor, theMembershipAgent)))
 }
 
 object SiriusSupervisor {

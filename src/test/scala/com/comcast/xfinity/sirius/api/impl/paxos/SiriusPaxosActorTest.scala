@@ -21,14 +21,16 @@ class SiriusPaxosActorTest extends NiceTest {
   var underTestActor: TestActorRef[SiriusPaxosActor] = _
   var underTest: SiriusPaxosActor = _
   var persistenceProbe: TestProbe = _
-  var mockMembershipAgent: Agent[MembershipMap] = _
+  var mockMembershipAgent: Agent[Set[ActorRef]] = _
   var paxosSupervisorProbe: TestProbe = _
 
 
-  def createProbedSiriusPaxosActor(paxosSupervisorProbe: TestProbe, persistenceProbe: TestProbe,
-                                   membershipAgent: Agent[MembershipMap])(implicit as: ActorSystem) = {
+  def createProbedSiriusPaxosActor(paxosSupervisorProbe: TestProbe,
+                                   persistenceProbe: TestProbe,
+                                   membershipAgent: Agent[Set[ActorRef]])
+                                  (implicit as: ActorSystem): TestActorRef[SiriusPaxosActor] = {
     TestActorRef(new SiriusPaxosActor(persistenceProbe.ref, membershipAgent) {
-      override def createPaxosSupervisor(memAgent: Agent[MembershipMap],
+      override def createPaxosSupervisor(memAgent: Agent[Set[ActorRef]],
                                          perfDec: Replica.PerformFun): ActorRef =
         paxosSupervisorProbe.ref
 
@@ -39,8 +41,8 @@ class SiriusPaxosActorTest extends NiceTest {
     actorSystem = ActorSystem("testsystem")
     persistenceProbe = TestProbe()(actorSystem)
     paxosSupervisorProbe = TestProbe()(actorSystem)
-    mockMembershipAgent = mock[Agent[MembershipMap]]
-    when(mockMembershipAgent.get()).thenReturn(Map[String, MembershipData]())
+    mockMembershipAgent = mock[Agent[Set[ActorRef]]]
+    when(mockMembershipAgent.get()).thenReturn(Set[ActorRef]())
 
 
 

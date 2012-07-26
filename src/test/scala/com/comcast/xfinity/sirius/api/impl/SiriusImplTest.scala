@@ -26,8 +26,8 @@ object SiriusImplTest {
                              siriusLog: SiriusLog,
                              supProbe: TestProbe,
                              siriusStateAgent: Agent[SiriusState],
-                             membershipAgent: Agent[MembershipMap],
-                             clusterConfigPath: Path) = {
+                             membershipAgent: Agent[Set[ActorRef]],
+                             clusterConfigPath: Path): SiriusImpl = {
     new SiriusImpl(handler, actorSystem, siriusLog, clusterConfigPath) {
       
       override def createSiriusSupervisor(_as: ActorSystem, 
@@ -36,7 +36,7 @@ object SiriusImplTest {
           _port: Int,
           _log: SiriusLog,
           _siriusStateAgent: Agent[SiriusState],
-          _membershipAgent: Agent[MembershipMap],
+          _membershipAgent: Agent[Set[ActorRef]],
           _clusterConfigPath: Path
           ) = supProbe.ref
           
@@ -55,9 +55,9 @@ class SiriusImplTest extends NiceTest {
   var actorSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
   var siriusLog: SiriusLog = _
-  var membershipMap: MembershipMap = _
+  var membership: Set[ActorRef] = _
   var siriusStateAgent: Agent[SiriusState] = _
-  var membershipAgent: Agent[Map[String,MembershipData]] = _
+  var membershipAgent: Agent[Set[ActorRef]] = _
   var clusterConfigPath: Path = Path.fromString("")
 
   before {
@@ -65,7 +65,7 @@ class SiriusImplTest extends NiceTest {
             akka.event-handlers = ["akka.testkit.TestEventListener"]
     """))
 
-    membershipMap = mock[MembershipMap];
+    membership = mock[Set[ActorRef]];
 
     supervisorActorProbe = TestProbe()(actorSystem)
     supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
@@ -80,7 +80,7 @@ class SiriusImplTest extends NiceTest {
           sender ! SiriusResult.some("Put it")
           Some(this)
         case GetMembershipData =>
-          sender ! membershipMap
+          sender ! membership
           Some(this)
         case CheckClusterConfig =>
           Some(this)
@@ -126,8 +126,8 @@ class SiriusImplTest extends NiceTest {
     }
 
     it("should issue an \"ask\" GetMembership to the supervisor when getMembershipData is called") {
-      val membershipFuture = underTest.getMembershipMap
-      assert(membershipMap === membershipFuture.get)
+      val membershipFuture = underTest.getMembership
+      assert(membership === membershipFuture.get)
       supervisorActorProbe.expectMsg(GetMembershipData)
     }
 

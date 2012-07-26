@@ -6,11 +6,10 @@ import akka.util.duration._
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestProbe, TestActorRef}
 import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete}
 import org.mockito.Mockito._
-import com.comcast.xfinity.sirius.api.impl.membership.{MembershipHelper, MembershipMap, MembershipData}
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import org.mockito.Matchers
 
 class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
@@ -26,10 +25,10 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
 
   var source: LogIteratorSource = _
   var mockMembershipHelper: MembershipHelper = _
-  var mockMembershipAgent: Agent[MembershipMap] = _
+  var mockMembershipAgent: Agent[Set[ActorRef]] = _
 
   val chunkSize = 2
-  val localSiriusId: String = "local:2552"
+  val localSiriusRef: ActorRef = TestProbe().ref
 
   before {
     parentProbe = TestProbe()(actorSystem)
@@ -38,7 +37,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     persistenceActorProbe = TestProbe()(actorSystem)
 
     mockMembershipHelper = mock[MembershipHelper]
-    mockMembershipAgent = mock[Agent[MembershipMap]]
+    mockMembershipAgent = mock[Agent[Set[ActorRef]]]
 
     logRequestWrapper =
       Helper.wrapActorWithMockedSupervisor(Props(createLogRequestActor()), parentProbe.ref, actorSystem)
@@ -56,7 +55,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
   }
 
   private def createLogRequestActor(): LogRequestActor = {
-    new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
+    new LogRequestActor(chunkSize, source, localSiriusRef, persistenceActorProbe.ref, mockMembershipAgent) {
       override def membershipHelper = mockMembershipHelper
     }
   }
@@ -64,7 +63,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
   describe("a LogRequestActor") {
     it("should report a 'no viable member to get logs from' message up to its parent as a failure") {
       when(mockMembershipHelper.getRandomMember(
-        Matchers.any[MembershipMap], Matchers.eq(localSiriusId))).thenReturn(None)
+        Matchers.any[Set[ActorRef]], Matchers.eq(localSiriusRef))).thenReturn(None)
       logRequestWrapper ! RequestLogFromAnyRemote(EntireLog)
       parentProbe.expectMsg(5 seconds, TransferFailed(LogRequestActor.NO_MEMBER_FAIL_MSG))
     }
@@ -73,14 +72,13 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
       val probe = TestProbe()(actorSystem)
       val paxosProbe = TestProbe()(actorSystem)
       val localLogRequestWrapper = Helper.wrapActorWithMockedSupervisor(
-        Props(new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
+        Props(new LogRequestActor(chunkSize, source, localSiriusRef, persistenceActorProbe.ref, mockMembershipAgent) {
         override def createReceiver(): ActorRef = probe.ref
         override def membershipHelper = mockMembershipHelper
       }), parentProbe.ref, actorSystem)
 
-      val membershipData = new MembershipData(probe.ref, paxosProbe.ref)
       when(mockMembershipHelper.getRandomMember(
-        Matchers.any[MembershipMap], Matchers.eq(localSiriusId))).thenReturn(Some(membershipData))
+        Matchers.any[Set[ActorRef]], Matchers.eq(localSiriusRef))).thenReturn(Some(probe.ref))
 
       val logRange = new BoundedLogRange(0, 100)
       localLogRequestWrapper ! RequestLogFromAnyRemote(logRange)
@@ -90,7 +88,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
     it("should fire off a round of log requests when logs are requested from a remote.") {
       val probe = TestProbe()(actorSystem)
       val localLogRequestWrapper = Helper.wrapActorWithMockedSupervisor(
-        Props(new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
+        Props(new LogRequestActor(chunkSize, source, localSiriusRef, persistenceActorProbe.ref, mockMembershipAgent) {
         override def createReceiver(): ActorRef = probe.ref
       }), parentProbe.ref, actorSystem)
 
@@ -104,7 +102,7 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
       val receiverProbe = TestProbe()(actorSystem)
       val localLogRequestWrapper =
         Helper.wrapActorWithMockedSupervisor(
-          Props(new LogRequestActor(chunkSize, source, localSiriusId, persistenceActorProbe.ref, mockMembershipAgent) {
+          Props(new LogRequestActor(chunkSize, source, localSiriusRef, persistenceActorProbe.ref, mockMembershipAgent) {
             override def createSender(): ActorRef = senderProbe.ref
         }),  parentProbe.ref, actorSystem)
 

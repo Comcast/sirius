@@ -27,8 +27,8 @@ class MembershipITest extends NiceTest with TimedTest {
   private def stageClusterConfigFile() {
     clusterConfigFileName = tempFolder.newFile("cluster.conf").getAbsolutePath
     clusterConfigPath = Path.fromString(clusterConfigFileName)
-    clusterConfigPath.append("localhost:2552\n")
-    clusterConfigPath.append("localhost:2553\n")
+    clusterConfigPath.append("akka://some-system@somehost:2552/user/actor1\n")
+    clusterConfigPath.append("akka://some-system@somehost:2552/user/actor2\n")
   }
 
   before {
@@ -47,17 +47,18 @@ class MembershipITest extends NiceTest with TimedTest {
     it("updates its membershipMap after the cluster config file is changed and checkClusterConfig is invoked.") {
       assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
 
-      assert(sirius.getMembershipMap.get.keySet.contains("localhost:2552"))
-      assert(sirius.getMembershipMap.get.keySet.contains("localhost:2553"))
-      assert(!sirius.getMembershipMap.get.keySet.contains("localhost:2554"))
+      val expected1 = sirius.actorSystem.actorFor("akka://some-system@somehost:2552/user/actor1")
+      val expected2 = sirius.actorSystem.actorFor("akka://some-system@somehost:2552/user/actor2")
+      assert(sirius.getMembership.get.contains(expected1))
+      assert(sirius.getMembership.get.contains(expected2))
 
       //update cluster config
-      clusterConfigPath.append("localhost:2554\n")
+      clusterConfigPath.append("akka://some-system@somehost:2552/user/actor3\n")
       sirius.checkClusterConfig
 
       assert( waitForTrue(Any => {
 
-        sirius.getMembershipMap.get.keySet.contains("localhost:2554")
+        sirius.getMembership.get.contains(sirius.actorSystem.actorFor("akka://some-system@somehost:2552/user/actor3"))
       }, 1000L, 50L), "Membership map should contain new entry within a certain amount of time")
     }
 

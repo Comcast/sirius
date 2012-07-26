@@ -74,14 +74,14 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, s
     this (requestHandler, actorSystem, walWriter, InetAddress.getLocalHost.getHostName, SiriusImpl.DEFAULT_PORT,
       clusterConfigPath)
 
-  val membershipAgent: Agent[MembershipMap] = Agent(MembershipMap())(actorSystem)
+  val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
 
   val supervisor = createSiriusSupervisor(actorSystem, requestHandler, host, port, siriusLog, siriusStateAgent,
     membershipAgent, clusterConfigPath)
 
-  def getMembershipMap = {
-    val akkaFuture = (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[MembershipMap]]
+  def getMembership = {
+    val akkaFuture = (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[Set[ActorRef]]]
     new AkkaFutureAdapter(akkaFuture)
   }
 
@@ -123,7 +123,7 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, s
   // XXX: handle for testing
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, host: String,
                                            port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
-                                           theMembershipAgent: Agent[MembershipMap], clusterConfigPath: Path) = {
+                                           theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     val info = new SiriusInfo(port, host)
     val admin = new SiriusAdmin(info, mbeanServer)

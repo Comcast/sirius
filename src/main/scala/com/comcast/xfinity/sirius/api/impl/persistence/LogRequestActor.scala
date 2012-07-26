@@ -25,7 +25,7 @@ object LogRequestActor {
  * @param persistenceActor persistence actor, for forwarding received log data
  */
 class LogRequestActor(chunkSize: Int, source: LogIteratorSource,
-      siriusId: String, persistenceActor: ActorRef, membershipAgent: Agent[MembershipMap]) extends Actor {
+      localSiriusRef: ActorRef, persistenceActor: ActorRef, membershipAgent: Agent[Set[ActorRef]]) extends Actor {
 
   def membershipHelper = new MembershipHelper
 
@@ -41,10 +41,10 @@ class LogRequestActor(chunkSize: Int, source: LogIteratorSource,
       remote ! InitiateTransfer(receiver, logRange)
 
     case RequestLogFromAnyRemote(logRange) => {
-      val membershipData = membershipHelper.getRandomMember(membershipAgent.get(), siriusId)
+      val membershipData = membershipHelper.getRandomMember(membershipAgent(), localSiriusRef)
       membershipData match {
         case None => context.parent ! TransferFailed(LogRequestActor.NO_MEMBER_FAIL_MSG)
-        case Some(member) => self ! RequestLogFromRemote(member.supervisorRef, logRange)
+        case Some(member) => self ! RequestLogFromRemote(member, logRange)
       }
     }
 

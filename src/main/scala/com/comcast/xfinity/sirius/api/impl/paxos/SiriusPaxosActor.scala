@@ -2,7 +2,6 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete, Put}
 import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
-import com.comcast.xfinity.sirius.api.impl.membership._
 import akka.agent.Agent
 import akka.event.Logging
 import scala.Predef._
@@ -17,7 +16,7 @@ import akka.actor.{Props, Actor, ActorRef}
  * TODO: Currently this is just a placeholder for the Paxos layer,
  *       here to draw a cutoff point
  */
-class SiriusPaxosActor(val persistenceActor: ActorRef, membershipAgent: Agent[MembershipMap]) extends Actor {
+class SiriusPaxosActor(val persistenceActor: ActorRef, membershipAgent: Agent[Set[ActorRef]]) extends Actor {
   private val logger = Logging(context.system, this)
 
   var seq: Long = 0L
@@ -46,15 +45,10 @@ class SiriusPaxosActor(val persistenceActor: ActorRef, membershipAgent: Agent[Me
   }
 
 
-  def createPaxosSupervisor(memAgent: Agent[MembershipMap],
+  def createPaxosSupervisor(memAgent: Agent[Set[ActorRef]],
                             perfDec: Replica.PerformFun): ActorRef = {
-    val memberIter = memAgent.get().values
-    val memberSet: Set[ActorRef] = memberIter.foldLeft(Set[ActorRef]()) {
-      _ + _.paxosSupervisorRef
-    }
-    val agent = new Agent[Set[ActorRef]](memberSet, context.system)
 
-    context.actorOf(Props(PaxosSup(agent, perfDec)), "paxos-supervisor")
+    context.actorOf(Props(PaxosSup(memAgent, perfDec)), "paxos-supervisor")
   }
 
 }

@@ -7,12 +7,12 @@ import scalax.io.Line.Terminators.NewLine
 import akka.event.Logging
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
-import akka.actor.{actorRef2Scala, Actor}
+import akka.actor.{ActorRef, actorRef2Scala, Actor}
 
 /**
  * Actor responsible for orchestrating request related to Sirius Cluster Membership
  */
-class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, siriusStateAgent: Agent[SiriusState],
+class MembershipActor(membershipAgent: Agent[Set[ActorRef]], siriusStateAgent: Agent[SiriusState],
                       clusterConfigPath: Path) extends Actor with AkkaConfig {
 
 
@@ -52,28 +52,22 @@ class MembershipActor(membershipAgent: Agent[MembershipMap], siriusId: String, s
   }
 
   private def updateMembershipMap() {
-    val newMap = createMembershipMap(clusterConfigPath)
-    membershipAgent send newMap
-    logger.info("Updated Cluster Config")
+    val newMembership = createMembership(clusterConfigPath)
+    membershipAgent send newMembership
   }
 
   /**
    * Creates a MembershipMap from the contents of the clusterConfigPath file.
    *
-   * @param clusterConfigPath a Path containing cluster members, one per line, host:port
-   * @return MembershipMap of MembershipData
+   * @param clusterConfigPath a Path containing cluster members, one per line, in akka
+   *        actor path format (see http://doc.akka.io/docs/akka/2.0.2/general/addressing.html)
+   * @return Set[ActorRef] of all members according to clusterConfigPath
    */
-  private[membership] def createMembershipMap(clusterConfigPath: Path): MembershipMap = {
+  private[membership] def createMembership(clusterConfigPath: Path): Set[ActorRef] = {
     val lines = clusterConfigPath.lines(NewLine, includeTerminator = false)
-    // XXX should use constants for things like /user/sirius ... for chunks of these akka paths
-    // XXX also use those same constants when creating original actors with context.actorOf
-    lines.foldLeft(MembershipMap())(
-      (membershipMap: MembershipMap, hostAndPort: String) => {
-        val supervisorPath = "akka://%s@%s/user/sirius".format(SYSTEM_NAME, hostAndPort)
-        val paxosPath = "akka://%s@%s/user/sirius/paxos".format(SYSTEM_NAME, hostAndPort)
-        val membershipData = MembershipData(context.actorFor(supervisorPath), context.actorFor(paxosPath))
-        membershipMap + (hostAndPort -> membershipData)
-      }
+    lines.foldLeft(Set[ActorRef]())(
+      (membership: Set[ActorRef], actorPath: String) =>
+        membership + context.actorFor(actorPath)
     )
   }
 

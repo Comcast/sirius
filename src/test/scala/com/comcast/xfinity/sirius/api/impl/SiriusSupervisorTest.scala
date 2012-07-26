@@ -32,17 +32,17 @@ object SiriusSupervisorTestCompanion {
       paxosProbe: TestProbe,
       membershipProbe: TestProbe,
       siriusStateAgent: Agent[SiriusState],
-      membershipAgent: Agent[MembershipMap],
-      clusterConfigPath: Path)(implicit as: ActorSystem) = {
+      membershipAgent: Agent[Set[ActorRef]],
+      clusterConfigPath: Path)(implicit as: ActorSystem): TestActorRef[SiriusSupervisor] = {
     TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, siriusId, clusterConfigPath) {
 
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
       override def createPersistenceActor(_state: ActorRef, _writer: SiriusLog) = persistenceProbe.ref
 
-      override  def createPaxosActor(persistenceActor: ActorRef, agent: Agent[MembershipMap]) = paxosProbe.ref
+      override  def createPaxosActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]]) = paxosProbe.ref
 
-      override def createMembershipActor(_membershipAgent: Agent[MembershipMap], _siriusId: String, _clusterConfigPath: Path) = membershipProbe.ref
+      override def createMembershipActor(_membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path) = membershipProbe.ref
     })
   }
 }
@@ -59,7 +59,7 @@ class SiriusSupervisorTest() extends NiceTest {
   var membershipProbe: TestProbe = _
   var nodeToJoinProbe: TestProbe = _
 
-  var membershipAgent: Agent[Map[String,MembershipData]] = _
+  var membershipAgent: Agent[Set[ActorRef]] = _
   var siriusStateAgent: Agent[SiriusState] = _
 
   var handler: RequestHandler = _
@@ -69,7 +69,8 @@ class SiriusSupervisorTest() extends NiceTest {
   var clusterConfigPath: Path = _
 
 
-  var supervisor: TestActorRef[SiriusSupervisor ] = _
+  var supervisor: TestActorRef[SiriusSupervisor] = _
+
   implicit val timeout: Timeout = (5 seconds)
 
   before {
@@ -116,7 +117,7 @@ class SiriusSupervisorTest() extends NiceTest {
 
     persistenceProbe = TestProbe()(actorSystem)
 
-    membershipAgent = mock[Agent[MembershipMap]]
+    membershipAgent = mock[Agent[Set[ActorRef]]]
     siriusState = new SiriusState
     siriusStateAgent = Agent(siriusState)(actorSystem)
 

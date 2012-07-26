@@ -1,28 +1,27 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import util.Random
+import akka.actor.ActorRef
 
 class MembershipHelper {
 
   /**
-   * Get a random value from a map whose key does not equal via keyToAvoid
-   * @param map membershipMap we're searching
-   * @param keyToAvoid key that, if in the map, is not a candidate for choosing (generally
-   *                   this MembershipActor's siriusId)
-   * @return a MembershipData not matching keyToAvoid
+   * Get a random value from a map whose key does not equal via actorToAvoid
+   * @param map membership we're searching
+   * @param actorToAvoid an ActorRef that, if in the membership, is not a candidate for choosing (generally
+   *                   this is the local sirius node, and when we're looking for a neighbor, we don't want
+   *                   ourselves)
+   * @return Some(ActorRef), not matching actorToAvoid, or None if none such found
    */
-  def getRandomMember(map: MembershipMap, keyToAvoid: String): Option[MembershipData] = {
-    val viableMap = map - keyToAvoid
-    val keys = viableMap.keySet.toIndexedSeq
+  def getRandomMember(membership: Set[ActorRef], actorToAvoid: ActorRef): Option[ActorRef] = {
+    val viableChoices = membership - actorToAvoid
 
     // if there is nothing in the map OR keyToAvoid is the only thing in the map, there is no viable member
-    if (keys.isEmpty) {
+    if (viableChoices.isEmpty) {
       None
-    }
-    else {
-      val random = chooseRandomValue(keys.size)
-      val v = map.get(keys(random))
-      Some(v.get)
+    } else {
+      val random = chooseRandomValue(viableChoices.size)
+      Some(viableChoices.toIndexedSeq(random))
     }
   }
 
