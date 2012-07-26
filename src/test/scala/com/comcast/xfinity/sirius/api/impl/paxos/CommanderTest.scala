@@ -30,7 +30,9 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
                                    pvalue))
-      acceptorProbes.foreach(_.expectMsg(Phase2A(commander, pvalue)))
+      acceptorProbes.foreach(
+        probe => probe.expectMsg(Phase2A(commander, pvalue, probe.ref))
+      )
     }
 
     it ("must notify its leader if it is preempted with a greater ballot and exit") {

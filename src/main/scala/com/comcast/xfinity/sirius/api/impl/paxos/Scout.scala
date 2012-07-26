@@ -8,7 +8,9 @@ class Scout(leader: ActorRef, acceptors: Set[ActorRef], ballot: Ballot) extends 
   var waitFor = acceptors
   var pvalues = Set[PValue]()
 
-  acceptors.foreach(_ ! Phase1A(self, ballot))
+  acceptors.foreach(
+    node => node ! Phase1A(self, ballot, node)
+  )
 
   context.setReceiveTimeout(3 seconds)
 

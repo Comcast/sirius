@@ -9,7 +9,9 @@ class Commander(leader: ActorRef, acceptors: Set[ActorRef],
 
   var waitFor = acceptors
 
-  acceptors.foreach(_ ! Phase2A(self, pval))
+  acceptors.foreach(
+    node => node ! Phase2A(self, pval, node)
+  )
 
   context.setReceiveTimeout(3 seconds)
 

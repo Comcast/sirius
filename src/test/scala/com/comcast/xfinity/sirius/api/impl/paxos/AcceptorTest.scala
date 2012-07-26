@@ -37,13 +37,14 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         acceptor.underlyingActor.accepted = accepted
 
         val scoutProbe = TestProbe()
-        acceptor ! Phase1A(scoutProbe.ref, Ballot(0, "a"))
-        scoutProbe.expectMsg(Phase1B(acceptor.getParent, ballotNum, accepted.values.toSet))
+        val replyAs = TestProbe().ref
+        acceptor ! Phase1A(scoutProbe.ref, Ballot(0, "a"), replyAs)
+        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, accepted.values.toSet))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
 
-        acceptor ! Phase1A(scoutProbe.ref, ballotNum)
-        scoutProbe.expectMsg(Phase1B(acceptor.getParent, ballotNum, accepted.values.toSet))
+        acceptor ! Phase1A(scoutProbe.ref, ballotNum, replyAs)
+        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, accepted.values.toSet))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
       }
@@ -58,9 +59,10 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         acceptor.underlyingActor.accepted = accepted
 
         val scoutProbe = TestProbe()
+        val replyAs = TestProbe().ref
         val biggerBallotNum = Ballot(2, "a")
-        acceptor ! Phase1A(scoutProbe.ref, biggerBallotNum)
-        scoutProbe.expectMsg(Phase1B(acceptor.getParent, biggerBallotNum, accepted.values.toSet))
+        acceptor ! Phase1A(scoutProbe.ref, biggerBallotNum, replyAs)
+        scoutProbe.expectMsg(Phase1B(replyAs, biggerBallotNum, accepted.values.toSet))
         assert(acceptor.underlyingActor.ballotNum === biggerBallotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
       }
@@ -76,8 +78,9 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         acceptor.underlyingActor.accepted = accepted
 
         val commanderProbe = TestProbe()
-        acceptor ! Phase2A(commanderProbe.ref, PValue(Ballot(0, "a"), 1, Command(null, 1, Delete("1"))))
-        commanderProbe.expectMsg(Phase2B(acceptor.getParent, ballotNum))
+        val replyAs = TestProbe().ref
+        acceptor ! Phase2A(commanderProbe.ref, PValue(Ballot(0, "a"), 1, Command(null, 1, Delete("1"))), replyAs)
+        commanderProbe.expectMsg(Phase2B(replyAs, ballotNum))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
       }
@@ -92,24 +95,25 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         acceptor.underlyingActor.accepted = accepted
 
         val commanderProbe = TestProbe()
+        val replyAs = TestProbe().ref
 
         val newPValue1 = PValue(ballotNum, 2, Command(null, 2, Delete("3")))
-        acceptor ! Phase2A(commanderProbe.ref, newPValue1)
-        commanderProbe.expectMsg(Phase2B(acceptor.getParent, ballotNum))
+        acceptor ! Phase2A(commanderProbe.ref, newPValue1, replyAs)
+        commanderProbe.expectMsg(Phase2B(replyAs, ballotNum))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted + (2L -> newPValue1))
 
         val biggerBallot = Ballot(2, "a")
         val newPValue2 = PValue(biggerBallot, 3, Command(null, 3, Delete("4")))
-        acceptor ! Phase2A(commanderProbe.ref, newPValue2)
-        commanderProbe.expectMsg(Phase2B(acceptor.getParent, biggerBallot))
+        acceptor ! Phase2A(commanderProbe.ref, newPValue2, replyAs)
+        commanderProbe.expectMsg(Phase2B(replyAs, biggerBallot))
         assert(acceptor.underlyingActor.ballotNum === biggerBallot)
         assert(acceptor.underlyingActor.accepted === accepted + (2L -> newPValue1) + (3L -> newPValue2))
 
         val evenBiggerBallot = Ballot(3, "a")
         val newPValue3 = PValue(evenBiggerBallot, 3, Command(null, 3, Delete("5")))
-        acceptor ! Phase2A(commanderProbe.ref, newPValue3)
-        commanderProbe.expectMsg(Phase2B(acceptor.getParent, evenBiggerBallot))
+        acceptor ! Phase2A(commanderProbe.ref, newPValue3, replyAs)
+        commanderProbe.expectMsg(Phase2B(replyAs, evenBiggerBallot))
         assert(acceptor.underlyingActor.ballotNum === evenBiggerBallot)
         assert(acceptor.underlyingActor.accepted === accepted + (2L -> newPValue1) + (3L -> newPValue3))
       }
@@ -121,7 +125,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val unnacceptablePval = PValue(Ballot(1, "a"), 4, Command(null, 1, Delete("3")))
 
         intercept[MatchError] {
-          acceptor.underlyingActor.receive(Phase2A(commanderProbe.ref, unnacceptablePval))
+          acceptor.underlyingActor.receive(Phase2A(commanderProbe.ref, unnacceptablePval, TestProbe().ref))
         }
       }
     }

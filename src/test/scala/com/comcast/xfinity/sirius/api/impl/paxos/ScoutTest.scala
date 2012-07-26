@@ -19,7 +19,8 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
   // XXX: how to test ReceiveTimeout?
 
   describe("A Scout") {
-    it ("must send a Phase1A message to all acceptors on startup") {
+    it ("must send a Phase1A message to all acceptors on startup, including the proper " +
+        "replyAs field") {
       val leaderProbe = TestProbe()
       val acceptorProbes = Set(TestProbe(), TestProbe(), TestProbe())
       val ballot = Ballot(1, "a")
@@ -27,7 +28,9 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
                                          acceptorProbes.map(_.ref),
                                          ballot))
 
-      acceptorProbes.foreach(_.expectMsg(Phase1A(scout, ballot)))
+      acceptorProbes.foreach(
+        probe => probe.expectMsg(Phase1A(scout, ballot, probe.ref))
+      )
     }
 
     it ("must notifiy its leader if it is preempted with a greater ballot and exit") {

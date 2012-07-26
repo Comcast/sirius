@@ -36,12 +36,12 @@ class Acceptor(startingSeqNum: Long) extends Actor {
   // the acceptor is known to external nodes
   def receive = {
     // Scout
-    case Phase1A(scout, ballot) =>
+    case Phase1A(scout, ballot, replyAs) =>
       if (ballot > ballotNum) ballotNum = ballot
-      scout ! Phase1B(context.parent, ballotNum, accepted.values.toSet)
+      scout ! Phase1B(replyAs, ballotNum, accepted.values.toSet)
 
     // Commander
-    case Phase2A(commander, pval) if pval.slotNum >= lowestAcceptableSlotNumber =>
+    case Phase2A(commander, pval, replyAs) if pval.slotNum >= lowestAcceptableSlotNumber =>
       if (pval.ballot >= ballotNum) {
         ballotNum = pval.ballot
         accepted += (accepted.get(pval.slotNum) match {
@@ -49,7 +49,7 @@ class Acceptor(startingSeqNum: Long) extends Actor {
           case _ => (pval.slotNum -> pval)
         })
       }
-      commander ! Phase2B(context.parent, ballotNum)
+      commander ! Phase2B(replyAs, ballotNum)
 
     // Periodic cleanup
     case Reap =>

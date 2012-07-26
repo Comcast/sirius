@@ -46,12 +46,13 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
       leaderProbe.expectMsg(propose)
       assert(senderProbe.ref === leaderProbe.lastSender)
 
-      val phase1A = Phase1A(senderProbe.ref, Ballot(1, "a"))
+      val phase1A = Phase1A(senderProbe.ref, Ballot(1, "a"), senderProbe.ref)
       senderProbe.send(paxosSup, phase1A)
       acceptorProbe.expectMsg(phase1A)
       assert(senderProbe.ref === acceptorProbe.lastSender)
 
-      val phase2A = Phase2A(senderProbe.ref, PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2"))))
+      val phase2A = Phase2A(senderProbe.ref, PValue(Ballot(1, "a"), 1,
+                            Command(null, 1, Delete("2"))), senderProbe.ref)
       senderProbe.send(paxosSup, phase2A)
       acceptorProbe.expectMsg(phase2A)
       assert(senderProbe.ref === acceptorProbe.lastSender)
