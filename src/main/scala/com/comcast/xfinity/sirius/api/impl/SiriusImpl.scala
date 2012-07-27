@@ -85,6 +85,24 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, s
     new AkkaFutureAdapter(akkaFuture)
   }
 
+  /**
+   * Returns true if the underlying Sirius is up and ready to handle requests
+   *
+   * @return true if system is ready, false if not
+   */
+  def isOnline: Boolean = {
+    // XXX: the following is not pretty, we will not want to do it this way for real, this is
+    //      a sacrifice that must be made to start getting a stable api build though, at the time
+    //      this was written, the success rate was 7%
+    val siriusStateSnapshot = siriusStateAgent()
+    (
+      (siriusStateSnapshot.stateActorState == SiriusState.StateActorState.Initialized) &&
+      (siriusStateSnapshot.membershipActorState == SiriusState.MembershipActorState.Initialized) &&
+      (siriusStateSnapshot.persistenceState == SiriusState.PersistenceState.Initialized)
+    )
+
+  }
+
   def checkClusterConfig = {
     supervisor ! CheckClusterConfig
   }

@@ -18,4 +18,11 @@ trait Sirius {
    * Enqueue a DELETE for processing
    */
   def enqueueDelete(key: String): Future[SiriusResult]
+
+  /**
+   * Is the system ready to handle requests?
+   *
+   * @return true if so, false if not
+   */
+  def isOnline: Boolean
 }
