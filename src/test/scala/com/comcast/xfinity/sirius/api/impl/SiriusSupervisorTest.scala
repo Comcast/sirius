@@ -33,14 +33,14 @@ object SiriusSupervisorTestCompanion {
       membershipProbe: TestProbe,
       siriusStateAgent: Agent[SiriusState],
       membershipAgent: Agent[Set[ActorRef]],
-      clusterConfigPath: Path)(implicit as: ActorSystem): TestActorRef[SiriusSupervisor] = {
-    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, siriusId, clusterConfigPath) {
+      clusterConfigPath: Path, usePaxos: Boolean)(implicit as: ActorSystem) = {
+    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, siriusId, clusterConfigPath, usePaxos) {
 
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
       override def createPersistenceActor(_state: ActorRef, _writer: SiriusLog) = persistenceProbe.ref
 
-      override  def createPaxosActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]]) = paxosProbe.ref
+      override  def createOrderingActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]], usePaxos: Boolean) = paxosProbe.ref
 
       override def createMembershipActor(_membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path) = membershipProbe.ref
     })
@@ -121,9 +121,11 @@ class SiriusSupervisorTest() extends NiceTest {
     siriusState = new SiriusState
     siriusStateAgent = Agent(siriusState)(actorSystem)
 
+
+
     supervisor = SiriusSupervisorTestCompanion.createProbedTestSupervisor(
         admin, handler, siriusLog, "localhost:100", stateProbe, persistenceProbe, paxosProbe,
-        membershipProbe, siriusStateAgent, membershipAgent, clusterConfigPath)(actorSystem)
+        membershipProbe, siriusStateAgent, membershipAgent, clusterConfigPath, false)(actorSystem)
   }
 
   after {

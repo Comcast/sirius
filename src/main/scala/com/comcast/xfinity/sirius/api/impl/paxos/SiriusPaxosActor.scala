@@ -6,6 +6,7 @@ import akka.agent.Agent
 import akka.event.Logging
 import scala.Predef._
 import akka.actor.{Props, Actor, ActorRef}
+import org.apache.commons.lang.NotImplementedException
 
 /**
  * Actor for negotiating Paxos rounds locally.
@@ -29,19 +30,15 @@ class SiriusPaxosActor(val persistenceActor: ActorRef, membershipAgent: Agent[Se
   private val paxosSupervisor = createPaxosSupervisor(membershipAgent, performDecision)
 
   def receive = {
-    case put: Put => processRequest(put)
-    case delete: Delete => processRequest(delete)
-    case paxosMsg: PaxosMessages.PaxosMessage =>
-      logger.warning("Got a Paxos Message but paxos is not yet implemented.")
+
     case _ =>
-      logger.warning("SiriusPaxosActor only accepts PUT's and DELETE's and PaxosMessages")
+      throw new NotImplementedException("Paxos is not implemented .... fool.")
 
   }
 
   private def processRequest(req: NonCommutativeSiriusRequest) {
-    seq = seq + 1
-    performDecision(seq, req)
 
+    //TODO: wire in paxos components when fully implemented
   }
 
 

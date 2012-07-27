@@ -7,15 +7,16 @@ import org.junit.Assert.assertTrue
 
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
-import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.membership._
 import org.mockito.Mockito._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.api.impl._
-import akka.actor.{ActorRef, ActorSystem}
+import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import sun.management.resources.agent
+import akka.actor.{Props, ActorRef, ActorSystem}
 
-class SiriusPaxosActorTest extends NiceTest {
+class SiriusPaxosActorTest extends NiceTest with TimedTest {
 
   var actorSystem: ActorSystem = _
   var underTestActor: TestActorRef[SiriusPaxosActor] = _
@@ -30,10 +31,8 @@ class SiriusPaxosActorTest extends NiceTest {
                                    membershipAgent: Agent[Set[ActorRef]])
                                   (implicit as: ActorSystem): TestActorRef[SiriusPaxosActor] = {
     TestActorRef(new SiriusPaxosActor(persistenceProbe.ref, membershipAgent) {
-      override def createPaxosSupervisor(memAgent: Agent[Set[ActorRef]],
-                                         perfDec: Replica.PerformFun): ActorRef =
+      override def createPaxosSupervisor(memAgent: Agent[Set[ActorRef]], perfDec: Replica.PerformFun): ActorRef =
         paxosSupervisorProbe.ref
-
     })
   }
 
@@ -57,33 +56,12 @@ class SiriusPaxosActorTest extends NiceTest {
   }
 
   describe("a SiriusPaxosActor") {
-    it("should forward Put's to the persistence actor") {
-      val put = Put("key", "body".getBytes)
-      underTestActor ! put
-      val OrderedEvent(_, _, actualPut) = persistenceProbe.receiveOne(5 seconds)
-      assert(put == actualPut)
+    it("should blow up when sent a message") {
+      underTestActor ! "yo"
+      waitForTrue(Any => {
+        underTestActor.isTerminated
+      }, 5000, 500)
     }
-
-    it("should increase its internal counter on Put's") {
-      val origCount = underTest.seq
-      underTestActor ! Put("key", "body".getBytes)
-      val OrderedEvent(finalCount, _, _) = persistenceProbe.receiveOne(5 seconds)
-      assertTrue(origCount < finalCount)
-    }
-
-    it("should forward Delete's to the persistence actor") {
-      val del = Delete("key")
-      underTestActor ! del
-      val OrderedEvent(_, _, actualDel) = persistenceProbe.receiveOne(5 seconds)
-      assert(del == actualDel)
-    }
-
-    it("should increase its internal counter on Delete's") {
-      val origCount = underTest.seq
-      underTestActor ! Delete("key")
-      val OrderedEvent(finalCount, _, _) = persistenceProbe.receiveOne(5 seconds)
-      assertTrue(origCount < finalCount)
-    }
-
   }
+
 }

@@ -130,7 +130,7 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, s
     val siriusId = host + ":" + port
     val supProps = Props(new
         SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, siriusId,
-          clusterConfigPath))
+          clusterConfigPath,false))
     theActorSystem.actorOf(supProps, "sirius")
   }
 }
