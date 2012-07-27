@@ -137,5 +137,71 @@ class SiriusImplTest extends NiceTest {
 
     }
 
+    describe(".isOnline") {
+      it("returns true if state, membership, and persistence are initialized") {
+        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Initialized
+        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Initialized
+        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Initialized
+
+        assert(underTest.isOnline);
+      }
+
+      it("returns false if state, membership, and persistence are uninitialized") {
+        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Uninitialized
+        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Uninitialized
+        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
+
+        assert(!underTest.isOnline);
+      }
+
+      it("returns false if state and membership are uninitialized") {
+        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Uninitialized
+        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Uninitialized
+        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Initialized
+
+        assert(!underTest.isOnline);
+      }
+
+      it("returns false if state and persistence are uninitialized") {
+        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Uninitialized
+        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Initialized
+        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
+
+        assert(!underTest.isOnline);
+      }
+
+      it("returns false if membership and persistence are uninitialized") {
+        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Initialized
+        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Uninitialized
+        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
+
+        assert(!underTest.isOnline);
+      }
+
+      it("returns false if state is uninitialized") {
+        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Uninitialized
+        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Initialized
+        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Initialized
+
+        assert(!underTest.isOnline);
+      }
+
+      it("returns false if membership is uninitialized") {
+        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Initialized
+        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Uninitialized
+        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Initialized
+
+        assert(!underTest.isOnline);
+      }
+
+      it("returns false if persistence is uninitialized") {
+        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Initialized
+        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Initialized
+        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
+
+        assert(!underTest.isOnline);
+      }
+    }
+
   }
 }
