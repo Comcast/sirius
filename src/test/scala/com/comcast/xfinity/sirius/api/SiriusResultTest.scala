@@ -10,9 +10,15 @@ class SiriusResultTest extends NiceTest {
   describe("SiriusResult") {
     
     describe(".hasValue") {
-      it("should indicate when it has a value") {
+      it("should indicate when it has a value when it does") {
         expect(true) {
           SiriusResult.some("hello").hasValue
+        }
+      }
+
+      it("should indicate that it has a value when it has an exception") {
+        expect(true) {
+          SiriusResult.error(new Throwable()).hasValue
         }
       }
     
@@ -25,8 +31,6 @@ class SiriusResultTest extends NiceTest {
     
     describe(".getValue") {
       it("should return it's value when it has a value") {
-        // XXX: due to how Arrays work, as inherited from Java,
-        //      we must use the same reference
         val body = "hello"
         expect(body) {
           SiriusResult.some(body).getValue
@@ -38,39 +42,17 @@ class SiriusResultTest extends NiceTest {
           SiriusResult.none().getValue
         }
       }
+      
+      it("should rethrow the exception, wrapped in a RuntimeException," +
+         " when it has an error") {
+        val theException = new Throwable()
+        try {
+          SiriusResult.error(theException).getValue
+          assert(false, "Exception should have been thrown")
+        } catch {
+          case e: Throwable => assert(theException === e.getCause)
+        }
+      }      
     }
-    
-    describe(".equals") {
-      it("should return true if both have no value") {
-        expect(true) {
-          SiriusResult.none().equals(SiriusResult.none())
-        }
-      }
-      
-      it("should return true if both values exist and are equal") {
-        expect(true) {
-          SiriusResult.some("asdf").equals(SiriusResult.some("asdf"))
-        }
-      }
-      
-      it("should return false if both values exist and differ") {
-        expect(false) {
-          SiriusResult.some("asdf").equals(SiriusResult.some("dsfa"))
-        }
-      }
-      
-      it("should return false when the lhs value exists and rhs does not") {
-        expect(false) {
-          SiriusResult.some("asdf").equals(SiriusResult.none())
-        }
-      }
-      
-      it("should return false when the lhs value does not exist and the rhs does") {
-        expect(false) {
-          SiriusResult.none().equals(SiriusResult.some("asdf"))
-        }
-      }
-    }
-    
   }
 }
