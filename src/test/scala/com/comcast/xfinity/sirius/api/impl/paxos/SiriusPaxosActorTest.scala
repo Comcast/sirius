@@ -2,19 +2,12 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import akka.util.duration._
 
-import org.junit.Assert.assertTrue
-
-
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
-import com.comcast.xfinity.sirius.api.impl.membership._
 import org.mockito.Mockito._
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
-import sun.management.resources.agent
-import akka.actor.{Props, ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem}
 
 class SiriusPaxosActorTest extends NiceTest with TimedTest {
 
