@@ -10,15 +10,22 @@ import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, actorRef2Scala, Actor}
 
 /**
- * Actor responsible for orchestrating request related to Sirius Cluster Membership
+ * Actor responsible for keeping membership information up to date
+ *
+ * @param membershipAgent An Agent[Set[ActorRef]] that this actor will keep populated
+ *          with the most up to date membership information
+ * @param siriusStateAgent An Agent[SiriusState] which this actor will update with
+ *          its status on initialization
+ * @param clusterConfigPath A scalax.file.Path containing the membership information
+ *          for this cluster
  */
-class MembershipActor(membershipAgent: Agent[Set[ActorRef]], siriusStateAgent: Agent[SiriusState],
-                      clusterConfigPath: Path) extends Actor with AkkaConfig {
-
-
-  def membershipHelper = new MembershipHelper
+class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
+                      siriusStateAgent: Agent[SiriusState],
+                      clusterConfigPath: Path) extends Actor {
 
   val logger = Logging(context.system, this)
+
+  def membershipHelper = new MembershipHelper
 
   // TODO: This should not be hard-coded.
   private[membership] lazy val checkInterval: Duration = Duration.create(30, TimeUnit.SECONDS)
@@ -26,9 +33,9 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]], siriusStateAgent: A
   val configCheckSchedule = context.system.scheduler.schedule(Duration.Zero, checkInterval, self, CheckClusterConfig)
 
   override def preStart() {
-    logger.info("Bootstrapping Membership Actor, initializing cluster membership map {}", clusterConfigPath)
+    logger.info("Initializing MembershipActor, initializing cluster membershing using {}", clusterConfigPath)
 
-    updateMembershipMap()
+    updateMembership()
 
     siriusStateAgent send ((state: SiriusState) => {
       state.updateMembershipActorState(SiriusState.MembershipActorState.Initialized)
@@ -41,19 +48,17 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]], siriusStateAgent: A
 
 
   def receive = {
-    // Check the stored lastModifiedTime of the clusterConfigPath file against
-    // the actual file on disk, and rebuild membership map if necessary
     case CheckClusterConfig =>
+      logger.debug("Updating membership from {}", clusterConfigPath)
+      updateMembership()
 
-      logger.info("updated membershipMap from config {}", clusterConfigPath)
-      updateMembershipMap()
     case GetMembershipData => sender ! membershipAgent()
     case _ => logger.warning("Unrecognized message.")
   }
 
-  private def updateMembershipMap() {
-    val newMembership = createMembership(clusterConfigPath)
-    membershipAgent send newMembership
+  private def updateMembership() {
+     val newMembership = createMembership(clusterConfigPath)
+     membershipAgent send newMembership
   }
 
   /**
