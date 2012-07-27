@@ -4,7 +4,7 @@ import membership._
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import paxos.PaxosMessages.PaxosMessage
-import paxos.{NaiveOrderingActor, SiriusPaxosActor}
+import paxos.{PaxosSup, Replica, NaiveOrderingActor}
 import persistence._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.RequestHandler
@@ -16,6 +16,14 @@ import akka.agent.Agent
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import scalax.file.Path
+
+object SiriusSupervisor {
+
+  sealed trait SupervisorMessage
+  case object IsInitializedRequest extends SupervisorMessage
+
+  case class IsInitializedResponse(initialized: Boolean)
+}
 
 /**
  * Supervisor actor for the set of actors needed for Sirius.
@@ -78,9 +86,21 @@ class SiriusSupervisor(admin: SiriusAdmin,
   }
 
   def initialized: Receive = {
-    case put: Put => orderingActor forward put
+    case put: Put =>
+      if (usePaxos) {
+        // Paxos expects submit requests to kick off a round
+        orderingActor forward PaxosSup.Submit(put)
+      } else {
+        orderingActor forward put
+      }
+    case delete: Delete =>
+      if (usePaxos) {
+        // Paxos expects submit requests to kick off a round
+        orderingActor forward PaxosSup.Submit(delete)
+      } else {
+        orderingActor forward delete
+      }
     case get: Get => stateActor forward get
-    case delete: Delete => orderingActor forward delete
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case paxosMessage: PaxosMessage => orderingActor forward paxosMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
@@ -98,8 +118,11 @@ class SiriusSupervisor(admin: SiriusAdmin,
     context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)), "persistence")
 
   private[impl] def createOrderingActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]], usePaxos: Boolean) = {
+    // TODO: for either of the below, we need a way of passing in the sequence number for which they
+    //    should start delegating sequence numbers, else we'll always start at 1
     if (usePaxos) {
-      context.actorOf(Props(new SiriusPaxosActor(persistenceActor, agent)), "paxos")
+      val siriusPaxosAdapter = new SiriusPaxosAdapter(agent, 1, persistenceActor)
+      context.actorOf(siriusPaxosAdapter.paxosSubsystemProps, "paxos")
     } else {
       context.actorOf(Props(new NaiveOrderingActor(persistenceActor)), "paxos")
     }
@@ -113,14 +136,4 @@ class SiriusSupervisor(admin: SiriusAdmin,
       localSiriusRef: ActorRef, thePersistenceActor: ActorRef, theMembershipAgent: Agent[Set[ActorRef]]) =
     context.actorOf(Props(
       new LogRequestActor(chunkSize, logLinesSource, localSiriusRef, thePersistenceActor, theMembershipAgent)))
-}
-
-object SiriusSupervisor {
-
-  sealed trait SupervisorMessage
-
-  case object IsInitializedRequest extends SupervisorMessage
-
-  case class IsInitializedResponse(initialized: Boolean)
-
 }

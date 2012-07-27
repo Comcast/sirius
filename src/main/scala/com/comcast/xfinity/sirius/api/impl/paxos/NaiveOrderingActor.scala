@@ -22,7 +22,7 @@ class NaiveOrderingActor(val persistenceActor: ActorRef) extends Actor {
     case put: Put => processRequest(put)
     case delete: Delete => processRequest(delete)
     case _ =>
-      logger.warning("NaiveOrderingActor only accepts PUT's and DELETE's and PaxosMessages")
+      logger.warning("NaiveOrderingActor only accepts PUT's and DELETE's")
 
   }
 
