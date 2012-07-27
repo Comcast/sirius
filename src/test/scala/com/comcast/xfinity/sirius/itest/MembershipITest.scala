@@ -1,19 +1,14 @@
 package com.comcast.xfinity.sirius.itest
 
-import com.comcast.xfinity.sirius.NiceTest
 import org.junit.rules.TemporaryFolder
 import scalax.file.Path
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import com.comcast.xfinity.sirius.api.impl.membership._
-import akka.actor.ActorSystem
-import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.impl.{SiriusState, SiriusImpl}
-import akka.testkit.TestActorRef
-import annotation.tailrec
+import com.comcast.xfinity.sirius.api.impl.SiriusImpl
+import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 
 @RunWith(classOf[JUnitRunner])
-class MembershipITest extends NiceTest {
+class MembershipITest extends NiceTest with TimedTest {
 
   var sirius: SiriusImpl = _
 
@@ -68,18 +63,5 @@ class MembershipITest extends NiceTest {
 
   }
 
-  @tailrec
-  private def waitForTrue(test: (Any => Boolean), timeout: Long, waitBetween: Long): Boolean = {
-    if (timeout < 0) {
-      false
 
-    } else if (test()) {
-      true
-    } else {
-      Thread.sleep(waitBetween)
-      waitForTrue(test, timeout - waitBetween, waitBetween)
-    }
-
-
-  }
 }
