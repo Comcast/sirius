@@ -53,13 +53,17 @@ class MembershipITest extends NiceTest with TimedTest {
       assert(sirius.getMembership.get.contains(expected2))
 
       //update cluster config
-      clusterConfigPath.append("akka://some-system@somehost:2552/user/actor3\n")
+      val actorPath3 = "akka://some-system@somehost:2552/user/actor3"
+      clusterConfigPath.append(actorPath3 + "\n")
       sirius.checkClusterConfig
 
-      assert( waitForTrue(Any => {
-
-        sirius.getMembership.get.contains(sirius.actorSystem.actorFor("akka://some-system@somehost:2552/user/actor3"))
-      }, 1000L, 50L), "Membership map should contain new entry within a certain amount of time")
+      assert(
+        waitForTrue(
+          sirius.getMembership.get.contains(sirius.actorSystem.actorFor(actorPath3)),
+          1000L, 50L
+        ),
+        "Membership map should contain new entry within a certain amount of time"
+      )
     }
 
   }

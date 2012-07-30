@@ -105,7 +105,7 @@ class FullSystemITest extends NiceTest with TimedTest {
         true
       )
 
-      assert(doWaitForTrue(sirius.isOnline, 2000, 500),
+      assert(waitForTrue(sirius.isOnline, 2000, 500),
         "Sirius Node failed to come up within alloted 2 seconds")
 
       sirius

@@ -7,29 +7,23 @@ import annotation.tailrec
  */
 trait TimedTest {
 
+  /**
+   * Wait for condition specified by pred, a call by name argument, to become true, or return
+   * false if it does not do so in time
+   *
+   * @param pred the predicate to await becoming true
+   * @param timeout how long to wait in milliseconds for the condition to become true
+   * @param waitBetween how long to wait in between checks
+   */
   @tailrec
-  val waitForTrue: ((Any=>Boolean),Long, Long)=>Boolean = (test: (Any => Boolean), timeout: Long, waitBetween: Long) => {
-    if (timeout < 0) {
+  final def waitForTrue(pred: => Boolean, timeout: Long,  waitBetween: Long): Boolean = {
+    if (timeout < 0){
       false
-
-    } else if (test()) {
+    } else if (pred){
       true
     } else {
       Thread.sleep(waitBetween)
-      waitForTrue(test, timeout - waitBetween, waitBetween)
-    }
-
-  }
-
-  @tailrec
-  final def doWaitForTrue(pred: => Boolean, timeout: Long,  waitBetween: Long): Boolean = {
-    if (timeout < 0) {
-      false
-    } else if (pred) {
-      true
-    } else {
-      Thread.sleep(waitBetween)
-      doWaitForTrue(pred, timeout - waitBetween, waitBetween)
+      waitForTrue(pred, timeout - waitBetween, waitBetween)
     }
   }
 
