@@ -3,6 +3,8 @@ package com.comcast.xfinity.sirius.api.impl
 import akka.actor.{Props, ActorRef}
 import akka.agent.Agent
 import paxos.{Replica, PaxosSup}
+import akka.dispatch.Await
+import akka.pattern.ask
 
 /**
  * Class responsible for adapting the Paxos subsystem for use in Sirius
@@ -30,7 +32,7 @@ import paxos.{Replica, PaxosSup}
  */
 class SiriusPaxosAdapter(membership: Agent[Set[ActorRef]],
                          startingSeq: Long,
-                         persistenceActor: ActorRef) {
+                         persistenceActor: ActorRef) extends AkkaConfig{
 
   var currentSeq: Long = startingSeq
 
@@ -58,9 +60,15 @@ class SiriusPaxosAdapter(membership: Agent[Set[ActorRef]],
       // otherwise ignore it. If it's above the expected sequence number odds are
       // it will get delivered again, if it's under then we don't care either way
       if (slotNum == currentSeq) {
-        persistenceActor ! OrderedEvent(slotNum, System.currentTimeMillis(), req)
-        currentSeq += 1
-        true
+        val persistedFuture = persistenceActor ? OrderedEvent(slotNum, System.currentTimeMillis(), req)
+        val result = Await.result(persistedFuture, timeout.duration)
+
+        if (result == true) {
+          currentSeq += 1
+          true
+        } else {
+          false
+        }
       } else {
         false
       }

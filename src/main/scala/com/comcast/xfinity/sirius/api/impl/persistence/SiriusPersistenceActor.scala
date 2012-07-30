@@ -36,8 +36,9 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
 
   def receive = {
     case event: OrderedEvent => {
-      siriusLog.writeEntry(event)
+      val result = siriusLog.writeEntry(event)
       stateActor forward event.request
+      sender ! result
     }
     case _: SiriusResult =>
   }

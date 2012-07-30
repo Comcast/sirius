@@ -9,8 +9,9 @@ import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
 class DoNothingSiriusLog extends SiriusLog {
   private val logger = LoggerFactory.getLogger(classOf[DoNothingSiriusLog])
 
-  override def writeEntry(entry: OrderedEvent) {
+  override def writeEntry(entry: OrderedEvent): Boolean =  {
     logger.info("Writing entry for {}", entry)
+    true
   }
 
   override def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T = acc0
