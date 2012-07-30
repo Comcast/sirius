@@ -41,7 +41,7 @@ class SiriusSupervisor(admin: SiriusAdmin,
   /* Startup child actors. */
   private[impl] var stateActor = createStateActor(requestHandler)
   private[impl] var persistenceActor = createPersistenceActor(stateActor, siriusLog)
-  private[impl] var orderingActor = createOrderingActor(persistenceActor, membershipAgent,false)
+  private[impl] var orderingActor = createOrderingActor(persistenceActor, membershipAgent, usePaxos)
   private[impl] var logRequestActor =
     createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, self, persistenceActor, membershipAgent)
   private[impl] var membershipActor = createMembershipActor(membershipAgent, clusterConfigPath)

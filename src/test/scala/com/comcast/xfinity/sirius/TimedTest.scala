@@ -21,4 +21,16 @@ trait TimedTest {
 
   }
 
+  @tailrec
+  final def doWaitForTrue(pred: => Boolean, timeout: Long,  waitBetween: Long): Boolean = {
+    if (timeout < 0) {
+      false
+    } else if (pred) {
+      true
+    } else {
+      Thread.sleep(waitBetween)
+      doWaitForTrue(pred, timeout - waitBetween, waitBetween)
+    }
+  }
+
 }

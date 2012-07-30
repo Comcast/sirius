@@ -7,9 +7,6 @@ import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.writeaheadlog.SiriusFileLog
-import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.writeaheadlog.WriteAheadLogSerDe
 import akka.pattern.ask
 import akka.dispatch.{Future => AkkaFuture}
 import membership._
@@ -19,13 +16,13 @@ import com.typesafe.config.ConfigFactory
 import akka.actor._
 import java.util.concurrent.Future
 import scalax.file.Path
+import com.comcast.xfinity.sirius.writeaheadlog.{WriteAheadLogSerDe, SiriusFileLog, SiriusLog}
 
 /**Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances. */
 object SiriusImpl extends AkkaConfig {
 
-  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostname: String, port: Int,
-                   clusterConfigPath: String): SiriusImpl = {
-
+  def createSirius(requestHandler: RequestHandler,  siriusLog: SiriusLog, hostName: String, port: Int,
+                   clusterConfigPath: String, usePaxos: Boolean) = {
 
     val remoteConfig = ConfigFactory.parseString("""
     akka {
@@ -41,7 +38,7 @@ object SiriusImpl extends AkkaConfig {
          transport = "akka.remote.netty.NettyRemoteTransport"
          netty {
            # if this is set to actual hostname, remote messaging fails... can use empty or the IP address.
-           hostname = """" + hostname + """"
+           hostname = """" + hostName + """"
            port = """ + port + """
          }
        }
@@ -52,8 +49,17 @@ object SiriusImpl extends AkkaConfig {
 
     val allConfig = remoteConfig.withFallback(config)
 
-    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, allConfig), siriusLog, hostname, port,
-      Path.fromString(clusterConfigPath))
+    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, allConfig), siriusLog, hostName, port,
+      Path.fromString(clusterConfigPath), usePaxos)
+  }
+
+  @deprecated("Please use 6 arg createSirius", "7-30-12")
+  def createSirius(requestHandler: RequestHandler,
+                   siriusLog: SiriusLog,
+                   hostname: String,
+                   port: Int,
+                   clusterConfigPath: String): SiriusImpl = {
+    createSirius(requestHandler, siriusLog, hostname, port, clusterConfigPath, false)
   }
 }
 
@@ -61,7 +67,7 @@ object SiriusImpl extends AkkaConfig {
  * A Sirius implementation implemented in Scala using Akka actors.
  */
 class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, siriusLog: SiriusLog, host: String,
-                 port: Int, clusterConfigPath: Path)
+                 port: Int, clusterConfigPath: Path, usePaxos: Boolean = false)
   extends Sirius with AkkaConfig {
 
   //TODO: find better way of building SiriusImpl ...
@@ -148,7 +154,7 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, s
     val siriusId = host + ":" + port
     val supProps = Props(new
         SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, siriusId,
-          clusterConfigPath,false))
+          clusterConfigPath, usePaxos))
     theActorSystem.actorOf(supProps, "sirius")
   }
 }

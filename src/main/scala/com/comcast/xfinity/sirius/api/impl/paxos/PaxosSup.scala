@@ -4,6 +4,7 @@ import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{Props, ActorRef, Actor}
 import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
+import akka.event.Logging
 
 object PaxosSup {
 
@@ -52,11 +53,14 @@ object PaxosSup {
 }
 
 class PaxosSup extends Actor {
-  this: PaxosSup.ChildProvider =>
+    this: PaxosSup.ChildProvider =>
+
+  val log = Logging(context.system, this)
 
   def receive = {
     // Replica messages
     case PaxosSup.Submit(req) =>
+      log.debug("Received event for submission {}", req)
       val command = Command(sender, System.currentTimeMillis(), req)
       replica forward Request(command)
     case r: Request => replica forward r // <-- not used, to be removed later
