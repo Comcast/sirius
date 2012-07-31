@@ -36,6 +36,7 @@ class MembershipITest extends NiceTest with TimedTest {
 
     sirius = SiriusImpl
       .createSirius(new StringRequestHandler(), new DoNothingSiriusLog(), "localhost", 2552, clusterConfigFileName)
+    assert(waitForTrue(sirius.isOnline, 5000, 500), "Sirius took too long to boot (>5s)")
   }
 
   after {
@@ -45,8 +46,6 @@ class MembershipITest extends NiceTest with TimedTest {
 
   describe("a SiriusImpl") {
     it("updates its membershipMap after the cluster config file is changed and checkClusterConfig is invoked.") {
-      assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
-
       val expected1 = sirius.actorSystem.actorFor("akka://some-system@somehost:2552/user/actor1")
       val expected2 = sirius.actorSystem.actorFor("akka://some-system@somehost:2552/user/actor2")
       assert(sirius.getMembership.get.contains(expected1))

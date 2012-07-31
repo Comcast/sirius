@@ -1,6 +1,5 @@
 package com.comcast.xfinity.sirius.itest
 
-import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.ActorSystem
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
@@ -8,12 +7,10 @@ import scalax.file.Path
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.api.impl.SiriusImpl
-import com.comcast.xfinity.sirius.api.impl.membership._
-import org.mockito.Mockito._
-import org.mockito.Matchers._
+import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 
 @RunWith(classOf[JUnitRunner])
-class BootstrapLogITest extends NiceTest {
+class BootstrapLogITest extends NiceTest with TimedTest {
 
   var sirius: SiriusImpl = _
 
@@ -54,8 +51,7 @@ class BootstrapLogITest extends NiceTest {
     stringRequestHandler = new StringRequestHandler()
 
     sirius = new SiriusImpl(stringRequestHandler, actorSystem, logWriter, clusterConfigPath)
-    assert(SiriusItestHelper.waitForInitialization(sirius), "Sirius took too long to initialize")
-
+    assert(waitForTrue(sirius.isOnline, 5000, 500), "Sirius took too long to boot (>5s)")
   }
 
   after {
