@@ -16,7 +16,7 @@ object FullSystemITest {
    * latch so that we can monitor it for completion of events
    */
   class LatchedRequestHandler(expectedTicks: Int) extends RequestHandler {
-    val latch = new CountDownLatch(expectedTicks)
+    var latch = new CountDownLatch(expectedTicks)
 
     def handleGet(key: String): SiriusResult = SiriusResult.none()
 
@@ -32,6 +32,10 @@ object FullSystemITest {
 
     def await(timeout: Long, timeUnit: TimeUnit) {
       latch.await(timeout, timeUnit)
+    }
+
+    def resetLatch(newExpectedTicks: Int) {
+      latch = new CountDownLatch(newExpectedTicks)
     }
   }
 
@@ -54,6 +58,38 @@ object FullSystemITest {
         (event, acc) => foldFun(acc, event)
       )
     }
+  }
+
+  /**
+   * Check equality of writeAheadLogs
+   */
+  def verifyWalsAreEquivalent(expectedSize: Int,
+                 first: SiriusLog, rest: SiriusLog*) {
+
+    val wals = Seq(first) ++ rest
+
+    // Timestamps on OrderedEvents are decided at Decision time, so they are not
+    // consistent across nodes, they can/should probably be pushed down to be the
+    // responsibility of the log
+    def extractEvents(wal: SiriusLog) = wal.foldLeft(List[(Long, NonCommutativeSiriusRequest)]()) {
+      case (acc, OrderedEvent(seq, _, req)) => Tuple2(seq, req) :: acc
+    }
+
+    val walDatas = wals.map(extractEvents(_))
+
+    val areAllSame = walDatas.sliding(2).forall {
+      case Seq(lhs, rhs) => lhs == rhs
+      case Seq(_) => true
+    }
+
+    if (!areAllSame) {
+      assert(false, "Logs did not match: " + wals.map(_ + "\n"))
+    }
+
+    assert(expectedSize == walDatas.head.size,
+      "WALs do not contain all events, " +
+        "expected " + expectedSize + ", " +
+        "but was " + walDatas.head.size)
   }
 }
 
@@ -133,35 +169,44 @@ class FullSystemITest extends NiceTest with TimedTest {
   }
 
 
-  it ("must reach a decision on a series of requests sent to a single node") {
-    // Submit requests
+  it ("must reach a decision on a series of requests when requests are safely " +
+      "set to each node") {
+    val reqHandlers = List(reqHandler1, reqHandler2, reqHandler3)
+
+    // Submit requests to node 1
     sirius1.enqueuePut("hello", "world".getBytes)
     sirius1.enqueueDelete("world")
     sirius1.enqueueDelete("yo")
 
     // Wait for the requests to hit all the handlers
-    List(reqHandler1, reqHandler2, reqHandler3).foreach(_.await(2, TimeUnit.SECONDS))
+    reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
 
     // this is pretty gross, but we don't really have a much better way atm, trevor
     //  has a patch in the works that will make this cool
     Thread.sleep(1000)
 
-    // Timestamps on OrderedEvents are decided at Decision time, so they are not
-    // consistent across nodes, they can/should probably be pushed down to be the
-    // responsibility of the log
-    def extractEvents(wal: SiriusLog) = wal.foldLeft(Set[(Long, NonCommutativeSiriusRequest)]()) {
-      case (acc, OrderedEvent(seq, _, req)) => acc + Tuple2(seq, req)
-    }
-    val wal1Data = extractEvents(wal1)
-    val wal2Data = extractEvents(wal2)
-    val wal3Data = extractEvents(wal3)
+    // verify equivalence
+    verifyWalsAreEquivalent(3, wal1, wal2, wal3)
 
-    // transitive property
-    assert(wal1Data === wal2Data, "Data from nodes 1 and 2 did not match")
-    assert(wal2Data === wal3Data, "Data from nodes 2 and 3 did not match")
+    // send an event to node2
+    reqHandlers.foreach(_.resetLatch(1))
+    sirius2.enqueueDelete("asdf")
+    reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
 
-    // since wal1 == wal2 == wal3, we only need to check wal1's size
-    assert(wal1Data.size == 3, "No data in logs")
+    // see comment above on thread sleep
+    Thread.sleep(500)
+
+    // verify equivalence
+    verifyWalsAreEquivalent(4, wal1, wal2, wal3)
+
+    reqHandlers.foreach(_.resetLatch(1))
+    sirius3.enqueuePut("xyz", "abc".getBytes)
+    reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
+
+    Thread.sleep(500)
+
+    // verify equivalence
+    verifyWalsAreEquivalent(5, wal1, wal2, wal3)
   }
 
 }
