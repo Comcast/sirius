@@ -18,9 +18,32 @@ import java.util.concurrent.Future
 import scalax.file.Path
 import com.comcast.xfinity.sirius.writeaheadlog.{WriteAheadLogSerDe, SiriusFileLog, SiriusLog}
 
-/**Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances. */
+/**
+ * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
+ */
 object SiriusImpl extends AkkaConfig {
 
+  /**
+   * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
+   * ActorSystem and return the created instance.
+   *
+   * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
+   * @param siriusLog the persistence layer to which events should be committed to and replayed from
+   *          note, this parameter may be removed in future refactorings
+   * @param hostName the hostName or IP to which this instance should bind.  It is important that other
+   *          Sirius instances identify this host by this name.  This is passed directly to Akka's
+   *          configuration, for the interested
+   * @param port the port which this instance should bind to.  This is passed directly to Akka's
+   *          configuration, for the interested
+   * @param clusterConfigPath string pointing to the location of this cluster's configuration.  This should
+   *          be a file with Akka style addresses on each line indicating membership. For more information
+   *          see http://doc.akka.io/docs/akka/snapshot/general/addressing.html
+   * @param usePaxos should the underlying implementation use Paxos for ordering events? If true it will,
+   *          if not it will use use a simple monotonically increasing counter, which is good enough
+   *          as long as this instance isn't clustered
+   *
+   * @return A SiriusImpl constructed using the parameters
+   */
   def createSirius(requestHandler: RequestHandler,  siriusLog: SiriusLog, hostName: String, port: Int,
                    clusterConfigPath: String, usePaxos: Boolean) = {
 
@@ -64,18 +87,37 @@ object SiriusImpl extends AkkaConfig {
 }
 
 /**
- * A Sirius implementation implemented in Scala using Akka actors.
+ * A Sirius implementation implemented in Scala built on top of Akka.
+ *
+ * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
+ * @param actorSystem the actorSystem to use to create the Actors for Sirius (Note, this param will likely be
+ *            moved in future refactorings to be an implicit parameter at the end of the argument list)
+ * @param siriusLog the log to be used for persisting events
+ * @param host the host identifying this node (Developers' note, this is only used for creating an MBean and
+ *            siriusId String which is no longer used, we may be able to eliminate it)
+ * @param port port this node is bound to (Developers' note, this is only used for creating an MBean and
+ *            siriusId String which is no longer used, we may be able to eliminate it)
+ * @param clusterConfigPath String pointing to a file containing cluster membership
+ * @param usePaxos a flag indicating to use Paxos (if true) or a naiive monotonically incrementing counter
+ *            for the ordering of events.  Defaults to false if using Scala.
  */
 class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, siriusLog: SiriusLog, host: String,
                  port: Int, clusterConfigPath: Path, usePaxos: Boolean = false)
   extends Sirius with AkkaConfig {
 
+  /**
+   * Same as main constructor except uses a default SiriusFileLog with hardcoded path, default hostName
+   * (the local host name), default port (2552), and no paxos
+   */
   //TODO: find better way of building SiriusImpl ...
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem, clusterConfigPath: Path) =
     this (requestHandler, actorSystem,
       new SiriusFileLog("/var/lib/sirius/xfinityapi/wal.log", // TODO: Abstract this to the app using Sirius.
         new WriteAheadLogSerDe()), InetAddress.getLocalHost.getHostName, SiriusImpl.DEFAULT_PORT, clusterConfigPath)
 
+  /**
+   * Same as main constructor except uses default hostName (the local host name) and default port (2552)
+   */
   def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: SiriusLog, clusterConfigPath: Path) =
     this (requestHandler, actorSystem, walWriter, InetAddress.getLocalHost.getHostName, SiriusImpl.DEFAULT_PORT,
       clusterConfigPath)
@@ -138,13 +180,12 @@ class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, s
   }
 
   def shutdown() {
-    //TODO: Leave cluster
     membershipAgent.close()
     actorSystem.shutdown()
     actorSystem.awaitTermination()
   }
 
-  // XXX: handle for testing
+  // XXX: handle for testing, now that it's getting crowded we should consider alternative patterns
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, host: String,
                                            port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
                                            theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path) = {
