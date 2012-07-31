@@ -29,22 +29,22 @@ class SiriusStateActor(requestHandler: RequestHandler,
     })
   }
   
-  def processSiriusRequest(req: SiriusRequest) {
-    val result = try {
+  def receive = {
+    case req: SiriusRequest =>
+      sender ! processSiriusRequestSafely(req)
+  }
+
+  private def processSiriusRequestSafely(req: SiriusRequest): SiriusResult = {
+    try {
       req match {
         case Get(key) => requestHandler.handleGet(key)
         case Delete(key) => requestHandler.handleDelete(key)
         case Put(key, body) => requestHandler.handlePut(key, body)
       }
     } catch {
-      case t: Throwable =>
-        log.error("Unhandled exception in handling {}: {}", req, t)
-        SiriusResult.error(t)
+      case e: RuntimeException =>
+        log.error("Unhandled exception in handling {}: {}", req, e)
+        SiriusResult.error(e)
     }
-    sender ! result
-  }
-
-  def receive = {
-    case req: SiriusRequest => processSiriusRequest(req)
   }
 }
