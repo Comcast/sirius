@@ -19,11 +19,10 @@ class SiriusFileLog(logPath: String, serDe: WALSerDe) extends SiriusLog {
   /**
    * ${@inheritDoc}
    */
-  override def writeEntry(entry: OrderedEvent): Boolean = {
+  override def writeEntry(entry: OrderedEvent) {
     val rawData: String = serDe.serialize(entry)
     file.append(rawData)
     logger.debug("Wrote event to file " + logPath + ":  " + rawData)
-    true
   }
 
   /**

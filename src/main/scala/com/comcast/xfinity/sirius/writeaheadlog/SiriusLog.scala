@@ -11,9 +11,8 @@ trait SiriusLog extends LogIteratorSource {
    * Write an entry to the log
    *
    * @param OrderedEvent entry the entry to write to the log
-   * @return true if the write was successful, false otherwise
    */
-  def writeEntry(entry: OrderedEvent): Boolean
+  def writeEntry(entry: OrderedEvent)
 
   /**
    * Fold left across the log entries
