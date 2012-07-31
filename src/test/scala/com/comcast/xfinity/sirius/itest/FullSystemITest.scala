@@ -1,10 +1,9 @@
 package com.comcast.xfinity.sirius.itest
 
-import org.scalatest.BeforeAndAfterAll
 import scalax.file.Path
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
-import com.comcast.xfinity.sirius.writeaheadlog.{SiriusLog, SiriusFileLog}
-import com.comcast.xfinity.sirius.api.{Sirius, SiriusResult, RequestHandler}
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
 import java.io.File
 import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
 import java.util.concurrent.{CountDownLatch, TimeUnit}
