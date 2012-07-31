@@ -18,7 +18,7 @@ class SiriusResultTest extends NiceTest {
 
       it("should indicate that it has a value when it has an exception") {
         expect(true) {
-          SiriusResult.error(new Throwable()).hasValue
+          SiriusResult.error(new RuntimeException()).hasValue
         }
       }
     
@@ -43,14 +43,13 @@ class SiriusResultTest extends NiceTest {
         }
       }
       
-      it("should rethrow the exception, wrapped in a RuntimeException," +
-         " when it has an error") {
-        val theException = new Throwable()
+      it("should rethrow the exception when it has an error") {
+        val theException = new RuntimeException()
         try {
           SiriusResult.error(theException).getValue
           assert(false, "Exception should have been thrown")
         } catch {
-          case e: Throwable => assert(theException === e.getCause)
+          case rte: RuntimeException => assert(theException === rte)
         }
       }      
     }

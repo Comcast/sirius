@@ -20,11 +20,13 @@ object SiriusResult {
   def none(): SiriusResult = SiriusResult(Right(None))
   
   /**
-   * Factory method for creating a SiriusResult with an error
-   * 
+   * Factory method for creating a SiriusResult with an error.
+   *
+   * @param rte the RuntimeException to wrap
+   *
    * @return SiriusResult 
    */  
-  def error(throwable: Throwable): SiriusResult = SiriusResult(Left(throwable))
+  def error(rte: RuntimeException): SiriusResult = SiriusResult(Left(rte))
   
 }
 
@@ -36,10 +38,12 @@ object SiriusResult {
  * methods {@link SiriusResult#some()} and {@link SiriusResult#none()}
  */
 // TODO: hide this within the scope of the companion object?
-case class SiriusResult(private val value: Either[Throwable, Option[Object]]) {
+case class SiriusResult(private val value: Either[RuntimeException, Option[Object]]) {
   
   /**
    * Does this result contain a value?
+   *
+   * @return true if this instance wraps a value or exception
    */
   def hasValue: Boolean = value match {
     case Right(None) => false
@@ -54,7 +58,7 @@ case class SiriusResult(private val value: Either[Throwable, Option[Object]]) {
    * @throws IllegalStateException if no such value exists
    */
   def getValue: Object = value match {
-    case Left(throwable) => throw new RuntimeException(throwable)
+    case Left(rte) => throw rte
     case Right(Some(v)) => v
     case Right(None) => throw new IllegalStateException("Result has no value")
   }
