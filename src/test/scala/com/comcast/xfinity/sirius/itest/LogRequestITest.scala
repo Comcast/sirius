@@ -9,10 +9,8 @@ import com.comcast.xfinity.sirius.api.impl.persistence._
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.impl.persistence.RequestLogFromRemote
 import com.comcast.xfinity.sirius.api.impl.persistence.InitiateTransfer
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.{membership, Put, OrderedEvent}
-import membership._
 import org.mockito.Mockito._
 
 
@@ -22,7 +20,6 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
 
   var remoteLogActor: TestActorRef[LogRequestActor] = _
   var paxosProbe : TestProbe = _
-  var siriusInfo: SiriusInfo = _
   var source: LogIteratorSource = _
   var logRequestWrapper: ActorRef = _
   var parentProbe: TestProbe = _
@@ -36,9 +33,7 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
   val localSiriusRef = TestProbe().ref
 
   before {
-    siriusInfo = mock[SiriusInfo]
     source = mock[LogIteratorSource]
-    siriusInfo = mock[SiriusInfo]
     membershipAgent = mock[Agent[Set[ActorRef]]]
     parentProbe = TestProbe()
     stateActorProbe = TestProbe()
