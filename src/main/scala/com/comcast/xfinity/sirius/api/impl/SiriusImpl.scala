@@ -67,12 +67,11 @@ object SiriusImpl extends AkkaConfig {
        }
 
     }""")
-
     val config = ConfigFactory.load("akka.conf")
-
     val allConfig = remoteConfig.withFallback(config)
+    implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
 
-    new SiriusImpl(requestHandler, ActorSystem(SYSTEM_NAME, allConfig), siriusLog, hostName, port,
+    new SiriusImpl(requestHandler, siriusLog, hostName, port,
       Path.fromString(clusterConfigPath), usePaxos)
   }
 
@@ -102,13 +101,12 @@ object SiriusImpl extends AkkaConfig {
  *            for the ordering of events.  Defaults to false if using Scala.
  */
 class SiriusImpl(requestHandler: RequestHandler,
-                 val actorSystem: ActorSystem,
                  siriusLog: SiriusLog,
                  host: String,
                  port: Int,
                  clusterConfigPath: Path,
                  usePaxos: Boolean = false)
-  extends Sirius with AkkaConfig {
+                (implicit val actorSystem: ActorSystem) extends Sirius with AkkaConfig {
 
   val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
@@ -168,9 +166,16 @@ class SiriusImpl(requestHandler: RequestHandler,
   }
 
   def shutdown() {
+    shutdown(false)
+  }
+
+  def shutdown(killActorSystem: Boolean) {
+    supervisor ! Kill
     membershipAgent.close()
-    actorSystem.shutdown()
-    actorSystem.awaitTermination()
+    if (killActorSystem) {
+      actorSystem.shutdown()
+      actorSystem.awaitTermination()
+    }
   }
 
   // XXX: handle for testing, now that it's getting crowded we should consider alternative patterns

@@ -31,9 +31,9 @@ object SiriusImplTest {
                              clusterConfigPath: Path): SiriusImpl = {
 
     // note host and port aren't actually tested
-    new SiriusImpl(handler, actorSystem, siriusLog,
+    new SiriusImpl(handler, siriusLog,
                    InetAddress.getLocalHost.getHostName,
-                   SiriusImpl.DEFAULT_PORT, clusterConfigPath) {
+                   SiriusImpl.DEFAULT_PORT, clusterConfigPath)(actorSystem) {
       
       override def createSiriusSupervisor(_as: ActorSystem, 
           _handler: RequestHandler,
