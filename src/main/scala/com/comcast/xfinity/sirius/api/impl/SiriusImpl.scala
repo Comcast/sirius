@@ -188,9 +188,8 @@ class SiriusImpl(requestHandler: RequestHandler,
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     val info = new SiriusInfo(port, host)
     val admin = new SiriusAdmin(info, mbeanServer)
-    val siriusId = host + ":" + port
     val supProps = Props(new
-        SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, siriusId,
+        SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent,
           clusterConfigPath, usePaxos))
     theActorSystem.actorOf(supProps, theSupName)
   }

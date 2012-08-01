@@ -26,15 +26,14 @@ object SiriusSupervisorTestCompanion {
   def createProbedTestSupervisor(admin: SiriusAdmin,
       handler: RequestHandler,
       siriusLog: SiriusLog,
-      siriusId: String,
       stateProbe: TestProbe,
       persistenceProbe: TestProbe,
       paxosProbe: TestProbe,
       membershipProbe: TestProbe,
       siriusStateAgent: Agent[SiriusState],
       membershipAgent: Agent[Set[ActorRef]],
-      clusterConfigPath: Path, usePaxos: Boolean)(implicit as: ActorSystem) = {
-    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, siriusId, clusterConfigPath, usePaxos) {
+      clusterConfigPath: Path, usePaxos: Boolean)(implicit as: ActorSystem): TestActorRef[SiriusSupervisor] = {
+    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, clusterConfigPath, usePaxos) {
 
       override def createStateActor(_handler: RequestHandler) = stateProbe.ref
 
@@ -49,7 +48,7 @@ object SiriusSupervisorTestCompanion {
 
 
 @RunWith(classOf[JUnitRunner])
-class SiriusSupervisorTest() extends NiceTest {
+class SiriusSupervisorTest extends NiceTest {
 
   var actorSystem: ActorSystem = _
 
@@ -124,7 +123,7 @@ class SiriusSupervisorTest() extends NiceTest {
 
 
     supervisor = SiriusSupervisorTestCompanion.createProbedTestSupervisor(
-        admin, handler, siriusLog, "localhost:100", stateProbe, persistenceProbe, paxosProbe,
+        admin, handler, siriusLog, stateProbe, persistenceProbe, paxosProbe,
         membershipProbe, siriusStateAgent, membershipAgent, clusterConfigPath, false)(actorSystem)
   }
 

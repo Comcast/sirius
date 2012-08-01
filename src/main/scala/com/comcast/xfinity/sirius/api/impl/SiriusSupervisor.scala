@@ -33,7 +33,6 @@ class SiriusSupervisor(admin: SiriusAdmin,
                        siriusLog: SiriusLog,
                        siriusStateAgent: Agent[SiriusState],
                        membershipAgent: Agent[Set[ActorRef]],
-                       siriusId: String,
                        clusterConfigPath: Path,
                        usePaxos: Boolean) extends Actor with AkkaConfig {
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
