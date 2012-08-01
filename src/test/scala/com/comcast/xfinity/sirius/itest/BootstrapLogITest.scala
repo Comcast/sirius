@@ -50,7 +50,13 @@ class BootstrapLogITest extends NiceTest with TimedTest {
 
     stringRequestHandler = new StringRequestHandler()
 
-    sirius = new SiriusImpl(stringRequestHandler, actorSystem, logWriter, clusterConfigPath)
+    sirius = new SiriusImpl(
+      stringRequestHandler,
+      actorSystem,
+      logWriter,
+      "localhost", 2552,
+      clusterConfigPath
+    )
     assert(waitForTrue(sirius.isOnline, 5000, 500), "Sirius took too long to boot (>5s)")
   }
 

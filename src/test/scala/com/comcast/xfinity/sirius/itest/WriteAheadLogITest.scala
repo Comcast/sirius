@@ -34,7 +34,14 @@ class WriteAheadLogITest extends NiceTest with AkkaConfig with TimedTest {
 
     val logWriter: SiriusFileLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
 
-    sirius = new SiriusImpl(new StringRequestHandler(), actorSystem, logWriter, clusterConfigPath)
+    sirius = new SiriusImpl(
+      new StringRequestHandler(),
+      actorSystem,
+      logWriter,
+      "localhost",
+      SiriusImpl.DEFAULT_PORT,
+      clusterConfigPath
+    )
     assert(waitForTrue(sirius.isOnline, 5000, 500), "Sirius took too long to boot (>5s)")
 
     siriusLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())

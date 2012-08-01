@@ -34,8 +34,13 @@ class MembershipITest extends NiceTest with TimedTest {
   before {
     stageFiles()
 
-    sirius = SiriusImpl
-      .createSirius(new StringRequestHandler(), new DoNothingSiriusLog(), "localhost", 2552, clusterConfigFileName)
+    sirius = SiriusImpl.createSirius(
+      new StringRequestHandler(),
+      new DoNothingSiriusLog(),
+      "localhost", 2552,
+      clusterConfigFileName,
+      false
+    )
     assert(waitForTrue(sirius.isOnline, 5000, 500), "Sirius took too long to boot (>5s)")
   }
 

@@ -101,26 +101,14 @@ object SiriusImpl extends AkkaConfig {
  * @param usePaxos a flag indicating to use Paxos (if true) or a naiive monotonically incrementing counter
  *            for the ordering of events.  Defaults to false if using Scala.
  */
-class SiriusImpl(requestHandler: RequestHandler, val actorSystem: ActorSystem, siriusLog: SiriusLog, host: String,
-                 port: Int, clusterConfigPath: Path, usePaxos: Boolean = false)
+class SiriusImpl(requestHandler: RequestHandler,
+                 val actorSystem: ActorSystem,
+                 siriusLog: SiriusLog,
+                 host: String,
+                 port: Int,
+                 clusterConfigPath: Path,
+                 usePaxos: Boolean = false)
   extends Sirius with AkkaConfig {
-
-  /**
-   * Same as main constructor except uses a default SiriusFileLog with hardcoded path, default hostName
-   * (the local host name), default port (2552), and no paxos
-   */
-  //TODO: find better way of building SiriusImpl ...
-  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, clusterConfigPath: Path) =
-    this (requestHandler, actorSystem,
-      new SiriusFileLog("/var/lib/sirius/xfinityapi/wal.log", // TODO: Abstract this to the app using Sirius.
-        new WriteAheadLogSerDe()), InetAddress.getLocalHost.getHostName, SiriusImpl.DEFAULT_PORT, clusterConfigPath)
-
-  /**
-   * Same as main constructor except uses default hostName (the local host name) and default port (2552)
-   */
-  def this(requestHandler: RequestHandler, actorSystem: ActorSystem, walWriter: SiriusLog, clusterConfigPath: Path) =
-    this (requestHandler, actorSystem, walWriter, InetAddress.getLocalHost.getHostName, SiriusImpl.DEFAULT_PORT,
-      clusterConfigPath)
 
   val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)

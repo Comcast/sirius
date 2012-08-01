@@ -17,6 +17,7 @@ import com.comcast.xfinity.sirius.api.SiriusResult
 import java.util.concurrent.TimeUnit
 import scalax.file.Path
 import com.comcast.xfinity.sirius.api.impl.membership._
+import java.net.InetAddress
 
 object SiriusImplTest {
   
@@ -28,7 +29,11 @@ object SiriusImplTest {
                              siriusStateAgent: Agent[SiriusState],
                              membershipAgent: Agent[Set[ActorRef]],
                              clusterConfigPath: Path): SiriusImpl = {
-    new SiriusImpl(handler, actorSystem, siriusLog, clusterConfigPath) {
+
+    // note host and port aren't actually tested
+    new SiriusImpl(handler, actorSystem, siriusLog,
+                   InetAddress.getLocalHost.getHostName,
+                   SiriusImpl.DEFAULT_PORT, clusterConfigPath) {
       
       override def createSiriusSupervisor(_as: ActorSystem, 
           _handler: RequestHandler,
