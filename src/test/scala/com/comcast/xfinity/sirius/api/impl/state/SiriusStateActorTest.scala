@@ -68,6 +68,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         senderProbe.send(testActor, Put(key, body))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
+        assert(!testActor.isTerminated)
       }
     }
 
@@ -98,6 +99,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         senderProbe.send(testActor, Get(key))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
+        assert(!testActor.isTerminated)
       }
     }
 
@@ -128,6 +130,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         senderProbe.send(testActor, Delete(key))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
+        assert(!testActor.isTerminated)
       }
     }
 
