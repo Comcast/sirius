@@ -89,8 +89,6 @@ object SiriusImpl extends AkkaConfig {
  * A Sirius implementation implemented in Scala built on top of Akka.
  *
  * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
- * @param actorSystem the actorSystem to use to create the Actors for Sirius (Note, this param will likely be
- *            moved in future refactorings to be an implicit parameter at the end of the argument list)
  * @param siriusLog the log to be used for persisting events
  * @param host the host identifying this node (Developers' note, this is only used for creating an MBean and
  *            siriusId String which is no longer used, we may be able to eliminate it)
@@ -99,20 +97,24 @@ object SiriusImpl extends AkkaConfig {
  * @param clusterConfigPath String pointing to a file containing cluster membership
  * @param usePaxos a flag indicating to use Paxos (if true) or a naiive monotonically incrementing counter
  *            for the ordering of events.  Defaults to false if using Scala.
+ * @param supName the name given to the top level sirius supervisor on instantiation
+ * @param actorSystem the actorSystem to use to create the Actors for Sirius (Note, this param will likely be
+ *            moved in future refactorings to be an implicit parameter at the end of the argument list)
  */
 class SiriusImpl(requestHandler: RequestHandler,
                  siriusLog: SiriusLog,
                  host: String,
                  port: Int,
                  clusterConfigPath: Path,
-                 usePaxos: Boolean = false)
+                 usePaxos: Boolean = false,
+                 supName: String = "sirius")
                 (implicit val actorSystem: ActorSystem) extends Sirius with AkkaConfig {
 
   val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
 
   val supervisor = createSiriusSupervisor(actorSystem, requestHandler, host, port, siriusLog, siriusStateAgent,
-    membershipAgent, clusterConfigPath)
+    membershipAgent, clusterConfigPath, supName)
 
   def getMembership = {
     val akkaFuture = (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[Set[ActorRef]]]
@@ -181,7 +183,8 @@ class SiriusImpl(requestHandler: RequestHandler,
   // XXX: handle for testing, now that it's getting crowded we should consider alternative patterns
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, host: String,
                                            port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
-                                           theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path) = {
+                                           theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path,
+                                           theSupName: String) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     val info = new SiriusInfo(port, host)
     val admin = new SiriusAdmin(info, mbeanServer)
@@ -189,6 +192,6 @@ class SiriusImpl(requestHandler: RequestHandler,
     val supProps = Props(new
         SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, siriusId,
           clusterConfigPath, usePaxos))
-    theActorSystem.actorOf(supProps, "sirius")
+    theActorSystem.actorOf(supProps, theSupName)
   }
 }

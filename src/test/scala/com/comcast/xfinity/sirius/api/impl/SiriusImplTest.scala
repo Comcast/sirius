@@ -42,8 +42,9 @@ object SiriusImplTest {
           _log: SiriusLog,
           _siriusStateAgent: Agent[SiriusState],
           _membershipAgent: Agent[Set[ActorRef]],
-          _clusterConfigPath: Path
-          ) = supProbe.ref
+          _clusterConfigPath: Path,
+          _supName: String
+          ): ActorRef = supProbe.ref
           
     }
   }
