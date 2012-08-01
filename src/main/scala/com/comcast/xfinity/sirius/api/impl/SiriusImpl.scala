@@ -71,8 +71,8 @@ object SiriusImpl extends AkkaConfig {
     val allConfig = remoteConfig.withFallback(config)
     implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
 
-    new SiriusImpl(requestHandler, siriusLog, hostName, port,
-      Path.fromString(clusterConfigPath), usePaxos)
+    new SiriusImpl(requestHandler, siriusLog, Path.fromString(clusterConfigPath),
+      hostName, port, usePaxos)
   }
 
   @deprecated("Please use 6 arg createSirius", "7-30-12")
@@ -103,9 +103,9 @@ object SiriusImpl extends AkkaConfig {
  */
 class SiriusImpl(requestHandler: RequestHandler,
                  siriusLog: SiriusLog,
-                 host: String,
-                 port: Int,
                  clusterConfigPath: Path,
+                 host: String = InetAddress.getLocalHost.getHostName,
+                 port: Int = 2552,
                  usePaxos: Boolean = false,
                  supName: String = "sirius")
                 (implicit val actorSystem: ActorSystem) extends Sirius with AkkaConfig {
