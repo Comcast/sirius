@@ -45,7 +45,7 @@ class MembershipITest extends NiceTest with TimedTest {
   }
 
   after {
-    sirius.shutdown(true)
+    sirius.shutdown()
     tempFolder.delete()
   }
 

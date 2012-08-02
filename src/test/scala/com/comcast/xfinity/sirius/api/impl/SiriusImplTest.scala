@@ -7,7 +7,6 @@ import akka.util.duration.intToDurationInt
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
-import com.comcast.xfinity.sirius.NiceTest
 import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import org.junit.runner.RunWith
@@ -17,7 +16,7 @@ import com.comcast.xfinity.sirius.api.SiriusResult
 import java.util.concurrent.TimeUnit
 import scalax.file.Path
 import com.comcast.xfinity.sirius.api.impl.membership._
-import java.net.InetAddress
+import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 
 object SiriusImplTest {
   
@@ -50,7 +49,7 @@ object SiriusImplTest {
 
 
 @RunWith(classOf[JUnitRunner])
-class SiriusImplTest extends NiceTest {
+class SiriusImplTest extends NiceTest with TimedTest {
 
   var mockRequestHandler: RequestHandler = _
 
@@ -204,6 +203,19 @@ class SiriusImplTest extends NiceTest {
         underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
 
         assert(!underTest.isOnline);
+      }
+    }
+
+    describe(".shutdown") {
+      it ("must kill off the supervisor, not effecting the ActorSystem") {
+        // XXX: it would be great to test that the agents are shutdown, but we don't have a
+        //      good handle on those right now. I think for now it's ok to handwave over,
+        //      since SiriusImpl's will generally be long lived and the Agent's shouldn't
+        //      have much/any effect if they hang around.  The agent stuff will likely get
+        //      pushed down anyway
+        underTest.shutdown()
+        assert(waitForTrue(underTest.supervisor.isTerminated, 2000, 200), "Supervisor should be terminated")
+        assert(!underTest.actorSystem.isTerminated, "ActorSystem should not be terminated")
       }
     }
 

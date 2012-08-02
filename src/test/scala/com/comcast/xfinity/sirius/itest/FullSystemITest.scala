@@ -162,9 +162,9 @@ class FullSystemITest extends NiceTest with TimedTest {
   }
 
   after {
-    sirius1.shutdown(true)
-    sirius2.shutdown(true)
-    sirius3.shutdown(true)
+    sirius1.shutdown()
+    sirius2.shutdown()
+    sirius3.shutdown()
     tempDir.delete()
   }
 

@@ -25,7 +25,8 @@ object SiriusImpl extends AkkaConfig {
 
   /**
    * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
-   * ActorSystem and return the created instance.
+   * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
+   * shutdown the dependent ActorSystem.
    *
    * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
    * @param siriusLog the persistence layer to which events should be committed to and replayed from
@@ -72,7 +73,16 @@ object SiriusImpl extends AkkaConfig {
     implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
 
     new SiriusImpl(requestHandler, siriusLog, Path.fromString(clusterConfigPath),
-      hostName, port, usePaxos)
+        hostName, port, usePaxos) {
+
+      // we need to override SiriusImpl's shutdown to also shutdown the ActorSystem
+      // XXX: should this be extracted to another class?
+      override def shutdown() {
+        super.shutdown()
+        actorSystem.shutdown()
+        actorSystem.awaitTermination()
+      }
+    }
   }
 
   @deprecated("Please use 6 arg createSirius", "7-30-12")
@@ -167,17 +177,13 @@ class SiriusImpl(requestHandler: RequestHandler,
     new AkkaFutureAdapter(akkaFuture)
   }
 
+  /**
+   * Terminate this instance.  Shuts down all associated Actors.
+   */
   def shutdown() {
-    shutdown(false)
-  }
-
-  def shutdown(killActorSystem: Boolean) {
     supervisor ! Kill
     membershipAgent.close()
-    if (killActorSystem) {
-      actorSystem.shutdown()
-      actorSystem.awaitTermination()
-    }
+    siriusStateAgent.close()
   }
 
   // XXX: handle for testing, now that it's getting crowded we should consider alternative patterns
