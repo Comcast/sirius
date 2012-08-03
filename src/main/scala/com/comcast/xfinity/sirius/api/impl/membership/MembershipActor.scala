@@ -57,8 +57,8 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
   }
 
   private def updateMembership() {
-     val newMembership = createMembership(clusterConfigPath)
-     membershipAgent send newMembership
+    val newMembership = createMembership(clusterConfigPath)
+    membershipAgent send newMembership
   }
 
   /**
