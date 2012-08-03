@@ -16,3 +16,5 @@ atlassian-ide-plugin.xml
 .clover/
 .DS_Store
 *~
+.pydevproject
+*.pyc

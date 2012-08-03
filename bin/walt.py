@@ -317,6 +317,7 @@ if __name__ == "__main__":
         
     if opts.use_md5:
         checksum = check_entry_md5
+        
     if opts.log_line:
         line = parse_log_line(opts.log_line)
     elif opts.pipe_log:
@@ -324,7 +325,7 @@ if __name__ == "__main__":
     if opts.log_line or opts.pipe_log:     
         message = read_protobuf_body(line['line_type'], line['body'], 
                                      protobuf_types)
-        sys.stderr.write(str(message))
+        sys.stdout.write(str(message))
     
     if opts.output_file:     
         try:
