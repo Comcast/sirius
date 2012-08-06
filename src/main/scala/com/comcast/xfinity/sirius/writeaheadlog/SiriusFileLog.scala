@@ -64,6 +64,9 @@ class SiriusFileLog(logPath: String,
 
   /**
    * ${@inheritDoc}
+   *
+   * Will only write in-order events to log.  Attempts to write events with sequence numbers
+   * less than the current sequence number will result in an IllegalArgumentException.
    */
   override def writeEntry(entry: OrderedEvent) {
     if (entry.sequence >= nextPossibleSeq) {
