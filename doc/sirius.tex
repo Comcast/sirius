@@ -128,50 +128,9 @@ The current implementation compacts the log file by reading all each line in the
 %%    Join Algorithm
 %%------------------------------
 \section{Cluster Membership}
-\subsection{Caveats}
-For now we are ignoring several facts of life.  We are assuming messages sent between nodes always are received in a timely manor and are never lost.  Also that Nodes never disappear or leave unexpectedly.
-\subsection{Cluster Definition}
-Let's define $i$ as a node's unique identifier and $M$ as a non-empty set of $i$ representing a list of the cluster's members.
+Cluster membership is maintained by the membership subsystem.  It is this subsystems responsibility for maintaining the Set of all members in the cluster.  This membership is stored in a shared area and is accessible to all local subsystems.  It is an unwritten rule that only the membership subsystem is allowed to modify membership.
 
-\begin{itemize}
-\item Axiom (1) - Cluster $C$ has at least one node.  $C \not= \emptyset$
-\item Axiom (2) - A node $N$ is defined as $\{i,M\}$ where $i$ is a unique id, and $M$ is a set of id's of all  node's in the cluster that $N$ is a member of. 
-\end{itemize}
-
-\subsection{Joining a Cluster}
-if $A$ and $B$ are nodes in two separate clusters who do not intersect, $A join B$ works like this.
-
-
-\begin{enumerate}
-\item $\forall M \epsilon B$ , set $M$  to $M\epsilon A \cup M\epsilon B$
-\item set $M \epsilon A$ to $M\epsilon B$
-
-\end{enumerate}
-
-
-
-
-Here is some pseudo-code that describes how a node might handle the joins:
-
-
-\begin{verbatim}
-     class Node()
-          var id = uniqueId()
-          var members = {self().id}
-          for-ever
-               switch receive()
-                    case {"join_cluster", nodeToJoin}
-                         var newMembers := nodeToJoin.send("join",node,self().members)
-                         self().members := newMembers
-                    case {"join",newMembers}
-                         for-all member in members: self().send("add_members", newMembers)
-                         members ++ newMembers
-                         sender().send("add_members",members)
-                    case {"add_members", newMembers }
-                         members ++  newMembers
-          end-for-ever
-\end{verbatim}
-
-
+\subsection{Implementation}
+Membership is stored in a file which is polled by the membership subsystem. This file contains the Actor Address\footnote{http://doc.akka.io/docs/akka/snapshot/general/addressing.html} of each of the cluster members on new lines.
 
 \end{document}
