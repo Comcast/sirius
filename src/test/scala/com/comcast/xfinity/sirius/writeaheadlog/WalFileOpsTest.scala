@@ -35,12 +35,10 @@ class WalFileOpsTest extends NiceTest with BeforeAndAfterAll {
     tempDir.delete()
   }
 
-  it ("must throw a FileNotFoundException for a nonexistent file") {
+  it ("must return None for a nonexistent file") {
     val fName = new File(tempDir, "doesntexist").getAbsolutePath
 
-    intercept[FileNotFoundException] {
-      underTest.getLastLine(fName)
-    }
+    assert(None === underTest.getLastLine(fName))
   }
 
   it ("must return None for a zero length file") {

@@ -17,4 +17,6 @@ class DoNothingSiriusLog extends SiriusLog {
 
   override def createIterator(logRange: LogRange): CloseableIterator[OrderedEvent] =
     CloseableIterator(Iterator[OrderedEvent]())
+
+  override def getNextSeq = 1L
 }

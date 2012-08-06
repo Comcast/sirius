@@ -20,8 +20,7 @@ class NaiveOrderingActorTest extends NiceTest {
 
 
   def createProbedNaiveOrderingActor(persistenceProbe: TestProbe)(implicit as: ActorSystem) = {
-    TestActorRef(new NaiveOrderingActor(persistenceProbe.ref))
-
+    TestActorRef(new NaiveOrderingActor(persistenceProbe.ref, 1L))
   }
 
   before {
@@ -46,10 +45,12 @@ class NaiveOrderingActorTest extends NiceTest {
     }
 
     it("should increase its internal counter on Put's") {
-      val origCount = underTest.seq
+      val origCount = underTest.nextSeq
       underTestActor ! Put("key", "body".getBytes)
-      val OrderedEvent(finalCount, _, _) = persistenceProbe.receiveOne(5 seconds)
-      assertTrue(origCount < finalCount)
+
+      // wait for event to go through
+      persistenceProbe.receiveOne(5 seconds)
+      assertTrue(origCount < underTest.nextSeq)
     }
 
     it("should forward Delete's to the persistence actor") {
@@ -60,10 +61,12 @@ class NaiveOrderingActorTest extends NiceTest {
     }
 
     it("should increase its internal counter on Delete's") {
-      val origCount = underTest.seq
+      val origCount = underTest.nextSeq
       underTestActor ! Delete("key")
-      val OrderedEvent(finalCount, _, _) = persistenceProbe.receiveOne(5 seconds)
-      assertTrue(origCount < finalCount)
+
+      // wait for event to go through
+      persistenceProbe.receiveOne(5 seconds)
+      assertTrue(origCount < underTest.nextSeq)
     }
 
   }

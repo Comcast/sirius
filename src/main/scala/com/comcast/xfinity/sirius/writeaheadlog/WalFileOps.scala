@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-import java.io.RandomAccessFile
+import java.io.{File, RandomAccessFile}
 
 /**
  * Service class for raw file operations on SiriusFileLogs
@@ -12,14 +12,23 @@ class WalFileOps {
 
   /**
    * Reads the last line from the file specified by fileName.
-   * This file must exist.
+   * Returns None if file does not exist, but does not create the file.
    *
    * @param fileName the file to read the last line from, must exist
    *
    * @return None if there is no content, or Some(result) if there is
    */
   def getLastLine(fileName: String): Option[String] = {
-    val raf = new RandomAccessFile(fileName, "r")
+    val file = new File(fileName)
+    if (!file.exists) {
+      None
+    } else {
+      readLastLine(file)
+    }
+  }
+
+  private def readLastLine(file: File): Option[String] = {
+    val raf = new RandomAccessFile(file, "r")
     try {
       if (raf.length() == 0) {
         None

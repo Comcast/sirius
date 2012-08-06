@@ -39,7 +39,7 @@ object SiriusSupervisorTestCompanion {
 
       override def createPersistenceActor(_state: ActorRef, _writer: SiriusLog) = persistenceProbe.ref
 
-      override  def createOrderingActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]], usePaxos: Boolean) = paxosProbe.ref
+      override  def createOrderingActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]], startingSeq: Long, usePaxos: Boolean) = paxosProbe.ref
 
       override def createMembershipActor(_membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path) = membershipProbe.ref
     })

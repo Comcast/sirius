@@ -58,6 +58,8 @@ object FullSystemITest {
         (event, acc) => foldFun(acc, event)
       )
     }
+
+    def getNextSeq = 1L
   }
 
   /**
