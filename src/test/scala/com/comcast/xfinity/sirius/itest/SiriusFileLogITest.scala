@@ -3,6 +3,8 @@ package com.comcast.xfinity.sirius.itest
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.writeaheadlog.{RangedSiriusEventIterator, CloseableSiriusEventIterator, WALSerDe, SiriusFileLog}
 import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, EntireLog}
+import org.mockito.{Matchers, Mockito}
+import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete}
 
 class SiriusFileLogITest extends NiceTest {
 
@@ -12,6 +14,7 @@ class SiriusFileLogITest extends NiceTest {
 
   before {
     mockSerDe = mock[WALSerDe]
+    Mockito.doReturn(OrderedEvent(1, 1, Delete("A"))).when(mockSerDe).deserialize(Matchers.any[String])
     log = new SiriusFileLog(filename, mockSerDe)
   }
 

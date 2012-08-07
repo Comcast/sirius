@@ -46,6 +46,7 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
 
   override def afterAll {
     as.shutdown()
+    as.awaitTermination()
   }
 
   describe("The Paxos subsystem") {

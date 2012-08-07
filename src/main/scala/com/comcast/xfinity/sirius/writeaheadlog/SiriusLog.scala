@@ -21,4 +21,6 @@ trait SiriusLog extends LogIteratorSource {
    */
   def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T
 
+  def getNextSeq: Long
+
 }

@@ -8,7 +8,7 @@ import paxos.{PaxosSup, Replica, NaiveOrderingActor}
 import persistence._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.writeaheadlog.{LogIteratorSource, SiriusLog}
+import com.comcast.xfinity.sirius.writeaheadlog.{SiriusFileLog, LogIteratorSource, SiriusLog}
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -40,7 +40,7 @@ class SiriusSupervisor(admin: SiriusAdmin,
   /* Startup child actors. */
   private[impl] var stateActor = createStateActor(requestHandler)
   private[impl] var persistenceActor = createPersistenceActor(stateActor, siriusLog)
-  private[impl] var orderingActor = createOrderingActor(persistenceActor, membershipAgent, usePaxos)
+  private[impl] var orderingActor = createOrderingActor(persistenceActor, membershipAgent, siriusLog.getNextSeq, usePaxos)
   private[impl] var logRequestActor =
     createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, self, persistenceActor, membershipAgent)
   private[impl] var membershipActor = createMembershipActor(membershipAgent, clusterConfigPath)
@@ -116,14 +116,15 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: SiriusLog) =
     context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)), "persistence")
 
-  private[impl] def createOrderingActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]], usePaxos: Boolean) = {
-    // TODO: for either of the below, we need a way of passing in the sequence number for which they
-    //    should start delegating sequence numbers, else we'll always start at 1
+  private[impl] def createOrderingActor(persistenceActor: ActorRef,
+                                        agent: Agent[Set[ActorRef]],
+                                        startingSeq: Long,
+                                        usePaxos: Boolean) = {
     if (usePaxos) {
-      val siriusPaxosAdapter = new SiriusPaxosAdapter(agent, 1, persistenceActor)
+      val siriusPaxosAdapter = new SiriusPaxosAdapter(agent, startingSeq, persistenceActor)
       context.actorOf(siriusPaxosAdapter.paxosSubsystemProps, "paxos")
     } else {
-      context.actorOf(Props(new NaiveOrderingActor(persistenceActor)), "paxos")
+      context.actorOf(Props(new NaiveOrderingActor(persistenceActor, startingSeq)), "paxos")
     }
   }
 

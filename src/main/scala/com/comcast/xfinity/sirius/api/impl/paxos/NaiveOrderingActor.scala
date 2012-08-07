@@ -12,11 +12,8 @@ import akka.actor.{Actor, ActorRef}
  * messages. Behaviour for other messages is undefined.
  *
  */
-class NaiveOrderingActor(val persistenceActor: ActorRef) extends Actor {
+class NaiveOrderingActor(val persistenceActor: ActorRef, var nextSeq: Long) extends Actor {
   private val logger = Logging(context.system, this)
-
-  var seq: Long = 0L
-
 
   def receive = {
     case put: Put => processRequest(put)
@@ -27,9 +24,8 @@ class NaiveOrderingActor(val persistenceActor: ActorRef) extends Actor {
   }
 
   private def processRequest(req: NonCommutativeSiriusRequest) {
-    seq = seq + 1
-    persistenceActor forward OrderedEvent(seq, System.currentTimeMillis(), req)
-
+    persistenceActor forward OrderedEvent(nextSeq, System.currentTimeMillis(), req)
+    nextSeq = nextSeq + 1
   }
 
 }
