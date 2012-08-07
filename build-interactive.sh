@@ -36,7 +36,7 @@ run mkdir -p $distdir
 
 run mkdir $distdir/bin
 run cp $targetdir/sirius.jar $distdir/bin/
-run cp -p $base/src/main/bin/* $distdir/bin/
+run cp -pr $base/src/main/bin/* $distdir/bin/
 
 run mkdir $distdir/lib
 run cp $targetdir/dependency/*.jar $distdir/lib
