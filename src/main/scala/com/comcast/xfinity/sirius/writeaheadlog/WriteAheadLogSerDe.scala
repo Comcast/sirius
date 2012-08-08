@@ -59,13 +59,31 @@ class WriteAheadLogSerDe extends WALSerDe with Checksum with Base64PayloadCodec 
       throw new SiriusChecksumException("Checksum does not match for entry: \n" + checksum +  data)
   }
 
-  private def orderedEventOfString(str: String) = str.split("\\|") match {
-    case Array("", "PUT", key, seq, ts, payload) =>
+  // note that quickSplit produces a backwards list
+  private def orderedEventOfString(str: String) = (quickSplit(str, '|'): @unchecked) match {
+    case List(payload, ts, seq, key, "PUT", "") =>
       // XXX: payload may not be None
       OrderedEvent(seq.toLong, parseTimestamp(ts), Put(key, decodePayload(payload).get))
-    case Array("", "DELETE", key, seq, ts, _) =>
+    case List(_, ts, seq, key, "DELETE", "") =>
       OrderedEvent(seq.toLong, parseTimestamp(ts), Delete(key))
   }
+
+  // Significantly more performant version of split for splitting on a single char
+  // returns the resultant splits in reverse order, we could reverse this, but this
+  // function is single use, and on a pretty intense performance path
+  private def quickSplit(subject: String,
+                 delim: Int,
+                 accum: List[String] = Nil): List[String] =
+    subject.indexOf(delim) match {
+      case -1 => subject :: accum
+      case idx =>
+        quickSplit(
+            subject.substring(idx + 1),
+            delim,
+            subject.substring(0, idx) :: accum
+        )
+    }
+
 
   def isKeyValid(key: String) = key.forall(c => !c.isWhitespace && c != '|') 
 }
