@@ -44,9 +44,11 @@ object FullSystemITest {
    */
   class InMemoryLog extends SiriusLog {
     var entries = List[OrderedEvent]()
+    var nextSeq = 1L
 
     def writeEntry(entry: OrderedEvent) {
       entries = entry :: entries
+      nextSeq = entry.sequence + 1
     }
 
     def createIterator(logRange: LogRange) = {
@@ -59,7 +61,7 @@ object FullSystemITest {
       )
     }
 
-    def getNextSeq = 1L
+    def getNextSeq = nextSeq
   }
 
   /**

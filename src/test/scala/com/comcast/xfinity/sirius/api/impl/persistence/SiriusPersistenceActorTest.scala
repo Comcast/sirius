@@ -11,6 +11,7 @@ import org.mockito.Matchers._
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Put, Delete}
 import akka.agent.Agent
+import org.mockito.Matchers
 
 class SiriusPersistenceActorTest extends NiceTest {
 
@@ -44,6 +45,8 @@ class SiriusPersistenceActorTest extends NiceTest {
     }
 
     it("should forward Put's to the state actor") {
+      when(mockSiriusLog.getNextSeq).thenReturn(0)
+
       val put = Put("key", "body".getBytes)
       val event = OrderedEvent(0L, 0L, put)
 
@@ -54,6 +57,8 @@ class SiriusPersistenceActorTest extends NiceTest {
     }
 
     it("should forward Delete's to the state actor") {
+      when(mockSiriusLog.getNextSeq).thenReturn(0)
+
       val delete = Delete("key")
       val event = OrderedEvent(0L, 0L, delete)
 
@@ -61,6 +66,62 @@ class SiriusPersistenceActorTest extends NiceTest {
       testStateWorkerProbe.expectMsg(delete)
 
       verify(mockSiriusLog, times(1)).writeEntry(event)
+    }
+
+    it("should write two in-order events to the log") {
+      when(mockSiriusLog.getNextSeq).thenReturn(0).thenReturn(1)
+
+      val delete = Delete("key")
+      val event1 = OrderedEvent(0L, 0L, delete)
+      val event2 = OrderedEvent(1L, 0L, delete)
+
+      underTestActor ! event1
+      underTestActor ! event2
+
+      verify(mockSiriusLog, times(2)).writeEntry(Matchers.any[OrderedEvent])
+    }
+
+    it("should buffer out-of-order events until they can be written") {
+      val delete = Delete("key")
+      val event1 = OrderedEvent(1L, 0L, delete)
+      val event2 = OrderedEvent(2L, 0L, delete)
+      val event3 = OrderedEvent(0L, 0L, delete)
+
+      when(mockSiriusLog.getNextSeq).thenReturn(0)
+      underTestActor ! event1
+      underTestActor ! event2
+
+      // no writes happening
+      verify(mockSiriusLog, times(0)).writeEntry(Matchers.any[OrderedEvent])
+
+      when(mockSiriusLog.getNextSeq).thenReturn(0).thenReturn(1).thenReturn(2)
+      underTestActor ! event3
+      // all three writes should go in
+      verify(mockSiriusLog, times(3)).writeEntry(Matchers.any[OrderedEvent])
+
+      assert(underTestActor.underlyingActor.orderedEventBuffer.isEmpty, "event buffer is not empty")
+    }
+
+    it("should ignore events with seq < nextSseq") {
+      val delete = Delete("key")
+      val event1 = OrderedEvent(0L, 0L, delete)
+      val event2 = OrderedEvent(1L, 0L, delete)
+      val event3 = OrderedEvent(0L, 0L, delete)
+
+      when(mockSiriusLog.getNextSeq).thenReturn(0).thenReturn(1).thenReturn(2)
+      underTestActor ! event1
+      underTestActor ! event2
+
+      // events 1 and 2 were written
+      verify(mockSiriusLog, times(2)).writeEntry(Matchers.any[OrderedEvent])
+
+      underTestActor ! event3
+
+      // no new events written
+      verify(mockSiriusLog, times(2)).writeEntry(Matchers.any[OrderedEvent])
+
+      // event was not stored in buffer
+      assert(underTestActor.underlyingActor.orderedEventBuffer.isEmpty, "event buffer is not empty")
     }
   }
 
