@@ -57,7 +57,24 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val leaderProbe = TestProbe()
       val acceptorProbes = Set(TestProbe(), TestProbe(), TestProbe())
       val replicaProbes = Set(TestProbe(), TestProbe(), TestProbe())
-      println(acceptorProbes)
+
+      val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
+      val commander = TestActorRef(new Commander(leaderProbe.ref,
+                                   acceptorProbes.map(_.ref),
+                                   replicaProbes.map(_.ref),
+                                   pvalue))
+
+      acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
+
+      replicaProbes.foreach(_.expectMsg(Decision(pvalue.slotNum, pvalue.proposedCommand)))
+      assert(commander.isTerminated)
+    }
+
+    it ("must be able to make progress as a forever alone") {
+      val leaderProbe = TestProbe()
+      val acceptorProbes = Set(TestProbe())
+      val replicaProbes = Set(TestProbe())
+
       val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),

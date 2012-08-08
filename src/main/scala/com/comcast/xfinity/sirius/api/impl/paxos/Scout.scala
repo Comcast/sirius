@@ -5,7 +5,8 @@ import akka.util.duration._
 import akka.actor.{ReceiveTimeout, Actor, ActorRef}
 
 class Scout(leader: ActorRef, acceptors: Set[ActorRef], ballot: Ballot) extends Actor {
-  var waitFor = acceptors
+
+  var decidedAcceptors = Set[ActorRef]()
   var pvalues = Set[PValue]()
 
   acceptors.foreach(
@@ -17,8 +18,10 @@ class Scout(leader: ActorRef, acceptors: Set[ActorRef], ballot: Ballot) extends 
   def receive = {
     case Phase1B(acceptor, theirBallot, theirPvals) if theirBallot == ballot =>
       pvalues ++= theirPvals
-      waitFor -= acceptor
-      if (waitFor.size < acceptors.size / 2) {
+      if (acceptors.contains(acceptor)) {
+        decidedAcceptors += acceptor
+      }
+      if (decidedAcceptors.size > acceptors.size / 2) {
         leader ! Adopted(ballot, pvalues)
         context.stop(self)
       }

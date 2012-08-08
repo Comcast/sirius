@@ -77,5 +77,19 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
       leaderProbe.expectMsg(Adopted(ballot, acceptor1sPValues ++ acceptor2sPValues))
       assert(scout.isTerminated)
     }
+
+    it ("must be able to make progress as a forever alone") {
+      val leaderProbe = TestProbe()
+      val acceptorProbe = TestProbe()
+      val ballot = Ballot(1, "a")
+      val scout = TestActorRef(new Scout(leaderProbe.ref, Set(acceptorProbe.ref), ballot))
+
+      assert(Set[PValue]() === scout.underlyingActor.pvalues)
+
+      val acceptorsPValues = Set(PValue(Ballot(0, "a"), 1, Command(null, 1, Delete("2"))))
+      scout ! Phase1B(acceptorProbe.ref, ballot, acceptorsPValues)
+      leaderProbe.expectMsg(Adopted(ballot, acceptorsPValues))
+      assert(scout.isTerminated)
+    }
   }
 }
