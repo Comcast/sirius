@@ -6,7 +6,6 @@ import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import paxos.PaxosMessages.PaxosMessage
 import paxos.{PaxosSup, Replica, NaiveOrderingActor}
 import persistence._
-import com.comcast.xfinity.sirius.api.impl.state.SiriusStateActor
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.writeaheadlog.{SiriusFileLog, LogIteratorSource, SiriusLog}
 import akka.actor.Actor
@@ -16,6 +15,7 @@ import akka.agent.Agent
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import scalax.file.Path
+import state.{StateSup, SiriusStateActor}
 
 object SiriusSupervisor {
 
@@ -38,11 +38,10 @@ class SiriusSupervisor(admin: SiriusAdmin,
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
   private val DEFAULT_CHUNK_SIZE = 100 // TODO make chunk size configurable
   /* Startup child actors. */
-  private[impl] var stateActor = createStateActor(requestHandler)
-  private[impl] var persistenceActor = createPersistenceActor(stateActor, siriusLog)
-  private[impl] var orderingActor = createOrderingActor(persistenceActor, membershipAgent, siriusLog.getNextSeq, usePaxos)
+  private[impl] var stateSup = createStateSup(requestHandler, siriusLog, siriusStateAgent)
+  private[impl] var orderingActor = createOrderingActor(stateSup, membershipAgent, siriusLog.getNextSeq, usePaxos)
   private[impl] var logRequestActor =
-    createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, self, persistenceActor, membershipAgent)
+    createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, self, stateSup, membershipAgent)
   private[impl] var membershipActor = createMembershipActor(membershipAgent, clusterConfigPath)
 
 
@@ -99,7 +98,7 @@ class SiriusSupervisor(admin: SiriusAdmin,
       } else {
         orderingActor forward delete
       }
-    case get: Get => stateActor forward get
+    case get: Get => stateSup forward get
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case paxosMessage: PaxosMessage => orderingActor forward paxosMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
@@ -109,12 +108,12 @@ class SiriusSupervisor(admin: SiriusAdmin,
     case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
-  // hooks for testing
-  private[impl] def createStateActor(theRequestHandler: RequestHandler) =
-    context.actorOf(Props(new SiriusStateActor(theRequestHandler, siriusStateAgent)), "state")
 
-  private[impl] def createPersistenceActor(theStateActor: ActorRef, theLogWriter: SiriusLog) =
-    context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)), "persistence")
+  // hooks for testing
+  private[impl] def createStateSup(theRequestHandler: RequestHandler,
+                                   theLog: SiriusLog,
+                                   theStateAgent: Agent[SiriusState]) =
+    context.actorOf(Props(StateSup(theRequestHandler, theLog, theStateAgent)))
 
   private[impl] def createOrderingActor(persistenceActor: ActorRef,
                                         agent: Agent[Set[ActorRef]],
