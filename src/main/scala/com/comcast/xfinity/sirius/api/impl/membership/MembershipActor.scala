@@ -72,7 +72,10 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
     val lines = clusterConfigPath.lines(NewLine, includeTerminator = false)
     lines.foldLeft(Set[ActorRef]())(
       (membership: Set[ActorRef], actorPath: String) =>
-        membership + context.actorFor(actorPath)
+        if (actorPath.charAt(0) == '#')
+          membership
+        else
+          membership + context.actorFor(actorPath)
     )
   }
 
