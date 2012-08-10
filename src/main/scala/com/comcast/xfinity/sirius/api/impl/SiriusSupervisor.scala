@@ -2,7 +2,6 @@ package com.comcast.xfinity.sirius.api.impl
 
 import membership._
 import org.slf4j.LoggerFactory
-import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import paxos.PaxosMessages.PaxosMessage
 import paxos.{ PaxosSup, Replica, NaiveOrderingActor }
 import persistence._
@@ -31,19 +30,17 @@ object SiriusSupervisor {
     val membershipActor: ActorRef
     val siriusStateAgent: Agent[SiriusState]
     val usePaxos: Boolean
-    val admin: SiriusAdmin
   }
 
   /**
-   * @param admin Interface with administrative cruft on it. 
    * @param requestHandler User implemented RequestHandler.
    * @param siriusLog Interface into the Sirius persistent log.
    * @param siriusStateAgent Keeps track of the overall initialization state of Sirius.
    * @param membershipAgent Keeps track of the members of the Sirius cluster.
    * @param clusterConfigPath Path to a static file containing the cluster members. 
-   * @pararm usePaxos True if we should use Paxos for ordering, false if we just use our naieve single node counter.
+   * @param usePaxos True if we should use Paxos for ordering, false if we just use our naieve single node counter.
    */
-  def apply(_admin: SiriusAdmin,
+  def apply(
     _requestHandler: RequestHandler,
     _siriusLog: SiriusLog,
     _siriusStateAgent: Agent[SiriusState],
@@ -54,7 +51,6 @@ object SiriusSupervisor {
     new SiriusSupervisor with DependencyProvider {
       val siriusStateAgent = _siriusStateAgent
       val usePaxos = _usePaxos
-      val admin = _admin
       
       val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, _siriusStateAgent)), "state")
       val membershipActor = context.actorOf(Props(new MembershipActor(_membershipAgent, _siriusStateAgent, _clusterConfigPath)), "membership")
@@ -78,16 +74,6 @@ object SiriusSupervisor {
 class SiriusSupervisor() extends Actor with AkkaConfig {
   this: SiriusSupervisor.DependencyProvider =>
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
-
-  override def preStart() {
-    super.preStart()
-    admin.registerMbeans()
-  }
-
-  override def postStop() {
-    super.postStop()
-    admin.unregisterMbeans()
-  }
 
   val initSchedule = context.system.scheduler
     .schedule(Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest)

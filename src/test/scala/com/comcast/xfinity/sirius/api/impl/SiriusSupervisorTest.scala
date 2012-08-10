@@ -37,7 +37,6 @@ class SiriusSupervisorTest extends NiceTest {
   var _siriusStateAgent: Agent[SiriusState] = _
 
   var handler: RequestHandler = _
-  var _admin: SiriusAdmin = _
   var siriusLog: SiriusLog = _
   var siriusState: SiriusState = _
   var clusterConfigPath: Path = _
@@ -54,7 +53,6 @@ class SiriusSupervisorTest extends NiceTest {
 
     //setup mocks
     handler = mock[RequestHandler]
-    _admin = mock[SiriusAdmin]
     siriusLog = mock[SiriusLog]
     clusterConfigPath = mock[Path]
 
@@ -98,7 +96,6 @@ class SiriusSupervisorTest extends NiceTest {
     supervisor = TestActorRef(new SiriusSupervisor with SiriusSupervisor.DependencyProvider {
       val siriusStateAgent: Agent[SiriusState] = _siriusStateAgent
       val usePaxos: Boolean = false
-      val admin: SiriusAdmin = _admin
       
       val stateSup: ActorRef = stateProbe.ref
       val membershipActor: ActorRef = membershipProbe.ref
