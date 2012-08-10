@@ -8,6 +8,7 @@ import java.io.File
 import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import com.comcast.xfinity.sirius.api.impl.{NonCommutativeSiriusRequest, OrderedEvent, SiriusImpl}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object FullSystemITest {
 
@@ -147,16 +148,18 @@ class FullSystemITest extends NiceTest with TimedTest {
     // to move this out once we abstract the actor system
     // stuff out of sirius
     def bootNode(handler: RequestHandler, wal: SiriusLog, port: Int) = {
+      val siriusConfig = new SiriusConfiguration()
+      siriusConfig.host = "localhost"
+      siriusConfig.port = port
+      siriusConfig.clusterConfigPath = membershipFile.getAbsolutePath
+      
       val sirius = SiriusImpl.createSirius(
         handler,
-        wal,
-        "localhost", port,
-        membershipFile.getAbsolutePath,
-        true
+        siriusConfig,
+        wal
       )
 
-      assert(waitForTrue(sirius.isOnline, 2000, 500),
-        "Sirius Node failed to come up within alloted 2 seconds")
+      assert(waitForTrue(sirius.isOnline, 2000, 500), "Sirius Node failed to come up within alloted 2 seconds")
 
       sirius
     }

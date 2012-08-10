@@ -8,7 +8,7 @@ import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.pattern.ask
-import akka.dispatch.{Future => AkkaFuture}
+import akka.dispatch.{ Future => AkkaFuture }
 import membership._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
@@ -16,13 +16,84 @@ import com.typesafe.config.ConfigFactory
 import akka.actor._
 import java.util.concurrent.Future
 import scalax.file.Path
-import com.comcast.xfinity.sirius.writeaheadlog.{WriteAheadLogSerDe, SiriusFileLog, SiriusLog}
+import com.comcast.xfinity.sirius.writeaheadlog.{ WriteAheadLogSerDe, SiriusFileLog, SiriusLog }
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
  */
 object SiriusImpl extends AkkaConfig {
 
+  /**
+   * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
+   * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
+   * shutdown the dependent ActorSystem.
+   *
+   * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
+   * @param a SiriusConfiguration containing configuration info needed for this node.  @see SiriusConfiguration
+   * for info on needed config.
+   *
+   * @return A SiriusImpl constructed using the parameters
+   */
+  
+  def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
+    val log = SiriusFileLog(siriusConfig.logLocation)
+    createSirius(requestHandler, siriusConfig, log)
+  }
+  
+  /**
+   * USE ONLY FOR TESTING HOOK WHEN YOU NEED TO MOCK OUT A LOG.  
+   * Real code should use the two argument factory method.  
+   * 
+   * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
+   * @param a SiriusConfiguration containing configuration info needed for this node.  @see SiriusConfiguration
+   * for info on needed config.
+   * @param siriusLog the persistence layer to which events should be committed to and replayed from.
+   *
+   * @return A SiriusImpl constructed using the parameters
+   */
+  def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration, siriusLog: SiriusLog): SiriusImpl = {
+    val remoteConfig = ConfigFactory.parseString("""
+    akka {
+      remote {
+         # If this is "on", Akka will log all outbound messages at DEBUG level, if off then
+         #they are not logged
+         log-sent-messages = off
+
+         # If this is "on", Akka will log all inbound messages at DEBUG level, if off then they are not logged
+         log-received-messages = off
+
+
+         transport = "akka.remote.netty.NettyRemoteTransport"
+         netty {
+           # if this is set to actual hostname, remote messaging fails... can use empty or the IP address.
+           hostname = """" + siriusConfig.host + """"
+           port = """ + siriusConfig.port + """
+         }
+       }
+
+    }""")
+    val config = ConfigFactory.load("akka.conf")
+    val allConfig = remoteConfig.withFallback(config)
+    implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
+
+    val admin = createAdmin(siriusConfig.host, siriusConfig.port)
+    admin.registerMbeans()
+
+    new SiriusImpl(requestHandler, siriusLog, Path.fromString(siriusConfig.clusterConfigPath),
+      siriusConfig.host, siriusConfig.port, siriusConfig.usePaxos) {
+
+      // we need to override SiriusImpl's shutdown to also shutdown the ActorSystem
+      // XXX: should this be extracted to another class?
+      override def shutdown() {
+        super.shutdown()
+        actorSystem.shutdown()
+        actorSystem.awaitTermination()
+        admin.unregisterMbeans()
+      }
+    }
+
+  }
   /**
    * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
    * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
@@ -45,8 +116,9 @@ object SiriusImpl extends AkkaConfig {
    *
    * @return A SiriusImpl constructed using the parameters
    */
-  def createSirius(requestHandler: RequestHandler,  siriusLog: SiriusLog, hostName: String, port: Int,
-                   clusterConfigPath: String, usePaxos: Boolean) = {
+  @deprecated("Please use 2 arg version", "8-10-12")
+  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
+    clusterConfigPath: String, usePaxos: Boolean) = {
 
     val remoteConfig = ConfigFactory.parseString("""
     akka {
@@ -74,9 +146,9 @@ object SiriusImpl extends AkkaConfig {
 
     val admin = createAdmin(hostName, port)
     admin.registerMbeans()
-        
+
     new SiriusImpl(requestHandler, siriusLog, Path.fromString(clusterConfigPath),
-        hostName, port, usePaxos) {
+      hostName, port, usePaxos) {
 
       // we need to override SiriusImpl's shutdown to also shutdown the ActorSystem
       // XXX: should this be extracted to another class?
@@ -89,19 +161,19 @@ object SiriusImpl extends AkkaConfig {
     }
     
   }
-  
+
   private def createAdmin(host: String, port: Int) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     val info = new SiriusInfo(port, host)
     new SiriusAdmin(info, mbeanServer)
   }
   
-  @deprecated("Please use 6 arg createSirius", "7-30-12")
+  @deprecated("Please use 2 arg version", "7-30-12")
   def createSirius(requestHandler: RequestHandler,
-                   siriusLog: SiriusLog,
-                   hostname: String,
-                   port: Int,
-                   clusterConfigPath: String): SiriusImpl = {
+    siriusLog: SiriusLog,
+    hostname: String,
+    port: Int,
+    clusterConfigPath: String): SiriusImpl = {
     createSirius(requestHandler, siriusLog, hostname, port, clusterConfigPath, false)
   }
 }
@@ -123,13 +195,12 @@ object SiriusImpl extends AkkaConfig {
  *            moved in future refactorings to be an implicit parameter at the end of the argument list)
  */
 class SiriusImpl(requestHandler: RequestHandler,
-                 siriusLog: SiriusLog,
-                 clusterConfigPath: Path,
-                 host: String = InetAddress.getLocalHost.getHostName,
-                 port: Int = 2552,
-                 usePaxos: Boolean = false,
-                 supName: String = "sirius")
-                (implicit val actorSystem: ActorSystem) extends Sirius with AkkaConfig {
+  siriusLog: SiriusLog,
+  clusterConfigPath: Path,
+  host: String = InetAddress.getLocalHost.getHostName,
+  port: Int = 2552,
+  usePaxos: Boolean = false,
+  supName: String = "sirius")(implicit val actorSystem: ActorSystem) extends Sirius with AkkaConfig {
 
   val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
@@ -155,8 +226,7 @@ class SiriusImpl(requestHandler: RequestHandler,
     (
       (siriusStateSnapshot.stateActorState == SiriusState.StateActorState.Initialized) &&
       (siriusStateSnapshot.membershipActorState == SiriusState.MembershipActorState.Initialized) &&
-      (siriusStateSnapshot.persistenceState == SiriusState.PersistenceState.Initialized)
-    )
+      (siriusStateSnapshot.persistenceState == SiriusState.PersistenceState.Initialized))
 
   }
 
@@ -199,11 +269,11 @@ class SiriusImpl(requestHandler: RequestHandler,
 
   // XXX: handle for testing, now that it's getting crowded we should consider alternative patterns
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, host: String,
-                                           port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
-                                           theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path,
-                                           theSupName: String) = {
+    port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
+    theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path,
+    theSupName: String) = {
     val supProps = Props(SiriusSupervisor(theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent,
-          clusterConfigPath, usePaxos))
+      clusterConfigPath, usePaxos))
     theActorSystem.actorOf(supProps, theSupName)
   }
 }
