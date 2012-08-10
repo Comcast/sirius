@@ -4,31 +4,29 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.agent.Agent
 import akka.actor.{Props, ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonCommutativeSiriusRequest}
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.RequestPerformed
 import akka.util.duration._
 import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestLatch, TestProbe}
 import akka.dispatch.Await
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Decision, RequestPerformed}
 
 
 object PaxosITest {
   class TestNode(membership: Agent[Set[ActorRef]], decisionLatch: TestLatch)(implicit as: ActorSystem) {
-    var decisions = Set[(Long, NonCommutativeSiriusRequest)]()
+    var decisions = Set[Decision]()
 
     val paxosSup = as.actorOf(Props(
       PaxosSup(membership, 1, {
-        case decision if decisions.contains(decision) =>
-          false
-        case decision =>
+        case decision if !decisions.contains(decision) =>
           decisions += decision
           decisionLatch.countDown()
-          true
+        case decision if decisions.contains(decision) =>
       })
     ))
 
     def hasDecisionFor(req: NonCommutativeSiriusRequest): Boolean =
-      decisions.exists(req == _._2)
+      decisions.exists(req == _.command.op)
   }
 }
 
@@ -75,29 +73,15 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       val req2 = Put("B", "C".getBytes)
       val req3 = Delete("D")
 
-      // each request will want an explicit sender
-      // to receive the RequestPerformed message
-      val requester1 = TestProbe()
-      val requester2 = TestProbe()
-      val requester3 = TestProbe()
-
-      requester1.send(node1.paxosSup, PaxosSup.Submit(req1))
-      requester2.send(node1.paxosSup, PaxosSup.Submit(req2))
-      requester3.send(node1.paxosSup, PaxosSup.Submit(req3))
-
-      // Wait for the each decision to complete
-      // Give these extra time, the first scout round
-      // generally times out since the membership is
-      // empty on initialization
-      requester1.expectMsg(7 seconds, RequestPerformed)
-      requester2.expectMsg(7 seconds, RequestPerformed)
-      requester3.expectMsg(7 seconds, RequestPerformed)
+      node1.paxosSup ! PaxosSup.Submit(req1)
+      node1.paxosSup ! PaxosSup.Submit(req2)
+      node1.paxosSup ! PaxosSup.Submit(req3)
 
       // Wait for the decision to actually be received
       // on each node, the request RequestPerformed
       // message only indicates that one node has
       // received and processed the decision
-      Await.ready(decisionLatch, 3 seconds)
+      Await.ready(decisionLatch, 7 seconds)
 
       // assure that all nodes have the same decisions,
       // and that all requests were decided on

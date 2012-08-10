@@ -4,19 +4,20 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
 import akka.event.Logging
 
 object Replica {
 
   /**
    * Clients must implement a function of this type and pass it in on
-   * construction.  The function takes the slot number assigned to an
-   * operation and the operation itself, and should return a Boolean
-   * indicating that the operation was performed and we may reply to
-   * the client.
+   * construction.  The function takes a Decision and should perform
+   * any operation necessary to handle the decision.  Decisions may
+   * arrive out of order and multiple times.  It is the responsibility
+   * of the implementer to handle these cases.  Additionally, it is the
+   * responsibility of the implementer to reply to client identified
+   * by Decision.command.client.
    */
-  type PerformFun = (Long, NonCommutativeSiriusRequest) => Boolean
+  type PerformFun = Decision => Unit
 
   /**
    * Create a Replica instance.
@@ -68,13 +69,18 @@ class Replica(membership: Agent[Set[ActorRef]],
 
   def receive = {
     case Request(command: Command) => propose(command)
-    case Decision(slot, command) =>
-      log.debug("Received decision slot {} for {}", slot, command)
+    case decision @ Decision(slot, command) =>
+      log.debug("Received decision slot {} for {}",
+        slot, command)
       if (slot >= lowestUnusedSlotNum) {
         lowestUnusedSlotNum = slot + 1
       }
-      if (performFun(slot, command.op)) {
-        command.client ! RequestPerformed
+      try {
+        performFun(decision)
+      } catch {
+        // XXX: is this too liberal?
+        case t: Throwable =>
+          log.error("Received exception applying decision {}: {}", decision, t)
       }
   }
 }
