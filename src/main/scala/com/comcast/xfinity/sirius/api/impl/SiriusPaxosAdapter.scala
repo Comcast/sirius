@@ -4,6 +4,8 @@ import akka.actor.{Props, ActorRef}
 import akka.agent.Agent
 import paxos.PaxosMessages.{Command, Decision, RequestPerformed}
 import paxos.{Replica, PaxosSup}
+import annotation.tailrec
+import collection.SortedMap
 
 /**
  * Class responsible for adapting the Paxos subsystem for use in Sirius
@@ -15,8 +17,8 @@ import paxos.{Replica, PaxosSup}
  * there is no gaurentee that events will arrive in order, so a later event
  * may arrive before a current event.
  *
- * To accomplish this we ignore any events which do not match the next expected
- * sequence number.
+ * To accomplish this we buffer events that come before their time, only keeping
+ * the first copy of each.
  *
  * The paxosSubSystemProps member Props factory should be used to instantiate
  * the Paxos subsystem. A sample usage would be:
@@ -33,39 +35,46 @@ class SiriusPaxosAdapter(membership: Agent[Set[ActorRef]],
                          startingSeq: Long,
                          persistenceActor: ActorRef) {
 
-  var currentSeq: Long = startingSeq
+  var nextSeq: Long = startingSeq
+  var eventBuffer = SortedMap[Long, OrderedEvent]()
 
   /**
-   * Function used to apply updates to the persistence layer, updates will only
-   * be applied in order.  If a decision arrives not matching the current sequence
-   * number it is ignored, with the expectation that it will eventually arrive again,
-   * and false is returned, signaling that the client SHOULD NOT be replied to.
-   *
-   * If a decision does match we send it to the persistence layer, as an OrderedEvent,
-   * update the next expected sequence number, and return true, signaling that the
-   * client SHOULD be returned to.
+   * Function used to apply updates to the persistence layer. When a decision arrives
+   * for the first time the actor identified by Decision.command.client is sent a
+   * RequestPerformed message (a little misleading, I know). The decision is then
+   * buffered to be sent to the persistence layer.  All ready decisions (contiguous
+   * ones starting with the current sequence number) are sent to the persistence
+   * layer to be written to disk and memory, and are dropped from the buffer.
    *
    * XXX: in its current form it does not wait for confirmation that an event has been
    * committed to disk by the persistence layer, we should really add that, but for
    * now this should be good enough.
-   *
-   * XXX: should we consider having the context passed into here somehow so that we
-   * can use forward?  While this may run on an actor thread, to use forward we
-   * need an implicit ActorContext.
    */
   val performFun: Replica.PerformFun = {
-    // only apply the event if it is for the sequence number we were expecting,
-    // otherwise ignore it. If it's above the expected sequence number odds are
-    // it will get delivered again, if it's under then we don't care either way
-    case Decision(slot, Command(client, ts, op)) if slot == currentSeq =>
-      persistenceActor ! OrderedEvent(slot, ts, op)
+    case Decision(slot, Command(client, ts, op)) if slot >= nextSeq && !eventBuffer.contains(slot) =>
+      eventBuffer += (slot -> OrderedEvent(slot, ts, op))
       client ! RequestPerformed
-      currentSeq += 1
-    case _ => // no-op, for now, dude
+      executeReadyDecisions()
+    case _ => // no-op, ignore that jawn
   }
 
   /**
    * Props factory that should be used to instantiate the subsystem
    */
   val paxosSubsystemProps = Props(PaxosSup(membership, startingSeq, performFun))
+
+  private def executeReadyDecisions() {
+    @tailrec
+    def applyNextReadyDecision() {
+      eventBuffer.headOption match {
+        case Some((slot, orderedEvent)) if slot == nextSeq =>
+          persistenceActor ! orderedEvent
+          nextSeq += 1
+          eventBuffer = eventBuffer.tail
+          applyNextReadyDecision()
+        case _ =>
+      }
+    }
+    applyNextReadyDecision()
+  }
 }

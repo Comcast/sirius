@@ -42,13 +42,16 @@ object FullSystemITest {
   /**
    * A SiriusLog implementation storing all events in memory
    */
-  class InMemoryLog extends SiriusLog {
+  class InMemoryLatchedLog(expectedTicks: Int) extends SiriusLog {
+    var latch = new CountDownLatch(expectedTicks)
+
     var entries = List[OrderedEvent]()
     var nextSeq = 1L
 
     def writeEntry(entry: OrderedEvent) {
       entries = entry :: entries
       nextSeq = entry.sequence + 1
+      latch.countDown()
     }
 
     def createIterator(logRange: LogRange) = {
@@ -62,6 +65,14 @@ object FullSystemITest {
     }
 
     def getNextSeq = nextSeq
+
+    def resetLatch(newExpectedTicks: Int) {
+      latch = new CountDownLatch(newExpectedTicks)
+    }
+
+    def await(timeout: Long, timeUnit: TimeUnit) {
+      latch.await(timeout, timeUnit)
+    }
   }
 
   /**
@@ -107,9 +118,9 @@ class FullSystemITest extends NiceTest with TimedTest {
   var reqHandler2: LatchedRequestHandler = _
   var reqHandler3: LatchedRequestHandler = _
 
-  var wal1: SiriusLog = _
-  var wal2: SiriusLog = _
-  var wal3: SiriusLog = _
+  var wal1: InMemoryLatchedLog = _
+  var wal2: InMemoryLatchedLog = _
+  var wal3: InMemoryLatchedLog = _
 
   var sirius1: SiriusImpl = _
   var sirius2: SiriusImpl = _
@@ -153,15 +164,15 @@ class FullSystemITest extends NiceTest with TimedTest {
     // Spin up 3 implementations that will make up our cluster,
     // the port numbers match those of the membership
     reqHandler1 = new LatchedRequestHandler(3)
-    wal1 = new InMemoryLog()
+    wal1 = new InMemoryLatchedLog(3)
     sirius1 = bootNode(reqHandler1, wal1, 42289)
 
     reqHandler2 = new LatchedRequestHandler(3)
-    wal2 = new InMemoryLog()
+    wal2 = new InMemoryLatchedLog(3)
     sirius2 = bootNode(reqHandler2, wal2, 42290)
 
     reqHandler3 = new LatchedRequestHandler(3)
-    wal3 = new InMemoryLog()
+    wal3 = new InMemoryLatchedLog(3)
     sirius3 = bootNode(reqHandler3, wal3, 42291)
   }
 
@@ -172,42 +183,39 @@ class FullSystemITest extends NiceTest with TimedTest {
     tempDir.delete()
   }
 
-
   it ("must reach a decision on a series of requests when requests are safely " +
       "set to each node") {
     val reqHandlers = List(reqHandler1, reqHandler2, reqHandler3)
+    val logs = List(wal1, wal2, wal3)
 
     // Submit requests to node 1
     sirius1.enqueuePut("hello", "world".getBytes)
     sirius1.enqueueDelete("world")
     sirius1.enqueueDelete("yo")
 
-    // Wait for the requests to hit all the handlers
+    // Wait for the requests to hit all the logs and request handlers
+    logs.foreach(_.await(2, TimeUnit.SECONDS))
     reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
-
-    // this is pretty gross, but we don't really have a much better way atm, trevor
-    //  has a patch in the works that will make this cool
-    Thread.sleep(1000)
 
     // verify equivalence
     verifyWalsAreEquivalent(3, wal1, wal2, wal3)
 
-    // send an event to node2
+    // same deal, node2
+    logs.foreach(_.resetLatch(1))
     reqHandlers.foreach(_.resetLatch(1))
     sirius2.enqueueDelete("asdf")
+    logs.foreach(_.await(2, TimeUnit.SECONDS))
     reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
-
-    // see comment above on thread sleep
-    Thread.sleep(500)
 
     // verify equivalence
     verifyWalsAreEquivalent(4, wal1, wal2, wal3)
 
+    // same deal, node 3
+    logs.foreach(_.resetLatch(1))
     reqHandlers.foreach(_.resetLatch(1))
     sirius3.enqueuePut("xyz", "abc".getBytes)
+    logs.foreach(_.await(2, TimeUnit.SECONDS))
     reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
-
-    Thread.sleep(500)
 
     // verify equivalence
     verifyWalsAreEquivalent(5, wal1, wal2, wal3)

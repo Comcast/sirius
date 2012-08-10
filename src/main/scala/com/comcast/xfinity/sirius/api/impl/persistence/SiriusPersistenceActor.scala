@@ -7,19 +7,21 @@ import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl._
 import akka.event.Logging
-import collection.SortedSet
-import collection.immutable.TreeSet
-import annotation.tailrec
 
 /**
  * {@link Actor} for persisting data to the write ahead log and forwarding
  * to the state worker.
+ *
+ * Events must arrive in order, this actor does not enforce such, but the underlying
+ * SiriusLog may.
+ *
+ * @param stateActor Actor wrapping in memory state of the system
+ * @param siriusLog the log to record events to before sending to memory
+ * @param siriusStateAgent agent containing an administrative state of the system to update
+ *            once bootstrapping has completed
  */
 class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, siriusStateAgent: Agent[SiriusState])
   extends Actor {
-
-  val eventOrdering = Ordering.fromLessThan[OrderedEvent](_.sequence < _.sequence)
-  var orderedEventBuffer = TreeSet.empty[OrderedEvent](eventOrdering)
 
   val logger = Logging(context.system, this)
 
@@ -41,40 +43,13 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
   }
 
   def receive = {
-    case event: OrderedEvent => {
-      stateActor forward event.request
+    case event: OrderedEvent =>
+      siriusLog.writeEntry(event)
+      stateActor ! event.request
 
-      val nextSeq = siriusLog.getNextSeq
-      if (event.sequence == nextSeq) {
-        // siriusLog.currentSeq gets incremented with this write
-        siriusLog.writeEntry(event)
-
-        // write events and drop from buffer if they match seq num
-        orderedEventBuffer = dropUntil(orderedEventBuffer)((oe: OrderedEvent) => {
-            if (oe.sequence == siriusLog.getNextSeq) {
-              siriusLog.writeEntry(oe)
-              false
-            } else {
-              true
-            }
-        }).asInstanceOf[TreeSet[OrderedEvent]]
-      } else if (event.sequence > nextSeq) {
-        orderedEventBuffer += event
-      } else {
-        logger.debug("Ignored out-of-order event: "+event+"; expected sequence number >= "+nextSeq)
-      }
-    }
+    // SiriusStateActor responds to writes with a SiriusResult, we don't really want this
+    // anymore, and it should be eliminated in a future commit
     case _: SiriusResult =>
   }
 
-  /**
-   * For use with sorted sets, drops items from the head UNTIL pred returns true
-   */
-  @tailrec
-  final def dropUntil[A](set: SortedSet[A])(pred: (A) => Boolean): SortedSet[A] = {
-    set.headOption match {
-      case Some(x) if (!pred(x)) => dropUntil(set.tail)(pred)
-      case _ => set
-    }
-  }
 }
