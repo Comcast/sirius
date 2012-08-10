@@ -70,25 +70,6 @@ class SiriusPaxosAdapterTest extends NiceTest with BeforeAndAfterAll {
       persistenceProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
     }
 
-/*    it ("must not apply any decisions if slotNum does not match the one it expects") {
-      val probe = TestProbe()
-      val paxosAdapter = new SiriusPaxosAdapter(membership, 10, probe.ref)
-
-      paxosAdapter.performFun(Decision(11, Command(null, 1, Delete("z"))))
-      probe.expectNoMsg()
-    }
-
-    it ("must send queued events to the persistence layer when they are ready, " +
-        "update the next expected sequence number, ") {
-      val persistenceProbe = TestProbe()
-      val paxosAdapter = new SiriusPaxosAdapter(membership, 2, persistenceProbe.ref)
-
-      val clientProbe = TestProbe()
-      paxosAdapter.performFun(Decision(2, Command(clientProbe.ref, 1, Delete("z")) ))
-      assert(3 === paxosAdapter.currentSeq)
-      clientProbe.expectMsg(RequestPerformed)
-      persistenceProbe.expectMsg(OrderedEvent(2, 1, Delete("z")))
-    }*/
   }
 
 }
