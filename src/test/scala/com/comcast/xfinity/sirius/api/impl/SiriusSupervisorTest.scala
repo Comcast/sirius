@@ -35,9 +35,7 @@ object SiriusSupervisorTestCompanion {
       clusterConfigPath: Path, usePaxos: Boolean)(implicit as: ActorSystem): TestActorRef[SiriusSupervisor] = {
     TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, clusterConfigPath, usePaxos) {
 
-      override def createStateActor(_handler: RequestHandler) = stateProbe.ref
-
-      override def createPersistenceActor(_state: ActorRef, _writer: SiriusLog) = persistenceProbe.ref
+      override def createStateSup(_handler: RequestHandler, _log: SiriusLog, _state: Agent[SiriusState]) = stateProbe.ref
 
       override  def createOrderingActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]], startingSeq: Long, usePaxos: Boolean) = paxosProbe.ref
 

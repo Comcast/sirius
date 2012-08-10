@@ -31,6 +31,9 @@ class SiriusStateActor(requestHandler: RequestHandler,
   
   def receive = {
     case req: SiriusRequest =>
+      // XXX: With the way things work now, we probably shouldn't
+      //      be responding to Puts and Deletes...  These are
+      //      responded to when an order has been decided on
       sender ! processSiriusRequestSafely(req)
   }
 
