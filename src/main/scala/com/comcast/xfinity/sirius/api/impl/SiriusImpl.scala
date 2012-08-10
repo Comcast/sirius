@@ -72,6 +72,9 @@ object SiriusImpl extends AkkaConfig {
     val allConfig = remoteConfig.withFallback(config)
     implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
 
+    val admin = createAdmin(hostName, port)
+    admin.registerMbeans()
+        
     new SiriusImpl(requestHandler, siriusLog, Path.fromString(clusterConfigPath),
         hostName, port, usePaxos) {
 
@@ -81,10 +84,18 @@ object SiriusImpl extends AkkaConfig {
         super.shutdown()
         actorSystem.shutdown()
         actorSystem.awaitTermination()
+        admin.unregisterMbeans()
       }
     }
+    
   }
-
+  
+  private def createAdmin(host: String, port: Int) = {
+    val mbeanServer = ManagementFactory.getPlatformMBeanServer
+    val info = new SiriusInfo(port, host)
+    new SiriusAdmin(info, mbeanServer)
+  }
+  
   @deprecated("Please use 6 arg createSirius", "7-30-12")
   def createSirius(requestHandler: RequestHandler,
                    siriusLog: SiriusLog,
@@ -191,10 +202,7 @@ class SiriusImpl(requestHandler: RequestHandler,
                                            port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
                                            theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path,
                                            theSupName: String) = {
-    val mbeanServer = ManagementFactory.getPlatformMBeanServer
-    val info = new SiriusInfo(port, host)
-    val admin = new SiriusAdmin(info, mbeanServer)
-    val supProps = Props(SiriusSupervisor(admin, theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent,
+    val supProps = Props(SiriusSupervisor(theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent,
           clusterConfigPath, usePaxos))
     theActorSystem.actorOf(supProps, theSupName)
   }
