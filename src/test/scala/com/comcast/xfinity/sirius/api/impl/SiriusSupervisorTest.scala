@@ -21,29 +21,6 @@ import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
 import scalax.io.LongTraversable
 
-object SiriusSupervisorTestCompanion {
-
-  def createProbedTestSupervisor(admin: SiriusAdmin,
-      handler: RequestHandler,
-      siriusLog: SiriusLog,
-      stateProbe: TestProbe,
-      persistenceProbe: TestProbe,
-      paxosProbe: TestProbe,
-      membershipProbe: TestProbe,
-      siriusStateAgent: Agent[SiriusState],
-      membershipAgent: Agent[Set[ActorRef]],
-      clusterConfigPath: Path, usePaxos: Boolean)(implicit as: ActorSystem): TestActorRef[SiriusSupervisor] = {
-    TestActorRef(new SiriusSupervisor(admin, handler, siriusLog, siriusStateAgent, membershipAgent, clusterConfigPath, usePaxos) {
-
-      override def createStateSup(_handler: RequestHandler, _log: SiriusLog, _state: Agent[SiriusState]) = stateProbe.ref
-
-      override  def createOrderingActor(persistenceActor: ActorRef, agent: Agent[Set[ActorRef]], startingSeq: Long, usePaxos: Boolean) = paxosProbe.ref
-
-      override def createMembershipActor(_membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path) = membershipProbe.ref
-    })
-  }
-}
-
 
 @RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest extends NiceTest {
@@ -57,16 +34,16 @@ class SiriusSupervisorTest extends NiceTest {
   var nodeToJoinProbe: TestProbe = _
 
   var membershipAgent: Agent[Set[ActorRef]] = _
-  var siriusStateAgent: Agent[SiriusState] = _
+  var _siriusStateAgent: Agent[SiriusState] = _
 
   var handler: RequestHandler = _
-  var admin: SiriusAdmin = _
+  var _admin: SiriusAdmin = _
   var siriusLog: SiriusLog = _
   var siriusState: SiriusState = _
   var clusterConfigPath: Path = _
 
 
-  var supervisor: TestActorRef[SiriusSupervisor] = _
+  var supervisor: TestActorRef[SiriusSupervisor with SiriusSupervisor.DependencyProvider] = _
 
   implicit val timeout: Timeout = (5 seconds)
 
@@ -77,7 +54,7 @@ class SiriusSupervisorTest extends NiceTest {
 
     //setup mocks
     handler = mock[RequestHandler]
-    admin = mock[SiriusAdmin]
+    _admin = mock[SiriusAdmin]
     siriusLog = mock[SiriusLog]
     clusterConfigPath = mock[Path]
 
@@ -116,13 +93,19 @@ class SiriusSupervisorTest extends NiceTest {
 
     membershipAgent = mock[Agent[Set[ActorRef]]]
     siriusState = new SiriusState
-    siriusStateAgent = Agent(siriusState)(actorSystem)
+    _siriusStateAgent = Agent(siriusState)(actorSystem)
 
-
-
-    supervisor = SiriusSupervisorTestCompanion.createProbedTestSupervisor(
-        admin, handler, siriusLog, stateProbe, persistenceProbe, paxosProbe,
-        membershipProbe, siriusStateAgent, membershipAgent, clusterConfigPath, false)(actorSystem)
+    supervisor = TestActorRef(new SiriusSupervisor with SiriusSupervisor.DependencyProvider {
+      val siriusStateAgent: Agent[SiriusState] = _siriusStateAgent
+      val usePaxos: Boolean = false
+      val admin: SiriusAdmin = _admin
+      
+      val stateSup: ActorRef = stateProbe.ref
+      val membershipActor: ActorRef = membershipProbe.ref
+      val logRequestActor: ActorRef = null
+      val orderingActor: ActorRef = paxosProbe.ref
+      
+    })(actorSystem)
   }
 
   after {
@@ -146,7 +129,7 @@ class SiriusSupervisorTest extends NiceTest {
 
     it("should transition into the initialized state") {
       initializeSupervisor(supervisor)
-      assert(siriusStateAgent.await(timeout).supervisorState === SiriusState.SupervisorState.Initialized)
+      assert(_siriusStateAgent.await(timeout).supervisorState === SiriusState.SupervisorState.Initialized)
 
     }
 

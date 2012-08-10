@@ -4,10 +4,10 @@ import membership._
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import paxos.PaxosMessages.PaxosMessage
-import paxos.{PaxosSup, Replica, NaiveOrderingActor}
+import paxos.{ PaxosSup, Replica, NaiveOrderingActor }
 import persistence._
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.writeaheadlog.{SiriusFileLog, LogIteratorSource, SiriusLog}
+import com.comcast.xfinity.sirius.writeaheadlog.{ SiriusFileLog, LogIteratorSource, SiriusLog }
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -15,7 +15,7 @@ import akka.agent.Agent
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import scalax.file.Path
-import state.{StateSup, SiriusStateActor}
+import state.{ StateSup, SiriusStateActor }
 
 object SiriusSupervisor {
 
@@ -23,27 +23,61 @@ object SiriusSupervisor {
   case object IsInitializedRequest extends SupervisorMessage
 
   case class IsInitializedResponse(initialized: Boolean)
+
+  trait DependencyProvider {
+    val stateSup: ActorRef
+    val orderingActor: ActorRef
+    val logRequestActor: ActorRef
+    val membershipActor: ActorRef
+    val siriusStateAgent: Agent[SiriusState]
+    val usePaxos: Boolean
+    val admin: SiriusAdmin
+  }
+
+  /**
+   * @param admin Interface with administrative cruft on it. 
+   * @param requestHandler User implemented RequestHandler.
+   * @param siriusLog Interface into the Sirius persistent log.
+   * @param siriusStateAgent Keeps track of the overall initialization state of Sirius.
+   * @param membershipAgent Keeps track of the members of the Sirius cluster.
+   * @param clusterConfigPath Path to a static file containing the cluster members. 
+   * @pararm usePaxos True if we should use Paxos for ordering, false if we just use our naieve single node counter.
+   */
+  def apply(_admin: SiriusAdmin,
+    _requestHandler: RequestHandler,
+    _siriusLog: SiriusLog,
+    _siriusStateAgent: Agent[SiriusState],
+    _membershipAgent: Agent[Set[ActorRef]],
+    _clusterConfigPath: Path,
+    _usePaxos: Boolean): SiriusSupervisor = {
+    
+    new SiriusSupervisor with DependencyProvider {
+      val siriusStateAgent = _siriusStateAgent
+      val usePaxos = _usePaxos
+      val admin = _admin
+      
+      val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, _siriusStateAgent)), "state")
+      val membershipActor = context.actorOf(Props(new MembershipActor(_membershipAgent, _siriusStateAgent, _clusterConfigPath)), "membership")
+      val logRequestActor = context.actorOf(Props(new LogRequestActor(100, _siriusLog, self, stateSup, _membershipAgent)), "log")
+      val orderingActor = if (usePaxos) {
+        val siriusPaxosAdapter = new SiriusPaxosAdapter(_membershipAgent, _siriusLog.getNextSeq, stateSup)
+        context.actorOf(siriusPaxosAdapter.paxosSubsystemProps, "paxos")
+      } else {
+        context.actorOf(Props(new NaiveOrderingActor(stateSup, _siriusLog.getNextSeq)), "paxos")
+      }
+    }
+    
+  }
 }
 
 /**
- * Supervisor actor for the set of actors needed for Sirius.
+ * Top level actor for the Sirius system.  
+ * 
+ * Don't use the constructor to construct this guy, use the companion object's apply.
  */
-class SiriusSupervisor(admin: SiriusAdmin,
-                       requestHandler: RequestHandler,
-                       siriusLog: SiriusLog,
-                       siriusStateAgent: Agent[SiriusState],
-                       membershipAgent: Agent[Set[ActorRef]],
-                       clusterConfigPath: Path,
-                       usePaxos: Boolean) extends Actor with AkkaConfig {
+class SiriusSupervisor() extends Actor with AkkaConfig {
+  this: SiriusSupervisor.DependencyProvider =>
   private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
-  private val DEFAULT_CHUNK_SIZE = 100 // TODO make chunk size configurable
-  /* Startup child actors. */
-  private[impl] var stateSup = createStateSup(requestHandler, siriusLog, siriusStateAgent)
-  private[impl] var orderingActor = createOrderingActor(stateSup, membershipAgent, siriusLog.getNextSeq, usePaxos)
-  private[impl] var logRequestActor =
-    createLogRequestActor(DEFAULT_CHUNK_SIZE, siriusLog, self, stateSup, membershipAgent)
-  private[impl] var membershipActor = createMembershipActor(membershipAgent, clusterConfigPath)
-
 
   override def preStart() {
     super.preStart()
@@ -108,31 +142,4 @@ class SiriusSupervisor(admin: SiriusAdmin,
     case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
-
-  // hooks for testing
-  private[impl] def createStateSup(theRequestHandler: RequestHandler,
-                                   theLog: SiriusLog,
-                                   theStateAgent: Agent[SiriusState]) =
-    context.actorOf(Props(StateSup(theRequestHandler, theLog, theStateAgent)))
-
-  private[impl] def createOrderingActor(persistenceActor: ActorRef,
-                                        agent: Agent[Set[ActorRef]],
-                                        startingSeq: Long,
-                                        usePaxos: Boolean) = {
-    if (usePaxos) {
-      val siriusPaxosAdapter = new SiriusPaxosAdapter(agent, startingSeq, persistenceActor)
-      context.actorOf(siriusPaxosAdapter.paxosSubsystemProps, "paxos")
-    } else {
-      context.actorOf(Props(new NaiveOrderingActor(persistenceActor, startingSeq)), "paxos")
-    }
-  }
-
-  private[impl] def createMembershipActor(membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path) =
-    context.actorOf(Props(new MembershipActor(membershipAgent, siriusStateAgent,
-      clusterConfigPath)), "membership")
-
-  private[impl] def createLogRequestActor(chunkSize: Int, logLinesSource: LogIteratorSource,
-      localSiriusRef: ActorRef, thePersistenceActor: ActorRef, theMembershipAgent: Agent[Set[ActorRef]]) =
-    context.actorOf(Props(
-      new LogRequestActor(chunkSize, logLinesSource, localSiriusRef, thePersistenceActor, theMembershipAgent)))
 }
