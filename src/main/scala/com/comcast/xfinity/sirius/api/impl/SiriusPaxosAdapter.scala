@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.api.impl
 
 import akka.actor.{Props, ActorRef}
 import akka.agent.Agent
+import paxos.PaxosMessages.{Command, Decision, RequestPerformed}
 import paxos.{Replica, PaxosSup}
 
 /**
@@ -52,19 +53,16 @@ class SiriusPaxosAdapter(membership: Agent[Set[ActorRef]],
    * can use forward?  While this may run on an actor thread, to use forward we
    * need an implicit ActorContext.
    */
-  val performFun: Replica.PerformFun =
-    (slotNum: Long, req: NonCommutativeSiriusRequest) => {
-      // only apply the event if it is for the sequence number we were expecting,
-      // otherwise ignore it. If it's above the expected sequence number odds are
-      // it will get delivered again, if it's under then we don't care either way
-      if (slotNum == currentSeq) {
-        persistenceActor ! OrderedEvent(slotNum, System.currentTimeMillis(), req)
-        currentSeq += 1
-        true
-      } else {
-        false
-      }
-    }
+  val performFun: Replica.PerformFun = {
+    // only apply the event if it is for the sequence number we were expecting,
+    // otherwise ignore it. If it's above the expected sequence number odds are
+    // it will get delivered again, if it's under then we don't care either way
+    case Decision(slot, Command(client, ts, op)) if slot == currentSeq =>
+      persistenceActor ! OrderedEvent(slot, ts, op)
+      client ! RequestPerformed
+      currentSeq += 1
+    case _ => // no-op, for now, dude
+  }
 
   /**
    * Props factory that should be used to instantiate the subsystem

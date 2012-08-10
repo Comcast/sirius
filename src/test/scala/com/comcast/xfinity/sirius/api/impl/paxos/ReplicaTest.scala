@@ -22,7 +22,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
          "store the proposal") {
         val memberProbes = Set(TestProbe(), TestProbe(), TestProbe())
         val membership = Agent(memberProbes.map(_.ref))
-        val replica = TestActorRef(new Replica(membership, 1, (s, r) => false))
+        val replica = TestActorRef(new Replica(membership, 1, d => ()))
 
         val command = Command(null, 1, Delete("1"))
 
@@ -36,7 +36,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
       it("must update its lowest unused slot number iff the decision is greater than or equal to the " +
          "current unused slot") {
         val membership = Agent(Set[ActorRef]())
-        val replica = TestActorRef(new Replica(membership, 2, (s, r) => false))
+        val replica = TestActorRef(new Replica(membership, 2, d => ()))
 
         replica ! Decision(1, Command(null, 1, Delete("1")))
         assert(2 == replica.underlyingActor.lowestUnusedSlotNum)
@@ -48,43 +48,58 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         assert(5 === replica.underlyingActor.lowestUnusedSlotNum)
       }
 
-      it("must pass the decision and slot number to the delegated function") {
+      it("must pass the decision to the delegated function for handling") {
         val membership = Agent(Set[ActorRef]())
-        var appliedDecisions = Set[(Long, NonCommutativeSiriusRequest)]()
-        val replica = TestActorRef(new Replica(membership, 1,
-          (s, r) => {
-            appliedDecisions += Tuple2(s, r)
-            true
-          }))
+        var appliedDecisions = Set[Decision]()
+        val replica = TestActorRef(
+          new Replica(membership, 1,
+                      d => appliedDecisions += d
+          )
+        )
 
         val requester1 = TestProbe()
         val request1 = Delete("1")
-        replica ! Decision(1, Command(requester1.ref, 1, request1))
-        assert(Set((1L, request1)) === appliedDecisions)
-        requester1.expectMsg(RequestPerformed)
+        val decision1 = Decision(1, Command(requester1.ref, 1, request1))
+        replica ! decision1
+        assert(Set(decision1) === appliedDecisions)
 
         val requester2 = TestProbe()
         val request2 = Put("asdf", "1234".getBytes)
-        replica ! Decision(2, Command(requester2.ref, 1, request2))
-        assert(Set((1L, request1), (2L, request2)) === appliedDecisions)
-        requester2.expectMsg(RequestPerformed)
+        val decision2 = Decision(2, Command(requester2.ref, 1, request2))
+        replica ! decision2
+        assert(Set(decision1, decision2) === appliedDecisions)
       }
 
-      it("must notify the originator of the request if performFun function says so") {
+      it("must not let an exception thrown by performFun ruin its day") {
         val membership = Agent(Set[ActorRef]())
-        val replica = TestActorRef(new Replica(membership, 1,
-          (s, r) => s%2 == 0L
-        ))
 
-        val requester1 = TestProbe()
-        replica ! Decision(1, Command(requester1.ref, 1, Delete("A")))
-        requester1.expectNoMsg()
+        val wasRestartedProbe = TestProbe()
+        // TestActorRef so message handling is dispatched on the same thread
+        val replica = TestActorRef(
+          new Replica(membership, 1,
+            d => throw new RuntimeException("The dishes are done man")
+          ) {
+            // this is weird, if the actor terminates, it is restarted
+            //  asynchronously, so we need to propogate the failure in
+            //  some other way
+            override def preRestart(e: Throwable, m: Option[Any]) {
+              wasRestartedProbe.ref ! 'brokenaxle
+            }
+          }
+        )
 
-        val requester2 = TestProbe()
-        replica ! Decision(2, Command(requester2.ref, 2, Delete("Z")))
-        requester2.expectMsg(RequestPerformed)
+        replica ! Decision(1, Command(null, 1, Delete("asdf")))
+        assert(2 === replica.underlyingActor.lowestUnusedSlotNum)
 
+        // make sure we didn't crash
+        wasRestartedProbe.expectNoMsg()
 
+        // and our state is still cool
+        replica ! Decision(2, Command(null, 1, Delete("1234")))
+        assert(3 === replica.underlyingActor.lowestUnusedSlotNum)
+
+        // and do it again
+        wasRestartedProbe.expectNoMsg()
       }
     }
   }
