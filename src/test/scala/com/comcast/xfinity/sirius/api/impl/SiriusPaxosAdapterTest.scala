@@ -5,7 +5,8 @@ import akka.agent.Agent
 import akka.testkit.TestProbe
 import akka.actor.{ActorSystem, ActorRef}
 import org.scalatest.BeforeAndAfterAll
-import paxos.PaxosMessages.{Decision, Command, RequestPerformed}
+import paxos.PaxosMessages.{Decision, Command}
+import com.comcast.xfinity.sirius.api.SiriusResult
 
 class SiriusPaxosAdapterTest extends NiceTest with BeforeAndAfterAll {
 
@@ -37,7 +38,7 @@ class SiriusPaxosAdapterTest extends NiceTest with BeforeAndAfterAll {
       val theDecision = Decision(10, Command(clientProbe.ref, 1, Delete("z")))
 
       paxosAdapter.performFun(theDecision)
-      clientProbe.expectMsg(RequestPerformed)
+      clientProbe.expectMsg(SiriusResult.none())
       persistenceProbe.expectMsg(OrderedEvent(10, 1, Delete("z")))
 
       paxosAdapter.performFun(theDecision)
@@ -52,20 +53,20 @@ class SiriusPaxosAdapterTest extends NiceTest with BeforeAndAfterAll {
       val paxosAdapter = new SiriusPaxosAdapter(membership, 10, persistenceProbe.ref)
 
       paxosAdapter.performFun(Decision(11, Command(clientProbe.ref, 1, Delete("a"))))
-      clientProbe.expectMsg(RequestPerformed)
+      clientProbe.expectMsg(SiriusResult.none())
       persistenceProbe.expectNoMsg()
 
       paxosAdapter.performFun(Decision(13, Command(clientProbe.ref, 2, Delete("b"))))
-      clientProbe.expectMsg(RequestPerformed)
+      clientProbe.expectMsg(SiriusResult.none())
       persistenceProbe.expectNoMsg()
 
       paxosAdapter.performFun(Decision(10, Command(clientProbe.ref, 3, Delete("c"))))
-      clientProbe.expectMsg(RequestPerformed)
+      clientProbe.expectMsg(SiriusResult.none())
       persistenceProbe.expectMsg(OrderedEvent(10, 3, Delete("c")))
       persistenceProbe.expectMsg(OrderedEvent(11, 1, Delete("a")))
 
       paxosAdapter.performFun(Decision(12, Command(clientProbe.ref, 4, Delete("d"))))
-      clientProbe.expectMsg(RequestPerformed)
+      clientProbe.expectMsg(SiriusResult.none())
       persistenceProbe.expectMsg(OrderedEvent(12, 4, Delete("d")))
       persistenceProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
     }

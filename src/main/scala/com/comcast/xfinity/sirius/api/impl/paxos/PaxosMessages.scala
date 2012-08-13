@@ -19,13 +19,6 @@ object PaxosMessages {
 
   case class Command(client: ActorRef, ts: Long, op: NonCommutativeSiriusRequest) extends PaxosMessage
 
-  /**
-   * Message sent to a client once an event has been ordered and submitted for persistence.
-   *
-   * XXX: does this belong here? it may be better off outside of the paxos stuff now
-   */
-  case object RequestPerformed
-
   case class PValue(ballot: Ballot, slotNum: Long, proposedCommand: Command) extends PaxosMessage
 
   /**

@@ -2,10 +2,11 @@ package com.comcast.xfinity.sirius.api.impl
 
 import akka.actor.{Props, ActorRef}
 import akka.agent.Agent
-import paxos.PaxosMessages.{Command, Decision, RequestPerformed}
+import paxos.PaxosMessages.{Command, Decision}
 import paxos.{Replica, PaxosSup}
 import annotation.tailrec
 import collection.SortedMap
+import com.comcast.xfinity.sirius.api.SiriusResult
 
 /**
  * Class responsible for adapting the Paxos subsystem for use in Sirius
@@ -53,7 +54,7 @@ class SiriusPaxosAdapter(membership: Agent[Set[ActorRef]],
   val performFun: Replica.PerformFun = {
     case Decision(slot, Command(client, ts, op)) if slot >= nextSeq && !eventBuffer.contains(slot) =>
       eventBuffer += (slot -> OrderedEvent(slot, ts, op))
-      client ! RequestPerformed
+      client ! SiriusResult.none()
       executeReadyDecisions()
     case _ => // no-op, ignore that jawn
   }

@@ -188,14 +188,19 @@ class FullSystemITest extends NiceTest with TimedTest {
     val reqHandlers = List(reqHandler1, reqHandler2, reqHandler3)
     val logs = List(wal1, wal2, wal3)
 
-    // Submit requests to node 1
-    sirius1.enqueuePut("hello", "world".getBytes)
-    sirius1.enqueueDelete("world")
-    sirius1.enqueueDelete("yo")
+    // Submit requests to node 1, and await ordering
+    val result1 = sirius1.enqueuePut("hello", "world".getBytes)
+    val result2 = sirius1.enqueueDelete("world")
+    val result3 = sirius1.enqueueDelete("yo")
 
     // Wait for the requests to hit all the logs and request handlers
     logs.foreach(_.await(2, TimeUnit.SECONDS))
     reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
+
+    // Make sure results are complete and the value checks out
+    assert(SiriusResult.none === result1.get(500, TimeUnit.MILLISECONDS))
+    assert(SiriusResult.none === result2.get(500, TimeUnit.MILLISECONDS))
+    assert(SiriusResult.none === result3.get(500, TimeUnit.MILLISECONDS))
 
     // verify equivalence
     verifyWalsAreEquivalent(3, wal1, wal2, wal3)

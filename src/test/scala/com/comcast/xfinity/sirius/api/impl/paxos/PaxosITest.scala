@@ -9,7 +9,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestLatch, TestProbe}
 import akka.dispatch.Await
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Decision, RequestPerformed}
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Decision}
 
 
 object PaxosITest {
