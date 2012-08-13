@@ -10,6 +10,10 @@ import akka.testkit.TestProbe
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl._
 import akka.actor.ActorSystem
+import com.comcast.xfinity.sirius.api.SiriusResult
+import akka.pattern.ask
+
+import akka.dispatch.Await
 
 class NaiveOrderingActorTest extends NiceTest {
 
@@ -67,6 +71,17 @@ class NaiveOrderingActorTest extends NiceTest {
       // wait for event to go through
       persistenceProbe.receiveOne(5 seconds)
       assertTrue(origCount < underTest.nextSeq)
+
+
+
+    }
+    it("should return a Sirius.none on a PUT") {
+      val res = underTestActor.ask( Put("key", "body".getBytes))(5 seconds)
+      assert(SiriusResult.none === Await.result(res, Long.MaxValue milliseconds))
+    }
+    it("should return a Sirius.none on a DELETE") {
+      val res = underTestActor.ask( Delete("key"))(5 seconds)
+      assert(SiriusResult.none === Await.result(res, Long.MaxValue milliseconds))
     }
 
   }

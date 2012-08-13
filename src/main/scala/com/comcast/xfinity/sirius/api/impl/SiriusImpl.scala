@@ -246,6 +246,7 @@ class SiriusImpl(requestHandler: RequestHandler,
    * ${@inheritDoc}
    */
   def enqueuePut(key: String, body: Array[Byte]): Future[SiriusResult] = {
+    //XXX: this will always return a Sirius.None as soon as Ordering is complete
     val akkaFuture = (supervisor ? Put(key, body)).asInstanceOf[AkkaFuture[SiriusResult]]
     new AkkaFutureAdapter(akkaFuture)
   }
