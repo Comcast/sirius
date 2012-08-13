@@ -21,8 +21,35 @@ This document is intended document Sirius’ design, so future developers can un
 %% Theory of Operation
 %%----------------------
 \section{Theory of Operation}
-TBD
+Sirius is intended to provide a means to replicate in memory state consistently
+across a cluster. This is accomplished by establishing a total ordering of all
+updates to the state stored by Sirius and distributing these updates across all
+nodes in the cluster. Updates are not applied until their turn comes. When
+applying an update a serialized version is also stored, ahead of its
+application, in order to allow the state to be recovered in the event of a
+restart.
 
+When Sirius receives a request for an update it first decides an ordering using
+a variant of multi-paxos derived from the algorithm described in Paxos Made     %% TODO: CITE
+Moderately Complex. Once the Paxos algorithm arrives at a decision for the
+ordering it distributes this decision to the cluster.  When nodes receive a new
+decision they notify the requesting client of the completion of ordering and
+queue it for application.
+
+As updates may arrive out of order, they are queued in memory until their time
+has come to be applied.  An update is applied once all prior updates have been applied.
+Updates may be received from the result of a Paxos round, from local storage
+when recovering a node's state, or from another node in the cluster when
+catching up in the event of missed updates.
+
+Before applying any update to the in-memory state it is first written to some
+persistent storage, then applied to memory asynchronously. It is important to
+note that this persistent storage \em{must} supply the means for retrieving
+stored events in the order dictated on writing.
+
+The state maintained by Sirius can be queried by submitting a request similar
+to that for updates.  The main difference is that this request is executed
+locally and does not need to be distributed.
 
 %%---------------------
 %% Design Overview
