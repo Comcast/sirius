@@ -136,6 +136,7 @@ object SiriusImpl extends AkkaConfig {
            # if this is set to actual hostname, remote messaging fails... can use empty or the IP address.
            hostname = """" + hostName + """"
            port = """ + port + """
+           message-frame-size = 100 MiB
          }
        }
 
