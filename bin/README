@@ -1,0 +1,85 @@
+README
+------------
+
+Installation
+------------
+
+Installing walt requires having easy_install.
+ 
+If you already have easy_install, skip to step 3.
+
+To confirm you have easy install try installing virtualenv:
+
+$ easy_install virtualenv
+
+If you need to install easy_install:
+
+1. Download:
+
+$ wget http://pypi.python.org/packages/2.6/s/setuptools/setuptools-0.6c11-py2.6.egg#md5=bfa92100bd772d5a213eedd356d64086
+
+2. Run the installer:
+
+$ sudo sh setuptools-0.6c11-py2.6.egg
+
+3. Install virtualenv using easy_install and create one (replace <ve> 
+directory with the directory of your choice - no trailing slash!):
+
+$ easy_install virtualenv 
+$ virtualenv <ve>
+
+4. Switch to that virtualenv to install libraries and run the script:
+
+$ source <ve>/bin/activate
+
+5. Change directory to the directory you installed this script:
+
+$ cd <sirius-bin>
+
+6. Install pre-requisite Python libraries:
+
+$ pip install -r pip-requires.txt
+
+Now you are ready to run! In the future you need to execute steps 4 and 5 before running walt.
+
+Running walt
+----------------
+
+To run the checksum check against a WAL file:
+
+$ ./walt.py -i <path-to-wal>
+
+To run the checksum check and produce a sqlite db from the WAL file:
+
+$ ./walt.py -i <path-to-wal> -d <path-to-db-file>
+
+To run the checksum check and produce a repaired WAL file:
+
+$ ./walt.py -i <path-to-wal> -o <path-to-output>
+
+To pipe the output of a WAL file and produce its protobuffer output:
+
+tail -n1 <path-to-wal> | ./walt.py -p
+
+Maintenance
+
+Example Generating the VodProto_pb2.py file:
+----------------
+
+Until we determine how to package walt, if protocol buffer definitions
+change, python versions of the protocol buffer files must be generated 
+and stored under core_data:
+
+Example creating VodProto.proto (which will be called VodProto.proto_pb2.py):
+
+protoc -I=<xtvapi-core-data-project-directory>/src/main/protobuf/ --python_out=. <xtvapi-core-data-project-directory>/src/main/protobuf/VodProto.proto
+
+
+TODOs
+-----------
+
+1. Package script to make it easier to install and run (scala maybe, most likely, almost certainly).
+
+2. Unit tests
+
+3. Error handling would be nice.
