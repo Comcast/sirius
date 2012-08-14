@@ -99,7 +99,7 @@ object FullSystemITest {
     }
 
     if (!areAllSame) {
-      assert(false, "Logs did not match: " + wals.map(_ + "\n"))
+      assert(false, "Logs did not match: " + walDatas.map(_ + "\n"))
     }
 
     assert(expectedSize == walDatas.head.size,
