@@ -1,12 +1,10 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.agent.Agent
 import akka.testkit.TestProbe
-import akka.actor.{ActorSystem, ActorRef}
+import akka.actor.ActorSystem
 import org.scalatest.BeforeAndAfterAll
-import paxos.PaxosMessages.{Decision, Command}
-import com.comcast.xfinity.sirius.api.SiriusResult
+import paxos.PaxosMessages.{Command, Decision}
 
 class SiriusPaxosAdapterTest extends NiceTest with BeforeAndAfterAll {
 
@@ -17,60 +15,15 @@ class SiriusPaxosAdapterTest extends NiceTest with BeforeAndAfterAll {
   }
 
   describe("its perform function") {
-    val membership = Agent(Set[ActorRef]())
+    it("must send all Decisions to the provided ActorRef") {
+      val testProbe = TestProbe()
 
-    it ("must not acknowledge an Decision below it's slotnum") {
-      val persistenceProbe = TestProbe()
-      val clientProbe = TestProbe()
-      val paxosAdapter = new SiriusPaxosAdapter(membership, 10, persistenceProbe.ref)
+      val performFun = SiriusPaxosAdapter.createPerformFun(testProbe.ref)
 
-      paxosAdapter.performFun(Decision(9, Command(clientProbe.ref, 1, Delete("z"))))
-      clientProbe.expectNoMsg()
-      persistenceProbe.expectNoMsg()
+      val theDecision = Decision(1, Command(null, 2, Delete("3")))
+      performFun(theDecision)
+      testProbe.expectMsg(theDecision)
     }
-
-    it ("must only acknowledge a new Decision once") {
-      val persistenceProbe = TestProbe()
-      val clientProbe = TestProbe()
-
-      val paxosAdapter = new SiriusPaxosAdapter(membership, 10, persistenceProbe.ref)
-
-      val theDecision = Decision(10, Command(clientProbe.ref, 1, Delete("z")))
-
-      paxosAdapter.performFun(theDecision)
-      clientProbe.expectMsg(SiriusResult.none())
-      persistenceProbe.expectMsg(OrderedEvent(10, 1, Delete("z")))
-
-      paxosAdapter.performFun(theDecision)
-      clientProbe.expectNoMsg()
-      persistenceProbe.expectNoMsg()
-    }
-
-    it ("must queue unready Decisions and apply them when their time comes") {
-      val persistenceProbe = TestProbe()
-      val clientProbe = TestProbe()
-
-      val paxosAdapter = new SiriusPaxosAdapter(membership, 10, persistenceProbe.ref)
-
-      paxosAdapter.performFun(Decision(11, Command(clientProbe.ref, 1, Delete("a"))))
-      clientProbe.expectMsg(SiriusResult.none())
-      persistenceProbe.expectNoMsg()
-
-      paxosAdapter.performFun(Decision(13, Command(clientProbe.ref, 2, Delete("b"))))
-      clientProbe.expectMsg(SiriusResult.none())
-      persistenceProbe.expectNoMsg()
-
-      paxosAdapter.performFun(Decision(10, Command(clientProbe.ref, 3, Delete("c"))))
-      clientProbe.expectMsg(SiriusResult.none())
-      persistenceProbe.expectMsg(OrderedEvent(10, 3, Delete("c")))
-      persistenceProbe.expectMsg(OrderedEvent(11, 1, Delete("a")))
-
-      paxosAdapter.performFun(Decision(12, Command(clientProbe.ref, 4, Delete("d"))))
-      clientProbe.expectMsg(SiriusResult.none())
-      persistenceProbe.expectMsg(OrderedEvent(12, 4, Delete("d")))
-      persistenceProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
-    }
-
   }
 
 }
