@@ -4,6 +4,7 @@ import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete, Put}
 import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
 import akka.event.Logging
 import akka.actor.{Actor, ActorRef}
+import com.comcast.xfinity.sirius.api.SiriusResult
 
 /**
  * Actor for assigning order to sirius requests locally.
@@ -26,6 +27,9 @@ class NaiveOrderingActor(val persistenceActor: ActorRef, var nextSeq: Long) exte
   private def processRequest(req: NonCommutativeSiriusRequest) {
     persistenceActor forward OrderedEvent(nextSeq, System.currentTimeMillis(), req)
     nextSeq = nextSeq + 1
+    //XXX: return as soon as ordering is complete
+    sender ! SiriusResult.none
+
   }
 
 }
