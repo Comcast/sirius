@@ -6,6 +6,11 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Command, Decisio
 import com.comcast.xfinity.sirius.api.SiriusResult
 import annotation.tailrec
 import akka.actor.{Actor, ActorRef}
+import com.comcast.xfinity.sirius.api.impl.persistence.{RequestLogFromAnyRemote, BoundedLogRange}
+
+object PaxosStateBridge {
+  object RequestGaps
+}
 
 /**
  * Actor responsible for bridging the gap between the Paxos layer and
@@ -32,9 +37,12 @@ import akka.actor.{Actor, ActorRef}
  *            everything through the state subsystem supervisor for abstraction,
  *            such that we can easily refactor and not worry about messing stuff
  *            up.
+ * @param logRequestActor reference to actor that will handle requests for log ranges.
  */
 class PaxosStateBridge(startingSeq: Long,
-                       stateSup: ActorRef) extends Actor {
+                       stateSup: ActorRef,
+                       logRequestActor: ActorRef) extends Actor {
+    import PaxosStateBridge._
 
   var nextSeq: Long = startingSeq
   var eventBuffer = SortedMap[Long, OrderedEvent]()
@@ -52,6 +60,8 @@ class PaxosStateBridge(startingSeq: Long,
       eventBuffer += (slot -> OrderedEvent(slot, ts, op))
       client ! SiriusResult.none()
       executeReadyDecisions()
+    case RequestGaps =>
+      requestGaps()
   }
 
   /**
@@ -71,5 +81,41 @@ class PaxosStateBridge(startingSeq: Long,
       }
     }
     applyNextReadyDecision()
+  }
+
+  /**
+   * Given the current nextSeq and eventBuffer, finds current gaps that are preventing persistence
+   * and requests them from the local logRequestActor.  Does not modify nextSeq or eventBuffer.
+   */
+  private def requestGaps() {
+    val gaps = findAllGaps(nextSeq, eventBuffer)
+    gaps.foreach(
+      (br: BoundedLogRange) =>
+        logRequestActor ! RequestLogFromAnyRemote(br)
+    )
+  }
+
+  /**
+   * Generate list of "gaps" in an event buffer.  Gaps are ranges of sequence numbers that:
+   * - do not appear in the buffer
+   * - are preventing later writes from being persisted
+   *
+   * @param nextSeqExpected next expected sequence number
+   * @param buffer buffer to search
+   * @param accum accumulator, defaults to empty if not provided
+   * @return list of bounded log ranges representing gaps.
+   */
+  @tailrec
+  private def findAllGaps(nextSeqExpected: Long,
+                          buffer: SortedMap[Long, OrderedEvent],
+                          accum: List[BoundedLogRange] = Nil): List[BoundedLogRange] = {
+    buffer.headOption match {
+      case Some((seq, event)) if seq > nextSeqExpected =>
+        findAllGaps(seq + 1, buffer.tail, accum :+ BoundedLogRange(nextSeqExpected, seq - 1))
+      case Some((seq, event)) =>
+        findAllGaps(seq + 1, buffer.tail, accum)
+      case None =>
+        accum
+    }
   }
 }

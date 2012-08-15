@@ -56,7 +56,7 @@ object SiriusSupervisor {
       val membershipActor = context.actorOf(Props(new MembershipActor(_membershipAgent, _siriusStateAgent, _clusterConfigPath)), "membership")
       val logRequestActor = context.actorOf(Props(new LogRequestActor(100, _siriusLog, self, stateSup, _membershipAgent)), "log")
       val orderingActor = if (usePaxos) {
-        val siriusPaxosAdapter = new SiriusPaxosAdapter(_membershipAgent, _siriusLog.getNextSeq, stateSup)
+        val siriusPaxosAdapter = new SiriusPaxosAdapter(_membershipAgent, _siriusLog.getNextSeq, stateSup, logRequestActor)
         siriusPaxosAdapter.paxosSubSystem
       } else {
         context.actorOf(Props(new NaiveOrderingActor(stateSup, _siriusLog.getNextSeq)), "paxos")

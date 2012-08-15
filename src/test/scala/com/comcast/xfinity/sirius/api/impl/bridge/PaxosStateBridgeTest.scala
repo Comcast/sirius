@@ -7,6 +7,8 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Decision, Comman
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.SiriusResult
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, SiriusPaxosAdapter, Delete}
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestGaps
+import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, RequestLogFromAnyRemote}
 
 class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
 
@@ -15,8 +17,9 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
   describe("when receiving a Decision message") {
     it ("must not acknowledge an Decision below it's slotnum") {
       val stateProbe = TestProbe()
+      val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
 
       stateBridge ! Decision(9, Command(clientProbe.ref, 1, Delete("z")))
       clientProbe.expectNoMsg()
@@ -26,9 +29,10 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
     it ("must, in the presence of multiple Decisions for a slot, " +
         "only acknowledge and apply the first") {
       val stateProbe = TestProbe()
+      val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
 
       val theDecision = Decision(10, Command(clientProbe.ref, 1, Delete("z")))
 
@@ -43,9 +47,10 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
 
     it ("must queue unready Decisions and apply them when their time comes") {
       val stateProbe = TestProbe()
+      val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
       clientProbe.expectMsg(SiriusResult.none())
@@ -65,5 +70,49 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
       stateProbe.expectMsg(OrderedEvent(12, 4, Delete("d")))
       stateProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
     }
+  }
+
+  it ("must find no gaps for an empty event buffer") {
+    val stateProbe = TestProbe()
+    val logRequestProbe = TestProbe()
+
+    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+
+    stateBridge ! RequestGaps
+    logRequestProbe.expectNoMsg()
+  }
+
+  it ("must be able to identify a single gap") {
+    val stateProbe = TestProbe()
+    val logRequestProbe = TestProbe()
+    val clientProbe = TestProbe()
+
+    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+
+    stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
+
+    stateBridge ! RequestGaps
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10)))
+  }
+
+  it ("must be able to identify multiple gaps") {
+    val stateProbe = TestProbe()
+    val logRequestProbe = TestProbe()
+    val clientProbe = TestProbe()
+
+    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+
+    stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
+    stateBridge ! Decision(15, Command(clientProbe.ref, 1, Delete("a")))
+    stateBridge ! Decision(19, Command(clientProbe.ref, 1, Delete("a")))
+    stateBridge ! Decision(20, Command(clientProbe.ref, 1, Delete("a")))
+    stateBridge ! Decision(25, Command(clientProbe.ref, 1, Delete("a")))
+
+    stateBridge ! RequestGaps
+
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10)))
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(12, 14)))
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(16, 18)))
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(21, 24)))
   }
 }
