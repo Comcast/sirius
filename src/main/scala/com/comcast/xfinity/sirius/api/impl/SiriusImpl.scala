@@ -16,7 +16,7 @@ import com.typesafe.config.ConfigFactory
 import akka.actor._
 import java.util.concurrent.Future
 import scalax.file.Path
-import com.comcast.xfinity.sirius.writeaheadlog.{ WriteAheadLogSerDe, SiriusFileLog, SiriusLog }
+import com.comcast.xfinity.sirius.writeaheadlog.{ CachedSiriusFileLog, SiriusLog }
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 /**
@@ -37,7 +37,7 @@ object SiriusImpl extends AkkaConfig {
    */
   
   def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
-    val log = SiriusFileLog(siriusConfig.logLocation)
+    val log = CachedSiriusFileLog(siriusConfig.logLocation)
     createSirius(requestHandler, siriusConfig, log)
   }
   
