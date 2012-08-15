@@ -54,17 +54,17 @@ class LogRequestITest extends NiceTest with BeforeAndAfterAll {
   }
 
   private def createLogRequestActor(): LogRequestActor = {
-    new LogRequestActor(chunkSize, source, localSiriusRef, stateActorProbe.ref, membershipAgent)
+    new LogRequestActor(chunkSize, source, localSiriusRef, membershipAgent)
   }
 
   describe("a logRequestActor") {
     it("should start senders/receivers and receive TransferComplete when triggered by a RequestLogFromRemote message") {
-      logRequestWrapper ! RequestLogFromRemote(remoteLogActor, logRange)
+      logRequestWrapper ! RequestLogFromRemote(remoteLogActor, logRange, stateActorProbe.ref)
       parentProbe.expectMsg(5 seconds, TransferComplete)
     }
 
     it("should start senders/receivers and receive TransferComplete when triggered by a RequestLogFromAnyRemote message") {
-      logRequestWrapper ! RequestLogFromAnyRemote(logRange)
+      logRequestWrapper ! RequestLogFromAnyRemote(logRange, stateActorProbe.ref)
       parentProbe.expectMsg(5 seconds, TransferComplete)
     }
 

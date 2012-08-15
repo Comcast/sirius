@@ -92,7 +92,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
     stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
 
     stateBridge ! RequestGaps
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10)))
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10), stateBridge))
   }
 
   it ("must be able to identify multiple gaps") {
@@ -110,9 +110,9 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
 
     stateBridge ! RequestGaps
 
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10)))
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(12, 14)))
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(16, 18)))
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(21, 24)))
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10), stateBridge))
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(12, 14), stateBridge))
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(16, 18), stateBridge))
+    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(21, 24), stateBridge))
   }
 }

@@ -91,7 +91,7 @@ class PaxosStateBridge(startingSeq: Long,
     val gaps = findAllGaps(nextSeq, eventBuffer)
     gaps.foreach(
       (br: BoundedLogRange) =>
-        logRequestActor ! RequestLogFromAnyRemote(br)
+        logRequestActor ! RequestLogFromAnyRemote(br, self)
     )
   }
 
