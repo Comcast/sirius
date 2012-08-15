@@ -6,6 +6,7 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Command, Decisio
 import com.comcast.xfinity.sirius.api.SiriusResult
 import annotation.tailrec
 import akka.actor.{Actor, ActorRef}
+import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.persistence.{RequestLogFromAnyRemote, BoundedLogRange}
 
 object PaxosStateBridge {
@@ -44,8 +45,15 @@ class PaxosStateBridge(startingSeq: Long,
                        logRequestActor: ActorRef) extends Actor {
     import PaxosStateBridge._
 
+  // TODO: make this configurable- it's cool hardcoded for now, but once
+  //       SiriusConfig matures this would be pretty clean to configure
+  val requestGapsCancellable =
+    context.system.scheduler.schedule(60 seconds, 60 seconds, self, RequestGaps)
+
   var nextSeq: Long = startingSeq
   var eventBuffer = SortedMap[Long, OrderedEvent]()
+
+  override def postStop() { requestGapsCancellable.cancel() }
 
   def receive = {
     /*
