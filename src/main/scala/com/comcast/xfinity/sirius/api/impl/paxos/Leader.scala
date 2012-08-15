@@ -7,6 +7,7 @@ import collection.immutable.SortedMap
 import annotation.tailrec
 import akka.util.duration._
 import akka.event.Logging
+import java.util.UUID
 
 object Leader {
   object Reap
@@ -51,10 +52,12 @@ class Leader(membership: Agent[Set[ActorRef]],
   val acceptors = membership
   val replicas = membership
 
-  var ballotNum = Ballot(0, self.toString)
+  var ballotNum = Ballot(0, UUID.randomUUID().toString)
   var active = false
   var proposals = SortedMap[Long, Command]()
   var lowestAcceptableSlot: Long = startingSeqNum
+
+  log.info("Starting leader using ballotNum={}", ballotNum)
 
   startScout()
 
@@ -74,7 +77,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
     case Preempted(newBallot) if newBallot > ballotNum =>
       active = false
-      ballotNum = Ballot(newBallot.seq + 1, self.toString)
+      ballotNum = Ballot(newBallot.seq + 1, ballotNum.leaderId)
       startScout()
 
     case Reap =>
