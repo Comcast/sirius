@@ -4,13 +4,9 @@ README
 Installation
 ------------
 
-Installing walt requires having easy_install.
+Installing walt.py requires easy_install, virtualenv, and pip.
  
 If you already have easy_install, skip to step 3.
-
-To confirm you have easy install try installing virtualenv:
-
-$ easy_install virtualenv
 
 If you need to install easy_install:
 
@@ -22,25 +18,33 @@ $ wget http://pypi.python.org/packages/2.6/s/setuptools/setuptools-0.6c11-py2.6.
 
 $ sudo sh setuptools-0.6c11-py2.6.egg
 
-3. Install virtualenv using easy_install and create one (replace <ve> 
-directory with the directory of your choice - no trailing slash!):
+3. Install virtualenv (this installs pip).
 
-$ easy_install virtualenv 
+$ easy_install virtualenv
+
+In order to install walt.py's dependencies into your system's 
+Python environment, and not isolate them using virutalenv, 
+skip to step 6.
+
+4. Create a virtualenv (replace <ve> directory with the 
+directory of your choice - no trailing slash!):
+
 $ virtualenv <ve>
 
-4. Switch to that virtualenv to install libraries and run the script:
+5. Switch to that virtualenv to install libraries and run the script:
 
 $ source <ve>/bin/activate
 
-5. Change directory to the directory you installed this script:
+6. Change directory to the directory you installed this script:
 
 $ cd <sirius-bin>
 
-6. Install pre-requisite Python libraries:
+7. Install pre-requisite Python libraries:
 
 $ pip install -r pip-requires.txt
 
-Now you are ready to run! In the future you need to execute steps 4 and 5 before running walt.
+Now you are ready to run! If you are using a virtualenv, make sure
+to activate it first (step 5 above).
 
 Running walt
 ----------------
@@ -60,6 +64,8 @@ $ ./walt.py -i <path-to-wal> -o <path-to-output>
 To pipe the output of a WAL file and produce its protobuffer output:
 
 tail -n1 <path-to-wal> | ./walt.py -p
+
+tail -n1 ../../_snippets/wal-programs.log | ./walt.py -p | grep seriesId
 
 Maintenance
 
