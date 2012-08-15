@@ -29,7 +29,7 @@ object PaxosSup {
   /**
    * Same as the 3 arg constructor, except defaults startingSeqNum to 1
    */
-  @deprecated
+  @deprecated("instead use 3 arg constructor","8-15-12 at least")
   def apply(membership: Agent[Set[ActorRef]], performFun: Replica.PerformFun): PaxosSup =
     apply(membership, 1, performFun)
 
