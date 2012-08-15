@@ -30,8 +30,8 @@ object SiriusImpl extends AkkaConfig {
    * shutdown the dependent ActorSystem.
    *
    * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
-   * @param a SiriusConfiguration containing configuration info needed for this node.  @see SiriusConfiguration
-   * for info on needed config.
+   * @param siriusConfig a SiriusConfiguration containing configuration info needed for this node.
+   *          @see SiriusConfiguration for info on needed config.
    *
    * @return A SiriusImpl constructed using the parameters
    */
@@ -46,8 +46,8 @@ object SiriusImpl extends AkkaConfig {
    * Real code should use the two argument factory method.  
    * 
    * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
-   * @param a SiriusConfiguration containing configuration info needed for this node.  @see SiriusConfiguration
-   * for info on needed config.
+   * @param siriusConfig a SiriusConfiguration containing configuration info needed for this node.
+   *          @see SiriusConfiguration for info on needed config.
    * @param siriusLog the persistence layer to which events should be committed to and replayed from.
    *
    * @return A SiriusImpl constructed using the parameters
