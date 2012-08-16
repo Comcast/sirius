@@ -10,40 +10,40 @@ class LogReceivingActorTest extends NiceTest {
 
   var actorSystem : ActorSystem = _
   var receiver : TestActorRef[LogReceivingActor] = _
-  var persistenceActorProbe: TestProbe = _
-  var mockSender : TestProbe = _
+  var targetProbe: TestProbe = _
+  var senderProbe : TestProbe = _
 
   before {
     actorSystem = ActorSystem("actorSystem")
-    persistenceActorProbe = TestProbe()(actorSystem)
-    mockSender = TestProbe()(actorSystem)
+    targetProbe = TestProbe()(actorSystem)
+    senderProbe = TestProbe()(actorSystem)
 
-    receiver = TestActorRef(new LogReceivingActor(persistenceActorProbe.ref))(actorSystem)
+    receiver = TestActorRef(new LogReceivingActor(targetProbe.ref))(actorSystem)
   }
 
   describe("a LogReceivingActor") {
-    it("handles a LogChunk message and sends a Received message") {
+    it("handles a LogChunk message, sending it's data to the target," +
+       " and sends a Received message") {
 
-      val lines = Vector(
+      val events = Vector(
         OrderedEvent(1, 1, Delete("a")),
         OrderedEvent(2, 1, Delete("b")),
         OrderedEvent(3, 1, Delete("c"))
       )
 
-      val logChunk = LogChunk(1, lines)
+      val logChunk = LogChunk(1, events)
 
-      mockSender.send(receiver, logChunk)
+      senderProbe.send(receiver, logChunk)
 
-      val message = mockSender.receiveOne(5 seconds)
-      assert (message === Received(1))
+      senderProbe.expectMsg(Received(1))
+      events.foreach(targetProbe.expectMsg(_))
     }
 
     it("handles a done message and sends back a DoneAck") {
       val doneMessage = DoneMsg
-      mockSender.send(receiver, doneMessage)
+      senderProbe.send(receiver, doneMessage)
 
-      val message = mockSender.receiveOne(5 seconds)
-      assert (message === DoneAck)
+      senderProbe.expectMsg(DoneAck)
     }
   }
 }
