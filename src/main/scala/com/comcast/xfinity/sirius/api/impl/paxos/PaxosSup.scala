@@ -53,12 +53,13 @@ object PaxosSup {
 }
 
 class PaxosSup extends Actor {
-    this: PaxosSup.ChildProvider =>
+  this: PaxosSup.ChildProvider =>
 
   val log = Logging(context.system, this)
 
   def receive = {
     // Replica messages
+    case GetLowestUnusedSlotNum => replica forward GetLowestUnusedSlotNum
     case PaxosSup.Submit(req) =>
       log.debug("Received event for submission {}", req)
       val command = Command(sender, System.currentTimeMillis(), req)

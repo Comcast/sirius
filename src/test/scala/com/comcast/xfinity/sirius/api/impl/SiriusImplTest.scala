@@ -18,31 +18,21 @@ import scalax.file.Path
 import com.comcast.xfinity.sirius.api.impl.membership._
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 
-object SiriusImplTest {
-  
+object SiriusImplTestCompanion {
+
   // Create an extended impl for testing
-  def createProbedSiriusImpl(handler: RequestHandler, 
-                             actorSystem: ActorSystem,
-                             siriusLog: SiriusLog,
-                             supProbe: TestProbe,
-                             siriusStateAgent: Agent[SiriusState],
-                             membershipAgent: Agent[Set[ActorRef]],
-                             clusterConfigPath: Path): SiriusImpl = {
+  def createProbedSiriusImpl(handler: RequestHandler, actorSystem: ActorSystem, siriusLog: SiriusLog,
+                             supProbe: TestProbe, siriusStateAgent: Agent[SiriusState],
+                             membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path): SiriusImpl = {
 
     // note host and port aren't actually tested
     new SiriusImpl(handler, siriusLog, clusterConfigPath)(actorSystem) {
-      
-      override def createSiriusSupervisor(_as: ActorSystem, 
-          _handler: RequestHandler,
-          _host: String,
-          _port: Int,
-          _log: SiriusLog,
-          _siriusStateAgent: Agent[SiriusState],
-          _membershipAgent: Agent[Set[ActorRef]],
-          _clusterConfigPath: Path,
-          _supName: String
-          ): ActorRef = supProbe.ref
-          
+
+      override def createSiriusSupervisor(_as: ActorSystem, _handler: RequestHandler, _host: String, _port: Int,
+                                          _log: SiriusLog, _siriusStateAgent: Agent[SiriusState],
+                                          _membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path,
+                                          _supName: String): ActorRef = supProbe.ref
+
     }
   }
 }
@@ -79,7 +69,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
         case Delete(_) =>
           sender ! SiriusResult.some("Delete it")
           Some(this)
-        case Put(_, _) => 
+        case Put(_, _) =>
           sender ! SiriusResult.some("Put it")
           Some(this)
         case GetMembershipData =>
@@ -92,8 +82,9 @@ class SiriusImplTest extends NiceTest with TimedTest {
 
     siriusLog = mock[SiriusLog]
 
-    underTest = SiriusImplTest.createProbedSiriusImpl(mockRequestHandler, 
-        actorSystem, siriusLog, supervisorActorProbe, siriusStateAgent, membershipAgent, clusterConfigPath)
+    underTest = SiriusImplTestCompanion
+      .createProbedSiriusImpl(mockRequestHandler, actorSystem, siriusLog, supervisorActorProbe, siriusStateAgent,
+      membershipAgent, clusterConfigPath)
 
   }
 
@@ -134,7 +125,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
       supervisorActorProbe.expectMsg(GetMembershipData)
     }
 
-    it("should issue a \"tell\" CheckClusterConfig when checkClusterConfig is called"){
+    it("should issue a \"tell\" CheckClusterConfig when checkClusterConfig is called") {
       underTest.checkClusterConfig
       supervisorActorProbe.expectMsg(CheckClusterConfig)
 
@@ -207,7 +198,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
     }
 
     describe(".shutdown") {
-      it ("must kill off the supervisor, not effecting the ActorSystem") {
+      it("must kill off the supervisor, not effecting the ActorSystem") {
         // XXX: it would be great to test that the agents are shutdown, but we don't have a
         //      good handle on those right now. I think for now it's ok to handwave over,
         //      since SiriusImpl's will generally be long lived and the Agent's shouldn't
@@ -216,6 +207,17 @@ class SiriusImplTest extends NiceTest with TimedTest {
         underTest.shutdown()
         assert(waitForTrue(underTest.supervisor.isTerminated, 2000, 200), "Supervisor should be terminated")
         assert(!underTest.actorSystem.isTerminated, "ActorSystem should not be terminated")
+        assert(false === underTest.isOnline)
+      }
+      it("should execute shutdownOperations when shutdown is called") {
+        var didOneThing = false;
+
+        underTest.shutdownOperations = Some(() => {
+          didOneThing = true;
+        })
+        underTest.shutdown()
+        assert(didOneThing)
+
       }
     }
 

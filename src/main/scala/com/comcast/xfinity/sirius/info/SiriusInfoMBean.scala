@@ -8,4 +8,8 @@ trait SiriusInfoMBean {
 
   def getName: String
 
+  def getMembership : String
+
+  def getLatestSlot : String
+
 }

@@ -6,9 +6,8 @@ import java.net.InetAddress
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
-import com.comcast.xfinity.sirius.info.SiriusInfo
 import akka.pattern.ask
-import akka.dispatch.{ Future => AkkaFuture }
+import akka.dispatch.{Future => AkkaFuture}
 import membership._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
@@ -16,13 +15,15 @@ import com.typesafe.config.ConfigFactory
 import akka.actor._
 import java.util.concurrent.Future
 import scalax.file.Path
-import com.comcast.xfinity.sirius.writeaheadlog.{ CachedSiriusFileLog, SiriusLog }
+import com.comcast.xfinity.sirius.writeaheadlog.{CachedSiriusFileLog, SiriusLog}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.info.SiriusInfo
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
  */
 object SiriusImpl extends AkkaConfig {
+
 
   /**
    * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
@@ -31,28 +32,29 @@ object SiriusImpl extends AkkaConfig {
    *
    * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
    * @param siriusConfig a SiriusConfiguration containing configuration info needed for this node.
-   *          @see SiriusConfiguration for info on needed config.
+   * @see SiriusConfiguration for info on needed config.
    *
    * @return A SiriusImpl constructed using the parameters
    */
-  
   def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
     val log = CachedSiriusFileLog(siriusConfig.logLocation)
     createSirius(requestHandler, siriusConfig, log)
   }
-  
+
   /**
    * USE ONLY FOR TESTING HOOK WHEN YOU NEED TO MOCK OUT A LOG.  
    * Real code should use the two argument factory method.  
-   * 
+   *
    * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
    * @param siriusConfig a SiriusConfiguration containing configuration info needed for this node.
-   *          @see SiriusConfiguration for info on needed config.
+   * @see SiriusConfiguration for info on needed config.
    * @param siriusLog the persistence layer to which events should be committed to and replayed from.
    *
    * @return A SiriusImpl constructed using the parameters
    */
-  def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration, siriusLog: SiriusLog): SiriusImpl = {
+  @deprecated("Please use 2 arg version", "8-10-12")
+  def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
+                   siriusLog: SiriusLog): SiriusImpl = {
     val remoteConfig = ConfigFactory.parseString("""
     akka {
       remote {
@@ -77,23 +79,25 @@ object SiriusImpl extends AkkaConfig {
     val allConfig = remoteConfig.withFallback(config)
     implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
 
-    val admin = createAdmin(siriusConfig.host, siriusConfig.port)
+
+
+
+
+    val impl = new
+        SiriusImpl(requestHandler, siriusLog, Path.fromString(siriusConfig.clusterConfigPath), siriusConfig.host,
+          siriusConfig.port, siriusConfig.usePaxos)
+
+    val admin = createAdmin(siriusConfig.host, siriusConfig.port, impl.supervisor)
     admin.registerMbeans()
-
-    new SiriusImpl(requestHandler, siriusLog, Path.fromString(siriusConfig.clusterConfigPath),
-      siriusConfig.host, siriusConfig.port, siriusConfig.usePaxos) {
-
-      // we need to override SiriusImpl's shutdown to also shutdown the ActorSystem
-      // XXX: should this be extracted to another class?
-      override def shutdown() {
-        super.shutdown()
-        actorSystem.shutdown()
-        actorSystem.awaitTermination()
-        admin.unregisterMbeans()
-      }
-    }
+    impl.shutdownOperations = Some(() => {
+      actorSystem.shutdown()
+      actorSystem.awaitTermination()
+      admin.unregisterMbeans()
+    })
+    impl
 
   }
+
   /**
    * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
    * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
@@ -118,7 +122,7 @@ object SiriusImpl extends AkkaConfig {
    */
   @deprecated("Please use 2 arg version", "8-10-12")
   def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
-    clusterConfigPath: String, usePaxos: Boolean) = {
+                   clusterConfigPath: String, usePaxos: Boolean): SiriusImpl = {
 
     val remoteConfig = ConfigFactory.parseString("""
     akka {
@@ -145,36 +149,32 @@ object SiriusImpl extends AkkaConfig {
     val allConfig = remoteConfig.withFallback(config)
     implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
 
-    val admin = createAdmin(hostName, port)
+
+    val impl = new SiriusImpl(requestHandler, siriusLog, Path.fromString(clusterConfigPath), hostName, port, usePaxos)
+
+    val admin = createAdmin(hostName, port, impl.supervisor)
     admin.registerMbeans()
+    impl.shutdownOperations = Some(() => {
+      actorSystem.shutdown()
+      actorSystem.awaitTermination()
+      admin.unregisterMbeans()
+      Unit
+    })
+    impl
 
-    new SiriusImpl(requestHandler, siriusLog, Path.fromString(clusterConfigPath),
-      hostName, port, usePaxos) {
-
-      // we need to override SiriusImpl's shutdown to also shutdown the ActorSystem
-      // XXX: should this be extracted to another class?
-      override def shutdown() {
-        super.shutdown()
-        actorSystem.shutdown()
-        actorSystem.awaitTermination()
-        admin.unregisterMbeans()
-      }
-    }
-    
   }
 
-  private def createAdmin(host: String, port: Int) = {
+  private def createAdmin(host: String, port: Int, supervisorRef: ActorRef)
+  = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
-    val info = new SiriusInfo(port, host)
+
+    val info = new SiriusInfo(port, host, supervisorRef)
     new SiriusAdmin(info, mbeanServer)
   }
-  
+
   @deprecated("Please use 2 arg version", "7-30-12")
-  def createSirius(requestHandler: RequestHandler,
-    siriusLog: SiriusLog,
-    hostname: String,
-    port: Int,
-    clusterConfigPath: String): SiriusImpl = {
+  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostname: String, port: Int,
+                   clusterConfigPath: String): SiriusImpl = {
     createSirius(requestHandler, siriusLog, hostname, port, clusterConfigPath, false)
   }
 }
@@ -195,13 +195,13 @@ object SiriusImpl extends AkkaConfig {
  * @param actorSystem the actorSystem to use to create the Actors for Sirius (Note, this param will likely be
  *            moved in future refactorings to be an implicit parameter at the end of the argument list)
  */
-class SiriusImpl(requestHandler: RequestHandler,
-  siriusLog: SiriusLog,
-  clusterConfigPath: Path,
-  host: String = InetAddress.getLocalHost.getHostName,
-  port: Int = 2552,
-  usePaxos: Boolean = false,
-  supName: String = "sirius")(implicit val actorSystem: ActorSystem) extends Sirius with AkkaConfig {
+class SiriusImpl(requestHandler: RequestHandler, siriusLog: SiriusLog, clusterConfigPath: Path,
+                 host: String = InetAddress.getLocalHost.getHostName, port: Int = SiriusImpl.DEFAULT_PORT,
+                 usePaxos: Boolean = false, supName: String = SiriusImpl.DEFAULT_SUPERVISOR_NAME)
+                (implicit val actorSystem: ActorSystem)
+  extends Sirius with AkkaConfig {
+
+  private[impl] var shutdownOperations: Option[(() => Unit)] = None
 
   val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
@@ -223,11 +223,14 @@ class SiriusImpl(requestHandler: RequestHandler,
     // XXX: the following is not pretty, we will not want to do it this way for real, this is
     //      a sacrifice that must be made to start getting a stable api build though, at the time
     //      this was written, the success rate was 7%
-    val siriusStateSnapshot = siriusStateAgent()
-    (
-      (siriusStateSnapshot.stateActorState == SiriusState.StateActorState.Initialized) &&
-      (siriusStateSnapshot.membershipActorState == SiriusState.MembershipActorState.Initialized) &&
-      (siriusStateSnapshot.persistenceState == SiriusState.PersistenceState.Initialized))
+    if (supervisor.isTerminated) {
+      false
+    } else {
+      val siriusStateSnapshot = siriusStateAgent()
+      ((siriusStateSnapshot.stateActorState == SiriusState.StateActorState.Initialized) &&
+        (siriusStateSnapshot.membershipActorState == SiriusState.MembershipActorState.Initialized) &&
+        (siriusStateSnapshot.persistenceState == SiriusState.PersistenceState.Initialized))
+    }
 
   }
 
@@ -267,15 +270,23 @@ class SiriusImpl(requestHandler: RequestHandler,
     supervisor ! Kill
     membershipAgent.close()
     siriusStateAgent.close()
+    shutdownOperations match {
+      case Some(op: (() => Unit)) => op()
+      case None => //do nothing
+    }
+
   }
+
 
   // XXX: handle for testing, now that it's getting crowded we should consider alternative patterns
   private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, host: String,
-    port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
-    theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path,
-    theSupName: String) = {
-    val supProps = Props(SiriusSupervisor(theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent,
-      clusterConfigPath, usePaxos))
+                                           port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
+                                           theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path,
+                                           theSupName: String) = {
+    val supProps = Props(
+      SiriusSupervisor(theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, clusterConfigPath,
+        usePaxos))
     theActorSystem.actorOf(supProps, theSupName)
   }
+
 }

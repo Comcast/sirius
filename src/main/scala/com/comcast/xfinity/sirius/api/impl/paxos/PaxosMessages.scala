@@ -21,6 +21,9 @@ object PaxosMessages {
 
   case class PValue(ballot: Ballot, slotNum: Long, proposedCommand: Command) extends PaxosMessage
 
+  case object GetLowestUnusedSlotNum extends PaxosMessage
+  case class LowestUnusedSlotNum(slot: Long) extends PaxosMessage
+
   /**
    * Message used by a Scout to advocate a Ballot
    *

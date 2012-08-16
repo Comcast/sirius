@@ -68,6 +68,7 @@ class Replica(membership: Agent[Set[ActorRef]],
   }
 
   def receive = {
+    case GetLowestUnusedSlotNum => sender ! LowestUnusedSlotNum(lowestUnusedSlotNum)
     case Request(command: Command) => propose(command)
     case decision @ Decision(slot, command) =>
       log.debug("Received decision slot {} for {}",
