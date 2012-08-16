@@ -3,7 +3,6 @@ package com.comcast.xfinity.sirius.api.impl.persistence
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.ActorSystem
 import akka.testkit.{TestProbe, TestActorRef}
-import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 
 class LogReceivingActorTest extends NiceTest {
@@ -39,11 +38,12 @@ class LogReceivingActorTest extends NiceTest {
       events.foreach(targetProbe.expectMsg(_))
     }
 
-    it("handles a done message and sends back a DoneAck") {
+    it("handles a done message and sends back a DoneAck, then exits") {
       val doneMessage = DoneMsg
       senderProbe.send(receiver, doneMessage)
 
       senderProbe.expectMsg(DoneAck)
+      assert(receiver.isTerminated)
     }
   }
 }

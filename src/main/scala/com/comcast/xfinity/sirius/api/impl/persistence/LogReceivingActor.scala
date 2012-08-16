@@ -33,5 +33,6 @@ class LogReceivingActor(persistenceActor: ActorRef) extends Actor {
       logger.info("Received {} events in {} ms", numLinesReceived, System.currentTimeMillis() - startTime)
       sender ! DoneAck
       context.parent ! TransferComplete
+      context.stop(self)
   }
 }
