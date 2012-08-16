@@ -7,6 +7,11 @@ import sys
 import collections
 import sqlite3
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
 from unidecode import unidecode
 
 from core_data.BobMerlinMappingProto_pb2 import BobMerlinMappingMessage
@@ -14,7 +19,7 @@ from core_data.ProgramProto_pb2 import ProgramMessage
 from core_data.VodProto_pb2 import VodAssetMessage
 protobuf_types = {"vod":VodAssetMessage,
                   "program":ProgramMessage,
-                  "bobmapping":BobMerlinMappingMessage
+                  "mapping":BobMerlinMappingMessage
                   }
 
 col_types = {3:["TYPE_INT64", 'integer'],
@@ -104,7 +109,7 @@ def decode_dict(data):
             value = decode_dict(value)
         if value == None:
             value = ''
-        rv[key] = value      
+        rv[key] = value
     return rv
 
 
@@ -126,8 +131,9 @@ def build_insert_statement(protobuf_name, table_row):
     """Creates insert sql statements."""
     insert_template = "INSERT INTO {0} ({1}) VALUES ({2})"
     sql = insert_template.format(protobuf_name,
-                                 ', '.join([column_name for column_name in table_row.keys()]),
-                                 ', '.join(['?' for x in table_row.keys()]))  
+                                 ', '.join([column_name for column_name
+                                            in table_row.keys()]),
+                                 ', '.join(['?' for x in table_row.keys()]))
     return sql
 
 
@@ -192,15 +198,15 @@ def create_db(db):
 def insert_row(connection, cursor, log_line):
     """Will insert a log_line (transformed into a protobuffer)
     into the database via the connection and cursor arguments.
-    
+
     This method does not commit the transaction!
-    
-    This enables the caller to batch up inserts 
+
+    This enables the caller to batch up inserts
     and execute a commit after n-number of executions.
     """
     line = parse_log_line(log_line)
     message = read_protobuf_body(line['line_type'],
-                                 line['body'], 
+                                 line['body'],
                                  protobuf_types)
     table_name = message.DESCRIPTOR.name
 
@@ -210,7 +216,7 @@ def insert_row(connection, cursor, log_line):
     table_row = collections.OrderedDict()
     for idx, field in enumerate(message.DESCRIPTOR.fields):
         if message.HasField(field.name):
-            field_data = decode_dict({'field_name':field.name, 
+            field_data = decode_dict({'field_name':field.name,
                                       'field_value':message.__getattribute__(field.name)})
             padded_value = field_data['field_value']
             if col_types[field.type][0] == "TYPE_STRING":
@@ -230,11 +236,11 @@ def check_repair(f, outf, db, checksum):
     truncated = 0
     missing_fields = 0
     corrupted = 0
-    
+
     import time
     start = time.time()
 
- 
+
     if db:
         connection, cursor = create_db(db)
 
@@ -261,15 +267,16 @@ def check_repair(f, outf, db, checksum):
 
         if ok and db:
             message = insert_row(connection, cursor, line)
-            if entries % 100000 == 0:   
-                connection.commit()          
+            if entries % 100000 == 0:
+                connection.commit()
         entries += 1
         if entries % 100000 == 0:
             sys.stderr.write("wal: %d entries in %d\n" % (entries, time.time()-start))
-        
+
     if db:
+        connection.commit()
         connection.close()
-        
+
     if outf is not None:
         outf.flush()
 
@@ -287,57 +294,62 @@ if __name__ == "__main__":
     checksum = check_entry_fnv_1a
     db = None
     output_file = None
-    
+
     import optparse
     op = optparse.OptionParser(usage='%prog [options]',
                                version='%prog ' + VERSION)
-    
+
     op.add_option('-n', help='Run with no checksum verification.',
                   dest='check_checksums', action='store_true', default=False)
-    
+
     op.add_option('-m', help='Enables md5 for checksums.',
                   dest='use_md5', action='store_true', default=False)
-    
+
     op.add_option('-d', help='The location of a database to generate.',
                   dest='db', action='store', type='string')
-    
-    op.add_option('-o', help='Location to store a repaired file.', 
-                  dest='output_file', action='store', type='string')  
-    
-    op.add_option('-i', help='Location of the WAL file.', 
+
+    op.add_option('-o', help='Location to store a repaired file.',
+                  dest='output_file', action='store', type='string')
+
+    op.add_option('-i', help='Location of the WAL file.',
                   dest='input_file', action='store', type='string')
-        
+
     op.add_option('-l', help='A log line to parse.',
-                  dest='log_line', action='store', type='string')  
-    
+                  dest='log_line', action='store', type='string')
+
     op.add_option('-p', help='Pipe a log line with this flag enabled',
-                  dest='pipe_log', action='store_true', default=None) 
-    
+                  dest='pipe_log', action='store_true', default=None)
+
     (opts, args) = op.parse_args()
-        
+
     if opts.use_md5:
         checksum = check_entry_md5
-        
+
+    lines = []
     if opts.log_line:
         line = parse_log_line(opts.log_line)
+        lines.append(line)
     elif opts.pipe_log:
-        line = parse_log_line(sys.stdin.read())
-    if opts.log_line or opts.pipe_log:     
-        message = read_protobuf_body(line['line_type'], line['body'], 
-                                     protobuf_types)
-        sys.stdout.write(str(message))
-    
-    if opts.output_file:     
+        for log_line in sys.stdin.readlines():
+            lines.append(parse_log_line(log_line))
+    if opts.log_line or opts.pipe_log:
+        for line in lines:
+            message = read_protobuf_body(line['line_type'],
+                                         line['body'],
+                                         protobuf_types)
+            sys.stdout.write("---\n" + str(message))
+
+    if opts.output_file:
         try:
             output_file = open(opts.output_file,"w")
         except:
             sys.stderr.write("%s\n" % sys.exc_info()[1])
             sys.exit(1)
-            
+
     if opts.input_file:
         if opts.input_file == opts.output_file:
             sys.stderr.write('Input and Output files are the same!')
-            sys.exit(1) 
+            sys.exit(1)
         try:
             input_file = open(opts.input_file)
         except:
@@ -345,7 +357,6 @@ if __name__ == "__main__":
             sys.exit(1)
 
         check_repair(input_file, output_file, opts.db, checksum)
-        
+
     if opts.output_file:
         output_file.close()
-
