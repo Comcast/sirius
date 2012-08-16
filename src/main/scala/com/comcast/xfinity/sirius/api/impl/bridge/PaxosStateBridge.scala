@@ -89,6 +89,9 @@ class PaxosStateBridge(startingSeq: Long,
    */
   private def requestGaps() {
     val gaps = findAllGaps(nextSeq, eventBuffer)
+    // XXX: requesting multiple gaps can become quite costly given the current implementation
+    //      of log shipping, requesting multiple distinct chunks can become costly, especially
+    //      if those chunks are out of window
     gaps.foreach(
       (br: BoundedLogRange) =>
         logRequestActor ! RequestLogFromAnyRemote(br, self)

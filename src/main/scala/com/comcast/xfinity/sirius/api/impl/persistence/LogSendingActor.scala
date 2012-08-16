@@ -30,6 +30,9 @@ case class SendingData(target: ActorRef, events: CloseableIterator[OrderedEvent]
 
 /**
  * FSM that spins up and sends logs in chunks to another actor, usually a LogReceivingActor
+ *
+ * XXX: we should incorporate some sort of timeout logic here, otherwise we can wind up leaking actors and file handles
+ *      if something goes south on the other end.
  */
 class LogSendingActor extends Actor with FSM[LSState, LSData] {
   private val logger = LoggerFactory.getLogger(classOf[LogSendingActor])

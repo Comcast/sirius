@@ -26,6 +26,8 @@ class LogReceivingActor(persistenceActor: ActorRef) extends Actor {
       logger.debug("Received " + chunk.size + " events")
       sender ! Processed(chunkNum)
 
+    // XXX: do we need a way to time out one of these transactions? else we may wind up with
+    //      leaked actors, and lots of them
     case DoneMsg =>
       logger.debug("Received done message")
       logger.info("Received {} events in {} ms", numLinesReceived, System.currentTimeMillis() - startTime)
