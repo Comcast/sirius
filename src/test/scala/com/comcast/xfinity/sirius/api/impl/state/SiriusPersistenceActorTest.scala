@@ -1,4 +1,4 @@
-package com.comcast.xfinity.sirius.api.impl.persistence
+package com.comcast.xfinity.sirius.api.impl.state
 
 import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
