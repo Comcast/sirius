@@ -6,10 +6,6 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl._
-import akka.event.Logging
-import akka.dispatch.{Future => AkkaFuture, Await}
-import akka.pattern.ask
-import akka.util.duration._
 
 /**
  * {@link Actor} for persisting data to the write ahead log and forwarding
@@ -24,27 +20,12 @@ import akka.util.duration._
  *            once bootstrapping has completed
  */
 class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, siriusStateAgent: Agent[SiriusState])
-  extends Actor with AkkaConfig {
-
-  val logger = Logging(context.system, this)
+  extends Actor {
 
   override def preStart() {
-
-    logger.info("Bootstrapping Write Ahead Log")
-    val start = System.currentTimeMillis()
-    // XXX: replace accum Unit with Any? then we don't have to worry
-    //      about returning a unit in the end
-    siriusLog.foldLeft(Unit)((acc, orderedEvent) => {
-      val akkaFuture = (stateActor ? orderedEvent.request).asInstanceOf[AkkaFuture[SiriusResult]]
-      Await.result(akkaFuture, Long.MaxValue milliseconds)
-      acc
-    })
-
-    logger.info("Done Bootstrapping Write Ahead Log in {} ms", System.currentTimeMillis() - start)
     siriusStateAgent send ((state: SiriusState) => {
       state.updatePersistenceState(SiriusState.PersistenceState.Initialized)
     })
-
   }
 
   def receive = {

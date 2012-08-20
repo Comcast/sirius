@@ -3,8 +3,9 @@ package com.comcast.xfinity.sirius.api.impl.state
 import com.comcast.xfinity.sirius.api.RequestHandler
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Get, SiriusState}
 import akka.actor.{Props, ActorRef, Actor}
+import com.comcast.xfinity.sirius.api.impl._
+import akka.event.Logging
 
 object StateSup {
   trait ChildProvider {
@@ -27,11 +28,35 @@ object StateSup {
             siriusLog: SiriusLog,
             siriusStateAgent: Agent[SiriusState]): StateSup = {
     new StateSup with ChildProvider {
+
+      val logger = Logging(context.system, this)
+
+      // this stuff is essentially just autowiring, but we may want to move the contents
+      //  of this wiring to a top level-ish class for style
+      val start = System.currentTimeMillis
+      logger.info("Beginning SiriusLog replay at {}", start)
+      bootstrapState(requestHandler, siriusLog)
+      logger.info("Replayed SiriusLog in {}ms", System.currentTimeMillis - start)
+
       val stateActor =
         context.actorOf(Props(new SiriusStateActor(requestHandler, siriusStateAgent)), "memory_state")
 
       val persistenceActor =
         context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)), "persistence")
+    }
+  }
+
+  /**
+   * Replay siriusLog into requestHandler (has side effects!)
+   *
+   * @param requestHandler the RequestHandler to replay into
+   * @param siriusLog the SiriusLog to replay from
+   */
+  def bootstrapState(requestHandler: RequestHandler, siriusLog: SiriusLog) {
+    // Perhaps we should think about adding the foreach abstraction back to SiriusLog
+    siriusLog.foldLeft(()) {
+      case (acc, OrderedEvent(_, _, Put(key, body))) => requestHandler.handlePut(key, body); acc
+      case (acc, OrderedEvent(_, _, Delete(key))) => requestHandler.handleDelete(key); acc
     }
   }
 }
