@@ -5,7 +5,6 @@ import akka.agent.Agent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Get, SiriusState}
 import akka.actor.{Props, ActorRef, Actor}
-import com.comcast.xfinity.sirius.api.impl.persistence.SiriusPersistenceActor
 
 object StateSup {
   trait ChildProvider {
