@@ -52,50 +52,27 @@ object SiriusImpl extends AkkaConfig {
    *
    * @return A SiriusImpl constructed using the parameters
    */
+  // TODO: make sure it's not used anywhere and make private[sirius]
   @deprecated("Please use 2 arg version", "8-10-12")
   def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
                    siriusLog: SiriusLog): SiriusImpl = {
-    val remoteConfig = ConfigFactory.parseString("""
-    akka {
-      remote {
-         # If this is "on", Akka will log all outbound messages at DEBUG level, if off then
-         #they are not logged
-         log-sent-messages = off
+    createSirius(
+      requestHandler,
+      siriusLog,
+      siriusConfig.getHost,
+      siriusConfig.getPort,
+      siriusConfig.getClusterConfigPath,
+      siriusConfig.getUsePaxos
+    )
+  }
 
-         # If this is "on", Akka will log all inbound messages at DEBUG level, if off then they are not logged
-         log-received-messages = off
-
-
-         transport = "akka.remote.netty.NettyRemoteTransport"
-         netty {
-           # if this is set to actual hostname, remote messaging fails... can use empty or the IP address.
-           hostname = """" + siriusConfig.host + """"
-           port = """ + siriusConfig.port + """
-         }
-       }
-
-    }""")
-    val config = ConfigFactory.load("akka.conf")
-    val allConfig = remoteConfig.withFallback(config)
-    implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
-
-
-
-
-
-    val impl = new
-        SiriusImpl(requestHandler, siriusLog, Path.fromString(siriusConfig.clusterConfigPath), siriusConfig.host,
-          siriusConfig.port, siriusConfig.usePaxos)
-
-    val admin = createAdmin(siriusConfig.host, siriusConfig.port, impl.supervisor)
-    admin.registerMbeans()
-    impl.onShutdown({
-      actorSystem.shutdown()
-      actorSystem.awaitTermination()
-      admin.unregisterMbeans()
-    })
-    impl
-
+  /**
+   * DO NOT USE, removing this from the API once we confirm xfinityapi isn't still using it
+   */
+  @deprecated("Please use 2 arg version", "7-30-12")
+  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostname: String, port: Int,
+                   clusterConfigPath: String): SiriusImpl = {
+    createSirius(requestHandler, siriusLog, hostname, port, clusterConfigPath, false)
   }
 
   /**
@@ -120,6 +97,7 @@ object SiriusImpl extends AkkaConfig {
    *
    * @return A SiriusImpl constructed using the parameters
    */
+  // TODO: make sure it's not used anywhere and make private[sirius]
   @deprecated("Please use 2 arg version", "8-10-12")
   def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
                    clusterConfigPath: String, usePaxos: Boolean): SiriusImpl = {
@@ -163,19 +141,13 @@ object SiriusImpl extends AkkaConfig {
 
   }
 
-  private def createAdmin(host: String, port: Int, supervisorRef: ActorRef)
-  = {
+  private def createAdmin(host: String, port: Int, supervisorRef: ActorRef) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
 
     val info = new SiriusInfo(port, host, supervisorRef)
     new SiriusAdmin(info, mbeanServer)
   }
 
-  @deprecated("Please use 2 arg version", "7-30-12")
-  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostname: String, port: Int,
-                   clusterConfigPath: String): SiriusImpl = {
-    createSirius(requestHandler, siriusLog, hostname, port, clusterConfigPath, false)
-  }
 }
 
 /**
