@@ -89,7 +89,7 @@ object SiriusImpl extends AkkaConfig {
 
     val admin = createAdmin(siriusConfig.host, siriusConfig.port, impl.supervisor)
     admin.registerMbeans()
-    impl.shutdownOperations = Some(() => {
+    impl.onShutdown({
       actorSystem.shutdown()
       actorSystem.awaitTermination()
       admin.unregisterMbeans()
@@ -154,11 +154,10 @@ object SiriusImpl extends AkkaConfig {
 
     val admin = createAdmin(hostName, port, impl.supervisor)
     admin.registerMbeans()
-    impl.shutdownOperations = Some(() => {
+    impl.onShutdown({
       actorSystem.shutdown()
       actorSystem.awaitTermination()
       admin.unregisterMbeans()
-      Unit
     })
     impl
 
@@ -201,7 +200,7 @@ class SiriusImpl(requestHandler: RequestHandler, siriusLog: SiriusLog, clusterCo
                 (implicit val actorSystem: ActorSystem)
   extends Sirius with AkkaConfig {
 
-  private[impl] var shutdownOperations: Option[(() => Unit)] = None
+  private[impl] var onShutdownHook: Option[(() => Unit)] = None
 
   val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
@@ -264,14 +263,23 @@ class SiriusImpl(requestHandler: RequestHandler, siriusLog: SiriusLog, clusterCo
   }
 
   /**
+   * Set a block of code to run on shutDown
+   *
+   * @param shutdownHook call by name code to execute
+   */
+  def onShutdown(shutdownHook: => Unit) {
+    onShutdownHook = Some(() => shutdownHook)
+  }
+
+  /**
    * Terminate this instance.  Shuts down all associated Actors.
    */
   def shutdown() {
     supervisor ! Kill
     membershipAgent.close()
     siriusStateAgent.close()
-    shutdownOperations match {
-      case Some(op: (() => Unit)) => op()
+    onShutdownHook match {
+      case Some(shutdownHook) => shutdownHook()
       case None => //do nothing
     }
 

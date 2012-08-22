@@ -209,14 +209,15 @@ class SiriusImplTest extends NiceTest with TimedTest {
         assert(!underTest.actorSystem.isTerminated, "ActorSystem should not be terminated")
         assert(false === underTest.isOnline)
       }
-      it("should execute shutdownOperations when shutdown is called") {
-        var didOneThing = false;
 
-        underTest.shutdownOperations = Some(() => {
-          didOneThing = true;
+      it("should execute shutdownOperations when shutdown is called and only does so once") {
+        var timesShutdownWasCalled = 0
+
+        underTest.onShutdown({
+          timesShutdownWasCalled += 1
         })
         underTest.shutdown()
-        assert(didOneThing)
+        assert(1 === timesShutdownWasCalled)
 
       }
     }
