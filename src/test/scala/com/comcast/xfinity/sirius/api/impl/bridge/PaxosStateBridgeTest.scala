@@ -2,32 +2,42 @@ package com.comcast.xfinity.sirius.api.impl.bridge
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.ActorSystem
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Decision, Command}
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.SiriusResult
-import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, SiriusPaxosAdapter, Delete}
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestGaps
 import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, RequestLogFromAnyRemote}
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import akka.util.duration._
+import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, OrderedEvent, Delete}
+import akka.actor.ActorSystem
 
-class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
+class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConfig {
 
   implicit val actorSystem = ActorSystem("PaxosStateBridgeTest")
 
+  describe("when receiving a UnreadyDecisionsCountReq") {
+    it("must return the count of buffered decisions") {
+      val senderProbe = TestProbe()
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, TestProbe().ref, TestProbe().ref))
+      senderProbe.send(stateBridge, UnreadyDecisionsCountReq)
+      senderProbe.expectMsg(UnreadyDecisionCount(0))
+
+    }
+  }
   describe("when receiving a Decision message") {
-    it ("must not acknowledge an Decision below it's slotnum") {
+    it("must not acknowledge an Decision below it's slotnum") {
       val stateProbe = TestProbe()
       val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
       val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
 
       stateBridge ! Decision(9, Command(clientProbe.ref, 1, Delete("z")))
-      clientProbe.expectNoMsg()
-      stateProbe.expectNoMsg()
+      clientProbe.expectNoMsg(100 millis)
+      stateProbe.expectNoMsg(100 millis)
     }
 
-    it ("must, in the presence of multiple Decisions for a slot, " +
-        "only acknowledge and apply the first") {
+    it("must, in the presence of multiple Decisions for a slot, " +
+      "only acknowledge and apply the first") {
       val stateProbe = TestProbe()
       val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
@@ -41,11 +51,11 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
       stateProbe.expectMsg(OrderedEvent(10, 1, Delete("z")))
 
       stateBridge ! theDecision
-      clientProbe.expectNoMsg()
-      stateProbe.expectNoMsg()
+      clientProbe.expectNoMsg(100 millis)
+      stateProbe.expectNoMsg(100 millis)
     }
 
-    it ("must queue unready Decisions and apply them when their time comes") {
+    it("must queue unready Decisions and apply them when their time comes") {
       val stateProbe = TestProbe()
       val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
@@ -54,35 +64,40 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
       clientProbe.expectMsg(SiriusResult.none())
-      stateProbe.expectNoMsg()
+      stateProbe.expectNoMsg(100 millis)
+      assert(1 === stateBridge.underlyingActor.unreadyDecisionCnt)
 
       stateBridge ! Decision(13, Command(clientProbe.ref, 2, Delete("b")))
       clientProbe.expectMsg(SiriusResult.none())
-      stateProbe.expectNoMsg()
+      stateProbe.expectNoMsg(100 millis)
+      assert(2 === stateBridge.underlyingActor.unreadyDecisionCnt)
 
       stateBridge ! Decision(10, Command(clientProbe.ref, 3, Delete("c")))
       clientProbe.expectMsg(SiriusResult.none())
       stateProbe.expectMsg(OrderedEvent(10, 3, Delete("c")))
       stateProbe.expectMsg(OrderedEvent(11, 1, Delete("a")))
+      assert(1 === stateBridge.underlyingActor.unreadyDecisionCnt)
 
       stateBridge ! Decision(12, Command(clientProbe.ref, 4, Delete("d")))
       clientProbe.expectMsg(SiriusResult.none())
       stateProbe.expectMsg(OrderedEvent(12, 4, Delete("d")))
       stateProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
+      assert(0 === stateBridge.underlyingActor.unreadyDecisionCnt)
+
     }
   }
 
-  it ("must find no gaps for an empty event buffer") {
+  it("must find no gaps for an empty event buffer") {
     val stateProbe = TestProbe()
     val logRequestProbe = TestProbe()
 
     val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
 
     stateBridge ! RequestGaps
-    logRequestProbe.expectNoMsg()
+    logRequestProbe.expectNoMsg(100 millis)
   }
 
-  it ("must be able to identify a single gap") {
+  it("must be able to identify a single gap") {
     val stateProbe = TestProbe()
     val logRequestProbe = TestProbe()
     val clientProbe = TestProbe()
@@ -95,7 +110,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
     logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10), stateBridge))
   }
 
-  it ("must be able to identify multiple gaps") {
+  it("must be able to identify multiple gaps") {
     val stateProbe = TestProbe()
     val logRequestProbe = TestProbe()
     val clientProbe = TestProbe()

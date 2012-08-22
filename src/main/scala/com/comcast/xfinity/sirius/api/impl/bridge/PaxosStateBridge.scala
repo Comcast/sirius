@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.bridge
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import collection.SortedMap
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Command, Decision}
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.SiriusResult
 import annotation.tailrec
 import akka.actor.{Actor, ActorRef}
@@ -52,10 +52,14 @@ class PaxosStateBridge(startingSeq: Long,
 
   var nextSeq: Long = startingSeq
   var eventBuffer = SortedMap[Long, OrderedEvent]()
+  var unreadyDecisionCnt:Int = 0
 
   override def postStop() { requestGapsCancellable.cancel() }
 
   def receive = {
+
+    case UnreadyDecisionsCountReq =>sender ! UnreadyDecisionCount(unreadyDecisionCnt)
+
     /*
      * When a decision arrives for the first time the actor identified by
      * Decision.command.client is sent a SiriusResult.none message to aknowledge the
@@ -66,6 +70,7 @@ class PaxosStateBridge(startingSeq: Long,
      */
     case Decision(slot, Command(client, ts, op)) if slot >= nextSeq && !eventBuffer.contains(slot) =>
       eventBuffer += (slot -> OrderedEvent(slot, ts, op))
+      unreadyDecisionCnt = unreadyDecisionCnt+1
       client ! SiriusResult.none()
       executeReadyDecisions()
     case RequestGaps =>
@@ -84,6 +89,7 @@ class PaxosStateBridge(startingSeq: Long,
           stateSup ! orderedEvent
           nextSeq += 1
           eventBuffer = eventBuffer.tail
+          unreadyDecisionCnt = unreadyDecisionCnt - 1
           applyNextReadyDecision()
         case _ =>
       }

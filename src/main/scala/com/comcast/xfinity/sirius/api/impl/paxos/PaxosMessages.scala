@@ -23,6 +23,8 @@ object PaxosMessages {
 
   case object GetLowestUnusedSlotNum extends PaxosMessage
   case class LowestUnusedSlotNum(slot: Long) extends PaxosMessage
+  case object UnreadyDecisionsCountReq extends PaxosMessage
+  case class  UnreadyDecisionCount(cnt:Int) extends PaxosMessage
 
   /**
    * Message used by a Scout to advocate a Ballot
