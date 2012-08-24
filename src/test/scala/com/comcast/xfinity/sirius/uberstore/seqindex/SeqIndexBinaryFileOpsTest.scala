@@ -39,7 +39,7 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
 
   describe("put") {
     it ("must properly record the Seq -> Offset mapping with checksum") {
-      val underTest = new Object with SeqIndexBinaryFileOps with FauxChecksummer
+      val underTest = new SeqIndexBinaryFileOps with FauxChecksummer
 
       val theSeq: Long = 10
       val theOffset: Long = 20
@@ -68,7 +68,7 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
 
   describe("loadIndex") {
     it ("must read to the end of the file and return all the mappings it finds") {
-      val underTest = new Object with SeqIndexBinaryFileOps with FauxChecksummer
+      val underTest = new SeqIndexBinaryFileOps with FauxChecksummer
 
       val mockHandle = mock[RandomAccessFile]
 
@@ -95,7 +95,7 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
     }
 
     it ("must throw an IllegalStateException if corruption is detected") {
-      val underTest = new Object with SeqIndexBinaryFileOps with FauxChecksummer
+      val underTest = new SeqIndexBinaryFileOps with FauxChecksummer
 
       val mockHandle = mock[RandomAccessFile]
 

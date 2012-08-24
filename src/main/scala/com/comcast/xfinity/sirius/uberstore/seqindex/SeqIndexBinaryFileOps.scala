@@ -6,10 +6,10 @@ import com.comcast.xfinity.sirius.uberstore.Checksummer
 import java.nio.ByteBuffer
 
 /**
- * Trait providing low level file operations for a binary
+ * Class providing low level file operations for a binary
  * based sequence index with checksum based data protection.
  */
-trait SeqIndexBinaryFileOps extends SeqIndexFileOps {
+class SeqIndexBinaryFileOps extends SeqIndexFileOps {
     this: Checksummer =>
 
   /**
