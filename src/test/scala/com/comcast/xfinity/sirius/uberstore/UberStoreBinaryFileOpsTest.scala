@@ -36,8 +36,8 @@ class UberStoreBinaryFileOpsTest extends NiceTest {
   import UberStoreBinaryFileOpsTest._
 
   describe("put") {
-    it ("must properly encode the event and write it to the handle") {
-      val underTest = new Object with UberStoreBinaryFileOps with FauxChecksummer
+    it ("must properly encode the event and write it to the handle, returning its offset") {
+      val underTest = new UberStoreBinaryFileOps with FauxChecksummer
 
       val bytes = "hello world".getBytes
       val dummyOffset = 5678L
@@ -67,7 +67,7 @@ class UberStoreBinaryFileOpsTest extends NiceTest {
 
   describe("readNext") {
     it ("must return None if at the end of the file") {
-      val underTest = new Object with UberStoreBinaryFileOps with FauxChecksummer
+      val underTest = new UberStoreBinaryFileOps with FauxChecksummer
 
       val mockHandle = mock[RandomAccessFile]
 
@@ -79,7 +79,7 @@ class UberStoreBinaryFileOpsTest extends NiceTest {
     }
 
     it ("must return Some(bytes) if the next entry is available and the checksum checks out") {
-      val underTest = new Object with UberStoreBinaryFileOps with FauxChecksummer
+      val underTest = new UberStoreBinaryFileOps with FauxChecksummer
 
       val mockHandle = mock[RandomAccessFile]
 
@@ -107,7 +107,7 @@ class UberStoreBinaryFileOpsTest extends NiceTest {
     }
 
     it ("must throw an IllegalStateException if the checksum doesn't check out") {
-      val underTest = new Object with UberStoreBinaryFileOps with FauxChecksummer
+      val underTest = new UberStoreBinaryFileOps with FauxChecksummer
 
       val mockHandle = mock[RandomAccessFile]
 

@@ -8,7 +8,7 @@ import java.nio.{ByteOrder, ByteBuffer}
 
 class BinaryEventCodecTest extends NiceTest {
 
-  val underTest = new Object with BinaryEventCodec
+  val underTest = new BinaryEventCodec
 
   describe("serialize") {
     it ("must properly serialize Puts and be the inverse of deserialize") {

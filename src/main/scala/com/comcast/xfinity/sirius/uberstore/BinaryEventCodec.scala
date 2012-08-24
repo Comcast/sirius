@@ -4,9 +4,9 @@ import com.comcast.xfinity.sirius.api.impl.{Delete, Put, OrderedEvent}
 import java.nio.ByteBuffer
 
 /**
- * Trait supplying binary encoding of OrderedEvents
+ * Class supplying binary encoding of OrderedEvents
  */
-trait BinaryEventCodec extends OrderedEventCodec {
+class BinaryEventCodec extends OrderedEventCodec {
 
   private final val PUT_CODE: Int = 1
   private final val DELETE_CODE: Int = 2

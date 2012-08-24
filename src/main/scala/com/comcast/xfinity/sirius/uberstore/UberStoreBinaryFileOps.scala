@@ -4,11 +4,11 @@ import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 
 /**
- * Trait providing UberStoreFileOps, storing entries in the following format:
+ * Class providing UberStoreFileOps, storing entries in the following format:
  *
  *    [len: Int][chksum: Long][data: Array[Byte]]
  */
-trait UberStoreBinaryFileOps extends UberStoreFileOps {
+class UberStoreBinaryFileOps extends UberStoreFileOps {
     this: Checksummer =>
 
   final val HEADER_SIZE = 4 + 8 // int len + long checksum
