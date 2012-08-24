@@ -5,7 +5,7 @@ package com.comcast.xfinity.sirius.uberstore
  *
  * http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1a_hash
  */
-trait Fnv1aChecksummer {
+trait Fnv1aChecksummer extends Checksummer {
   final val fnvOffsetBasis = -3750763034362895579L
   final val fnvPrime = 1099511628211L
 
