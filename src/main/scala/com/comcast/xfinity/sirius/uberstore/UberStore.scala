@@ -75,6 +75,8 @@ class UberStore(dataFile: UberDataFile,
   // foldLeft over sequence numbers startSeq -> endSeq, inclusive, this may become public...
   private def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
     val (startOffset, endOffset) = index.getOffsetRange(startSeq, endSeq)
-    dataFile.foldLeftRange(startOffset, endOffset)(acc0)(foldFun)
+    dataFile.foldLeftRange(startOffset, endOffset)(acc0)(
+      (acc, _, evt) => foldFun(acc, evt)
+    )
   }
 }

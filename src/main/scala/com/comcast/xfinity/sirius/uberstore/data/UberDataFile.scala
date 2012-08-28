@@ -68,7 +68,7 @@ private[uberstore] class UberDataFile(dataFileName: String,
    * @param acc0 initial accumulator value
    * @param foldFun fold function
    */
-  def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
+  def foldLeft[T](acc0: T)(foldFun: (T, Long, OrderedEvent) => T): T = {
     foldLeftRange(0, Long.MaxValue)(acc0)(foldFun)
   }
 
@@ -87,7 +87,7 @@ private[uberstore] class UberDataFile(dataFileName: String,
    *
    * @return T the final accumulator value
    */
-  def foldLeftRange[T](baseOff: Long, endOff: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
+  def foldLeftRange[T](baseOff: Long, endOff: Long)(acc0: T)(foldFun: (T, Long, OrderedEvent) => T): T = {
     val readHandle = createReadHandle(dataFileName)
     try {
       readHandle.seek(baseOff)
@@ -98,14 +98,15 @@ private[uberstore] class UberDataFile(dataFileName: String,
   }
 
   // private low low low level fold left
-  private def foldLeftUntil[T](readHandle: RandomAccessFile, maxOffset: Long, acc: T, foldFun: (T,  OrderedEvent) => T): T = {
-    if (readHandle.getFilePointer > maxOffset) {
+  private def foldLeftUntil[T](readHandle: RandomAccessFile, maxOffset: Long, acc: T, foldFun: (T, Long, OrderedEvent) => T): T = {
+    val offset = readHandle.getFilePointer
+    if (offset > maxOffset) {
       acc
     } else {
       fileOps.readNext(readHandle) match {
         case None => acc
         case Some(bytes) =>
-          val accNew = foldFun(acc, codec.deserialize(bytes))
+          val accNew = foldFun(acc, offset, codec.deserialize(bytes))
           foldLeftUntil(readHandle, maxOffset, accNew, foldFun)
       }
     }

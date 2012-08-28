@@ -66,6 +66,7 @@ class UberDataFileTest extends NiceTest {
       val dummyBytes = "dummy".getBytes
       doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(None).
         when(mockFileOps).readNext(any[RandomAccessFile])
+      doReturn(0L).doReturn(10L).doReturn(20L).doReturn(30L).when(mockReadHandle).getFilePointer
 
       // Need to simulate the conversion of the events from above becoming OrderedEvents
       val event1 = OrderedEvent(1, 2, Delete("a"))
@@ -74,9 +75,11 @@ class UberDataFileTest extends NiceTest {
       doReturn(event1).doReturn(event2).doReturn(event3).
         when(mockCodec).deserialize(any[Array[Byte]])
 
-      val result = underTest.foldLeft(List[OrderedEvent]())((a, e) => e :: a)
+      val result = underTest.foldLeft(List[(Long, OrderedEvent)]())(
+        (acc, off, evt) => (off, evt) :: acc
+      ).reverse
 
-      assert(List(event3, event2, event1) === result)
+      assert(List((0L, event1), (10L, event2), (20L, event3)) === result)
 
       // verify that we read and deserialized the expected number of times
       verify(mockFileOps, times(4)).readNext(same(mockReadHandle))
@@ -116,9 +119,11 @@ class UberDataFileTest extends NiceTest {
       doReturn(event1).doReturn(event2).doReturn(event3).
         when(mockCodec).deserialize(any[Array[Byte]])
 
-      val result = underTest.foldLeftRange(100L, 120L)(List[OrderedEvent]())((a, e) => e :: a)
+      val result = underTest.foldLeftRange(100L, 120L)(List[(Long, OrderedEvent)]())(
+        (acc, off, evt) => (off, evt) :: acc
+      ).reverse
 
-      assert(List(event3, event2, event1) === result)
+      assert(List((100L, event1), (110L, event2), (120L, event3)) === result)
 
       // verify that we started at the right offset
       verify(mockReadHandle).seek(100L)

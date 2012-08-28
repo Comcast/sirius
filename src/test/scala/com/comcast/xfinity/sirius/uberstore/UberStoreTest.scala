@@ -72,11 +72,13 @@ class UberStoreTest extends NiceTest {
       val theFoldFun = (s: Symbol, e: OrderedEvent) => s
 
       doReturn((0L, 1000L)).when(mockIndex).getOffsetRange(anyLong, anyLong)
-      doReturn('orange).when(mockDataFile).foldLeftRange(anyLong, anyLong)(any[Symbol])(any[(Symbol, OrderedEvent) => Symbol]())
+      doReturn('orange).when(mockDataFile).foldLeftRange(anyLong, anyLong)(any[Symbol])(any[(Symbol, Long, OrderedEvent) => Symbol]())
 
       assert('orange === underTest.foldLeft('first)(theFoldFun))
 
-      verify(mockDataFile).foldLeftRange(meq(0L), meq(1000L))(meq('first))(same(theFoldFun))
+      // Not really sure if there's a good way to verify this, the code is simple enough and this is tested
+      //  by the integration test
+      verify(mockDataFile).foldLeftRange(meq(0L), meq(1000L))(meq('first))(any[(Symbol, Long, OrderedEvent) => Symbol]())
     }
   }
 
