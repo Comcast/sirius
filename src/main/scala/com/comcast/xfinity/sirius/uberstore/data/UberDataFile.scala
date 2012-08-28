@@ -45,9 +45,10 @@ object UberDataFile {
  * @param fileOps service class providing low level file operations
  * @param codec OrderedEventCodec for transforming OrderedEvents
  */
-private[data] class UberDataFile(dataFileName: String,
-                                 fileOps: UberStoreFileOps,
-                                 codec: OrderedEventCodec) {
+// TODO: use trait to hide this constructor but keep type visible?
+private[uberstore] class UberDataFile(dataFileName: String,
+                                      fileOps: UberStoreFileOps,
+                                      codec: OrderedEventCodec) {
     this: UberDataFile.HandleProvider =>
 
   val writeHandle = createWriteHandle(dataFileName)

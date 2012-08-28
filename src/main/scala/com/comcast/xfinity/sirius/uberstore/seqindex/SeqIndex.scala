@@ -36,7 +36,8 @@ object SeqIndex {
  *          durable medium
  */
 // TODO: we may be able to just use a standard output stream for this...
-private[seqindex] class SeqIndex(handle: RandomAccessFile, fileOps: SeqIndexFileOps) {
+// TODO: use a trait to hide this?
+private[uberstore] class SeqIndex(handle: RandomAccessFile, fileOps: SeqIndexFileOps) {
 
   var seqCache = fileOps.loadIndex(handle)
 
