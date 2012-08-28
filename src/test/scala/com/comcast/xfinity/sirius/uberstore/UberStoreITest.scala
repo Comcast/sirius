@@ -54,7 +54,8 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
       assert(4L === uberStore.getNextSeq)
     }
 
-    it ("must also be transferable to another handle (LAST TEST)") {
+    val event3 = OrderedEvent(5, 678, Delete("that she's fat"))
+    it ("must also be transferable to another handle") {
       // XXX: One UberStore to rule them all, hide the other one so
       //      we dont' accidentally use it
       uberStore = UberStore(tempDir.getAbsolutePath)
@@ -62,8 +63,18 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
       assert(4L === uberStore.getNextSeq)
       assert(List(event1, event2) === getAllEvents(uberStore))
 
-      val event3 = OrderedEvent(5, 678, Delete("that she's fat"))
       uberStore.writeEntry(event3)
+      assert(List(event1, event2, event3) === getAllEvents(uberStore))
+    }
+
+    it ("must be able to recover from a missing index") {
+      val file = new File(tempDir, "1.index")
+      assert(file.exists(), "Your test is hosed, expecting 1.index to exist")
+      file.delete()
+      assert(!file.exists(), "Your test is hosed, expecting 1.index to be bye bye")
+
+      uberStore = UberStore(tempDir.getAbsolutePath)
+      assert(6L === uberStore.getNextSeq)
       assert(List(event1, event2, event3) === getAllEvents(uberStore))
     }
   }

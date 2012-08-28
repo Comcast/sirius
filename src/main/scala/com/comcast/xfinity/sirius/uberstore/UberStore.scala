@@ -22,7 +22,36 @@ object UberStore {
     val baseName = "%s/1".format(baseDir)
     val dataFile = UberDataFile("%s.data".format(baseName))
     val index = SeqIndex("%s.index".format(baseName))
+    repairIndex(index, dataFile)
     new UberStore(dataFile, index)
+  }
+
+  /**
+   * Recovers missing entries at the end of index from dataFile.
+   *
+   * Assumes that UberDataFile is proper, that is events are there in order,
+   * and there are no dups.
+   *
+   * Has the side effect of updating index.
+   *
+   * @param index the SeqIndex to update
+   * @param dataFile the UberDataFile to update
+   */
+  private[uberstore] def repairIndex(index: SeqIndex, dataFile: UberDataFile) {
+    val lastOffset = index.getMaxSeq match {
+      case None => 0L
+      case Some(seq) => index.getOffsetFor(seq).get // has to exist
+    }
+
+    dataFile.foldLeftRange(lastOffset, Long.MaxValue)(()) (
+      (acc, off, evt) =>
+        if (index.getOffsetFor(evt.sequence) == None) {
+          index.put(evt.sequence, off)
+        } else {
+          // no-op
+        }
+    )
+
   }
 }
 
