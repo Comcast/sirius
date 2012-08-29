@@ -89,4 +89,15 @@ class SeqIndexTest extends NiceTest {
     }
   }
 
+  describe ("close") {
+    it ("should close any provided filehandles") {
+      val mockHandle = mock[RandomAccessFile]
+      val underTest = new SeqIndex(mockHandle, newMockFileOps())
+
+      underTest.close()
+
+      verify(mockHandle).close()
+    }
+  }
+
 }

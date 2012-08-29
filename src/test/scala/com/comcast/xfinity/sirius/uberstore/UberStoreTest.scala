@@ -91,4 +91,43 @@ class UberStoreTest extends NiceTest {
       }
     }
   }
+
+  describe("isClosed") {
+    val (mockDataFile, mockIndex, underTest) = createMockedUpLog
+    it ("should return true if only index is closed") {
+      doReturn(false).when(mockDataFile).isClosed
+      doReturn(true).when(mockIndex).isClosed
+      assert(true == underTest.isClosed)
+    }
+    it ("should return true if only datafile is closed") {
+      doReturn(true).when(mockDataFile).isClosed
+      doReturn(false).when(mockIndex).isClosed
+      assert(true == underTest.isClosed)
+    }
+    it ("should return true if both index and datafile are closed") {
+      doReturn(true).when(mockDataFile).isClosed
+      doReturn(true).when(mockIndex).isClosed
+      assert(true == underTest.isClosed)
+    }
+    it ("should return false if neither index nor datafile are closed") {
+      doReturn(false).when(mockDataFile).isClosed
+      doReturn(false).when(mockIndex).isClosed
+      assert(false == underTest.isClosed)
+    }
+  }
+
+  describe("close") {
+    it ("should close underlying index and data") {
+      val (mockDataFile, mockIndex, underTest) = createMockedUpLog
+      doReturn(false).when(mockDataFile).isClosed
+      doReturn(false).when(mockIndex).isClosed
+
+      underTest.close()
+
+      verify(mockDataFile).close()
+      verify(mockIndex).close()
+    }
+  }
+
+
 }

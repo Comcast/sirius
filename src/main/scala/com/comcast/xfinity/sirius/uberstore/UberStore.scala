@@ -74,6 +74,9 @@ class UberStore(dataFile: UberDataFile,
    * @inheritdoc
    */
   def writeEntry(event: OrderedEvent) {
+    if (isClosed) {
+      throw new IllegalStateException("Attempting to write to closed UberStore")
+    }
     if (event.sequence < getNextSeq) {
       throw new IllegalArgumentException("Writing events out of order is bad news bears")
     }
@@ -107,5 +110,31 @@ class UberStore(dataFile: UberDataFile,
     dataFile.foldLeftRange(startOffset, endOffset)(acc0)(
       (acc, _, evt) => foldFun(acc, evt)
     )
+  }
+
+  /**
+   * Close underlying file handles or connections.  This UberStore should not be used after
+   * close is called.
+   */
+  def close() {
+    if (!dataFile.isClosed) {
+      dataFile.close()
+    }
+    if (!index.isClosed) {
+      index.close()
+    }
+  }
+
+  /**
+   * Consider this closed if either of its underlying objects are closed, no good writes
+   * will be able to go through in that case.
+   *
+   * @return whether this is "closed," i.e., unable to be written to
+   */
+  def isClosed =
+    dataFile.isClosed || index.isClosed
+
+  override def finalize() {
+    close()
   }
 }

@@ -14,9 +14,9 @@ object SeqIndex {
    * @return a SeqIndex instance backed by seqFileName
    */
   def apply(seqFileName: String) = {
-    val handle = new RandomAccessFile(seqFileName, "rw")
     val fileOps = new SeqIndexBinaryFileOps with Fnv1aChecksummer
-    new SeqIndex(handle, fileOps)
+    val writeHandle = new RandomAccessFile(seqFileName, "rw")
+    new SeqIndex(writeHandle, fileOps)
   }
 }
 
@@ -29,7 +29,7 @@ object SeqIndex {
  * Instances constructed with the same handle instance are not thread
  * safe with respect to eachother for instantiation and put operations.
  *
- * @param handle The RandomAccessFile to use for persisting to
+ * @param writeHandle The RandomAccessFile to use for persisting to
  *          disk, as well as populating this index.
  *          NOTE: the passed in handle should be at offset 0
  * @param fileOps Service class passed in for persisting events to some
@@ -37,9 +37,10 @@ object SeqIndex {
  */
 // TODO: we may be able to just use a standard output stream for this...
 // TODO: use a trait to hide this?
-private[uberstore] class SeqIndex(handle: RandomAccessFile, fileOps: SeqIndexFileOps) {
+private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqIndexFileOps) {
 
-  var seqCache = fileOps.loadIndex(handle)
+  var seqCache = fileOps.loadIndex(writeHandle)
+  var isClosed = false
 
   /**
    * Get the offset for a particular sequence number
@@ -71,7 +72,11 @@ private[uberstore] class SeqIndex(handle: RandomAccessFile, fileOps: SeqIndexFil
    * @param offset offset
    */
   def put(seq: Long, offset: Long) {
-    fileOps.put(handle, seq, offset)
+    if (isClosed) {
+      throw new IllegalStateException("Attempting to write to closed SeqIndex")
+    }
+
+    fileOps.put(writeHandle, seq, offset)
     seqCache += (seq -> offset)
   }
 
@@ -99,5 +104,20 @@ private[uberstore] class SeqIndex(handle: RandomAccessFile, fileOps: SeqIndexFil
       val lastOffset = range.lastOption.get._2
       (firstOffset, lastOffset)
     }
+  }
+
+  /**
+   * Close open file handles. This SeqIndex should not be used after
+   * close is called.
+   */
+  def close() {
+    if (!isClosed) {
+      writeHandle.close()
+      isClosed = true
+    }
+  }
+
+  override def finalize() {
+    close()
   }
 }

@@ -54,13 +54,20 @@ private[uberstore] class UberDataFile(dataFileName: String,
   val writeHandle = createWriteHandle(dataFileName)
   writeHandle.seek(writeHandle.length)
 
+  var isClosed = false
+
   /**
    * Write an event to this file
    *
    * @param event the OrderedEvent to persist
    */
-  def writeEvent(event: OrderedEvent): Long =
+  def writeEvent(event: OrderedEvent): Long = {
+    if (isClosed) {
+      throw new IllegalStateException("Attempting to write to closed UberDataFile")
+    }
+
     fileOps.put(writeHandle, codec.serialize(event))
+  }
 
   /**
    * Fold left over this entire file
@@ -110,5 +117,20 @@ private[uberstore] class UberDataFile(dataFileName: String,
           foldLeftUntil(readHandle, maxOffset, accNew, foldFun)
       }
     }
+  }
+
+  /**
+   * Close open file handles.  Only touching writeHandle here, since readHandles are opened and then
+   * closed in a finally of the same block.  This UberDataFile should not be used after close is called.
+   */
+  def close() {
+    if (!isClosed) {
+      writeHandle.close()
+      isClosed = true
+    }
+  }
+
+  override def finalize() {
+    close()
   }
 }

@@ -135,4 +135,22 @@ class UberDataFileTest extends NiceTest {
       verify(mockReadHandle).close()
     }
   }
+
+  describe ("close") {
+    it ("should close provided writeHandle") {
+      val mockWriteHandle = mock[RandomAccessFile]
+      val mockReadHandle = mock[RandomAccessFile]
+      val mockFileOps = mock[UberStoreFileOps]
+      val mockCodec = mock[OrderedEventCodec]
+
+      val underTest = new UberDataFile("fname", mockFileOps, mockCodec) with UberDataFile.HandleProvider {
+        def createWriteHandle(fname: String) = mockWriteHandle
+        def createReadHandle(fname: String) = mockReadHandle
+      }
+
+      underTest.close()
+
+      verify(mockWriteHandle).close()
+    }
+  }
 }
