@@ -79,6 +79,14 @@ class SeqIndexTest extends NiceTest {
     it ("must only include the specified range") {
       assert((4L, 6L) === underTest.getOffsetRange(3L, 5L))
     }
+
+    it ("must return correct range if last sequence is missing in index") {
+      assert((2L, 2L) === underTest.getOffsetRange(1L, 2L))
+    }
+
+    it ("must return correct range if first sequence is missing in index") {
+      assert((4L, 4L) === underTest.getOffsetRange(2L, 3L))
+    }
   }
 
 }
