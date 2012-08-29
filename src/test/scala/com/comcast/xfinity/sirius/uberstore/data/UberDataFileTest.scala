@@ -11,16 +11,15 @@ class UberDataFileTest extends NiceTest {
 
   it ("must seek to the end of the write file handle on instantiation") {
     val mockWriteHandle = mock[RandomAccessFile]
-    val mockReadHandle = mock[RandomAccessFile]
+    val mockDesc = mock[UberDataFile.UberFileDesc]
+    doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
+
     val mockFileOps = mock[UberStoreFileOps]
     val mockCodec = mock[OrderedEventCodec]
 
     doReturn(100L).when(mockWriteHandle).length
 
-    new UberDataFile("fname", mockFileOps, mockCodec) with UberDataFile.HandleProvider {
-      def createWriteHandle(fname: String) = mockWriteHandle
-      def createReadHandle(fname: String) = mockReadHandle
-    }
+    new UberDataFile(mockDesc, mockFileOps, mockCodec)
 
     verify(mockWriteHandle).seek(100L)
   }
@@ -28,14 +27,13 @@ class UberDataFileTest extends NiceTest {
   describe("writeEvent") {
     it ("must serialize the event and delegate its persistence to fileOps") {
       val mockWriteHandle = mock[RandomAccessFile]
-      val mockReadHandle = mock[RandomAccessFile]
+      val mockDesc = mock[UberDataFile.UberFileDesc]
+      doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
+
       val mockFileOps = mock[UberStoreFileOps]
       val mockCodec = mock[OrderedEventCodec]
 
-      val underTest = new UberDataFile("fname", mockFileOps, mockCodec) with UberDataFile.HandleProvider {
-        def createWriteHandle(fname: String) = mockWriteHandle
-        def createReadHandle(fname: String) = mockReadHandle
-      }
+      val underTest = new UberDataFile(mockDesc, mockFileOps, mockCodec)
 
       val theEvent = OrderedEvent(1, 2, Delete("hello world"))
       val serialized = "i award you know points, and may god have mercy on your soul".getBytes
@@ -54,13 +52,14 @@ class UberDataFileTest extends NiceTest {
         "and closes the read handle on completion") {
       val mockWriteHandle = mock[RandomAccessFile]
       val mockReadHandle = mock[RandomAccessFile]
+      val mockDesc = mock[UberDataFile.UberFileDesc]
+      doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
+      doReturn(mockReadHandle).when(mockDesc).createReadHandle()
+
       val mockFileOps = mock[UberStoreFileOps]
       val mockCodec = mock[OrderedEventCodec]
 
-      val underTest = new UberDataFile("fname", mockFileOps, mockCodec) with UberDataFile.HandleProvider {
-        def createWriteHandle(fname: String) = mockWriteHandle
-        def createReadHandle(fname: String) = mockReadHandle
-      }
+      val underTest = new UberDataFile(mockDesc, mockFileOps, mockCodec)
 
       // Need to simulate 3 successful reads from the handle, followed by None indicating we hit the end
       val dummyBytes = "dummy".getBytes
@@ -94,13 +93,14 @@ class UberDataFileTest extends NiceTest {
     it ("must only iterate over the specified range of offsets, inclusive, and when finished close the handle") {
       val mockWriteHandle = mock[RandomAccessFile]
       val mockReadHandle = mock[RandomAccessFile]
+      val mockDesc = mock[UberDataFile.UberFileDesc]
+      doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
+      doReturn(mockReadHandle).when(mockDesc).createReadHandle()
+
       val mockFileOps = mock[UberStoreFileOps]
       val mockCodec = mock[OrderedEventCodec]
 
-      val underTest = new UberDataFile("fname", mockFileOps, mockCodec) with UberDataFile.HandleProvider {
-        def createWriteHandle(fname: String) = mockWriteHandle
-        def createReadHandle(fname: String) = mockReadHandle
-      }
+      val underTest = new UberDataFile(mockDesc, mockFileOps, mockCodec)
 
       // we will pretend we are starting at a later offset, and read a few events until we hit the end
       //  offset
@@ -139,15 +139,13 @@ class UberDataFileTest extends NiceTest {
   describe ("close") {
     it ("should close provided writeHandle") {
       val mockWriteHandle = mock[RandomAccessFile]
-      val mockReadHandle = mock[RandomAccessFile]
+      val mockDesc = mock[UberDataFile.UberFileDesc]
+      doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
+
       val mockFileOps = mock[UberStoreFileOps]
       val mockCodec = mock[OrderedEventCodec]
 
-      val underTest = new UberDataFile("fname", mockFileOps, mockCodec) with UberDataFile.HandleProvider {
-        def createWriteHandle(fname: String) = mockWriteHandle
-        def createReadHandle(fname: String) = mockReadHandle
-      }
-
+      val underTest = new UberDataFile(mockDesc, mockFileOps, mockCodec)
       underTest.close()
 
       verify(mockWriteHandle).close()

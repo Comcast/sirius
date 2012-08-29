@@ -21,38 +21,57 @@ object UberDataFile {
    * @return fully constructed UberDataFile
    */
   def apply(dataFileName: String) = {
+    val uberFileDesc = new UberFileDesc(dataFileName)
     val fileOps = new UberStoreBinaryFileOps with Fnv1aChecksummer
     val codec = new BinaryEventCodec
-    new UberDataFile(dataFileName, fileOps, codec) with HandleProvider {
-      def createWriteHandle(fname: String) = new RandomAccessFile(fname, "rw")
-      def createReadHandle(fname: String) = new RandomAccessFile(fname, "r")
-    }
+    new UberDataFile(uberFileDesc, fileOps, codec)
   }
 
   /**
-   * Private trait so that we can abstract out creating RandomAcesssFiles
-   * for testing.
+   * Private class for delivering file handles for an UberDataFile,
+   * need this because write handles are created on demand.
+   *
+   * THIS IS PRIVATE TO UBERDATAFILE, DON'T MESS WITH IT
+   *
+   * @param dataFileName the name of the file for this descriptor to wrap
    */
-  private[data] trait HandleProvider {
-    def createWriteHandle(fname: String): RandomAccessFile
-    def createReadHandle(fname: String): RandomAccessFile
+  private[data] class UberFileDesc(dataFileName: String) {
+    /**
+     * Construct and return a writable RandomAccessFile
+     *
+     * Has the side effect of opening a file descriptor, this must be
+     * closed by the caller.
+     *
+     * @return read/write RandomAccessFile (note write only is not allowed)
+     */
+    def createWriteHandle() = new RandomAccessFile(dataFileName, "rw")
+
+    /**
+     * Construct a read only RandomAccessFile
+     *
+     * Has the side effect of opening a file descriptor, this must be
+     * closed by the caller.
+     *
+     * @return read only RandomAccessFile
+     */
+    def createReadHandle() = new RandomAccessFile(dataFileName, "r")
   }
 }
 
 /**
  * Lower level file access for UberStore data files.
  *
- * @param dataFileName the file for this object to encapsulate
+ * @param uberFileDesc the UberDataFile.UberFileDesc to provide handles
+ *          to the underlying file. Extracted out for testing.
  * @param fileOps service class providing low level file operations
  * @param codec OrderedEventCodec for transforming OrderedEvents
  */
 // TODO: use trait to hide this constructor but keep type visible?
-private[uberstore] class UberDataFile(dataFileName: String,
+private[uberstore] class UberDataFile(uberFileDesc: UberDataFile.UberFileDesc,
                                       fileOps: UberStoreFileOps,
                                       codec: OrderedEventCodec) {
-    this: UberDataFile.HandleProvider =>
 
-  val writeHandle = createWriteHandle(dataFileName)
+  val writeHandle = uberFileDesc.createWriteHandle()
   writeHandle.seek(writeHandle.length)
 
   var isClosed = false
@@ -96,7 +115,7 @@ private[uberstore] class UberDataFile(dataFileName: String,
    * @return T the final accumulator value
    */
   def foldLeftRange[T](baseOff: Long, endOff: Long)(acc0: T)(foldFun: (T, Long, OrderedEvent) => T): T = {
-    val readHandle = createReadHandle(dataFileName)
+    val readHandle = uberFileDesc.createReadHandle()
     try {
       readHandle.seek(baseOff)
       foldLeftUntil(readHandle, endOff, acc0, foldFun)
