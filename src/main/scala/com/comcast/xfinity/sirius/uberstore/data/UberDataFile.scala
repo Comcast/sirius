@@ -3,6 +3,7 @@ package com.comcast.xfinity.sirius.uberstore.data
 import java.io.RandomAccessFile
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.uberstore._
+import annotation.tailrec
 
 object UberDataFile {
 
@@ -105,6 +106,7 @@ private[uberstore] class UberDataFile(dataFileName: String,
   }
 
   // private low low low level fold left
+  @tailrec
   private def foldLeftUntil[T](readHandle: RandomAccessFile, maxOffset: Long, acc: T, foldFun: (T, Long, OrderedEvent) => T): T = {
     val offset = readHandle.getFilePointer
     if (offset > maxOffset) {
