@@ -5,10 +5,12 @@ import java.io.RandomAccessFile
 import collection.immutable.SortedMap
 import org.mockito.Mockito._
 import org.mockito.Matchers.{eq => meq, same, any}
+import java.util.{TreeMap => JTreeMap}
+import collection.JavaConversions._
 
 object SeqIndexTest {
 
-  def newMockFileOps(initialIndex: SortedMap[Long, Long] = SortedMap()): SeqIndexFileOps = {
+  def newMockFileOps(initialIndex: JTreeMap[Long, Long] = new JTreeMap[Long, Long]()): SeqIndexFileOps = {
     val mockOps = mock(classOf[SeqIndexFileOps])
     doReturn(initialIndex).when(mockOps).loadIndex(any[RandomAccessFile])
     mockOps
@@ -22,7 +24,9 @@ class SeqIndexTest extends NiceTest {
   it ("must properly populate the instance from the passed in handle") {
     val mockHandle = mock[RandomAccessFile]
 
-    val initialEntries = SortedMap(1L -> 2L, 3L -> 4L)
+    val initialEntries = new JTreeMap[Long, Long](
+      SortedMap(1L -> 2L, 3L -> 4L)
+    )
     val mockFileOps = newMockFileOps(initialEntries)
 
     val underTest = new SeqIndex(mockHandle, mockFileOps)
@@ -54,7 +58,7 @@ class SeqIndexTest extends NiceTest {
     }
 
     it ("must properly reflect maxSeq for a populated index") {
-      val initialIndex = SortedMap(1L -> 2L)
+      val initialIndex = new JTreeMap[Long, Long](SortedMap(1L -> 2L))
       val underTest = new SeqIndex(mock[RandomAccessFile], newMockFileOps(initialIndex))
 
       assert(Some(1L) === underTest.getMaxSeq)
@@ -65,7 +69,9 @@ class SeqIndexTest extends NiceTest {
   }
 
   describe ("getOffsetRange") {
-    val initialIndex = SortedMap(1L -> 2L, 3L -> 4L, 5L -> 6L)
+    val initialIndex: JTreeMap[Long, Long] = new JTreeMap(
+      SortedMap(1L -> 2L, 3L -> 4L, 5L -> 6L)
+    )
     val underTest = new SeqIndex(mock[RandomAccessFile], newMockFileOps(initialIndex))
 
     it ("must return (0, -1) if the range is empty") {

@@ -11,6 +11,8 @@ import java.nio.{ByteOrder, ByteBuffer}
 import java.util.Arrays
 import org.mockito.Matchers.{any, anyInt}
 import collection.immutable.SortedMap
+import java.util.{TreeMap => JTreeMap}
+import collection.JavaConversions._
 
 object SeqIndexBinaryFileOpsTest {
   trait FauxChecksummer extends Checksummer {
@@ -90,8 +92,10 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
       // XXX: readFully is final, but it just calls through to read/3, so we can mock that
       doAnswer(entry1Answer).doAnswer(entry2Answer).when(mockHandle).read(any[Array[Byte]], anyInt, anyInt)
 
-      val expected = SortedMap(1L -> 2L, 2L -> 3L)
-      assert(expected == underTest.loadIndex(mockHandle))
+      val actual = underTest.loadIndex(mockHandle)
+      val expected = new JTreeMap[Long, Long](SortedMap(1L -> 2L, 2L -> 3L))
+
+      assert(actual === expected)
     }
 
     it ("must throw an IllegalStateException if corruption is detected") {

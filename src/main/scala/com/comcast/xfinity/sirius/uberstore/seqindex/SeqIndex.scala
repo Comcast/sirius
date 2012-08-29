@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.uberstore.seqindex
 
 import java.io.RandomAccessFile
 import com.comcast.xfinity.sirius.uberstore.Fnv1aChecksummer
+import java.util.{TreeMap => JTreeMap}
 
 object SeqIndex {
 
@@ -27,7 +28,7 @@ object SeqIndex {
  * All read/write operations take place on the passed in file handle.
  *
  * Instances constructed with the same handle instance are not thread
- * safe with respect to eachother for instantiation and put operations.
+ * safe with respect to each other for instantiation and put operations.
  *
  * @param writeHandle The RandomAccessFile to use for persisting to
  *          disk, as well as populating this index.
@@ -39,7 +40,7 @@ object SeqIndex {
 // TODO: use a trait to hide this?
 private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqIndexFileOps) {
 
-  var seqCache = fileOps.loadIndex(writeHandle)
+  val seqCache: JTreeMap[Long, Long] = fileOps.loadIndex(writeHandle)
   var isClosed = false
 
   /**
@@ -49,14 +50,25 @@ private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqInd
    *
    * @return Some(offset) if found, None if not
    */
-  def getOffsetFor(seq: Long): Option[Long] = seqCache.get(seq)
+  def getOffsetFor(seq: Long): Option[Long] = {
+    if (seqCache.containsKey(seq)) {
+      Some(seqCache.get(seq))
+    } else {
+      None
+    }
+  }
 
   /**
    * Get the maximum sequence number stored, if such exists
    *
    * @return Some(sequence) or None if none such exists
    */
-  def getMaxSeq: Option[Long] = seqCache.keySet.lastOption
+  def getMaxSeq: Option[Long] =
+    if (seqCache.isEmpty) {
+      None
+    } else {
+      Some(seqCache.lastKey())
+    }
 
   /**
    * Map seq -> offset, persisting to disk and memory
@@ -77,7 +89,7 @@ private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqInd
     }
 
     fileOps.put(writeHandle, seq, offset)
-    seqCache += (seq -> offset)
+    seqCache.put(seq, offset)
   }
 
   /**
@@ -92,16 +104,13 @@ private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqInd
    *          If the range is empty, (0, -1) is returned
    */
   def getOffsetRange(firstSeq: Long, lastSeq: Long): (Long,  Long) = {
-    // TODO: this is inefficient probably, make better
-    val range = seqCache.filter(
-      (kv) => (firstSeq <= kv._1 && kv._1 <= lastSeq)
-    )
+    val range = seqCache.subMap(firstSeq, true, lastSeq, true)
+
     if (range.isEmpty) {
       (0, -1)
     } else {
-      // Because the range is non-empty these both exist
-      val firstOffset = range.headOption.get._2
-      val lastOffset = range.lastOption.get._2
+      val firstOffset = range.firstEntry.getValue
+      val lastOffset = range.lastEntry.getValue
       (firstOffset, lastOffset)
     }
   }

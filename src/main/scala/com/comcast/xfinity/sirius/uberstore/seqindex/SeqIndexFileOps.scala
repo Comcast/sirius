@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.uberstore.seqindex
 
 import java.io.RandomAccessFile
-import collection.immutable.SortedMap
+import java.util.{TreeMap => JTreeMap}
 
 /**
  * Trait encapsulating basic file operations for the sequence
@@ -37,5 +37,5 @@ trait SeqIndexFileOps {
    *
    * @return the SortedMap[Long, Long] of sequence -> offset mappings
    */
-  def loadIndex(indexFileHandle: RandomAccessFile): SortedMap[Long, Long]
+  def loadIndex(indexFileHandle: RandomAccessFile): JTreeMap[Long, Long]
 }

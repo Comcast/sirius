@@ -1,9 +1,9 @@
 package com.comcast.xfinity.sirius.uberstore.seqindex
 
 import java.io.RandomAccessFile
-import collection.immutable.SortedMap
 import com.comcast.xfinity.sirius.uberstore.Checksummer
 import java.nio.ByteBuffer
+import java.util.{TreeMap => JTreeMap}
 
 /**
  * Class providing low level file operations for a binary
@@ -28,8 +28,8 @@ class SeqIndexBinaryFileOps extends SeqIndexFileOps {
   /**
    * @inheritdoc
    */
-  def loadIndex(indexFileHandle: RandomAccessFile): SortedMap[Long, Long] = {
-    var result = SortedMap[Long, Long]()
+  def loadIndex(indexFileHandle: RandomAccessFile): JTreeMap[Long, Long] = {
+    val result = new JTreeMap[Long, Long]()
     val byteBuf = ByteBuffer.allocate(24)
 
     while (indexFileHandle.getFilePointer != indexFileHandle.length) {
@@ -44,7 +44,7 @@ class SeqIndexBinaryFileOps extends SeqIndexFileOps {
 
       val seq = byteBuf.getLong(8)
       val offset = byteBuf.getLong(16)
-      result += (seq -> offset)
+      result.put(seq, offset)
     }
 
     result
