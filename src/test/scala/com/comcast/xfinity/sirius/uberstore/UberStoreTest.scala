@@ -4,9 +4,8 @@ import com.comcast.xfinity.sirius.NiceTest
 import data.UberDataFile
 import seqindex.SeqIndex
 import org.mockito.Mockito._
-import org.mockito.Matchers.{any, eq => meq, anyLong, same}
+import org.mockito.Matchers.{any, eq => meq, anyLong}
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
-import com.comcast.xfinity.sirius.api.impl.persistence.BoundedLogRange
 
 object UberStoreTest {
 
@@ -21,6 +20,9 @@ object UberStoreTest {
 class UberStoreTest extends NiceTest {
 
   import UberStoreTest._
+
+  // NOTE: createIterator is tested in the integration tests, it's going to be
+  //       removed from the API, so whatever
 
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {
@@ -79,16 +81,6 @@ class UberStoreTest extends NiceTest {
       // Not really sure if there's a good way to verify this, the code is simple enough and this is tested
       //  by the integration test
       verify(mockDataFile).foldLeftRange(meq(0L), meq(1000L))(meq('first))(any[(Symbol, Long, OrderedEvent) => Symbol]())
-    }
-  }
-
-  describe("createIterator") {
-    it ("isn't implemented, dummy") {
-      val (_, _, underTest) = createMockedUpLog
-
-      intercept[IllegalStateException] {
-        underTest.createIterator(BoundedLogRange(0, 100))
-      }
     }
   }
 
