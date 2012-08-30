@@ -48,6 +48,45 @@ object UberTool {
     toWrite.foreach(outLog.writeEntry(_))
   }
 
+  /**
+   * Also not perfect, and slower than single pass, but this compaction implementation
+   * will run with a more reasonable memory footprint.
+   *
+   * @param inLog input log
+   * @param outLog output log, needs to be empty (or you're likely to get an
+   *               "out of order write" exception)
+   */
+  def twoPassCompact(inLog: SiriusLog, outLog: SiriusLog) {
+    val toKeep = new MutableHashMap[String, Long]
+
+    // generate map of Id -> EntryNum
+    var index = 1
+    inLog.foldLeft(())(
+      (_, evt) => {
+        toKeep.put(keyFromEvent(evt), index)
+        index += 1
+      }
+    )
+
+    // get a list of EntryNums not overwritten in map
+    val toWriteIterator = toKeep.values.toList.sortWith(_ < _).iterator
+    var nextWrite = toWriteIterator.next()
+
+    // write events whose positions appear in toWriteIterator
+    index = 1
+    inLog.foldLeft(())(
+      (_, evt) => {
+        if (index == nextWrite) {
+          outLog.writeEntry(evt)
+          if (toWriteIterator.hasNext) {
+            nextWrite = toWriteIterator.next()
+          }
+        }
+        index += 1
+      }
+    )
+  }
+
   private def keyFromEvent(evt: OrderedEvent): String = evt.request match {
     case Put(key, _) => key
     case Delete(key) => key
