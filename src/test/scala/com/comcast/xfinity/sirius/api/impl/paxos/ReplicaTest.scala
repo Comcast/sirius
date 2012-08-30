@@ -1,12 +1,18 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import com.comcast.xfinity.sirius.NiceTest
 import org.scalatest.BeforeAndAfterAll
-import akka.actor.{ ActorRef, ActorSystem }
-import akka.agent.Agent
-import akka.testkit.{ TestActorRef, TestProbe }
+
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import com.comcast.xfinity.sirius.api.impl.{Put, NonCommutativeSiriusRequest, Delete}
+import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
+import com.comcast.xfinity.sirius.api.impl.Put
+import com.comcast.xfinity.sirius.NiceTest
+
+import akka.actor.ActorRef
+import akka.actor.ActorSystem
+import akka.agent.Agent
+import akka.testkit.TestActorRef
+import akka.testkit.TestProbe
 
 class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
@@ -15,28 +21,27 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
   override def afterAll {
     actorSystem.shutdown()
   }
-
+  
   describe("A Replica") {
     describe("when receiving a Request message") {
-      it("must choose a slot number, send a Propose message to all leaders, update its lowest unused slot and" +
+      it("must choose a slot number, send a Propose message to its local leader, update its lowest unused slot and" +
          "store the proposal") {
-        val memberProbes = Set(TestProbe(), TestProbe(), TestProbe())
-        val membership = Agent(memberProbes.map(_.ref))
-        val replica = TestActorRef(new Replica(membership, 1, d => ()))
-
+        
+      }
+        val localLeader = TestProbe()
+        val replica = TestActorRef(new Replica(localLeader.ref, 1,  d => ()))
         val command = Command(null, 1, Delete("1"))
 
         replica ! Request(command)
-        memberProbes.foreach(_.expectMsg(Propose(1, command)))
+        localLeader.expectMsg(Propose(1, command))
         assert(2 === replica.underlyingActor.lowestUnusedSlotNum)
-      }
     }
 
     describe("when receiving a Decision message") {
       it("must update its lowest unused slot number iff the decision is greater than or equal to the " +
          "current unused slot") {
-        val membership = Agent(Set[ActorRef]())
-        val replica = TestActorRef(new Replica(membership, 2, d => ()))
+        val localLeader = TestProbe()
+        val replica = TestActorRef(new Replica(localLeader.ref, 2,  d => ()))
 
         replica ! Decision(1, Command(null, 1, Delete("1")))
         assert(2 == replica.underlyingActor.lowestUnusedSlotNum)
@@ -47,12 +52,14 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         replica ! Decision(4, Command(null, 2, Delete("2")))
         assert(5 === replica.underlyingActor.lowestUnusedSlotNum)
       }
+      
 
       it("must pass the decision to the delegated function for handling") {
         val membership = Agent(Set[ActorRef]())
         var appliedDecisions = Set[Decision]()
+        val localLeader = TestProbe()
         val replica = TestActorRef(
-          new Replica(membership, 1,
+          new Replica(localLeader.ref, 1,
                       d => appliedDecisions += d
           )
         )
@@ -70,13 +77,13 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         assert(Set(decision1, decision2) === appliedDecisions)
       }
 
-      it("must not let an exception thrown by performFun ruin its day") {
-        val membership = Agent(Set[ActorRef]())
+      it("must notify the originator of the request if performFun function says so") {
+        val localLeader = TestProbe()
 
         val wasRestartedProbe = TestProbe()
         // TestActorRef so message handling is dispatched on the same thread
         val replica = TestActorRef(
-          new Replica(membership, 1,
+          new Replica(localLeader.ref, 1,
             d => throw new RuntimeException("The dishes are done man")
           ) {
             // this is weird, if the actor terminates, it is restarted

@@ -33,15 +33,15 @@ object Replica {
    * Note this should be called from within a Props factory on Actor creation
    * due to the requirements of Akka.
    *
-   * @param membership an {@link akka.agent.Agent} tracking the membership of the cluster
+   * @param localLeader reference of replica's local {@link Leader}
    * @param performFun function specified by
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
    *          decisions as they arrive
    */
-  def apply(membership: Agent[Set[ActorRef]],
+  def apply(localLeader: ActorRef,
             startingSeqNum: Long,
             performFun: PerformFun): Replica =
-    new Replica(membership, startingSeqNum, performFun)
+    new Replica(localLeader, startingSeqNum, performFun)
 }
 
 /**
@@ -51,19 +51,17 @@ object Replica {
  * initialState is actually just an ActorRef to the State actor.
  * Keep track of old proposals and re-propose them, if we need to.
  */
-class Replica(membership: Agent[Set[ActorRef]],
+class Replica(localLeader: ActorRef,
               startingSeqNum: Long,
               performFun: Replica.PerformFun) extends Actor {
 
   val log = Logging(context.system, this)
 
-  val leaders = membership
-
   var lowestUnusedSlotNum: Long = startingSeqNum
   
   def propose(command: Command) {
     log.debug("Received proposal: assigning {} to {}", lowestUnusedSlotNum, command)
-    leaders().foreach(_ ! Propose(lowestUnusedSlotNum, command))
+    localLeader ! Propose(lowestUnusedSlotNum, command)
     lowestUnusedSlotNum = lowestUnusedSlotNum + 1
   }
 
