@@ -50,7 +50,7 @@ private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqInd
    *
    * @return Some(offset) if found, None if not
    */
-  def getOffsetFor(seq: Long): Option[Long] = {
+  def getOffsetFor(seq: Long): Option[Long] = synchronized {
     if (seqCache.containsKey(seq)) {
       Some(seqCache.get(seq))
     } else {
@@ -63,12 +63,13 @@ private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqInd
    *
    * @return Some(sequence) or None if none such exists
    */
-  def getMaxSeq: Option[Long] =
+  def getMaxSeq: Option[Long] = synchronized {
     if (seqCache.isEmpty) {
       None
     } else {
       Some(seqCache.lastKey())
     }
+  }
 
   /**
    * Map seq -> offset, persisting to disk and memory
@@ -83,7 +84,7 @@ private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqInd
    * @param seq sequence number
    * @param offset offset
    */
-  def put(seq: Long, offset: Long) {
+  def put(seq: Long, offset: Long) = synchronized {
     if (isClosed) {
       throw new IllegalStateException("Attempting to write to closed SeqIndex")
     }
@@ -103,7 +104,7 @@ private[uberstore] class SeqIndex(writeHandle: RandomAccessFile, fileOps: SeqInd
    *          the first entry withing.
    *          If the range is empty, (0, -1) is returned
    */
-  def getOffsetRange(firstSeq: Long, lastSeq: Long): (Long,  Long) = {
+  def getOffsetRange(firstSeq: Long, lastSeq: Long): (Long,  Long) = synchronized {
     val range = seqCache.subMap(firstSeq, true, lastSeq, true)
 
     if (range.isEmpty) {
