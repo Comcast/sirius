@@ -1,0 +1,16 @@
+#!/bin/sh
+
+sirius_base=`dirname $0`
+sirius_base=`cd $sirius_base/..; pwd`
+
+SIRIUS_CLASSPATH=$sirius_base/bin/sirius.jar:$CLASSPATH
+for j in `ls $sirius_base/lib/*.jar`; do
+    SIRIUS_CLASSPATH=$SIRIUS_CLASSPATH:$j
+done
+
+if [ "x$JAVA_OPTS" == "x" ]; then
+    JAVA_OPTS="-Xms2g -Xmx4g"
+fi
+
+java $JAVA_OPTS -cp $SIRIUS_CLASSPATH com.comcast.xfinity.sirius.tool.WalTool $@
+exit $?
