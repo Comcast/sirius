@@ -8,6 +8,8 @@ import annotation.tailrec
 import akka.actor.{Actor, ActorRef}
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.persistence.{RequestLogFromAnyRemote, BoundedLogRange}
+import akka.event.Logging._
+import akka.event.Logging
 
 object PaxosStateBridge {
   object RequestGaps
@@ -45,6 +47,8 @@ class PaxosStateBridge(startingSeq: Long,
                        logRequestActor: ActorRef) extends Actor {
     import PaxosStateBridge._
 
+  val log = Logging(context.system, this)
+
   // TODO: make this configurable- it's cool hardcoded for now, but once
   //       SiriusConfig matures this would be pretty clean to configure
   val requestGapsCancellable =
@@ -74,6 +78,8 @@ class PaxosStateBridge(startingSeq: Long,
       client ! SiriusResult.none()
       executeReadyDecisions()
     case RequestGaps =>
+      //XXX: logging unreadyDecisions... should remove in favor or better monitoring later
+      log.debug("Unready Decisions count:  " +unreadyDecisionCnt)
       requestGaps()
   }
 

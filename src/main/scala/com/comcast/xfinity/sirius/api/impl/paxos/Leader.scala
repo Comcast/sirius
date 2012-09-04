@@ -81,6 +81,8 @@ class Leader(membership: Agent[Set[ActorRef]],
       startScout()
 
     case Reap =>
+      //XXX:  This should be removed and replaced with proper monitoring soon.
+      log.debug("Proposal count:  " +  proposals.size)
       val (newLowestSlot, newProposals) = filterOldProposals(lowestAcceptableSlot, proposals)
       proposals = newProposals
       lowestAcceptableSlot = newLowestSlot
