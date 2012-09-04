@@ -121,7 +121,7 @@ class UberStore(dataFile: UberDataFile,
       (acc, evt) => evt :: acc
     ).reverse
 
-    new StaticEventIterator(events)
+    CloseableIterator(events.iterator)
   }
 
   // foldLeft over sequence numbers startSeq -> endSeq, inclusive, this may become public...
