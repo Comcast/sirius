@@ -14,6 +14,7 @@ import akka.agent.Agent
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import scalax.file.Path
+import state.SiriusPersistenceActor.GetLogSubrange
 import state.{ StateSup, SiriusStateActor }
 
 object SiriusSupervisor {
@@ -119,6 +120,7 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
         orderingActor forward delete
       }
     case get: Get => stateSup forward get
+    case subRangeReq: GetLogSubrange => stateSup forward subRangeReq
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case paxosMessage: PaxosMessage => orderingActor forward paxosMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)

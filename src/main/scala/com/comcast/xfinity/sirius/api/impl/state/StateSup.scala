@@ -74,5 +74,8 @@ class StateSup extends Actor {
     case orderedEvent: OrderedEvent =>
       persistenceActor ! orderedEvent
 
+    case subRangeReq: SiriusPersistenceActor.GetLogSubrange =>
+      persistenceActor forward subRangeReq
+
   }
 }

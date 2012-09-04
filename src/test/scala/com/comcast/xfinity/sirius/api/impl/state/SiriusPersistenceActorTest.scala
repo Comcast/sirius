@@ -11,7 +11,9 @@ import org.mockito.Matchers._
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Put, Delete}
 import akka.agent.Agent
-import org.mockito.Matchers
+import scalax.io.CloseableIterator
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{GetLogSubrange, LogSubrange}
+import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, LogRange}
 
 class SiriusPersistenceActorTest extends NiceTest {
 
@@ -66,6 +68,21 @@ class SiriusPersistenceActorTest extends NiceTest {
       testStateWorkerProbe.expectMsg(delete)
 
       verify(mockSiriusLog, times(1)).writeEntry(event)
+    }
+
+    it("should reply to a GetSubrange request directly") {
+      val expectedEvents = List(
+        OrderedEvent(1, 2, Delete("first jawn")),
+        OrderedEvent(3, 4, Delete("second jawn"))
+      )
+      doReturn(CloseableIterator(expectedEvents.toIterator)).
+        when(mockSiriusLog).createIterator(any[LogRange])
+
+      val senderProbe = TestProbe()(actorSystem)
+      senderProbe.send(underTestActor, GetLogSubrange(1, 3))
+      senderProbe.expectMsg(LogSubrange(expectedEvents))
+
+     verify(mockSiriusLog).createIterator(BoundedLogRange(1, 3))
     }
   }
 }

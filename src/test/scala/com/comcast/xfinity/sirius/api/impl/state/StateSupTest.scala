@@ -5,6 +5,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.ActorSystem
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete, Get}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.GetLogSubrange
 
 class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
@@ -41,6 +42,21 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
       stateSup ! orderedEvent
       persistenceProbe.expectMsg(orderedEvent)
       assert(stateSup === persistenceProbe.lastSender)
+    }
+  }
+
+  describe("when receiving a GetLogSubRange message") {
+    it ("must forward the message to the persistence subsystem") {
+      val persistenceProbe = TestProbe()
+      val stateSup = TestActorRef(new StateSup with StateSup.ChildProvider {
+        val stateActor = TestProbe().ref
+        val persistenceActor = persistenceProbe.ref
+      })
+
+      val senderProbe = TestProbe()
+      senderProbe.send(stateSup, GetLogSubrange(1, 100))
+      persistenceProbe.expectMsg(GetLogSubrange(1, 100))
+      assert(senderProbe.ref === persistenceProbe.lastSender)
     }
   }
 }
