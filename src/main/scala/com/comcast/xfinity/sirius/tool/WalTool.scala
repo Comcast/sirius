@@ -3,6 +3,7 @@ package com.comcast.xfinity.sirius.tool
 import com.comcast.xfinity.sirius.uberstore.{UberStore, UberTool}
 import java.io.File
 import com.comcast.xfinity.sirius.writeaheadlog.{SiriusLog, SiriusFileLog}
+import com.comcast.xfinity.sirius.api.impl.persistence.BoundedLogRange
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -29,6 +30,13 @@ object WalTool {
     Console.err.println("       Compact a legacy (line based) log into another")
     Console.err.println("       If two-pass is provided then the more memory efficient two pass")
     Console.err.println("       compaction algorithm will be used")
+    Console.err.println()
+    Console.err.println("   tail [-n number] [-f] <walDir>")
+    Console.err.println("       Show last 20 sequence numbers in wal.")
+    Console.err.println("       -n: number of lines to show (e.g., -n 10, -n 50), defaults to 20")
+    Console.err.println("       -f option enables follow mode.  Break follow mode with ^C.")
+    Console.err.println("       (follow mode is recommended, since wal needs to be initialized")
+    Console.err.println("        with each instantiation, which takes a few seconds")
   }
 
   def main(args: Array[String]) {
@@ -48,6 +56,15 @@ object WalTool {
         compactLegacy(inWalName, outWalName, false)
       case Array("compact-legacy", "two-pass", inWalName, outWalName) =>
         compactLegacy(inWalName, outWalName, true)
+
+      case Array("tail", walDir) =>
+        tailUber(walDir)
+      case Array("tail", "-f", walDir) =>
+        tailUber(walDir, follow = true)
+      case Array("tail", "-n", number, walDir) =>
+        tailUber(walDir, number.toInt)
+      case Array("tail", "-n", number, "-f", walDir) =>
+        tailUber(walDir, number.toInt, follow = true)
 
       case _ => printUsage()
     }
@@ -146,4 +163,39 @@ object WalTool {
       throw new Exception("Failed to create " + dirName)
     }
   }
+
+  /**
+   * Tail the binary log, similar to the unix tail tool.
+   *
+   * @param inDirName location of UberStore
+   * @param number number of lines to print, default 20
+   * @param follow whether to follow, printing the last n lines every sleepDuration ms
+   * @param sleepDuration number of ms between prints in follow mode
+   */
+  private def tailUber(inDirName: String, number: Int = 20, follow: Boolean = false, sleepDuration: Int = 1000) {
+    val wal = UberStore(inDirName)
+    var seq = wal.getNextSeq - 1
+
+    printSeq(wal, seq - number, seq)
+    while (follow) {
+      Thread.sleep(sleepDuration)
+      print("\033["+"2J")
+      seq = wal.getNextSeq - 1
+      printSeq(wal, seq - number, seq)
+    }
+  }
+
+  /**
+   * Internal helper for tailUber, does the actual printing of a range.
+   *
+   * @param wal uberstore to target
+   * @param first first seq to print
+   * @param last last seq to print
+   */
+  private def printSeq(wal: UberStore, first: Long, last: Long) {
+    val rangeIter = wal.createIterator(BoundedLogRange(first, last))
+
+    rangeIter.foreach((event) => println(event))
+  }
+
 }
