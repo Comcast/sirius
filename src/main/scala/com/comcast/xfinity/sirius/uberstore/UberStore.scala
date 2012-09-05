@@ -4,7 +4,7 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import scalax.io.CloseableIterator
 import data.UberDataFile
-import seqindex.SeqIndex
+import seqindex.{PersistedSeqIndex, SeqIndex}
 import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, EntireLog, LogRange}
 
 object UberStore {
@@ -21,7 +21,7 @@ object UberStore {
   def apply(baseDir: String): UberStore = {
     val baseName = "%s/1".format(baseDir)
     val dataFile = UberDataFile("%s.data".format(baseName))
-    val index = SeqIndex("%s.index".format(baseName))
+    val index = PersistedSeqIndex("%s.index".format(baseName))
     repairIndex(index, dataFile)
     new UberStore(dataFile, index)
   }

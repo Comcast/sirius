@@ -8,7 +8,7 @@ import org.mockito.Matchers.{eq => meq, same, any}
 import java.util.{TreeMap => JTreeMap}
 import collection.JavaConversions._
 
-object SeqIndexTest {
+object PersistedSeqIndexTest {
 
   def newMockFileOps(initialIndex: JTreeMap[Long, Long] = new JTreeMap[Long, Long]()): SeqIndexFileOps = {
     val mockOps = mock(classOf[SeqIndexFileOps])
@@ -17,9 +17,8 @@ object SeqIndexTest {
   }
 }
 
-class SeqIndexTest extends NiceTest {
-
-  import SeqIndexTest._
+class PersistedSeqIndexTest extends NiceTest {
+  import PersistedSeqIndexTest._
 
   it ("must properly populate the instance from the passed in handle") {
     val mockHandle = mock[RandomAccessFile]
@@ -29,7 +28,7 @@ class SeqIndexTest extends NiceTest {
     )
     val mockFileOps = newMockFileOps(initialEntries)
 
-    val underTest = new SeqIndex(mockHandle, mockFileOps)
+    val underTest = new PersistedSeqIndex(mockHandle, mockFileOps)
 
     verify(mockFileOps).loadIndex(same(mockHandle))
 
@@ -42,7 +41,7 @@ class SeqIndexTest extends NiceTest {
     val mockHandle = mock[RandomAccessFile]
     val mockFileOps = newMockFileOps()
 
-    val underTest = new SeqIndex(mockHandle, mockFileOps)
+    val underTest = new PersistedSeqIndex(mockHandle, mockFileOps)
 
     assert(None === underTest.getOffsetFor(1L))
 
@@ -53,13 +52,13 @@ class SeqIndexTest extends NiceTest {
 
   describe ("getMaxSeq") {
     it ("must properly reflect maxSeq for an empty index") {
-      val underTest = new SeqIndex(mock[RandomAccessFile], newMockFileOps())
+      val underTest = new PersistedSeqIndex(mock[RandomAccessFile], newMockFileOps())
       assert(None === underTest.getMaxSeq)
     }
 
     it ("must properly reflect maxSeq for a populated index") {
       val initialIndex = new JTreeMap[Long, Long](SortedMap(1L -> 2L))
-      val underTest = new SeqIndex(mock[RandomAccessFile], newMockFileOps(initialIndex))
+      val underTest = new PersistedSeqIndex(mock[RandomAccessFile], newMockFileOps(initialIndex))
 
       assert(Some(1L) === underTest.getMaxSeq)
 
@@ -72,7 +71,7 @@ class SeqIndexTest extends NiceTest {
     val initialIndex: JTreeMap[Long, Long] = new JTreeMap(
       SortedMap(1L -> 2L, 3L -> 4L, 5L -> 6L)
     )
-    val underTest = new SeqIndex(mock[RandomAccessFile], newMockFileOps(initialIndex))
+    val underTest = new PersistedSeqIndex(mock[RandomAccessFile], newMockFileOps(initialIndex))
 
     it ("must return (0, -1) if the range is empty") {
       assert((0L, -1L) === underTest.getOffsetRange(10, 20))
@@ -98,7 +97,7 @@ class SeqIndexTest extends NiceTest {
   describe ("close") {
     it ("should close any provided filehandles") {
       val mockHandle = mock[RandomAccessFile]
-      val underTest = new SeqIndex(mockHandle, newMockFileOps())
+      val underTest = new PersistedSeqIndex(mockHandle, newMockFileOps())
 
       underTest.close()
 
