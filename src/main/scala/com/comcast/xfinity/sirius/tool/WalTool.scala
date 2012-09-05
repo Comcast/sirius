@@ -4,6 +4,8 @@ import com.comcast.xfinity.sirius.uberstore.{UberStore, UberTool}
 import java.io.File
 import com.comcast.xfinity.sirius.writeaheadlog.{SiriusLog, SiriusFileLog}
 import com.comcast.xfinity.sirius.api.impl.persistence.BoundedLogRange
+import com.comcast.xfinity.sirius.uberstore.seqindex.ReadOnlySeqIndex
+import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -173,7 +175,8 @@ object WalTool {
    * @param sleepDuration number of ms between prints in follow mode
    */
   private def tailUber(inDirName: String, number: Int = 20, follow: Boolean = false, sleepDuration: Int = 1000) {
-    val wal = UberStore(inDirName)
+    val wal = new UberStore(UberDataFile(new File(inDirName, "1.data").getAbsolutePath),
+                            ReadOnlySeqIndex(new File(inDirName, "1.index").getAbsolutePath))
     var seq = wal.getNextSeq - 1
 
     printSeq(wal, seq - number, seq)
