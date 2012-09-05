@@ -79,7 +79,7 @@ class PaxosStateBridge(startingSeq: Long,
       executeReadyDecisions()
     case RequestGaps =>
       //XXX: logging unreadyDecisions... should remove in favor or better monitoring later
-      log.debug("Unready Decisions count:  " +unreadyDecisionCnt)
+      log.info("Unready Decisions count:  " +unreadyDecisionCnt)
       requestGaps()
   }
 

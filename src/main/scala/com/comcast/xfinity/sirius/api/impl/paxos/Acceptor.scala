@@ -55,7 +55,7 @@ class Acceptor(startingSeqNum: Long) extends Actor {
     case Reap =>
       //XXX: this loops over the accepted collection... so if we want to keep this we should eventually keep our own
       //count
-      log.debug("Accepted count: " + accepted.size)
+      log.info("Accepted count: " + accepted.size)
       val (newLowestSlotNumber, newAccepted) = cleanOldAccepted(lowestAcceptableSlotNumber, accepted)
       lowestAcceptableSlotNumber = newLowestSlotNumber
       accepted = newAccepted

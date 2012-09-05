@@ -82,7 +82,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
     case Reap =>
       //XXX:  This should be removed and replaced with proper monitoring soon.
-      log.debug("Proposal count:  " +  proposals.size)
+      log.info("Proposal count:  " +  proposals.size)
       val (newLowestSlot, newProposals) = filterOldProposals(lowestAcceptableSlot, proposals)
       proposals = newProposals
       lowestAcceptableSlot = newLowestSlot
