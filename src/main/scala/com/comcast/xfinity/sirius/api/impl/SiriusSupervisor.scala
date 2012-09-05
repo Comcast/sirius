@@ -3,10 +3,9 @@ package com.comcast.xfinity.sirius.api.impl
 import membership._
 import org.slf4j.LoggerFactory
 import paxos.PaxosMessages.PaxosMessage
-import paxos.{ PaxosSup, Replica, NaiveOrderingActor }
+import paxos.{ PaxosSup, NaiveOrderingActor }
 import persistence._
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.writeaheadlog.{ SiriusFileLog, LogIteratorSource, SiriusLog }
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -14,8 +13,9 @@ import akka.agent.Agent
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
 import scalax.file.Path
-import state.SiriusPersistenceActor.GetLogSubrange
-import state.{ StateSup, SiriusStateActor }
+import state.SiriusPersistenceActor.LogQuery
+import state.StateSup
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 
 object SiriusSupervisor {
 
@@ -120,7 +120,7 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
         orderingActor forward delete
       }
     case get: Get => stateSup forward get
-    case subRangeReq: GetLogSubrange => stateSup forward subRangeReq
+    case logQuery: LogQuery => stateSup forward logQuery
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case paxosMessage: PaxosMessage => orderingActor forward paxosMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)

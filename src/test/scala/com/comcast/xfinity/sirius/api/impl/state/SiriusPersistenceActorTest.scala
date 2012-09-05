@@ -12,7 +12,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Put, Delete}
 import akka.agent.Agent
 import scalax.io.CloseableIterator
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{GetLogSubrange, LogSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, LogRange}
 
 class SiriusPersistenceActorTest extends NiceTest {
@@ -82,7 +82,17 @@ class SiriusPersistenceActorTest extends NiceTest {
       senderProbe.send(underTestActor, GetLogSubrange(1, 3))
       senderProbe.expectMsg(LogSubrange(expectedEvents))
 
-     verify(mockSiriusLog).createIterator(BoundedLogRange(1, 3))
+      verify(mockSiriusLog).createIterator(BoundedLogRange(1, 3))
+    }
+
+    it("should reply to GetNextLogSeq requests directly") {
+      val expectedNextSeq = 101L
+
+      doReturn(expectedNextSeq).when(mockSiriusLog).getNextSeq
+
+      val senderProbe = TestProbe()(actorSystem)
+      senderProbe.send(underTestActor, GetNextLogSeq)
+      senderProbe.expectMsg(expectedNextSeq)
     }
   }
 }

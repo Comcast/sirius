@@ -6,6 +6,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.actor.{Props, ActorRef, Actor}
 import com.comcast.xfinity.sirius.api.impl._
 import akka.event.Logging
+import state.SiriusPersistenceActor.LogQuery
 
 object StateSup {
   trait ChildProvider {
@@ -74,8 +75,8 @@ class StateSup extends Actor {
     case orderedEvent: OrderedEvent =>
       persistenceActor ! orderedEvent
 
-    case subRangeReq: SiriusPersistenceActor.GetLogSubrange =>
-      persistenceActor forward subRangeReq
+    case logQuery: LogQuery =>
+      persistenceActor forward logQuery
 
   }
 }
