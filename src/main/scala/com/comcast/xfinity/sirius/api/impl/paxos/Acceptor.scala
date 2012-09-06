@@ -1,12 +1,15 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 import akka.actor.Actor
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import scala.collection.immutable.SortedMap
 import akka.util.duration._
-import annotation.tailrec
 import akka.event.Logging
+import java.util.{TreeMap=>JTreeMap}
+import scala.util.control.Breaks._
+import scala.collection.JavaConverters._
+import collection.immutable.TreeMap
 
 object Acceptor {
+  val reapWindow =  30 * 60 * 1000L
   case object Reap
 
   def apply(startingSeqNum: Long): Acceptor = {
@@ -25,7 +28,7 @@ class Acceptor(startingSeqNum: Long) extends Actor {
   val log = Logging(context.system, this)
 
   var ballotNum: Ballot = Ballot.empty
-  var accepted = SortedMap[Long, PValue]()
+  var accepted = new JTreeMap[Long, PValue]()
 
   // if we receive a Phase2A for a slot less than this we refuse to
   // handle it since it is out of date by our terms
@@ -38,16 +41,21 @@ class Acceptor(startingSeqNum: Long) extends Actor {
     // Scout
     case Phase1A(scout, ballot, replyAs) =>
       if (ballot > ballotNum) ballotNum = ballot
-      scout ! Phase1B(replyAs, ballotNum, accepted.values.toSet)
+      scout ! Phase1B(replyAs, ballotNum, accepted.values.asScala.toSet)
 
     // Commander
     case Phase2A(commander, pval, replyAs) if pval.slotNum >= lowestAcceptableSlotNumber =>
       if (pval.ballot >= ballotNum) {
         ballotNum = pval.ballot
-        accepted += (accepted.get(pval.slotNum) match {
-          case Some(oldPval) if oldPval.ballot > pval.ballot => (oldPval.slotNum -> oldPval)
-          case _ => (pval.slotNum -> pval)
-        })
+
+       //if pval is already accepted on higher ballot number then do nothing
+       //    in other words
+       // if pval not accepted or accepted and with lower or equal ballot number then replace accepted pval w/ pval
+        accepted.get(pval.slotNum) match {
+          case (oldPval:PValue) if oldPval.ballot > pval.ballot =>  accepted.put(oldPval.slotNum,oldPval)
+          case (oldPval:PValue)=> accepted.put(pval.slotNum , pval)
+          case null => accepted.put(pval.slotNum , pval)
+        }
       }
       commander ! Phase2B(replyAs, ballotNum)
 
@@ -64,31 +72,27 @@ class Acceptor(startingSeqNum: Long) extends Actor {
   /* Remove 'old' pvals from the system.  A pval is old if we got it more than half an hour ago.
    * The timestamp on the pval came from the originating node, so we're using this wide window 
    * as a fudge factor for clock drift.
+   * Note: this method has the side-effect of modifying toReap.
    */
-  private def cleanOldAccepted(currentLowestSlot : Long, toReap : SortedMap[Long, PValue]) = {
-    val thirtyMinutesAgo = 30 * 60 * 1000L
+  private def cleanOldAccepted(currentLowestSlot : Long, toReap : JTreeMap[Long, PValue]) = {
     var highestReapedSlot: Long = currentLowestSlot - 1
-
-    /**
-     * Due to some weirdness around dropWhile, we needed to make our own
-     */
-    @tailrec
-    def trueDropWhile[A, B](sortedMap: SortedMap[A, B])(pred: (A, B) => Boolean): SortedMap[A, B] =
-      sortedMap.headOption match {
-        case Some((k, v)) if pred(k, v) => trueDropWhile(sortedMap.tail)(pred)
-        case _ => sortedMap
+    val now = System.currentTimeMillis
+    breakable{
+      val keys = toReap.keySet.toArray
+      for (i <- 0 to  keys.size-1){
+          val slot = keys(i)
+          if(toReap.get(slot).proposedCommand.ts < now -reapWindow){
+            highestReapedSlot = toReap.get(slot).slotNum
+            toReap.remove(slot)
+           }else{
+            break
+          }
       }
-
-    val newAccepted = trueDropWhile(toReap) {
-      case(slot, PValue(_, _, Command(_, timestamp, _))) if timestamp < thirtyMinutesAgo => {
-        highestReapedSlot = slot
-        true
-      }
-      case _ => false
     }
-
     log.debug("Reaped PValues for all commands between {} and {}", currentLowestSlot - 1, highestReapedSlot)
+    (highestReapedSlot + 1, toReap)
 
-    (highestReapedSlot + 1, newAccepted)
+
+
   }
 }
