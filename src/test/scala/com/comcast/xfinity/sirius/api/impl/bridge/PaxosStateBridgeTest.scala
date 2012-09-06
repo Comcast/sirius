@@ -22,7 +22,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
   describe("when receiving a UnreadyDecisionsCountReq") {
     it("must return the count of buffered decisions") {
       val senderProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, TestProbe().ref, TestProbe().ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, TestProbe().ref, TestProbe().ref, TestProbe().ref))
       senderProbe.send(stateBridge, UnreadyDecisionsCountReq)
       senderProbe.expectMsg(UnreadyDecisionCount(0))
 
@@ -34,7 +34,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       val stateProbe = TestProbe()
       val logRequestProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
 
       stateBridge ! OrderedEvent(11, 1, Delete("a"))
@@ -60,7 +60,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       val stateProbe = TestProbe()
       val logRequestProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
       stateBridge ! OrderedEvent(9, 2, Delete("b"))
       stateProbe.expectNoMsg(100 millis)
@@ -72,7 +72,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       val stateProbe = TestProbe()
       val logRequestProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
       stateBridge ! OrderedEvent(11, 1, Delete("a"))
       stateProbe.expectNoMsg(100 millis)
@@ -82,6 +82,23 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       stateProbe.expectNoMsg(100 millis)
       assert(1 === stateBridge.underlyingActor.eventBuffer.size)
     }
+    it("should send a DecisionHint to the SiriusSupervisor with the latest decided slot"){
+      val siriusSupProbe = TestProbe()
+      val stateBridge = TestActorRef(new PaxosStateBridge(11, TestProbe().ref, TestProbe().ref, siriusSupProbe.ref))
+      stateBridge ! OrderedEvent(11, 1, Delete("a"))
+      siriusSupProbe.expectMsg(DecisionHint(11L))
+    }
+
+    it("should send a DecisionHint with a list of slots to the SiriusSupervisor when an eventbuffer with gaps gets filled"){
+      val siriusSupProbe = TestProbe()
+      val stateBridge = TestActorRef(new PaxosStateBridge(11, TestProbe().ref, TestProbe().ref, siriusSupProbe.ref))
+      stateBridge ! OrderedEvent(12, 1, Delete("a"))
+      stateBridge ! OrderedEvent(13, 1, Delete("a"))
+      stateBridge ! OrderedEvent(11, 1, Delete("a"))
+      siriusSupProbe.expectMsg(DecisionHint(13L))
+    }
+
+
   }
 
   describe("when receiving a Decision message") {
@@ -89,7 +106,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       val stateProbe = TestProbe()
       val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
       stateBridge ! Decision(9, Command(clientProbe.ref, 1, Delete("z")))
       clientProbe.expectNoMsg(100 millis)
@@ -102,7 +119,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
       val theDecision = Decision(10, Command(clientProbe.ref, 1, Delete("z")))
 
@@ -120,7 +137,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
       stateProbe.expectNoMsg(100 millis)
@@ -138,7 +155,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
       clientProbe.expectMsg(SiriusResult.none())
@@ -163,13 +180,30 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       assert(0 === stateBridge.underlyingActor.eventBuffer.size)
 
     }
+    it("should send a DecisionHint to the SiriusSupervisor with the last decided slot"){
+      val siriusSupProbe = TestProbe()
+      val stateBridge = TestActorRef(new PaxosStateBridge(12, TestProbe().ref, TestProbe().ref, siriusSupProbe.ref))
+      stateBridge !  Decision(12, Command(TestProbe().ref, 4, Delete("d")))
+      siriusSupProbe.expectMsg(DecisionHint(12L))
+    }
+
+    it("should send a DecisionHint with multiple slots when an eventbuffer with gaps is filled"){
+      val siriusSupProbe = TestProbe()
+      val stateBridge = TestActorRef(new PaxosStateBridge(12, TestProbe().ref, TestProbe().ref, siriusSupProbe.ref))
+      stateBridge !  Decision(13, Command(TestProbe().ref, 4, Delete("d")))
+      stateBridge !  Decision(14, Command(TestProbe().ref, 4, Delete("d")))
+      stateBridge !  Decision(12, Command(TestProbe().ref, 4, Delete("d")))
+
+      siriusSupProbe.expectMsg(DecisionHint(14L))
+    }
+
   }
 
   it("must find no gaps for an empty event buffer") {
     val stateProbe = TestProbe()
     val logRequestProbe = TestProbe()
 
-    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
     stateBridge ! RequestGaps
     logRequestProbe.expectNoMsg(100 millis)
@@ -180,7 +214,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
     val logRequestProbe = TestProbe()
     val clientProbe = TestProbe()
 
-    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
     stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
 
@@ -193,7 +227,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
     val logRequestProbe = TestProbe()
     val clientProbe = TestProbe()
 
-    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
 
     stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
     stateBridge ! Decision(15, Command(clientProbe.ref, 1, Delete("a")))

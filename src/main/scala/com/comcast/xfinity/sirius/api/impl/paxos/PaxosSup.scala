@@ -69,6 +69,7 @@ class PaxosSup extends Actor {
 
     // Leader messages
     case p: Propose => leader forward p
+    case dh: DecisionHint => leader forward  dh
     // Adopted and Preempted are internal
     // Acceptor messages
     case p1a: Phase1A => acceptor forward p1a

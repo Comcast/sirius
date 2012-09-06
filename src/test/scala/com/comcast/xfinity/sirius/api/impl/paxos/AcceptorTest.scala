@@ -42,12 +42,12 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
         val scoutProbe = TestProbe()
         val replyAs = TestProbe().ref
-        acceptor ! Phase1A(scoutProbe.ref, Ballot(0, "a"), replyAs)
+        acceptor ! Phase1A(scoutProbe.ref, Ballot(0, "a"), replyAs,0)
         scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, accepted.values.asScala.toSet))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
 
-        acceptor ! Phase1A(scoutProbe.ref, ballotNum, replyAs)
+        acceptor ! Phase1A(scoutProbe.ref, ballotNum, replyAs,0)
         scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, accepted.values.asScala.toSet))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
@@ -66,9 +66,50 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val scoutProbe = TestProbe()
         val replyAs = TestProbe().ref
         val biggerBallotNum = Ballot(2, "a")
-        acceptor ! Phase1A(scoutProbe.ref, biggerBallotNum, replyAs)
+        acceptor ! Phase1A(scoutProbe.ref, biggerBallotNum, replyAs,0)
         scoutProbe.expectMsg(Phase1B(replyAs, biggerBallotNum, accepted.values.asScala.toSet))
         assert(acceptor.underlyingActor.ballotNum === biggerBallotNum)
+        assert(acceptor.underlyingActor.accepted === accepted)
+      }
+      it("must trim the set of accepted decisions sent back to the leader based on latest decided slot"){
+        val acceptor = TestActorRef(new Acceptor(1))
+        val ballotNum = Ballot(1, "a")
+
+        val accepted = new JTreeMap[Long,PValue]();
+        accepted.put(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        accepted.put(2L,PValue(ballotNum,1,Command(null,1,Delete("2"))))
+        accepted.put(3L,PValue(ballotNum,1,Command(null,1,Delete("3"))))
+        accepted.put(4L,PValue(ballotNum,1,Command(null,1,Delete("something"))))
+
+        val trimmedAccepted = new JTreeMap[Long,PValue]()
+        trimmedAccepted.put(3L,PValue(ballotNum,1,Command(null,1,Delete("3"))))
+        trimmedAccepted.put(4L,PValue(ballotNum,1,Command(null,1,Delete("something"))))
+
+        acceptor.underlyingActor.ballotNum = ballotNum
+        acceptor.underlyingActor.accepted = accepted.clone().asInstanceOf[JTreeMap[Long, PValue]]
+
+        val scoutProbe = TestProbe()
+        val replyAs = TestProbe().ref
+        acceptor ! Phase1A(scoutProbe.ref, ballotNum, replyAs, 2L)
+        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, trimmedAccepted.values.asScala.toSet))
+        assert(acceptor.underlyingActor.accepted === accepted)
+      }
+
+      it("doesn't trim accepted if decidedSlots are not in accepted")    {
+        val acceptor = TestActorRef(new Acceptor(1))
+        val ballotNum = Ballot(1, "a")
+
+        val accepted = new JTreeMap[Long,PValue]();
+        accepted.put(2L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        accepted.put(3L,PValue(ballotNum,1,Command(null,1,Delete("2"))))
+
+        acceptor.underlyingActor.ballotNum = ballotNum
+        acceptor.underlyingActor.accepted = accepted
+
+        val scoutProbe = TestProbe()
+        val replyAs = TestProbe().ref
+        acceptor ! Phase1A(scoutProbe.ref, ballotNum, replyAs, 1L)
+        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, accepted.values.asScala.toSet))
         assert(acceptor.underlyingActor.accepted === accepted)
       }
     }

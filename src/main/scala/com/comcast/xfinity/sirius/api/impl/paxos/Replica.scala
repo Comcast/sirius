@@ -58,7 +58,6 @@ class Replica(localLeader: ActorRef,
   val traceLogger = Logging(context.system, "SiriusTrace")
 
   var lowestUnusedSlotNum: Long = startingSeqNum
-  
   def propose(command: Command) {
     traceLogger.debug("Received proposal: assigning {} to {}", lowestUnusedSlotNum, command)
     localLeader ! Propose(lowestUnusedSlotNum, command)

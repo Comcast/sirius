@@ -33,17 +33,21 @@ object PaxosStateBridge {
  *   now this should be good enough.
  *
  * @param startingSeq the sequence number to start with
- * @param stateSup reference to the subsystem encapsulating system state.
+ * @param stateSupActor reference to the subsystem encapsulating system state.
  *            In the future as the code settles down we may want to have this
  *            directly point to the persistence layer, but for now we funnel
  *            everything through the state subsystem supervisor for abstraction,
  *            such that we can easily refactor and not worry about messing stuff
  *            up.
  * @param logRequestActor reference to actor that will handle requests for log ranges.
+ * @param siriusSupActor reference to the Sirius Supervisor Actor for routing
+ *          DecisionHints to the Paxos Subsystem
+ *
  */
 class PaxosStateBridge(startingSeq: Long,
-                       stateSup: ActorRef,
-                       logRequestActor: ActorRef) extends Actor {
+                       stateSupActor: ActorRef,
+                       logRequestActor: ActorRef,
+                       siriusSupActor: ActorRef) extends Actor {
     import PaxosStateBridge._
 
   val logger = Logging(context.system, "Sirius")
@@ -113,11 +117,13 @@ class PaxosStateBridge(startingSeq: Long,
    * side effects are that the queue is trimmed and nextSeq is updated.
    */
   private def executeReadyDecisions() {
+    val oldNextSeq = nextSeq
+
     @tailrec
     def applyNextReadyDecision() {
       eventBuffer.headOption match {
         case Some((slot, orderedEvent)) if slot == nextSeq =>
-          stateSup ! orderedEvent
+          stateSupActor ! orderedEvent
           nextSeq += 1
           eventBuffer = eventBuffer.tail
           applyNextReadyDecision()
@@ -125,6 +131,7 @@ class PaxosStateBridge(startingSeq: Long,
       }
     }
     applyNextReadyDecision()
+    if (oldNextSeq != nextSeq) siriusSupActor ! DecisionHint(nextSeq - 1)
   }
 
   /**

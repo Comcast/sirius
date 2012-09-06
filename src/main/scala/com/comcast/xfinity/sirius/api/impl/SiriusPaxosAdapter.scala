@@ -45,13 +45,16 @@ object SiriusPaxosAdapter {
  *          know how to receive and understand
  * @param logRequestActor reference to actor that will handle paxosStateBridge's
  *          requests for log ranges.
+ * @param siriusSupActor reference to the Sirius Supervisor Actor for routing
+ *          DecisionHints to the Paxos Subsystem
  */
 class SiriusPaxosAdapter(membership: Agent[Set[ActorRef]],
                          startingSeq: Long,
                          persistenceActor: ActorRef,
-                         logRequestActor: ActorRef)(implicit context: ActorContext) {
+                         logRequestActor: ActorRef,
+                         siriusSupActor: ActorRef)(implicit context: ActorContext) {
 
-  val paxosStateBridge = context.actorOf(Props(new PaxosStateBridge(startingSeq, persistenceActor, logRequestActor)), "paxos-state-bridge")
+  val paxosStateBridge = context.actorOf(Props(new PaxosStateBridge(startingSeq, persistenceActor, logRequestActor, siriusSupActor)), "paxos-state-bridge")
 
   val paxosSubSystem = context.actorOf(Props(
     PaxosSup(membership, startingSeq, SiriusPaxosAdapter.createPerformFun(paxosStateBridge))),

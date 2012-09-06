@@ -4,13 +4,13 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import akka.actor.{ReceiveTimeout, Actor, ActorRef}
 
-class Scout(leader: ActorRef, acceptors: Set[ActorRef], ballot: Ballot) extends Actor {
+class Scout(leader: ActorRef, acceptors: Set[ActorRef], ballot: Ballot, latestDecidedSlot: Long) extends Actor {
 
   var decidedAcceptors = Set[ActorRef]()
   var pvalues = Set[PValue]()
 
   acceptors.foreach(
-    node => node ! Phase1A(self, ballot, node)
+    node => node ! Phase1A(self, ballot, node, latestDecidedSlot)
   )
 
   context.setReceiveTimeout(3 seconds)

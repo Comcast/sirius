@@ -17,6 +17,15 @@ object PaxosMessages {
 
   case class Decision(slot: Long, command: Command) extends PaxosMessage
 
+  /**
+   * A Hint about the last Decision executed by the Sirius System.  Used to reduce
+   * the amount of information the Acceptor sends in Phase1B message.  Also used by
+   * the Leader to not repropose already decided proposals.
+   *
+   * @param decision last decision executed
+   */
+  case class DecisionHint(decision: Long) extends PaxosMessage
+
   case class Command(client: ActorRef, ts: Long, op: NonCommutativeSiriusRequest) extends PaxosMessage
 
   case class PValue(ballot: Ballot, slotNum: Long, proposedCommand: Command) extends PaxosMessage
@@ -36,8 +45,11 @@ object PaxosMessages {
    * @param ballot The Ballot which we are trying to make active
    * @param replyAs An ActorRef that the receiving acceptor must supply in the from field of
    *            the Phase1B message, allowing us to cleanly uniquely identify a node
+   * @param latestDecidedSlot The lastest decided slot that we know about, used to reduce number of
+   *            accepted decisions sent in Phase1B
+   * @see DecisionHint
    */
-  case class Phase1A(from: ActorRef, ballot: Ballot, replyAs: ActorRef) extends PaxosMessage
+  case class Phase1A(from: ActorRef, ballot: Ballot, replyAs: ActorRef, latestDecidedSlot: Long) extends PaxosMessage
 
   /**
    * Message sent back to a Scout from an Acceptor during Ballot negotiation

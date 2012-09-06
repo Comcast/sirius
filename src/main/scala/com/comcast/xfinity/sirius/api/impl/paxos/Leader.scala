@@ -3,8 +3,6 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{ Props, Actor, ActorRef }
 import akka.agent.Agent
-import collection.immutable.SortedMap
-import annotation.tailrec
 import akka.util.duration._
 import akka.event.Logging
 import java.util.UUID
@@ -13,8 +11,6 @@ import scala.util.control.Breaks._
 import scala.collection.JavaConversions._
 
 object Leader {
-  object Reap
-
   trait HelperProvider {
     val leaderHelper: LeaderHelper
     def startCommander(pval: PValue): Unit
@@ -24,11 +20,6 @@ object Leader {
   def apply(membership: Agent[Set[ActorRef]],
             startingSeqNum: Long): Leader = {
     new Leader(membership, startingSeqNum) with HelperProvider {
-      val reapCancellable =
-        context.system.scheduler.schedule(30 seconds, 30 seconds, self, Reap)
-
-      override def postStop() { reapCancellable.cancel() }
-
       val leaderHelper = new LeaderHelper()
 
       def startCommander(pval: PValue) {
@@ -38,7 +29,7 @@ object Leader {
       }
 
       def startScout() {
-        context.actorOf(Props(new Scout(self, acceptors(), ballotNum)))
+        context.actorOf(Props(new Scout(self, acceptors(), ballotNum, latestDecidedSlot)))
       }
     }
   }
@@ -47,8 +38,6 @@ object Leader {
 class Leader(membership: Agent[Set[ActorRef]],
              startingSeqNum: Long) extends Actor {
     this: Leader.HelperProvider =>
-
-  import Leader.Reap
 
   val logger = Logging(context.system, "Sirius")
 
@@ -59,14 +48,14 @@ class Leader(membership: Agent[Set[ActorRef]],
   var active = false
   var proposals = new JTreeMap[Long, Command]()
 
-  var lowestAcceptableSlot: Long = startingSeqNum
+  var latestDecidedSlot: Long = startingSeqNum - 1
 
   logger.info("Starting leader using ballotNum={}", ballotNum)
 
   startScout()
 
   def receive = {
-    case Propose(slotNum, command) if !proposals.containsKey(slotNum) =>
+    case Propose(slotNum, command) if !proposals.containsKey(slotNum) && slotNum > latestDecidedSlot =>
       proposals.put(slotNum, command)
       if (active) {
         startCommander(PValue(ballotNum, slotNum, command))
@@ -84,16 +73,19 @@ class Leader(membership: Agent[Set[ActorRef]],
       ballotNum = Ballot(newBallot.seq + 1, ballotNum.leaderId)
       startScout()
 
-    case Reap =>
-      //XXX:  This should be removed and replaced with proper monitoring soon.
-      logger.info("Proposal count:  " +  proposals.size)
-      val (newLowestSlot, newProposals) = filterOldProposals(lowestAcceptableSlot, proposals)
-      proposals = newProposals
-      lowestAcceptableSlot = newLowestSlot
-
-
     // if our scout fails to make progress, retry
     case ScoutTimeout => startScout()
+
+    // the SirusPaxosBridge will notify the Leader of the last decision.  We can then use this to reduce the number
+    // of accepted decisions we need from the Acceptor
+    case DecisionHint(lastSlot) =>
+      latestDecidedSlot = lastSlot
+      reapProposals()
+  }
+
+  private def reapProposals() {
+    val newProposals = filterOldProposals(proposals)
+    proposals = newProposals
   }
 
   /**
@@ -106,25 +98,21 @@ class Leader(membership: Agent[Set[ActorRef]],
    * This also has the side effect of altering toClean.  Send in a clone (don't you love farce?)
    * if you need to keep the original.
    */
-  private def filterOldProposals(currentLowestSlot: Long, toClean: JTreeMap[Long, Command]) = {
-    val thirtyMinutesAgo = System.currentTimeMillis() - (30 * 60 * 1000L)
-    var highestReapedSlot = currentLowestSlot - 1
-
+  private def filterOldProposals(toClean: JTreeMap[Long, Command]) = {
     breakable {
       for (key <- toClean.keySet.toArray) {
         val slot = key.asInstanceOf[Long]
-        if (toClean.get(slot).ts < thirtyMinutesAgo) {
-          highestReapedSlot = slot
+        if (slot <= latestDecidedSlot) {
           toClean.remove(slot)
         } else {
           // break on first that does not need to be reaped
-          break
+          break()
         }
       }
     }
 
-    logger.debug("Reaped proposals for slots {} through {}", currentLowestSlot - 1, highestReapedSlot)
+    logger.debug("Reaped proposals for slots up to {}", latestDecidedSlot)
 
-    (highestReapedSlot + 1, toClean)
+    toClean
   }
 }

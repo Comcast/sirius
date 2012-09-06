@@ -217,46 +217,63 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
       }
     }
 
-    describe("when receiving a Reap message") {
-      it ("must clean out all expired proposals and update its lowestAcceptableSlot") {
-        val now = System.currentTimeMillis()
+    describe("when receiving a DecisionHint message") {
+      it ("creates some decided slots, if not exist") {
+        val membership = Agent(Set[ActorRef]())
+
+        var scoutStarted = false
+
+        val leader = makeMockedUpLeader(
+          membership,
+          startScoutFun = { scoutStarted = true }
+        )
+
+        leader ! DecisionHint(1L)
+
+        assert(1L === leader.underlyingActor.latestDecidedSlot)
+      }
+
+      it ("creates adds to decided slots, if it exists") {
+        val membership = Agent(Set[ActorRef]())
+
+        var scoutStarted = false
+
+        val leader = makeMockedUpLeader(
+          membership,
+          startScoutFun = { scoutStarted = true }
+        )
+
+        leader.underlyingActor.latestDecidedSlot = 1L
+
+        leader ! DecisionHint(2L)
+
+        assert(2L === leader.underlyingActor.latestDecidedSlot)
+      }
+
+      it ("must clean out all decided proposals") {
         val keepers = SortedMap[Long, Command](
-          (4L -> Command(null, now, Delete("A"))),
+          (4L -> Command(null, 2L, Delete("A"))),
           (5L -> Command(null, 1L, Delete("Z"))),
-          (6L -> Command(null, now - 1000, Delete("B")))
+          (6L -> Command(null, 3L, Delete("B")))
         )
 
         val leader = makeMockedUpLeader(Agent(Set[ActorRef]()))
 
         leader.underlyingActor.proposals = new JTreeMap[Long, Command](
           SortedMap[Long, Command](
-            (1L -> Command(null, now - (31 * 60 * 1000), Delete("C"))),
+            (1L -> Command(null, 1, Delete("C"))),
             (3L -> Command(null, 1, Delete("D")))
           ) ++ keepers)
 
-        leader ! Leader.Reap
+        leader.underlyingActor.latestDecidedSlot = 0L
 
-        assert(4L === leader.underlyingActor.lowestAcceptableSlot)
+        leader ! DecisionHint(3L)
+
         assert(new JTreeMap[Long, Command](keepers) === leader.underlyingActor.proposals)
       }
 
-      it ("must not update its lowestAcceptableSlotNumber if nothing is reaped") {
-        val leader = makeMockedUpLeader(Agent(Set[ActorRef]()),
-          startingSeqNum = 10
-        )
+     }
 
-        leader.underlyingActor.proposals = new JTreeMap[Long, Command]()
-        leader ! Leader.Reap
-        assert(10 === leader.underlyingActor.lowestAcceptableSlot)
-
-        val proposals = new JTreeMap[Long, Command](SortedMap(
-          11L -> Command(null, System.currentTimeMillis(), Delete("Z"))
-        ))
-        leader.underlyingActor.proposals = proposals
-        leader ! Leader.Reap
-        assert(10 === leader.underlyingActor.lowestAcceptableSlot)
-      }
-    }
   }
 
 }
