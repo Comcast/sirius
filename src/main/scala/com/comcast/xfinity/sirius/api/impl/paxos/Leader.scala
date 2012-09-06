@@ -8,6 +8,9 @@ import annotation.tailrec
 import akka.util.duration._
 import akka.event.Logging
 import java.util.UUID
+import java.util.{TreeMap => JTreeMap}
+import scala.util.control.Breaks._
+import scala.collection.JavaConversions._
 
 object Leader {
   object Reap
@@ -54,7 +57,8 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   var ballotNum = Ballot(0, UUID.randomUUID().toString)
   var active = false
-  var proposals = SortedMap[Long, Command]()
+  var proposals = new JTreeMap[Long, Command]()
+
   var lowestAcceptableSlot: Long = startingSeqNum
 
   log.info("Starting leader using ballotNum={}", ballotNum)
@@ -62,16 +66,16 @@ class Leader(membership: Agent[Set[ActorRef]],
   startScout()
 
   def receive = {
-    case Propose(slotNum, command) if !proposals.contains(slotNum) =>
-      proposals += (slotNum -> command)
+    case Propose(slotNum, command) if !proposals.containsKey(slotNum) =>
+      proposals.put(slotNum, command)
       if (active) {
         startCommander(PValue(ballotNum, slotNum, command))
       }
 
     case Adopted(newBallotNum, pvals) if ballotNum == newBallotNum =>
       proposals = leaderHelper.update(proposals, leaderHelper.pmax(pvals))
-      proposals.foreach {
-        case (slot, command) => startCommander(PValue(ballotNum, slot, command))
+      for (slot <- proposals.keySet) {
+        startCommander(PValue(ballotNum, slot, proposals.get(slot)))
       }
       active = true
 
@@ -94,36 +98,33 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   /**
    * Drops all all items from the beginning of toClean who's timestamp is greater than thirty
-   * minutes ago, until it encounters an item whos timestamp is current.  For example if the items
+   * minutes ago, until it encounters an item whose timestamp is current.  For example if the items
    * in positions 1 and 3 were outdated, but the item in position 2 was current, only 1 would
    * be dropped.  Returns the tuple of the position of the next highest command it did not reap,
    * and the rest of the map after cleaning.
+   *
+   * This also has the side effect of altering toClean.  Send in a clone (don't you love farce?)
+   * if you need to keep the original.
    */
-  private def filterOldProposals(currentLowestSlot: Long, toClean: SortedMap[Long, Command]) = {
+  private def filterOldProposals(currentLowestSlot: Long, toClean: JTreeMap[Long, Command]) = {
     val thirtyMinutesAgo = System.currentTimeMillis() - (30 * 60 * 1000L)
     var highestReapedSlot = currentLowestSlot - 1
 
-    /**
-     * Due to some weirdness around dropWhile, we needed to make our own
-     */
-    @tailrec
-    def trueDropWhile[A, B](sortedMap: SortedMap[A, B])(pred: (A, B) => Boolean): SortedMap[A, B] =
-      sortedMap.headOption match {
-        case Some((k, v)) if pred(k, v) => trueDropWhile(sortedMap.tail)(pred)
-        case _ => sortedMap
+    breakable {
+      for (key <- toClean.keySet.toArray) {
+        val slot = key.asInstanceOf[Long]
+        if (toClean.get(slot).ts < thirtyMinutesAgo) {
+          highestReapedSlot = slot
+          toClean.remove(slot)
+        } else {
+          // break on first that does not need to be reaped
+          break
+        }
       }
-
-    // XXX: has the side effect of picking the highest reape
-    val cleaned = trueDropWhile(toClean) {
-      case (slot, Command(_, timestamp, _)) if timestamp < thirtyMinutesAgo =>
-        highestReapedSlot = slot
-        true
-      case (slot, _) =>
-        false
     }
 
     log.debug("Reaped proposals for slots {} through {}", currentLowestSlot - 1, highestReapedSlot)
 
-    (highestReapedSlot + 1, cleaned)
+    (highestReapedSlot + 1, toClean)
   }
 }

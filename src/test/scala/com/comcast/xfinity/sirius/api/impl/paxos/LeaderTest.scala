@@ -11,6 +11,8 @@ import org.mockito.Matchers._
 import akka.actor.{ActorRef, actorRef2Scala, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.Delete
 import collection.immutable.SortedMap
+import java.util.{TreeMap => JTreeMap}
+import scala.collection.JavaConversions._
 
 object LeaderTest {
   def makeMockedUpLeader(membership: Agent[Set[ActorRef]],
@@ -72,20 +74,21 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         )
 
 
-        val proposals = SortedMap(
+        val sProposals = SortedMap[Long, Command](
             (1L -> Command(null, 1, Delete("2"))),
             (2L -> Command(null, 2, Delete("3")))
           )
+        val proposals = new JTreeMap[Long, Command](sProposals)
 
-        doReturn(SortedMap[Long, Command]()).
+        doReturn(new JTreeMap[Long, Command]()).
           when(mockHelper).pmax(any(classOf[Set[PValue]]))
         doReturn(proposals).
-          when(mockHelper).update(any(classOf[SortedMap[Long, Command]]),
-                                  any(classOf[SortedMap[Long, Command]]))
+          when(mockHelper).update(any(classOf[JTreeMap[Long, Command]]),
+                                  any(classOf[JTreeMap[Long, Command]]))
 
         leader ! Adopted(leader.underlyingActor.ballotNum, Set())
 
-        val expectedPvalsCommandered = proposals.foldLeft(Set[PValue]()){
+        val expectedPvalsCommandered = sProposals.foldLeft(Set[PValue]()){
           case (acc, (slot, cmd)) =>
             acc + PValue(leader.underlyingActor.ballotNum, slot, cmd)
         }
@@ -105,7 +108,10 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           helper = mockHelper
         )
 
-        leader.underlyingActor.proposals = SortedMap((1L -> Command(null, 2, Delete("3"))))
+        val proposals = new JTreeMap[Long, Command](SortedMap(
+          1L -> Command(null, 2, Delete("3"))
+        ))
+        leader.underlyingActor.proposals = proposals
 
         intercept[MatchError] {
           leader.underlyingActor.receive(Propose(1, Command(null, 1, Delete("2"))))
@@ -129,7 +135,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
 
         leader ! Propose(slotNum, command)
 
-        assert(Map((slotNum -> command)) === leader.underlyingActor.proposals)
+        assert(new JTreeMap[Long, Command](SortedMap(slotNum -> command)) === leader.underlyingActor.proposals)
         assert(false === commanderStarted)
       }
 
@@ -152,7 +158,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
 
         leader ! Propose(slotNum, command)
 
-        assert(Map((slotNum -> command)) === leader.underlyingActor.proposals)
+        assert(new JTreeMap[Long, Command](SortedMap(slotNum -> command)) === leader.underlyingActor.proposals)
         assert(true === commanderStarted)
       }
     }
@@ -222,15 +228,16 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(Agent(Set[ActorRef]()))
 
-        leader.underlyingActor.proposals = SortedMap[Long, Command](
-          (1L -> Command(null, now - (31 * 60 * 1000), Delete("C"))),
-          (3L -> Command(null, 1, Delete("D")))
-        ) ++ keepers
+        leader.underlyingActor.proposals = new JTreeMap[Long, Command](
+          SortedMap[Long, Command](
+            (1L -> Command(null, now - (31 * 60 * 1000), Delete("C"))),
+            (3L -> Command(null, 1, Delete("D")))
+          ) ++ keepers)
 
         leader ! Leader.Reap
 
         assert(4L === leader.underlyingActor.lowestAcceptableSlot)
-        assert(keepers === leader.underlyingActor.proposals)
+        assert(new JTreeMap[Long, Command](keepers) === leader.underlyingActor.proposals)
       }
 
       it ("must not update its lowestAcceptableSlotNumber if nothing is reaped") {
@@ -238,13 +245,14 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           startingSeqNum = 10
         )
 
-        leader.underlyingActor.proposals = SortedMap[Long, Command]()
+        leader.underlyingActor.proposals = new JTreeMap[Long, Command]()
         leader ! Leader.Reap
         assert(10 === leader.underlyingActor.lowestAcceptableSlot)
 
-        leader.underlyingActor.proposals = SortedMap[Long, Command](
+        val proposals = new JTreeMap[Long, Command](SortedMap(
           11L -> Command(null, System.currentTimeMillis(), Delete("Z"))
-        )
+        ))
+        leader.underlyingActor.proposals = proposals
         leader ! Leader.Reap
         assert(10 === leader.underlyingActor.lowestAcceptableSlot)
       }

@@ -4,6 +4,8 @@ import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.impl.Delete
 import collection.immutable.SortedMap
+import java.util.{TreeMap => JTreeMap}
+import scala.collection.JavaConversions._
 
 class LeaderHelperTest extends NiceTest {
 
@@ -14,14 +16,12 @@ class LeaderHelperTest extends NiceTest {
     describe("update") {
       it ("must return a map containing all of the key/values in y, and all of the key/values in x without " +
           "a corresponding key in y") {
-        val x = SortedMap((1L -> 5), (2L -> 3))
-        val y = SortedMap((1L -> 2), (3L -> 4))
+        val x = new JTreeMap[Long, Int](SortedMap((1L -> 5), (2L -> 3)))
+        val y = new JTreeMap[Long, Int](SortedMap((1L -> 2), (3L -> 4)))
 
-        val expected = SortedMap(
-          (1L -> 2),
-          (2L -> 3),
-          (3L -> 4)
-        )
+        val expected = new JTreeMap[Long, Int](SortedMap(
+          (1L -> 2), (2L -> 3), (3L -> 4)
+        ))
 
         assert(expected === leaderHelper.update(x, y))
       }
@@ -36,10 +36,10 @@ class LeaderHelperTest extends NiceTest {
           PValue(Ballot(1, "a"), 2, Command(null, 123, Delete("3")))
         )
 
-        val expected = SortedMap[Long, Command](
+        val expected = new JTreeMap[Long, Command](SortedMap[Long, Command](
           (1L -> Command(null, 12345, Delete("2"))),
           (2L -> Command(null, 123, Delete("3")))
-        )
+        ))
 
         assert(expected === leaderHelper.pmax(pvals))
       }
