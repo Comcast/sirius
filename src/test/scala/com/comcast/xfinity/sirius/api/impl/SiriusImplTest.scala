@@ -25,10 +25,9 @@ object SiriusImplTestCompanion {
                              supProbe: TestProbe, siriusStateAgent: Agent[SiriusState],
                              membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path): SiriusImpl = {
 
-    // note host and port aren't actually tested
     new SiriusImpl(handler, siriusLog, clusterConfigPath)(actorSystem) {
 
-      override def createSiriusSupervisor(_as: ActorSystem, _handler: RequestHandler, _host: String, _port: Int,
+      override def createSiriusSupervisor(_as: ActorSystem, _handler: RequestHandler,
                                           _log: SiriusLog, _siriusStateAgent: Agent[SiriusState],
                                           _membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path,
                                           _supName: String): ActorRef = supProbe.ref
@@ -104,7 +103,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
 
     it("should send a Put message to the supervisor actor when enqueuePut is called and get some \"ACK\" back") {
       val key = "hello"
-      val body = "there".getBytes()
+      val body = "there".getBytes
       val putFuture = underTest.enqueuePut(key, body)
       val expected = SiriusResult.some("Put it")
       assert(expected === putFuture.get(1, TimeUnit.SECONDS))
@@ -126,7 +125,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
     }
 
     it("should issue a \"tell\" CheckClusterConfig when checkClusterConfig is called") {
-      underTest.checkClusterConfig
+      underTest.checkClusterConfig()
       supervisorActorProbe.expectMsg(CheckClusterConfig)
 
     }

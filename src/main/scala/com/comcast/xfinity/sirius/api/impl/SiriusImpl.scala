@@ -143,18 +143,22 @@ object SiriusImpl extends AkkaConfig {
  * @param actorSystem the actorSystem to use to create the Actors for Sirius (Note, this param will likely be
  *            moved in future refactorings to be an implicit parameter at the end of the argument list)
  */
-class SiriusImpl(requestHandler: RequestHandler, siriusLog: SiriusLog, clusterConfigPath: Path,
-                 host: String = InetAddress.getLocalHost.getHostName, port: Int = SiriusImpl.DEFAULT_PORT,
-                 usePaxos: Boolean = false, supName: String = SiriusImpl.DEFAULT_SUPERVISOR_NAME)
+class SiriusImpl(requestHandler: RequestHandler,
+                 siriusLog: SiriusLog,
+                 clusterConfigPath: Path,
+                 host: String = InetAddress.getLocalHost.getHostName,
+                 port: Int = SiriusImpl.DEFAULT_PORT,
+                 usePaxos: Boolean = false,
+                 supName: String = SiriusImpl.DEFAULT_SUPERVISOR_NAME)
                 (implicit val actorSystem: ActorSystem)
-  extends Sirius with AkkaConfig {
+    extends Sirius with AkkaConfig {
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
 
   val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
   val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
 
-  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, host, port, siriusLog, siriusStateAgent,
+  val supervisor = createSiriusSupervisor(actorSystem, requestHandler, siriusLog, siriusStateAgent,
     membershipAgent, clusterConfigPath, supName)
 
   def getMembership = {
@@ -182,7 +186,7 @@ class SiriusImpl(requestHandler: RequestHandler, siriusLog: SiriusLog, clusterCo
 
   }
 
-  def checkClusterConfig = {
+  def checkClusterConfig() {
     supervisor ! CheckClusterConfig
   }
 
@@ -236,9 +240,12 @@ class SiriusImpl(requestHandler: RequestHandler, siriusLog: SiriusLog, clusterCo
 
 
   // XXX: handle for testing, now that it's getting crowded we should consider alternative patterns
-  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem, theRequestHandler: RequestHandler, host: String,
-                                           port: Int, theWalWriter: SiriusLog, theSiriusStateAgent: Agent[SiriusState],
-                                           theMembershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path,
+  private[impl] def createSiriusSupervisor(theActorSystem: ActorSystem,
+                                           theRequestHandler: RequestHandler,
+                                           theWalWriter: SiriusLog,
+                                           theSiriusStateAgent: Agent[SiriusState],
+                                           theMembershipAgent: Agent[Set[ActorRef]],
+                                           clusterConfigPath: Path,
                                            theSupName: String) = {
     val supProps = Props(
       SiriusSupervisor(theRequestHandler, theWalWriter, theSiriusStateAgent, theMembershipAgent, clusterConfigPath,
