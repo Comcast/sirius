@@ -24,6 +24,34 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
 
     }
   }
+  describe("when receiving an OrderedEvent") {
+    it("must queue unready events and apply them when their time comes") {
+      val stateProbe = TestProbe()
+      val logRequestProbe = TestProbe()
+
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+
+
+      stateBridge ! OrderedEvent(11, 1, Delete("a"))
+      stateProbe.expectNoMsg(100 millis)
+      assert(1 === stateBridge.underlyingActor.unreadyDecisionCnt)
+
+      stateBridge ! OrderedEvent(13, 2, Delete("b"))
+      stateProbe.expectNoMsg(100 millis)
+      assert(2 === stateBridge.underlyingActor.unreadyDecisionCnt)
+
+      stateBridge ! OrderedEvent(10, 3, Delete("c"))
+      stateProbe.expectMsg(OrderedEvent(10, 3, Delete("c")))
+      stateProbe.expectMsg(OrderedEvent(11, 1, Delete("a")))
+      assert(1 === stateBridge.underlyingActor.unreadyDecisionCnt)
+
+      stateBridge ! OrderedEvent(12, 4, Delete("d"))
+      stateProbe.expectMsg(OrderedEvent(12, 4, Delete("d")))
+      stateProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
+      assert(0 === stateBridge.underlyingActor.unreadyDecisionCnt)
+    }
+  }
+
   describe("when receiving a Decision message") {
     it("must not acknowledge an Decision below it's slotnum") {
       val stateProbe = TestProbe()

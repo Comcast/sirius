@@ -6,9 +6,9 @@ import org.slf4j.LoggerFactory
 /**
  * Actor that catches chunks of logs, usually sent by a LogSendingActor, then deserializes
  * them and sends them to the PersistenceActor to be written to mem/disk.
- * @param persistenceActor ref to actor that persists updates
+ * @param targetActor ref to actor that persists updates
  */
-class LogReceivingActor(persistenceActor: ActorRef) extends Actor {
+class LogReceivingActor(targetActor: ActorRef) extends Actor {
   private val logger = LoggerFactory.getLogger(classOf[LogSendingActor])
   private val startTime = System.currentTimeMillis()
   private var numLinesReceived = 0
@@ -20,7 +20,7 @@ class LogReceivingActor(persistenceActor: ActorRef) extends Actor {
       sender ! Received(chunkNum)
 
       // XXX: assuming a Seq is an ordered collection?
-      chunk.foreach(persistenceActor ! _)
+      chunk.foreach(targetActor ! _)
 
       numLinesReceived += chunk.size
       logger.debug("Received " + chunk.size + " events")

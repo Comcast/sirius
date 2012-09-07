@@ -73,14 +73,27 @@ class PaxosStateBridge(startingSeq: Long,
      * layer to be written to disk and memory and are dropped from the buffer.
      */
     case Decision(slot, Command(client, ts, op)) if slot >= nextSeq && !eventBuffer.contains(slot) =>
-      eventBuffer += (slot -> OrderedEvent(slot, ts, op))
-      unreadyDecisionCnt = unreadyDecisionCnt+1
+      processOrderedEvent(OrderedEvent(slot, ts, op))
       client ! SiriusResult.none()
-      executeReadyDecisions()
+
+    /**
+     * When receiving an OrderedEvent, we just need to send it through the normal
+     * eventBuffer process, adding it and flushing any contiguous sequences if
+     * possible.  This occurs as a result of RequestGaps (OrderedEvents will be
+     * sent to us by a LogReceivingActor).
+     */
+    case event: OrderedEvent =>
+      processOrderedEvent(event)
     case RequestGaps =>
       //XXX: logging unreadyDecisions... should remove in favor or better monitoring later
       log.info("Unready Decisions count:  " +unreadyDecisionCnt)
       requestGaps()
+  }
+
+  private def processOrderedEvent(event: OrderedEvent) {
+    eventBuffer += (event.sequence -> event) // OrderedEvent(slot, ts, op))
+    unreadyDecisionCnt = unreadyDecisionCnt+1
+    executeReadyDecisions()
   }
 
   /**
