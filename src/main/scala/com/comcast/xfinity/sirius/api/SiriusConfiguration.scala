@@ -48,13 +48,49 @@ object SiriusConfiguration {
 }
 
 /**
- * Configuration object for Sirius.  See individual attributes for more information.
+ * Configuration object for Sirius.  Meant to encapsulate some arbitrary,
+ * and not so arbitrary configuration data.
  */
 // XXX: scaladoc on these bean properties is sort of awkward...
 class SiriusConfiguration {
-  @BeanProperty var host: String = _
-  @BeanProperty var port: Int = _
+  @BeanProperty var host: String = ""
+  @BeanProperty var port: Int = 2552
   @BeanProperty var clusterConfigPath: String = _
   @BeanProperty var usePaxos: Boolean = true
   @BeanProperty var logLocation: String = _
+
+  private var conf = Map[String, Any]()
+
+  /**
+   * Set an arbitrary property on this configuration
+   *
+   * @param name name of the property
+   * @param value value to associate with name
+   */
+  def setProp(name: String, value: Any) {
+    conf += (name -> value)
+  }
+
+  /**
+   * Get a property from this configuration
+   *
+   * @param name property name to get
+   *
+   * @return Some(value) if it exists, or None if not
+   */
+  def getProp[T](name: String): Option[T] = conf.get(name).asInstanceOf[Option[T]]
+
+  /**
+   * Get a property with a default fallback
+   *
+   * @param name property name to get
+   * @param default the value to return if the property doesn't exist
+   *
+   * @return the value stored under name, or the default if it's not found
+   */
+  def getProp[T](name: String, default: T): T = conf.get(name) match {
+    case Some(value) => value.asInstanceOf[T]
+    case None => default
+  }
+
 }
