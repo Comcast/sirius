@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 
 import akka.actor.{ActorRef, Actor}
-import org.slf4j.LoggerFactory
+import akka.event.Logging
 
 /**
  * Actor that catches chunks of logs, usually sent by a LogSendingActor, then deserializes
@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
  * @param targetActor ref to actor that persists updates
  */
 class LogReceivingActor(targetActor: ActorRef) extends Actor {
-  private val logger = LoggerFactory.getLogger(classOf[LogSendingActor])
+  val logger = Logging(context.system, "Sirius")
   private val startTime = System.currentTimeMillis()
   private var numLinesReceived = 0
 
@@ -23,13 +23,12 @@ class LogReceivingActor(targetActor: ActorRef) extends Actor {
       chunk.foreach(targetActor ! _)
 
       numLinesReceived += chunk.size
-      logger.debug("Received " + chunk.size + " events")
+      logger.debug("Received {} events, sent each to {}", chunk.size, targetActor)
       sender ! Processed(chunkNum)
 
     // XXX: do we need a way to time out one of these transactions? else we may wind up with
     //      leaked actors, and lots of them
     case DoneMsg =>
-      logger.debug("Received done message")
       logger.info("Received {} events in {} ms", numLinesReceived, System.currentTimeMillis() - startTime)
       sender ! DoneAck
       context.parent ! TransferComplete

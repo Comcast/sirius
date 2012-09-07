@@ -8,7 +8,6 @@ import annotation.tailrec
 import akka.actor.{Actor, ActorRef}
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.persistence.{RequestLogFromAnyRemote, BoundedLogRange}
-import akka.event.Logging._
 import akka.event.Logging
 
 object PaxosStateBridge {
@@ -47,7 +46,8 @@ class PaxosStateBridge(startingSeq: Long,
                        logRequestActor: ActorRef) extends Actor {
     import PaxosStateBridge._
 
-  val log = Logging(context.system, this)
+  val logger = Logging(context.system, "Sirius")
+  val traceLogger = Logging(context.system, "SiriusTrace")
 
   // TODO: make this configurable- it's cool hardcoded for now, but once
   //       SiriusConfig matures this would be pretty clean to configure
@@ -74,6 +74,7 @@ class PaxosStateBridge(startingSeq: Long,
     case Decision(slot, Command(client, ts, op)) if slot >= nextSeq && !eventBuffer.contains(slot) =>
       processOrderedEvent(OrderedEvent(slot, ts, op))
       client ! SiriusResult.none()
+      traceLogger.debug("Time to respond to client for sequence={}: {}ms", slot, System.currentTimeMillis() - ts)
 
     /**
      * When receiving an OrderedEvent, we just need to send it through the normal
@@ -81,12 +82,14 @@ class PaxosStateBridge(startingSeq: Long,
      * possible.  This occurs as a result of RequestGaps (OrderedEvents will be
      * sent to us by a LogReceivingActor).
      */
-    case event @ OrderedEvent(slot, _, _) if slot >= nextSeq && !eventBuffer.contains(slot) =>
+    case event @ OrderedEvent(slot, ts, _) if slot >= nextSeq && !eventBuffer.contains(slot) =>
       processOrderedEvent(event)
+      traceLogger.debug("Writing caught-up event for sequence={}, " +
+        "time since original command submission: {}ms", slot, System.currentTimeMillis() - ts)
 
     case RequestGaps =>
       //XXX: logging unreadyDecisions... should remove in favor or better monitoring later
-      log.info("Unready Decisions count:  " + eventBuffer.size)
+      logger.debug("Unready Decisions count: {}", eventBuffer.size)
       requestGaps()
   }
 
@@ -130,13 +133,13 @@ class PaxosStateBridge(startingSeq: Long,
    */
   private def requestGaps() {
     val gaps = findAllGaps(nextSeq, eventBuffer)
-    // XXX: requesting multiple gaps can become quite costly given the current implementation
-    //      of log shipping, requesting multiple distinct chunks can become costly, especially
-    //      if those chunks are out of window
     gaps.foreach(
-      (br: BoundedLogRange) =>
+      (br: BoundedLogRange) => {
+        traceLogger.debug("Requesting log range: {} to {}", br.start, br.end)
         logRequestActor ! RequestLogFromAnyRemote(br, self)
+      }
     )
+    logger.debug("Requested {} gaps", gaps.size)
   }
 
   /**

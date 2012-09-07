@@ -6,7 +6,6 @@ import akka.event.Logging
 import java.util.{TreeMap=>JTreeMap}
 import scala.util.control.Breaks._
 import scala.collection.JavaConverters._
-import collection.immutable.TreeMap
 
 object Acceptor {
   val reapWindow =  30 * 60 * 1000L
@@ -25,7 +24,8 @@ object Acceptor {
 class Acceptor(startingSeqNum: Long) extends Actor {
   import Acceptor._
 
-  val log = Logging(context.system, this)
+  val logger = Logging(context.system, "Sirius")
+  val traceLogger = Logging(context.system, "SiriusTrace")
 
   var ballotNum: Ballot = Ballot.empty
   var accepted = new JTreeMap[Long, PValue]()
@@ -61,9 +61,7 @@ class Acceptor(startingSeqNum: Long) extends Actor {
 
     // Periodic cleanup
     case Reap =>
-      //XXX: this loops over the accepted collection... so if we want to keep this we should eventually keep our own
-      //count
-      log.info("Accepted count: " + accepted.size)
+      logger.debug("Accepted count: {}", accepted.size)
       val (newLowestSlotNumber, newAccepted) = cleanOldAccepted(lowestAcceptableSlotNumber, accepted)
       lowestAcceptableSlotNumber = newLowestSlotNumber
       accepted = newAccepted
@@ -89,10 +87,7 @@ class Acceptor(startingSeqNum: Long) extends Actor {
           }
       }
     }
-    log.debug("Reaped PValues for all commands between {} and {}", currentLowestSlot - 1, highestReapedSlot)
+    logger.debug("Reaped PValues for all commands between {} and {}", currentLowestSlot - 1, highestReapedSlot)
     (highestReapedSlot + 1, toReap)
-
-
-
   }
 }

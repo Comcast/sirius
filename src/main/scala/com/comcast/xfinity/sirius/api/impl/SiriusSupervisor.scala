@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import membership._
-import org.slf4j.LoggerFactory
 import paxos.PaxosMessages.PaxosMessage
 import paxos.{ PaxosSup, NaiveOrderingActor }
 import persistence._
@@ -16,6 +15,7 @@ import scalax.file.Path
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+import akka.event.Logging
 
 object SiriusSupervisor {
 
@@ -74,7 +74,7 @@ object SiriusSupervisor {
  */
 class SiriusSupervisor() extends Actor with AkkaConfig {
   this: SiriusSupervisor.DependencyProvider =>
-  private val logger = LoggerFactory.getLogger(classOf[SiriusSupervisor])
+  private val logger = Logging(context.system, "Sirius")
 
   val initSchedule = context.system.scheduler
     .schedule(Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest)
@@ -127,7 +127,7 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
     case TransferComplete => logger.info("Log transfer complete")
     case transferFailed: TransferFailed => logger.info("Log transfer failed, reason: " + transferFailed.reason)
     case logRequestMessage: LogRequestMessage => logRequestActor forward logRequestMessage
-    case unknown: AnyRef => logger.warn("SiriusSupervisor Actor received unrecongnized message {}", unknown)
+    case unknown: AnyRef => logger.warning("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
 }

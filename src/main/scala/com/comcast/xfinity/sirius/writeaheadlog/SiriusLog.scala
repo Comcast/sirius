@@ -10,7 +10,7 @@ trait SiriusLog extends LogIteratorSource {
   /**
    * Write an entry to the log
    *
-   * @param OrderedEvent entry the entry to write to the log
+   * @param entry the OrderedEvent to write to the log
    */
   def writeEntry(entry: OrderedEvent)
 

@@ -23,7 +23,7 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
                       siriusStateAgent: Agent[SiriusState],
                       clusterConfigPath: Path) extends Actor {
 
-  val logger = Logging(context.system, this)
+  val logger = Logging(context.system, "Sirius")
 
   def membershipHelper = new MembershipHelper
 
@@ -49,16 +49,18 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
 
   def receive = {
     case CheckClusterConfig =>
-      logger.debug("Updating membership from {}", clusterConfigPath)
       updateMembership()
 
     case GetMembershipData => sender ! membershipAgent()
-    case _ => logger.warning("Unrecognized message.")
   }
 
   private def updateMembership() {
     val newMembership = createMembership(clusterConfigPath)
     membershipAgent send newMembership
+
+    if (membershipAgent.get != newMembership) {
+      logger.info("Updated membership. New value: {}", newMembership)
+    }
   }
 
   /**

@@ -21,7 +21,7 @@ import com.comcast.xfinity.sirius.api.impl.SiriusRequest
 class SiriusStateActor(requestHandler: RequestHandler,
                        siriusStateAgent: Agent[SiriusState]) extends Actor {
 
-  val log = Logging(context.system, this)
+  val logger = Logging(context.system, "Sirius")
 
   override def preStart() {
     siriusStateAgent send ((state: SiriusState) => {
@@ -46,7 +46,7 @@ class SiriusStateActor(requestHandler: RequestHandler,
       }
     } catch {
       case e: RuntimeException =>
-        log.error("Unhandled exception in handling {}: {}", req, e)
+        logger.error("Unhandled exception in handling {}: {}", req, e)
         SiriusResult.error(e)
     }
   }

@@ -1,9 +1,9 @@
 package com.comcast.xfinity.sirius.api.impl.persistence
 import akka.actor.{ActorRef, FSM, Actor}
-import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
 import scalax.io.CloseableIterator
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import akka.event.Logging
 
 // received messages
 case class Start(ref: ActorRef, input: LogIteratorSource, logRange: LogRange,  chunkSize: Int)
@@ -35,7 +35,7 @@ case class SendingData(target: ActorRef, events: CloseableIterator[OrderedEvent]
  *      if something goes south on the other end.
  */
 class LogSendingActor extends Actor with FSM[LSState, LSData] {
-  private val logger = LoggerFactory.getLogger(classOf[LogSendingActor])
+  val logger = Logging(context.system, "Sirius")
 
   startWith(Uninitialized, Null)
 
@@ -61,7 +61,7 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
     // got a seqRecd we did NOT expect
     case Event(Processed(seqRecd: Int), data: SendingData) =>
       val reason = "In Waiting, got <Received, SendingData> but Sequence Number is wrong! Expected:"+data.seqNum+" Received:"+seqRecd
-      logger.warn(reason)
+      logger.warning(reason)
       stop(FSM.Failure(reason))
   }
 
@@ -94,7 +94,7 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
           self ! StartSending
         case _ =>
           val reason = "On Uninitialized -> Waiting transition, Unhandled <stateName, stateData>: <"+stateName+", "+stateData+">"
-          logger.warn(reason)
+          logger.warning(reason)
           stop(FSM.Failure(reason))
       }
     }
@@ -106,7 +106,7 @@ class LogSendingActor extends Actor with FSM[LSState, LSData] {
           target ! logChunk
         case _ =>
           val reason = "On Waiting -> Sending transition, Unhandled <stateName, stateData>: <"+stateName+", "+stateData+">"
-          logger.warn(reason)
+          logger.warning(reason)
           stop(FSM.Failure(reason))
       }
     }

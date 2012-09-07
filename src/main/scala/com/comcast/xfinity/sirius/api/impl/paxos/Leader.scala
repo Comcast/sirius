@@ -50,7 +50,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   import Leader.Reap
 
-  val log = Logging(context.system, this)
+  val logger = Logging(context.system, "Sirius")
 
   val acceptors = membership
   val replicas = membership
@@ -61,7 +61,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   var lowestAcceptableSlot: Long = startingSeqNum
 
-  log.info("Starting leader using ballotNum={}", ballotNum)
+  logger.info("Starting leader using ballotNum={}", ballotNum)
 
   startScout()
 
@@ -86,7 +86,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
     case Reap =>
       //XXX:  This should be removed and replaced with proper monitoring soon.
-      log.info("Proposal count:  " +  proposals.size)
+      logger.info("Proposal count:  " +  proposals.size)
       val (newLowestSlot, newProposals) = filterOldProposals(lowestAcceptableSlot, proposals)
       proposals = newProposals
       lowestAcceptableSlot = newLowestSlot
@@ -123,7 +123,7 @@ class Leader(membership: Agent[Set[ActorRef]],
       }
     }
 
-    log.debug("Reaped proposals for slots {} through {}", currentLowestSlot - 1, highestReapedSlot)
+    logger.debug("Reaped proposals for slots {} through {}", currentLowestSlot - 1, highestReapedSlot)
 
     (highestReapedSlot + 1, toClean)
   }

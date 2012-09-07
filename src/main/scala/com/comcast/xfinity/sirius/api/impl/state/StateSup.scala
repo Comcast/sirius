@@ -30,7 +30,7 @@ object StateSup {
             siriusStateAgent: Agent[SiriusState]): StateSup = {
     new StateSup with ChildProvider {
 
-      val logger = Logging(context.system, this)
+      val logger = Logging(context.system, "Sirius")
 
       // this stuff is essentially just autowiring, but we may want to move the contents
       //  of this wiring to a top level-ish class for style

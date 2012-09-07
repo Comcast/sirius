@@ -14,13 +14,13 @@ import com.comcast.xfinity.sirius.api.SiriusResult
  *
  */
 class NaiveOrderingActor(val persistenceActor: ActorRef, var nextSeq: Long) extends Actor {
-  private val logger = Logging(context.system, this)
+  private val logger = Logging(context.system, "Sirius")
 
   def receive = {
     case put: Put => processRequest(put)
     case delete: Delete => processRequest(delete)
     case _ =>
-      logger.warning("NaiveOrderingActor only accepts PUT's and DELETE's")
+      logger.warning("NaiveOrderingActor can only accept PUT and DELETE requests")
 
   }
 

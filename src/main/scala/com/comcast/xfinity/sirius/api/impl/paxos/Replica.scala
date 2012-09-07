@@ -3,7 +3,6 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import akka.actor.Actor
 import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.agent.Agent
 import akka.event.Logging
 
 object Replica {
@@ -55,12 +54,13 @@ class Replica(localLeader: ActorRef,
               startingSeqNum: Long,
               performFun: Replica.PerformFun) extends Actor {
 
-  val log = Logging(context.system, this)
+  val logger = Logging(context.system, "Sirius")
+  val traceLogger = Logging(context.system, "SiriusTrace")
 
   var lowestUnusedSlotNum: Long = startingSeqNum
   
   def propose(command: Command) {
-    log.debug("Received proposal: assigning {} to {}", lowestUnusedSlotNum, command)
+    traceLogger.debug("Received proposal: assigning {} to {}", lowestUnusedSlotNum, command)
     localLeader ! Propose(lowestUnusedSlotNum, command)
     lowestUnusedSlotNum = lowestUnusedSlotNum + 1
   }
@@ -69,7 +69,7 @@ class Replica(localLeader: ActorRef,
     case GetLowestUnusedSlotNum => sender ! LowestUnusedSlotNum(lowestUnusedSlotNum)
     case Request(command: Command) => propose(command)
     case decision @ Decision(slot, command) =>
-      log.debug("Received decision slot {} for {}",
+      traceLogger.debug("Received decision slot {} for {}",
         slot, command)
       if (slot >= lowestUnusedSlotNum) {
         lowestUnusedSlotNum = slot + 1
@@ -79,7 +79,7 @@ class Replica(localLeader: ActorRef,
       } catch {
         // XXX: is this too liberal?
         case t: Throwable =>
-          log.error("Received exception applying decision {}: {}", decision, t)
+          logger.error("Received exception applying decision {}: {}", decision, t)
       }
   }
 }

@@ -1,7 +1,5 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
-import org.slf4j.LoggerFactory
-
 /**
  * Mixin for Checksumming. Uses FNV-1a hash
  * (see http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash#FNV-1_hash)
