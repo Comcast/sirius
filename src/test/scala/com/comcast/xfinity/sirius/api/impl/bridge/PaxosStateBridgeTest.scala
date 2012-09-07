@@ -15,6 +15,10 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
 
   implicit val actorSystem = ActorSystem("PaxosStateBridgeTest")
 
+  override def afterAll {
+    actorSystem.shutdown()
+  }
+
   describe("when receiving a UnreadyDecisionsCountReq") {
     it("must return the count of buffered decisions") {
       val senderProbe = TestProbe()
@@ -24,6 +28,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
 
     }
   }
+
   describe("when receiving an OrderedEvent") {
     it("must queue unready events and apply them when their time comes") {
       val stateProbe = TestProbe()
