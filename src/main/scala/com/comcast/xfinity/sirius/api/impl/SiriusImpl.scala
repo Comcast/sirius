@@ -15,10 +15,11 @@ import com.typesafe.config.ConfigFactory
 import akka.actor._
 import java.util.concurrent.Future
 import scalax.file.Path
-import com.comcast.xfinity.sirius.writeaheadlog.{CachedSiriusLog, SiriusFileLog, SiriusLog}
+import com.comcast.xfinity.sirius.writeaheadlog.{CachedSiriusLog, SiriusLog}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.uberstore.UberStore
+import java.util.{HashMap => JHashMap}
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -88,34 +89,13 @@ object SiriusImpl extends AkkaConfig {
    *
    * @return A SiriusImpl constructed using the parameters
    */
-  // TODO: make sure it's not used anywhere and make private[sirius]
-  @deprecated("Please use 2 arg version", "8-10-12")
-  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
+  private[sirius] def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
                    clusterConfigPath: String, usePaxos: Boolean): SiriusImpl = {
 
-    val remoteConfig = ConfigFactory.parseString("""
-    akka {
-      remote {
-         # If this is "on", Akka will log all outbound messages at DEBUG level, if off then
-         #they are not logged
-         log-sent-messages = off
+    val hostPortConfig = createHostPortConfig(hostName, port)
 
-         # If this is "on", Akka will log all inbound messages at DEBUG level, if off then they are not logged
-         log-received-messages = off
-
-
-         transport = "akka.remote.netty.NettyRemoteTransport"
-         netty {
-           # if this is set to actual hostname, remote messaging fails... can use empty or the IP address.
-           hostname = """" + hostName + """"
-           port = """ + port + """
-           message-frame-size = 100 MiB
-         }
-       }
-
-    }""")
     val config = ConfigFactory.load("akka.conf")
-    val allConfig = remoteConfig.withFallback(config)
+    val allConfig = hostPortConfig.withFallback(config)
     implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
 
 
@@ -129,7 +109,13 @@ object SiriusImpl extends AkkaConfig {
       admin.unregisterMbeans()
     })
     impl
+  }
 
+  private def createHostPortConfig(host: String, port: Int) = {
+    val configMap = new JHashMap[String, Any]()
+    configMap.put("akka.remote.netty.hostname", host)
+    configMap.put("akka.remote.netty.port", port)
+    ConfigFactory.parseMap(configMap)
   }
 
   private def createAdmin(host: String, port: Int, supervisorRef: ActorRef) = {
