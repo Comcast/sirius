@@ -34,21 +34,48 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
 
       stateBridge ! OrderedEvent(11, 1, Delete("a"))
       stateProbe.expectNoMsg(100 millis)
-      assert(1 === stateBridge.underlyingActor.unreadyDecisionCnt)
+      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! OrderedEvent(13, 2, Delete("b"))
       stateProbe.expectNoMsg(100 millis)
-      assert(2 === stateBridge.underlyingActor.unreadyDecisionCnt)
+      assert(2 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! OrderedEvent(10, 3, Delete("c"))
       stateProbe.expectMsg(OrderedEvent(10, 3, Delete("c")))
       stateProbe.expectMsg(OrderedEvent(11, 1, Delete("a")))
-      assert(1 === stateBridge.underlyingActor.unreadyDecisionCnt)
+      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! OrderedEvent(12, 4, Delete("d"))
       stateProbe.expectMsg(OrderedEvent(12, 4, Delete("d")))
       stateProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
-      assert(0 === stateBridge.underlyingActor.unreadyDecisionCnt)
+      assert(0 === stateBridge.underlyingActor.eventBuffer.size)
+    }
+
+    it ("should drop events with seq < nextSeq on the floor") {
+      val stateProbe = TestProbe()
+      val logRequestProbe = TestProbe()
+
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+
+      stateBridge ! OrderedEvent(9, 2, Delete("b"))
+      stateProbe.expectNoMsg(100 millis)
+      assert(0 === stateBridge.underlyingActor.eventBuffer.size)
+      assert(10 === stateBridge.underlyingActor.nextSeq)
+    }
+
+    it ("should drop already seen events on the floor") {
+      val stateProbe = TestProbe()
+      val logRequestProbe = TestProbe()
+
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+
+      stateBridge ! OrderedEvent(11, 1, Delete("a"))
+      stateProbe.expectNoMsg(100 millis)
+      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
+
+      stateBridge ! OrderedEvent(11, 2, Delete("b"))
+      stateProbe.expectNoMsg(100 millis)
+      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
     }
   }
 
@@ -83,6 +110,24 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       stateProbe.expectNoMsg(100 millis)
     }
 
+    it ("should drop already seen decisions on the floor") {
+      val stateProbe = TestProbe()
+      val logRequestProbe = TestProbe()
+      val clientProbe = TestProbe()
+
+      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref))
+
+      stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
+      stateProbe.expectNoMsg(100 millis)
+      clientProbe.expectMsg(SiriusResult.none())
+      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
+
+      stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
+      stateProbe.expectNoMsg(100 millis)
+      clientProbe.expectNoMsg(100 millis)
+      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
+    }
+
     it("must queue unready Decisions and apply them when their time comes") {
       val stateProbe = TestProbe()
       val logRequestProbe = TestProbe()
@@ -93,24 +138,24 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
       clientProbe.expectMsg(SiriusResult.none())
       stateProbe.expectNoMsg(100 millis)
-      assert(1 === stateBridge.underlyingActor.unreadyDecisionCnt)
+      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! Decision(13, Command(clientProbe.ref, 2, Delete("b")))
       clientProbe.expectMsg(SiriusResult.none())
       stateProbe.expectNoMsg(100 millis)
-      assert(2 === stateBridge.underlyingActor.unreadyDecisionCnt)
+      assert(2 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! Decision(10, Command(clientProbe.ref, 3, Delete("c")))
       clientProbe.expectMsg(SiriusResult.none())
       stateProbe.expectMsg(OrderedEvent(10, 3, Delete("c")))
       stateProbe.expectMsg(OrderedEvent(11, 1, Delete("a")))
-      assert(1 === stateBridge.underlyingActor.unreadyDecisionCnt)
+      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! Decision(12, Command(clientProbe.ref, 4, Delete("d")))
       clientProbe.expectMsg(SiriusResult.none())
       stateProbe.expectMsg(OrderedEvent(12, 4, Delete("d")))
       stateProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
-      assert(0 === stateBridge.underlyingActor.unreadyDecisionCnt)
+      assert(0 === stateBridge.underlyingActor.eventBuffer.size)
 
     }
   }

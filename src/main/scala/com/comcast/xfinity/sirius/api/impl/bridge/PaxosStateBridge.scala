@@ -56,13 +56,12 @@ class PaxosStateBridge(startingSeq: Long,
 
   var nextSeq: Long = startingSeq
   var eventBuffer = SortedMap[Long, OrderedEvent]()
-  var unreadyDecisionCnt:Int = 0
 
   override def postStop() { requestGapsCancellable.cancel() }
 
   def receive = {
 
-    case UnreadyDecisionsCountReq =>sender ! UnreadyDecisionCount(unreadyDecisionCnt)
+    case UnreadyDecisionsCountReq => sender ! UnreadyDecisionCount(eventBuffer.size)
 
     /*
      * When a decision arrives for the first time the actor identified by
@@ -82,17 +81,27 @@ class PaxosStateBridge(startingSeq: Long,
      * possible.  This occurs as a result of RequestGaps (OrderedEvents will be
      * sent to us by a LogReceivingActor).
      */
-    case event: OrderedEvent =>
+    case event @ OrderedEvent(slot, _, _) if slot >= nextSeq && !eventBuffer.contains(slot) =>
       processOrderedEvent(event)
+
     case RequestGaps =>
       //XXX: logging unreadyDecisions... should remove in favor or better monitoring later
-      log.info("Unready Decisions count:  " +unreadyDecisionCnt)
+      log.info("Unready Decisions count:  " + eventBuffer.size)
       requestGaps()
   }
 
+  /**
+   * Add this event to the event buffer and fire off the method that flushes
+   * any ready decisions from the buffer.
+   *
+   * Note: this method assumes that the event does not already exist in the buffer,
+   * and adds the event to the buffer blindly.  If it matters to your implementation,
+   * make sure to guard against calling this with duplicate events!
+   *
+   * @param event OrderedEvent to add/process
+   */
   private def processOrderedEvent(event: OrderedEvent) {
-    eventBuffer += (event.sequence -> event) // OrderedEvent(slot, ts, op))
-    unreadyDecisionCnt = unreadyDecisionCnt+1
+    eventBuffer += (event.sequence -> event)
     executeReadyDecisions()
   }
 
@@ -108,7 +117,6 @@ class PaxosStateBridge(startingSeq: Long,
           stateSup ! orderedEvent
           nextSeq += 1
           eventBuffer = eventBuffer.tail
-          unreadyDecisionCnt = unreadyDecisionCnt - 1
           applyNextReadyDecision()
         case _ =>
       }
