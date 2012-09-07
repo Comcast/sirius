@@ -54,9 +54,7 @@ object SiriusImpl extends AkkaConfig {
    *
    * @return A SiriusImpl constructed using the parameters
    */
-  // TODO: make sure it's not used anywhere and make private[sirius]
-  @deprecated("Please use 2 arg version", "8-10-12")
-  def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
+  private[sirius] def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
                    siriusLog: SiriusLog): SiriusImpl = {
     createSirius(
       requestHandler,
@@ -66,15 +64,6 @@ object SiriusImpl extends AkkaConfig {
       siriusConfig.getClusterConfigPath,
       siriusConfig.getUsePaxos
     )
-  }
-
-  /**
-   * DO NOT USE, removing this from the API once we confirm xfinityapi isn't still using it
-   */
-  @deprecated("Please use 2 arg version", "7-30-12")
-  def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostname: String, port: Int,
-                   clusterConfigPath: String): SiriusImpl = {
-    createSirius(requestHandler, siriusLog, hostname, port, clusterConfigPath, false)
   }
 
   /**
