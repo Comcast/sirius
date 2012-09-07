@@ -39,7 +39,12 @@ object SiriusImpl extends AkkaConfig {
    * @return A SiriusImpl constructed using the parameters
    */
   def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
-    val backendLog = UberStore(siriusConfig.logLocation)
+    val uberStoreDir = siriusConfig.getProp[String](SiriusConfiguration.LOG_LOCATION) match {
+      case Some(dir) => dir
+      case None =>
+        throw new IllegalArgumentException(SiriusConfiguration.LOG_LOCATION + " must be set on config")
+    }
+    val backendLog = UberStore(uberStoreDir)
     val log = CachedSiriusLog(backendLog)
     createSirius(requestHandler, siriusConfig, log)
   }
@@ -58,7 +63,10 @@ object SiriusImpl extends AkkaConfig {
   private[sirius] def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
                    siriusLog: SiriusLog): SiriusImpl = {
 
-    implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(siriusConfig))
+    val host = siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName)
+    val port = siriusConfig.getProp(SiriusConfiguration.PORT, 2552)
+
+    implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(host, port))
     val impl = new SiriusImpl(
       requestHandler,
       siriusLog,
@@ -67,7 +75,7 @@ object SiriusImpl extends AkkaConfig {
     )
 
     // create the stuff to expose mbeans
-    val admin = createAdmin(siriusConfig: SiriusConfiguration, impl.supervisor)
+    val admin = createAdmin(host, port, impl.supervisor)
     admin.registerMbeans()
 
     // need to shut down the actor system and unregister the mbeans when sirius is done
@@ -106,32 +114,32 @@ object SiriusImpl extends AkkaConfig {
                    clusterConfigPath: String, usePaxos: Boolean): SiriusImpl = {
 
     val siriusConfig = new SiriusConfiguration
-    siriusConfig.host = hostName
-    siriusConfig.port = port
-    siriusConfig.clusterConfigPath = clusterConfigPath
-    siriusConfig.usePaxos = usePaxos
+    siriusConfig.setProp(SiriusConfiguration.HOST, hostName)
+    siriusConfig.setProp(SiriusConfiguration.PORT, port)
+    siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath)
+    siriusConfig.setProp(SiriusConfiguration.USE_PAXOS, usePaxos)
 
     createSirius(requestHandler, siriusConfig, siriusLog)
   }
 
-  private def createHostPortConfig(siriusConfig: SiriusConfiguration): Config = {
+  private def createHostPortConfig(host: String, port: Int): Config = {
     val configMap = new JHashMap[String, Any]()
-    configMap.put("akka.remote.netty.hostname", siriusConfig.host)
-    configMap.put("akka.remote.netty.port", siriusConfig.port)
+    configMap.put("akka.remote.netty.hostname", host)
+    configMap.put("akka.remote.netty.port", port)
     // this is just so that the intellij shuts up
     ConfigFactory.parseMap(configMap.asInstanceOf[JHashMap[String, _ <: AnyRef]])
   }
 
-  private def createActorSystemConfig(siriusConfig: SiriusConfiguration): Config = {
-    val hostPortConfig = createHostPortConfig(siriusConfig)
+  private def createActorSystemConfig(host: String, port: Int): Config = {
+    val hostPortConfig = createHostPortConfig(host, port)
     val baseAkkaConfig = ConfigFactory.load("akka.conf")
     hostPortConfig.withFallback(baseAkkaConfig)
   }
 
-  private def createAdmin(siriusConfiguration: SiriusConfiguration, supervisorRef: ActorRef) = {
+  private def createAdmin(host: String, port: Int, supervisorRef: ActorRef) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
 
-    val info = new SiriusInfo(siriusConfiguration.port, siriusConfiguration.host, supervisorRef)
+    val info = new SiriusInfo(port, host, supervisorRef)
     new SiriusAdmin(info, mbeanServer)
   }
 
@@ -160,8 +168,8 @@ class SiriusImpl(requestHandler: RequestHandler,
                 (implicit val actorSystem: ActorSystem)
     extends Sirius with AkkaConfig {
 
-  val supName = config.getProp("sirius.supervisor.name", SiriusImpl.DEFAULT_SUPERVISOR_NAME)
-  val usePaxos = config.usePaxos
+  val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, SiriusImpl.DEFAULT_SUPERVISOR_NAME)
+  val usePaxos = config.getProp(SiriusConfiguration.USE_PAXOS, false)
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
 

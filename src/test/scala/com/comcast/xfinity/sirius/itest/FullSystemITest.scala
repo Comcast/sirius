@@ -149,10 +149,10 @@ class FullSystemITest extends NiceTest with TimedTest {
     // stuff out of sirius
     def bootNode(handler: RequestHandler, wal: SiriusLog, port: Int) = {
       val siriusConfig = new SiriusConfiguration()
-      siriusConfig.host = "localhost"
-      siriusConfig.port = port
-      siriusConfig.clusterConfigPath = membershipFile.getAbsolutePath
-      siriusConfig.usePaxos = true
+      siriusConfig.setProp(SiriusConfiguration.HOST, "localhost")
+      siriusConfig.setProp(SiriusConfiguration.PORT, port)
+      siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, membershipFile.getAbsolutePath)
+      siriusConfig.setProp(SiriusConfiguration.USE_PAXOS, true)
       
       val sirius = SiriusImpl.createSirius(
         handler,

@@ -1,8 +1,37 @@
 package com.comcast.xfinity.sirius.api
 
-import scala.reflect.BeanProperty
-
 object SiriusConfiguration {
+
+  /**
+   * Host to bind akka to (string)
+   */
+  final val HOST = "sirius.akka.host"
+
+  /**
+   * Port to bind akka to (int)
+   */
+  final val PORT = "sirius.akka.port"
+
+  /**
+   * Location of cluster membership configuration file (string)
+   */
+  final val CLUSTER_CONFIG = "sirius.membership.config-path"
+
+  /**
+   * Whether or not to use paxos (boolean)
+   */
+  final val USE_PAXOS = "sirius.paxos.enabled"
+
+  /**
+   * Directory to put UberStore in (string)
+   */
+  final val LOG_LOCATION = "sirius.uberstore.dir"
+
+  /**
+   * Name of the sirius supervisor, typically we will not change this,
+   * but it's here just in case (string)
+   */
+  final val SIRIUS_SUPERVISOR_NAME = "sirius.supervisor.name"
 
   /**
    * Factory method to create a SiriusConfiguration object.
@@ -26,11 +55,11 @@ object SiriusConfiguration {
              usePaxos: Boolean,
              logLocation: String): SiriusConfiguration = {
     val conf = new SiriusConfiguration()
-    conf.host = host;
-    conf.port = port;
-    conf.clusterConfigPath = clusterConfigPath
-    conf.usePaxos = usePaxos
-    conf.logLocation = logLocation
+    conf.setProp(HOST, host)
+    conf.setProp(PORT, port)
+    conf.setProp(CLUSTER_CONFIG, clusterConfigPath)
+    conf.setProp(USE_PAXOS, usePaxos)
+    conf.setProp(LOG_LOCATION, logLocation)
     conf
   }
 
@@ -53,11 +82,8 @@ object SiriusConfiguration {
  */
 // XXX: scaladoc on these bean properties is sort of awkward...
 class SiriusConfiguration {
-  @BeanProperty var host: String = ""
-  @BeanProperty var port: Int = 2552
-  @BeanProperty var clusterConfigPath: String = _
-  @BeanProperty var usePaxos: Boolean = true
-  @BeanProperty var logLocation: String = _
+
+  import SiriusConfiguration._
 
   private var conf = Map[String, Any]()
 
@@ -92,5 +118,70 @@ class SiriusConfiguration {
     case Some(value) => value.asInstanceOf[T]
     case None => default
   }
+
+  /**
+   * convenience for setting host to use, going away soon
+   */
+  @deprecated("use setProp(HOST_KEY) instead", "2012-09-07")
+  def setHost(host: String) {
+    setProp(HOST, host)
+  }
+
+  /**
+   * convenience for getting the host to use, going away soon
+   */
+  def getHost: String = getProp(HOST, "")
+
+  /**
+   * convenience for setting the port to use, going away soon
+   */
+  @deprecated("use setProp(PORT_KEY) instead", "2012-09-07")
+  def setPort(port: Int) {
+    setProp(PORT, port)
+  }
+
+  /**
+   * convenience for getting the port to use
+   */
+  def getPort: Int = getProp(PORT, 2552)
+
+  /**
+   * convenience for setting the cluster configuration location, going away soon
+   */
+  @deprecated("use setProp(CLUSTER_CONFIG_KEY) instead", "2012-09-07")
+  def setClusterConfigPath(path: String) {
+    setProp(CLUSTER_CONFIG, path)
+  }
+
+  /**
+   * convenience for getting the cluster configuration location, going away soon
+   */
+  def getClusterConfigPath: String = getProp(CLUSTER_CONFIG, null)
+
+  /**
+   * convenience for setting enabling paxos or not, going away soon
+   */
+  @deprecated("use setProp(USE_PAXOS_KEY) instead", "2012-09-07")
+  def setUsePaxos(usePaxos: Boolean) {
+    setProp(USE_PAXOS, usePaxos)
+  }
+
+  /**
+   * convenience for getting whether or not to use paxos, going away soon
+   */
+  def getUsePaxos: Boolean = getProp(USE_PAXOS, true)
+
+  /**
+   * convenience for setting the location of uberstore, going away soon
+   */
+  @deprecated("use setProp(LOG_LOCATION_KEY) instead", "2012-09-07")
+  def setLogLocation(logDir: String) {
+    setProp(LOG_LOCATION, logDir)
+  }
+
+  /**
+   * convenience for getting the location of uberstore, going away soon
+   */
+  def getLogLocation: String = getProp(LOG_LOCATION, null)
 
 }
