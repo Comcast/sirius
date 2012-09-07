@@ -18,6 +18,7 @@ import scalax.file.Path
 import com.comcast.xfinity.sirius.writeaheadlog.{CachedSiriusLog, SiriusFileLog, SiriusLog}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.info.SiriusInfo
+import com.comcast.xfinity.sirius.uberstore.UberStore
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -37,7 +38,7 @@ object SiriusImpl extends AkkaConfig {
    * @return A SiriusImpl constructed using the parameters
    */
   def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
-    val backendLog = SiriusFileLog(siriusConfig.logLocation)
+    val backendLog = UberStore(siriusConfig.logLocation)
     val log = CachedSiriusLog(backendLog)
     createSirius(requestHandler, siriusConfig, log)
   }
