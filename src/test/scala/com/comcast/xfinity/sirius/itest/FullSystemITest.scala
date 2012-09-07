@@ -152,6 +152,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       siriusConfig.host = "localhost"
       siriusConfig.port = port
       siriusConfig.clusterConfigPath = membershipFile.getAbsolutePath
+      siriusConfig.usePaxos = true
       
       val sirius = SiriusImpl.createSirius(
         handler,

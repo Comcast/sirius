@@ -11,7 +11,6 @@ import akka.dispatch.{Future => AkkaFuture}
 import membership._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
-import com.typesafe.config.ConfigFactory
 import akka.actor._
 import java.util.concurrent.Future
 import scalax.file.Path
@@ -20,6 +19,7 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import java.util.{HashMap => JHashMap}
+import com.typesafe.config.{Config, ConfigFactory}
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -57,14 +57,27 @@ object SiriusImpl extends AkkaConfig {
    */
   private[sirius] def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
                    siriusLog: SiriusLog): SiriusImpl = {
-    createSirius(
+
+    implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(siriusConfig))
+    val impl = new SiriusImpl(
       requestHandler,
       siriusLog,
-      siriusConfig.getHost,
-      siriusConfig.getPort,
-      siriusConfig.getClusterConfigPath,
-      siriusConfig.getUsePaxos
+      Path.fromString(siriusConfig.getClusterConfigPath),
+      siriusConfig
     )
+
+    // create the stuff to expose mbeans
+    val admin = createAdmin(siriusConfig: SiriusConfiguration, impl.supervisor)
+    admin.registerMbeans()
+
+    // need to shut down the actor system and unregister the mbeans when sirius is done
+    impl.onShutdown({
+      actorSystem.shutdown()
+      actorSystem.awaitTermination()
+      admin.unregisterMbeans()
+    })
+
+    impl
   }
 
   /**
@@ -92,36 +105,33 @@ object SiriusImpl extends AkkaConfig {
   private[sirius] def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
                    clusterConfigPath: String, usePaxos: Boolean): SiriusImpl = {
 
-    val hostPortConfig = createHostPortConfig(hostName, port)
+    val siriusConfig = new SiriusConfiguration
+    siriusConfig.host = hostName
+    siriusConfig.port = port
+    siriusConfig.clusterConfigPath = clusterConfigPath
+    siriusConfig.usePaxos = usePaxos
 
-    val config = ConfigFactory.load("akka.conf")
-    val allConfig = hostPortConfig.withFallback(config)
-    implicit val actorSystem = ActorSystem(SYSTEM_NAME, allConfig)
-
-
-    val impl = new SiriusImpl(requestHandler, siriusLog, Path.fromString(clusterConfigPath), hostName, port, usePaxos)
-
-    val admin = createAdmin(hostName, port, impl.supervisor)
-    admin.registerMbeans()
-    impl.onShutdown({
-      actorSystem.shutdown()
-      actorSystem.awaitTermination()
-      admin.unregisterMbeans()
-    })
-    impl
+    createSirius(requestHandler, siriusConfig, siriusLog)
   }
 
-  private def createHostPortConfig(host: String, port: Int) = {
+  private def createHostPortConfig(siriusConfig: SiriusConfiguration): Config = {
     val configMap = new JHashMap[String, Any]()
-    configMap.put("akka.remote.netty.hostname", host)
-    configMap.put("akka.remote.netty.port", port)
-    ConfigFactory.parseMap(configMap)
+    configMap.put("akka.remote.netty.hostname", siriusConfig.host)
+    configMap.put("akka.remote.netty.port", siriusConfig.port)
+    // this is just so that the intellij shuts up
+    ConfigFactory.parseMap(configMap.asInstanceOf[JHashMap[String, _ <: AnyRef]])
   }
 
-  private def createAdmin(host: String, port: Int, supervisorRef: ActorRef) = {
+  private def createActorSystemConfig(siriusConfig: SiriusConfiguration): Config = {
+    val hostPortConfig = createHostPortConfig(siriusConfig)
+    val baseAkkaConfig = ConfigFactory.load("akka.conf")
+    hostPortConfig.withFallback(baseAkkaConfig)
+  }
+
+  private def createAdmin(siriusConfiguration: SiriusConfiguration, supervisorRef: ActorRef) = {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
 
-    val info = new SiriusInfo(port, host, supervisorRef)
+    val info = new SiriusInfo(siriusConfiguration.port, siriusConfiguration.host, supervisorRef)
     new SiriusAdmin(info, mbeanServer)
   }
 
@@ -146,12 +156,12 @@ object SiriusImpl extends AkkaConfig {
 class SiriusImpl(requestHandler: RequestHandler,
                  siriusLog: SiriusLog,
                  clusterConfigPath: Path,
-                 host: String = InetAddress.getLocalHost.getHostName,
-                 port: Int = SiriusImpl.DEFAULT_PORT,
-                 usePaxos: Boolean = false,
-                 supName: String = SiriusImpl.DEFAULT_SUPERVISOR_NAME)
+                 config: SiriusConfiguration = new SiriusConfiguration)
                 (implicit val actorSystem: ActorSystem)
     extends Sirius with AkkaConfig {
+
+  val supName = config.getProp("sirius.supervisor.name", SiriusImpl.DEFAULT_SUPERVISOR_NAME)
+  val usePaxos = config.usePaxos
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
 
