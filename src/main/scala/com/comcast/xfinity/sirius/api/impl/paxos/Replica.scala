@@ -60,13 +60,6 @@ object Replica {
   }
 }
 
-/**
- * TODO:
- * Must persist slotNum, lowestUnusedSlot to disk and read them in on initialization.
- * Must persist proposals and decisions to disk.
- * initialState is actually just an ActorRef to the State actor.
- * Keep track of old proposals and re-propose them, if we need to.
- */
 class Replica(localLeader: ActorRef,
               startingSeqNum: Long,
               performFun: Replica.PerformFun,
