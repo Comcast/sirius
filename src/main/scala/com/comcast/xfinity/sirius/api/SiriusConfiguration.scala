@@ -39,6 +39,18 @@ object SiriusConfiguration {
   final val SIRIUS_SUPERVISOR_NAME = "sirius.supervisor.name"
 
   /**
+   * Number of milliseconds for a proposal to live with the possibility
+   * of being reproposed.  This window is not 100% exact at this point-
+   * it's precision is REPROPOSAL_CLEANUP_FREQ (long)
+   */
+  final val REPROPOSAL_WINDOW = "sirius.paxos.replica.reproposal-window-millis"
+
+  /**
+   * How often, in seconds, to reap old proposals (int)
+   */
+  final val REPROPOSAL_CLEANUP_FREQ = "sirius.paxos.replica.reproposal-freq-secs"
+
+  /**
    * Factory method to create a SiriusConfiguration object.
    *
    * @param hostName the hostName or IP to which this instance should bind.  It is important that other

@@ -5,6 +5,7 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{Props, ActorRef, Actor}
 import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
 import akka.event.Logging
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object PaxosSup {
 
@@ -27,15 +28,16 @@ object PaxosSup {
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
    *          decisions as they arrive
    */
-  def apply(membership: Agent[Set[ActorRef]], startingSeqNum: Long, performFun: Replica.PerformFun): PaxosSup = {
-    val REPLICA_REAP_WINDOW_MS = 10000
-    val REPLICA_REAP_SCHEDULE_FREQ_SEC = 1
+  def apply(membership: Agent[Set[ActorRef]],
+            startingSeqNum: Long,
+            performFun: Replica.PerformFun,
+            config: SiriusConfiguration): PaxosSup = {
     new PaxosSup with ChildProvider {
       val leader = context.actorOf(Props(Leader(membership, startingSeqNum)), "leader")
       val acceptor = context.actorOf(Props(Acceptor(startingSeqNum)), "acceptor")
-      val replica = context.actorOf(Props(Replica(leader, startingSeqNum, performFun,
-                                                  REPLICA_REAP_WINDOW_MS,
-                                                  REPLICA_REAP_SCHEDULE_FREQ_SEC)), "replica")
+      val replica = context.actorOf(Props(
+        Replica(leader, startingSeqNum, performFun, config)), "replica"
+      )
     }
   }
 }

@@ -67,7 +67,14 @@ object SiriusSupervisor {
 
       val orderingActor =
         if (config.getProp(SiriusConfiguration.USE_PAXOS, false)) {
-          val siriusPaxosAdapter = new SiriusPaxosAdapter(_membershipAgent, _siriusLog.getNextSeq, stateSup, logRequestActor, self)
+          val siriusPaxosAdapter = new SiriusPaxosAdapter(
+            _membershipAgent,
+            _siriusLog.getNextSeq,
+            stateSup,
+            logRequestActor,
+            self,
+            config
+          )
           siriusPaxosAdapter.paxosSubSystem
         } else {
           context.actorOf(Props(new NaiveOrderingActor(stateSup, _siriusLog.getNextSeq)), "paxos")

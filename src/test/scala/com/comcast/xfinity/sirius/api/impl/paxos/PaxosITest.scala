@@ -10,6 +10,7 @@ import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestLatch, TestProbe}
 import akka.dispatch.Await
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Decision}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 
 object PaxosITest {
@@ -22,7 +23,7 @@ object PaxosITest {
           decisions += decision
           decisionLatch.countDown()
         case decision if decisions.contains(decision) =>
-      })
+      }, new SiriusConfiguration)
     ))
 
     def hasDecisionFor(req: NonCommutativeSiriusRequest): Boolean =

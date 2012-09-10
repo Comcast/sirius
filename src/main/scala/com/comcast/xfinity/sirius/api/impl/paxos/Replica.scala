@@ -7,6 +7,7 @@ import akka.event.Logging
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import java.util.{TreeMap => JTreeMap}
 import scala.util.control.Breaks._
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object Replica {
 
@@ -41,20 +42,20 @@ object Replica {
    * @param performFun function specified by
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
    *          decisions as they arrive
-   * @param reapWindow number of milliseconds for a proposal to live with the possibility
-   *                         of being reproposed
-   * @param reapScheduleFreq how often, in seconds, we reap old proposals
+   * @param config SiriusConfiguration to pass in arbitrary config,
+   *          @see SiriusConfiguration for more information
    */
   def apply(localLeader: ActorRef,
             startingSeqNum: Long,
             performFun: PerformFun,
-            reapWindow: Long,
-            reapScheduleFreq: Int): Replica = {
+            config: SiriusConfiguration): Replica = {
+    val reapWindowMillis = config.getProp(SiriusConfiguration.REPROPOSAL_WINDOW, 10000L)
+    val reapFreqSecs = config.getProp(SiriusConfiguration.REPROPOSAL_CLEANUP_FREQ, 1)
 
-    new Replica(localLeader, startingSeqNum, performFun, reapWindow) {
+    new Replica(localLeader, startingSeqNum, performFun, reapWindowMillis) {
       val reapCancellable =
-        context.system.scheduler.schedule(reapScheduleFreq seconds,
-                                          reapScheduleFreq seconds, self, Reap)
+        context.system.scheduler.schedule(reapFreqSecs seconds,
+                                          reapFreqSecs seconds, self, Reap)
     }
   }
 }

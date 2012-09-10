@@ -5,6 +5,7 @@ import bridge.PaxosStateBridge
 import paxos.PaxosMessages.Decision
 import paxos.{Replica, PaxosSup}
 import akka.actor.{ActorContext, Props, ActorRef}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object SiriusPaxosAdapter {
 
@@ -47,17 +48,20 @@ object SiriusPaxosAdapter {
  *          requests for log ranges.
  * @param siriusSupActor reference to the Sirius Supervisor Actor for routing
  *          DecisionHints to the Paxos Subsystem
+ * @param config SiriusConfiguration to pass in arbitrary config,
+ *          @see SiriusConfiguration for more information
  */
 class SiriusPaxosAdapter(membership: Agent[Set[ActorRef]],
                          startingSeq: Long,
                          persistenceActor: ActorRef,
                          logRequestActor: ActorRef,
-                         siriusSupActor: ActorRef)(implicit context: ActorContext) {
+                         siriusSupActor: ActorRef,
+                         config: SiriusConfiguration)(implicit context: ActorContext) {
 
   val paxosStateBridge = context.actorOf(Props(new PaxosStateBridge(startingSeq, persistenceActor, logRequestActor, siriusSupActor)), "paxos-state-bridge")
 
   val paxosSubSystem = context.actorOf(Props(
-    PaxosSup(membership, startingSeq, SiriusPaxosAdapter.createPerformFun(paxosStateBridge))),
+    PaxosSup(membership, startingSeq, SiriusPaxosAdapter.createPerformFun(paxosStateBridge), config)),
     "paxos"
   )
 }
