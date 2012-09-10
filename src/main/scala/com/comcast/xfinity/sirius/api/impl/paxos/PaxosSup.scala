@@ -9,15 +9,6 @@ import akka.event.Logging
 object PaxosSup {
 
   /**
-   * Case class for submitting a request for ordering to the Paxos
-   * subsystem
-   *
-   * @param client the initiating ActorRef
-   * @param req the request to submit
-   */
-  case class Submit(req: NonCommutativeSiriusRequest)
-
-  /**
    * A class for injecting children into a PaxosSup
    */
   trait ChildProvider {
@@ -60,7 +51,7 @@ class PaxosSup extends Actor {
   def receive = {
     // Replica messages
     case GetLowestUnusedSlotNum => replica forward GetLowestUnusedSlotNum
-    case PaxosSup.Submit(req) =>
+    case req: NonCommutativeSiriusRequest =>
       traceLog.debug("Received event for submission {}", req)
       val command = Command(sender, System.currentTimeMillis(), req)
       replica forward Request(command)

@@ -105,20 +105,7 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
   }
 
   def initialized: Receive = {
-    case put: Put =>
-      if (usePaxos) {
-        // Paxos expects submit requests to kick off a round
-        orderingActor forward PaxosSup.Submit(put)
-      } else {
-        orderingActor forward put
-      }
-    case delete: Delete =>
-      if (usePaxos) {
-        // Paxos expects submit requests to kick off a round
-        orderingActor forward PaxosSup.Submit(delete)
-      } else {
-        orderingActor forward delete
-      }
+    case orderedReq: NonCommutativeSiriusRequest => orderingActor forward orderedReq
     case get: Get => stateSup forward get
     case logQuery: LogQuery => stateSup forward logQuery
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage

@@ -68,8 +68,8 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
       assert(senderProbe.ref === acceptorProbe.lastSender)
     }
 
-    it ("must properly translate a Submit message to a Request and forward it " +
-        "into the system") {
+    it ("must properly translate a NonCommutativeSiriusRequest" +
+        " to a Request and forward it into the system") {
       val replicaProbe = TestProbe()
 
       val paxosSup = actorSystem.actorOf(Props(
@@ -82,7 +82,7 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
       val senderProbe = TestProbe()
 
       val delete = Delete("a")
-      senderProbe.send(paxosSup, PaxosSup.Submit(delete))
+      senderProbe.send(paxosSup, delete)
       replicaProbe.receiveOne(1 second) match {
         case Request(Command(sender, ts, req)) =>
           assert(senderProbe.ref === sender)
@@ -92,7 +92,7 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
       }
 
       val put = Put("a", "bc".getBytes)
-      senderProbe.send(paxosSup, PaxosSup.Submit(put))
+      senderProbe.send(paxosSup, put)
       replicaProbe.receiveOne(1 second) match {
         case Request(Command(sender, ts, req)) =>
           assert(senderProbe.ref === sender)

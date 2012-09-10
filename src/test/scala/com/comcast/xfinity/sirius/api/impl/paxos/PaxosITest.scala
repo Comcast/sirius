@@ -73,9 +73,9 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       val req2 = Put("B", "C".getBytes)
       val req3 = Delete("D")
 
-      node1.paxosSup ! PaxosSup.Submit(req1)
-      node1.paxosSup ! PaxosSup.Submit(req2)
-      node1.paxosSup ! PaxosSup.Submit(req3)
+      node1.paxosSup ! req1
+      node1.paxosSup ! req2
+      node1.paxosSup ! req3
 
       // Wait for the decision to actually be received
       // on each node, the request RequestPerformed
