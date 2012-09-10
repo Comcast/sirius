@@ -1,9 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import compat.AkkaFutureAdapter
-import java.lang.management.ManagementFactory
-import java.net.InetAddress
-import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
 import akka.pattern.ask
@@ -14,133 +11,39 @@ import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.actor._
 import java.util.concurrent.Future
 import scalax.file.Path
-import com.comcast.xfinity.sirius.writeaheadlog.{CachedSiriusLog, SiriusLog}
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.uberstore.UberStore
 import java.util.{HashMap => JHashMap}
-import com.typesafe.config.{Config, ConfigFactory}
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
  */
 object SiriusImpl extends AkkaConfig {
 
+  /**
+   * @see [[com.comcast.xfinity.sirius.api.impl.SiriusFactory$]]
+   */
+  @deprecated("Moved to SiriusFactory", "2012-08-10")
+  def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl =
+    SiriusFactory.createInstance(requestHandler, siriusConfig)
 
   /**
-   * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
-   * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
-   * shutdown the dependent ActorSystem.
-   *
-   * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
-   * @param siriusConfig a SiriusConfiguration containing configuration info needed for this node.
-   * @see SiriusConfiguration for info on needed config.
-   *
-   * @return A SiriusImpl constructed using the parameters
+   * USE ONLY FOR TESTING TO MOCK OUT A LOG!
+   * @see [[com.comcast.xfinity.sirius.api.impl.SiriusFactory$]]
    */
-  def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
-    val uberStoreDir = siriusConfig.getProp[String](SiriusConfiguration.LOG_LOCATION) match {
-      case Some(dir) => dir
-      case None =>
-        throw new IllegalArgumentException(SiriusConfiguration.LOG_LOCATION + " must be set on config")
-    }
-    val backendLog = UberStore(uberStoreDir)
-    val log = CachedSiriusLog(backendLog)
-    createSirius(requestHandler, siriusConfig, log)
-  }
-
-  /**
-   * USE ONLY FOR TESTING HOOK WHEN YOU NEED TO MOCK OUT A LOG.  
-   * Real code should use the two argument factory method.  
-   *
-   * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
-   * @param siriusConfig a SiriusConfiguration containing configuration info needed for this node.
-   * @see SiriusConfiguration for info on needed config.
-   * @param siriusLog the persistence layer to which events should be committed to and replayed from.
-   *
-   * @return A SiriusImpl constructed using the parameters
-   */
+  @deprecated("Moved to SiriusFactory", "2012-08-10")
   private[sirius] def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
                    siriusLog: SiriusLog): SiriusImpl = {
-
-    val host = siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName)
-    val port = siriusConfig.getProp(SiriusConfiguration.PORT, 2552)
-
-    implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(host, port))
-    val impl = new SiriusImpl(
-      requestHandler,
-      siriusLog,
-      Path.fromString(siriusConfig.getClusterConfigPath),
-      siriusConfig
-    )
-
-    // create the stuff to expose mbeans
-    val admin = createAdmin(host, port, impl.supervisor)
-    admin.registerMbeans()
-
-    // need to shut down the actor system and unregister the mbeans when sirius is done
-    impl.onShutdown({
-      actorSystem.shutdown()
-      actorSystem.awaitTermination()
-      admin.unregisterMbeans()
-    })
-
-    impl
+    SiriusFactory.createInstance(requestHandler, siriusConfig, siriusLog)
   }
 
   /**
-   * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
-   * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
-   * shutdown the dependent ActorSystem.
-   *
-   * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
-   * @param siriusLog the persistence layer to which events should be committed to and replayed from
-   *          note, this parameter may be removed in future refactorings
-   * @param hostName the hostName or IP to which this instance should bind.  It is important that other
-   *          Sirius instances identify this host by this name.  This is passed directly to Akka's
-   *          configuration, for the interested
-   * @param port the port which this instance should bind to.  This is passed directly to Akka's
-   *          configuration, for the interested
-   * @param clusterConfigPath string pointing to the location of this cluster's configuration.  This should
-   *          be a file with Akka style addresses on each line indicating membership. For more information
-   *          see http://doc.akka.io/docs/akka/snapshot/general/addressing.html
-   * @param usePaxos should the underlying implementation use Paxos for ordering events? If true it will,
-   *          if not it will use use a simple monotonically increasing counter, which is good enough
-   *          as long as this instance isn't clustered
-   *
-   * @return A SiriusImpl constructed using the parameters
+   * @see [[com.comcast.xfinity.sirius.api.impl.SiriusFactory$]]
    */
+  @deprecated("Moved to SiriusFactory", "2012-08-10")
   private[sirius] def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
                    clusterConfigPath: String, usePaxos: Boolean): SiriusImpl = {
-
-    val siriusConfig = new SiriusConfiguration
-    siriusConfig.setProp(SiriusConfiguration.HOST, hostName)
-    siriusConfig.setProp(SiriusConfiguration.PORT, port)
-    siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath)
-    siriusConfig.setProp(SiriusConfiguration.USE_PAXOS, usePaxos)
-
-    createSirius(requestHandler, siriusConfig, siriusLog)
-  }
-
-  private def createHostPortConfig(host: String, port: Int): Config = {
-    val configMap = new JHashMap[String, Any]()
-    configMap.put("akka.remote.netty.hostname", host)
-    configMap.put("akka.remote.netty.port", port)
-    // this is just so that the intellij shuts up
-    ConfigFactory.parseMap(configMap.asInstanceOf[JHashMap[String, _ <: AnyRef]])
-  }
-
-  private def createActorSystemConfig(host: String, port: Int): Config = {
-    val hostPortConfig = createHostPortConfig(host, port)
-    val baseAkkaConfig = ConfigFactory.load("akka.conf")
-    hostPortConfig.withFallback(baseAkkaConfig)
-  }
-
-  private def createAdmin(host: String, port: Int, supervisorRef: ActorRef) = {
-    val mbeanServer = ManagementFactory.getPlatformMBeanServer
-
-    val info = new SiriusInfo(port, host, supervisorRef)
-    new SiriusAdmin(info, mbeanServer)
+    SiriusFactory.createInstance(requestHandler, siriusLog, hostName, port, clusterConfigPath, usePaxos)
   }
 
 }

@@ -7,8 +7,8 @@ import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
 import java.io.File
 import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
 import java.util.concurrent.{CountDownLatch, TimeUnit}
-import com.comcast.xfinity.sirius.api.impl.{NonCommutativeSiriusRequest, OrderedEvent, SiriusImpl}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.api.impl.{SiriusFactory, NonCommutativeSiriusRequest, OrderedEvent, SiriusImpl}
 
 object FullSystemITest {
 
@@ -154,7 +154,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, membershipFile.getAbsolutePath)
       siriusConfig.setProp(SiriusConfiguration.USE_PAXOS, true)
       
-      val sirius = SiriusImpl.createSirius(
+      val sirius = SiriusFactory.createInstance(
         handler,
         siriusConfig,
         wal
