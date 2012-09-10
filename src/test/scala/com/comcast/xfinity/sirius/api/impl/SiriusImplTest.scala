@@ -1,6 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl
 
-import com.comcast.xfinity.sirius.api.RequestHandler
 import akka.testkit.TestProbe
 import akka.util.Timeout.durationToTimeout
 import akka.util.duration.intToDurationInt
@@ -12,27 +11,30 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.SiriusResult
 import java.util.concurrent.TimeUnit
 import scalax.file.Path
 import com.comcast.xfinity.sirius.api.impl.membership._
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler, SiriusResult}
 
 object SiriusImplTestCompanion {
+
+  class ProbeWrapper(testProbe: TestProbe) extends Actor {
+    def receive = {
+      case any => testProbe.ref forward any
+    }
+  }
 
   // Create an extended impl for testing
   def createProbedSiriusImpl(handler: RequestHandler, actorSystem: ActorSystem, siriusLog: SiriusLog,
                              supProbe: TestProbe, siriusStateAgent: Agent[SiriusState],
                              membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path): SiriusImpl = {
-
-    new SiriusImpl(handler, siriusLog, clusterConfigPath)(actorSystem) {
-
-      override def createSiriusSupervisor(_as: ActorSystem, _handler: RequestHandler,
-                                          _log: SiriusLog, _siriusStateAgent: Agent[SiriusState],
-                                          _membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path,
-                                          _supName: String): ActorRef = supProbe.ref
-
-    }
+    val createSiriusSupervisor: SiriusImpl.SiriusSupPropsFactory =
+      (_handler: RequestHandler,
+        _log: SiriusLog, _siriusStateAgent: Agent[SiriusState],
+        _membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path, _usePaxos: Boolean)
+      => Props(new ProbeWrapper(supProbe))
+    new SiriusImpl(handler, siriusLog, clusterConfigPath, new SiriusConfiguration, createSiriusSupervisor)(actorSystem)
   }
 }
 
