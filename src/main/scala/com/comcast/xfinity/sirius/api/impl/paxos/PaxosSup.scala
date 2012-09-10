@@ -18,13 +18,6 @@ object PaxosSup {
   }
 
   /**
-   * Same as the 3 arg constructor, except defaults startingSeqNum to 1
-   */
-  @deprecated("instead use 3 arg constructor","8-15-12 at least")
-  def apply(membership: Agent[Set[ActorRef]], performFun: Replica.PerformFun): PaxosSup =
-    apply(membership, 1, performFun)
-
-  /**
    * Create a PaxosSup instance.  Note this should be called from within a Props
    * factory on Actor creation due to the requirements of Akka.
    *
@@ -55,7 +48,6 @@ class PaxosSup extends Actor {
       traceLog.debug("Received event for submission {}", req)
       val command = Command(sender, System.currentTimeMillis(), req)
       replica forward Request(command)
-    case r: Request => replica forward r // <-- not used, to be removed later
     case d: Decision => replica forward d
 
     // Leader messages
