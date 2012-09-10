@@ -18,6 +18,11 @@ object SiriusConfiguration {
   final val CLUSTER_CONFIG = "sirius.membership.config-path"
 
   /**
+   * How often to check CLUSTER_CONFIG for updates, in seconds (int)
+   */
+  final val MEMBERSHIP_CHECK_INTERVAL = "sirius.membership.check-interval-secs"
+
+  /**
    * Whether or not to use paxos (boolean)
    */
   final val USE_PAXOS = "sirius.paxos.enabled"

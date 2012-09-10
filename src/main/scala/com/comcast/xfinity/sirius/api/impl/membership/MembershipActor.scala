@@ -6,11 +6,45 @@ import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
 import akka.event.Logging
 import akka.util.Duration
-import java.util.concurrent.TimeUnit
 import akka.actor.{ActorRef, actorRef2Scala, Actor}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import akka.util.duration._
+
+object MembershipActor {
+
+  /**
+   * Create a MembershipActor configured with SiriusConfiguration that will keep membershipAgent
+   * updated.
+   *
+   * @param membershipAgent the Agent[Set[ActorRef]]() to keep updated with the cluster membership
+   * @param siriusStateAgent an Agent[SiriusState] to update when this node initializes (Developer's
+   *          note: do we need this?)
+   * @param confing SiriusConfiguration object to use to configure this instance- see SiriusConfiguraiton
+   *          for more information
+   */
+  def apply(membershipAgent: Agent[Set[ActorRef]],
+            siriusStateAgent: Agent[SiriusState],
+            config: SiriusConfiguration): MembershipActor = {
+    val clusterConfigPath = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG) match {
+      case Some(path) => Path.fromString(path)
+      case None => throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
+    }
+    val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 30)
+
+    new MembershipActor(
+      membershipAgent,
+      siriusStateAgent,
+      clusterConfigPath,
+      checkIntervalSecs seconds
+    )
+  }
+}
 
 /**
- * Actor responsible for keeping membership information up to date
+ * Actor responsible for keeping membership information up to date.
+ *
+ * For production code you should use MembershipActor#apply instead, this will take care
+ * of more proper construction and DI.
  *
  * @param membershipAgent An Agent[Set[ActorRef]] that this actor will keep populated
  *          with the most up to date membership information
@@ -18,25 +52,23 @@ import akka.actor.{ActorRef, actorRef2Scala, Actor}
  *          its status on initialization
  * @param clusterConfigPath A scalax.file.Path containing the membership information
  *          for this cluster
+ * @param checkInterval how often to check for updates to clusterConfigPath
  */
 class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
                       siriusStateAgent: Agent[SiriusState],
-                      clusterConfigPath: Path) extends Actor {
+                      clusterConfigPath: Path,
+                      checkInterval: Duration = (30 seconds)) extends Actor {
 
   val logger = Logging(context.system, "Sirius")
 
-  def membershipHelper = new MembershipHelper
-
-  // TODO: This should not be hard-coded.
-  private[membership] lazy val checkInterval: Duration = Duration.create(30, TimeUnit.SECONDS)
-
-  val configCheckSchedule = context.system.scheduler.schedule(Duration.Zero, checkInterval, self, CheckClusterConfig)
+  val configCheckSchedule = context.system.scheduler.schedule(checkInterval, checkInterval, self, CheckClusterConfig)
 
   override def preStart() {
-    logger.info("Initializing MembershipActor, initializing cluster membershing using {}", clusterConfigPath)
+    logger.info("Initializing MembershipActor to check {} every {}", clusterConfigPath, checkInterval)
 
     updateMembership()
 
+    // XXX: how much do we get by making this "synchronous", the rest of boot up doesn't care...
     siriusStateAgent send ((state: SiriusState) => {
       state.updateMembershipActorState(SiriusState.MembershipActorState.Initialized)
     })
