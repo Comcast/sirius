@@ -34,7 +34,9 @@ object PaxosSup {
             config: SiriusConfiguration): PaxosSup = {
     new PaxosSup with ChildProvider {
       val leader = context.actorOf(Props(Leader(membership, startingSeqNum)), "leader")
-      val acceptor = context.actorOf(Props(Acceptor(startingSeqNum)), "acceptor")
+      val acceptor = context.actorOf(Props(
+        Acceptor(startingSeqNum, config)), "acceptor"
+      )
       val replica = context.actorOf(Props(
         Replica(leader, startingSeqNum, performFun, config)), "replica"
       )

@@ -7,16 +7,19 @@ import akka.event.Logging
 import java.util.{TreeMap => JTreeMap}
 import scala.util.control.Breaks._
 import scala.collection.JavaConverters._
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object Acceptor {
-  val reapWindow = 30 * 60 * 1000L
 
   case object Reap
 
-  def apply(startingSeqNum: Long): Acceptor = {
-    new Acceptor(startingSeqNum) {
+  def apply(startingSeqNum: Long, config: SiriusConfiguration): Acceptor = {
+    val reapWindow = config.getProp(SiriusConfiguration.ACCEPTOR_WINDOW, 30 * 60 * 1000L)
+    val reapFreqSecs = config.getProp(SiriusConfiguration.ACCEPTOR_CLEANUP_FREQ, 30)
+
+    new Acceptor(startingSeqNum, reapWindow) {
       val reapCancellable =
-        context.system.scheduler.schedule(30 seconds, 30 seconds, self, Reap)
+        context.system.scheduler.schedule(reapFreqSecs seconds, reapFreqSecs seconds, self, Reap)
 
       override def postStop() {
         reapCancellable.cancel()
@@ -25,7 +28,8 @@ object Acceptor {
   }
 }
 
-class Acceptor(startingSeqNum: Long) extends Actor {
+class Acceptor(startingSeqNum: Long,
+               reapWindow: Long = 30 * 60 * 1000L) extends Actor {
 
   import Acceptor._
 
@@ -80,12 +84,12 @@ class Acceptor(startingSeqNum: Long) extends Actor {
    */
   private def cleanOldAccepted(currentLowestSlot: Long, toReap: JTreeMap[Long, PValue]) = {
     var highestReapedSlot: Long = currentLowestSlot - 1
-    val now = System.currentTimeMillis
+    val reapBeforeTs = System.currentTimeMillis - reapWindow
     breakable {
       val keys = toReap.keySet.toArray
       for (i <- 0 to keys.size - 1) {
         val slot = keys(i)
-        if (toReap.get(slot).proposedCommand.ts < now - reapWindow) {
+        if (toReap.get(slot).proposedCommand.ts < reapBeforeTs) {
           highestReapedSlot = toReap.get(slot).slotNum
           toReap.remove(slot)
         } else {

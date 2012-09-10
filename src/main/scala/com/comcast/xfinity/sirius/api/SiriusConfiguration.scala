@@ -51,6 +51,23 @@ object SiriusConfiguration {
   final val REPROPOSAL_CLEANUP_FREQ = "sirius.paxos.replica.reproposal-freq-secs"
 
   /**
+   * Number of milliseconds for Acceptors to retain PValues. When cleaning up in
+   * the Acceptors we remove PValues from the acceptor in slot number order until
+   * we encounter one which is within the retention window.  At this point we stop
+   * cleaning up. Note that it is possible that PValues outside of the this window
+   * may be retained if there is a PValue with a timestamp that is within the window
+   * before it. (long)
+   *
+   * Similar to REPROPOSAL_WINDOW, precision is ACCEPTOR_CLEANUP_FREQ
+   */
+  final val ACCEPTOR_WINDOW = "sirius.paxos.acceptor.acceptor-window-millis"
+
+  /**
+   * How often, in seconds, to clean up the Acceptor (int)
+   */
+  final val ACCEPTOR_CLEANUP_FREQ = "sirius.paxos.acceptor.acceptor-cleanup-freq-secs"
+
+  /**
    * Factory method to create a SiriusConfiguration object.
    *
    * @param hostName the hostName or IP to which this instance should bind.  It is important that other

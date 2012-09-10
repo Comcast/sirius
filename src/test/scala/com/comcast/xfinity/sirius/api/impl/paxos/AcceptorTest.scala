@@ -184,7 +184,8 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
     describe("in response to a Reap message") {
       it ("must truncate the collection of pvalues it contains") {
-        val acceptor = TestActorRef(new Acceptor(1))
+        val reapWindow = 50 * 60 * 1000L
+        val acceptor = TestActorRef(new Acceptor(1, reapWindow))
 
         val now = System.currentTimeMillis()
         val keepers = SortedMap[Long, PValue](
@@ -196,8 +197,8 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val accepted = new JTreeMap[Long,PValue]()
 
         accepted.putAll((SortedMap(
-          1L -> PValue(Ballot(1, "a"), 1, Command(null, (now - Acceptor.reapWindow - 100L), Delete("1"))),
-          2L -> PValue(Ballot(2, "b"), 2, Command(null, (now- Acceptor.reapWindow -105L), Delete("2")))
+          1L -> PValue(Ballot(1, "a"), 1, Command(null, (now - reapWindow - 100L), Delete("1"))),
+          2L -> PValue(Ballot(2, "b"), 2, Command(null, (now - reapWindow - 105L), Delete("2")))
         ) ++ keepers).asJava)
 
         acceptor.underlyingActor.accepted = accepted
@@ -210,7 +211,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it ("must not update its lowestAcceptableSlotNumber if nothing is reaped") {
-        val acceptor = TestActorRef(new Acceptor(10))
+        val acceptor = TestActorRef(new Acceptor(10, 30 * 60 * 1000L))
 
         acceptor.underlyingActor.accepted = new JTreeMap[Long, PValue]()
         acceptor ! Acceptor.Reap
