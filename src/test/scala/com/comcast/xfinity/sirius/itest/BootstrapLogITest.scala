@@ -8,6 +8,7 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.api.impl.SiriusImpl
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 @RunWith(classOf[JUnitRunner])
 class BootstrapLogITest extends NiceTest with TimedTest {
@@ -50,10 +51,14 @@ class BootstrapLogITest extends NiceTest with TimedTest {
 
     stringRequestHandler = new StringRequestHandler()
 
+    val config = new SiriusConfiguration
+    config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath.path)
+
     sirius = new SiriusImpl(
       stringRequestHandler,
       logWriter,
-      clusterConfigPath
+      clusterConfigPath,
+      config
     )(actorSystem)
     assert(waitForTrue(sirius.isOnline, 5000, 500), "Sirius took too long to boot (>5s)")
   }

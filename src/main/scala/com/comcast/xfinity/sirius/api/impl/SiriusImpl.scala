@@ -49,20 +49,19 @@ object SiriusImpl extends AkkaConfig {
   // Type describing method signature for creating a SiriusSupervisor.  Pretty ugly, but
   // the goal is to slim this down with SiriusConfiguration
   type SiriusSupPropsFactory = (RequestHandler, SiriusLog, SiriusConfiguration,
-                                  Agent[SiriusState], Agent[Set[ActorRef]], Path) => Props
+                                  Agent[SiriusState], Agent[Set[ActorRef]]) => Props
 
   private val createSiriusSupervisor: SiriusSupPropsFactory =
     (requestHandler: RequestHandler, siriusLog: SiriusLog,
      config: SiriusConfiguration, stateAgent: Agent[SiriusState],
-     membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path) => {
+     membershipAgent: Agent[Set[ActorRef]]) => {
        Props(
          SiriusSupervisor(
           requestHandler,
           siriusLog,
           config,
           stateAgent,
-          membershipAgent,
-          clusterConfigPath
+          membershipAgent
         )
       )
     }
@@ -74,14 +73,11 @@ object SiriusImpl extends AkkaConfig {
  *
  * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
  * @param siriusLog the log to be used for persisting events
- * @param host the host identifying this node (Developers' note, this is only used for creating an MBean and
- *            siriusId String which is no longer used, we may be able to eliminate it)
- * @param port port this node is bound to (Developers' note, this is only used for creating an MBean and
- *            siriusId String which is no longer used, we may be able to eliminate it)
- * @param clusterConfigPath String pointing to a file containing cluster membership
- * @param usePaxos a flag indicating to use Paxos (if true) or a naiive monotonically incrementing counter
- *            for the ordering of events.  Defaults to false if using Scala.
- * @param supName the name given to the top level sirius supervisor on instantiation
+ * @param clusterConfigPath *** NOT USED, LEFT FOR API COMPATIBILITY FOR THE SHORT TERM
+ * @param config SiriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration
+ *            for more information
+ * @param supPropsFactory a factory method for creating the Props of the SiriusSupervisor
+ *            *** THIS SHOULD NOT BE USED EXTERNALLY, IT IS ONLY FOR DI, AND WILL PROBABLY CHANGE SOON ***
  * @param actorSystem the actorSystem to use to create the Actors for Sirius (Note, this param will likely be
  *            moved in future refactorings to be an implicit parameter at the end of the argument list)
  */
@@ -106,8 +102,7 @@ class SiriusImpl(requestHandler: RequestHandler,
       siriusLog,
       config,
       siriusStateAgent,
-      membershipAgent,
-      clusterConfigPath
+      membershipAgent
     ),
     supName
   )

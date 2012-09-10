@@ -46,15 +46,23 @@ object SiriusSupervisor {
     _siriusLog: SiriusLog,
     _config: SiriusConfiguration,
     _siriusStateAgent: Agent[SiriusState],
-    _membershipAgent: Agent[Set[ActorRef]],
-    _clusterConfigPath: Path): SiriusSupervisor = {
+    _membershipAgent: Agent[Set[ActorRef]]): SiriusSupervisor = {
     
     new SiriusSupervisor with DependencyProvider {
       val siriusStateAgent = _siriusStateAgent
       val usePaxos = _config.getProp(SiriusConfiguration.USE_PAXOS, false)
       
       val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, _siriusStateAgent)), "state")
-      val membershipActor = context.actorOf(Props(new MembershipActor(_membershipAgent, _siriusStateAgent, _clusterConfigPath)), "membership")
+      val membershipActor = {
+        val clusterConfigPath = _config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG) match {
+          case Some(path) => path
+          case None => throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
+        }
+        context.actorOf(
+          Props(
+            new MembershipActor(_membershipAgent, _siriusStateAgent, Path.fromString(clusterConfigPath))
+          ), "membership")
+      }
       val logRequestActor = context.actorOf(Props(new LogRequestActor(100, _siriusLog, self, _membershipAgent)), "log")
       val orderingActor = if (usePaxos) {
         val siriusPaxosAdapter = new SiriusPaxosAdapter(_membershipAgent, _siriusLog.getNextSeq, stateSup, logRequestActor, self)
