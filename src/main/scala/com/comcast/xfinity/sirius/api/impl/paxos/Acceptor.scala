@@ -6,8 +6,9 @@ import akka.util.duration._
 import akka.event.Logging
 import java.util.{TreeMap => JTreeMap}
 import scala.util.control.Breaks._
-import scala.collection.JavaConverters._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import collection.immutable.HashSet
+import collection.mutable.SetBuilder
 
 object Acceptor {
 
@@ -37,7 +38,9 @@ class Acceptor(startingSeqNum: Long,
   val traceLogger = Logging(context.system, "SiriusTrace")
 
   var ballotNum: Ballot = Ballot.empty
-  var accepted = new JTreeMap[Long, PValue]()
+
+  // slot -> (ts,PValue)
+  var accepted = new JTreeMap[Long, Tuple2[Long, PValue]]()
 
   // if we receive a Phase2A for a slot less than this we refuse to
   // handle it since it is out of date by our terms
@@ -49,9 +52,11 @@ class Acceptor(startingSeqNum: Long,
   def receive = {
     // Scout
     case Phase1A(scout, ballot, replyAs, latestDecidedSlot) =>
-      if (ballot > ballotNum) ballotNum = ballot
+      if (ballot > ballotNum) {
+        ballotNum = ballot
+      }
 
-      scout ! Phase1B(replyAs, ballotNum, undecidedAccepted(latestDecidedSlot).values.asScala.toSet)
+      scout ! Phase1B(replyAs, ballotNum, undecidedAccepted(latestDecidedSlot))
 
     // Commander
     case Phase2A(commander, pval, replyAs) if pval.slotNum >= lowestAcceptableSlotNumber =>
@@ -61,10 +66,12 @@ class Acceptor(startingSeqNum: Long,
         //if pval is already accepted on higher ballot number then do nothing
         //    in other words
         // if pval not accepted or accepted and with lower or equal ballot number then replace accepted pval w/ pval
+        // also update the ts w/ localtime in our accepted map for reaping
+        val now = System.currentTimeMillis
         accepted.get(pval.slotNum) match {
-          case (oldPval: PValue) if oldPval.ballot > pval.ballot => accepted.put(oldPval.slotNum, oldPval)
-          case (oldPval: PValue) => accepted.put(pval.slotNum, pval)
-          case null => accepted.put(pval.slotNum, pval)
+          case ((_,oldPval: PValue)) if oldPval.ballot > pval.ballot => accepted.put(oldPval.slotNum, (now, oldPval))
+          case ((_,oldPval: PValue)) => accepted.put(pval.slotNum, (now, pval))
+          case null => accepted.put(pval.slotNum, (now, pval))
         }
       }
       commander ! Phase2B(replyAs, ballotNum)
@@ -77,20 +84,20 @@ class Acceptor(startingSeqNum: Long,
       accepted = newAccepted
   }
 
-  /* Remove 'old' pvals from the system.  A pval is old if we got it more than half an hour ago.
-   * The timestamp on the pval came from the originating node, so we're using this wide window 
-   * as a fudge factor for clock drift.
+  /* Remove 'old' pvals from the system.  A pval is old if we got it farther in the past than our reap limit.
+   * The timestamp in the tuple with the pval came from localtime when we received it in the Phase2A msg.
+   *
    * Note: this method has the side-effect of modifying toReap.
    */
-  private def cleanOldAccepted(currentLowestSlot: Long, toReap: JTreeMap[Long, PValue]) = {
+  private def cleanOldAccepted(currentLowestSlot: Long, toReap: JTreeMap[Long, Tuple2[Long, PValue]]) = {
     var highestReapedSlot: Long = currentLowestSlot - 1
     val reapBeforeTs = System.currentTimeMillis - reapWindow
     breakable {
       val keys = toReap.keySet.toArray
       for (i <- 0 to keys.size - 1) {
         val slot = keys(i)
-        if (toReap.get(slot).proposedCommand.ts < reapBeforeTs) {
-          highestReapedSlot = toReap.get(slot).slotNum
+        if (toReap.get(slot)._1 < reapBeforeTs) {
+          highestReapedSlot = toReap.get(slot)._2.slotNum
           toReap.remove(slot)
         } else {
           break()
@@ -102,17 +109,19 @@ class Acceptor(startingSeqNum: Long,
   }
 
   /**
-   * produces an undecided accepted tree
+   * produces an undecided accepted Set of PValues
    *
    */
-  private def undecidedAccepted(latestDecidedSlot: Long): JTreeMap[Long, PValue] ={
-        val undecidedAcceptedTree = new JTreeMap[Long, PValue]()
-        val iterator = accepted.keySet().iterator
-        while (iterator.hasNext) {
-          val slot = iterator.next
-          if (slot > latestDecidedSlot) undecidedAcceptedTree.put(slot, accepted.get(slot))
-        }
-        undecidedAcceptedTree
+  private def undecidedAccepted(latestDecidedSlot: Long): Set[PValue] = {
+    val empty = new HashSet[PValue]()
+    var undecidedPvalues = new SetBuilder[PValue, HashSet[PValue]](empty)
+    val iterator = accepted.keySet().iterator
+    while (iterator.hasNext) {
+      val slot = iterator.next
+      if (slot > latestDecidedSlot) {
+        undecidedPvalues += accepted.get(slot)._2
+      }
+    }
+    undecidedPvalues.result()
   }
-
 }

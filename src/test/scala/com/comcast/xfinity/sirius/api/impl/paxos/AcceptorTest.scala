@@ -4,13 +4,13 @@ import akka.actor.ActorSystem
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.testkit.{ TestProbe, TestActorRef }
 import com.comcast.xfinity.sirius.api.impl.Delete
-import scala.collection.immutable.SortedMap
 import scala.collection.JavaConverters._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.NiceTest
 import org.scalatest.BeforeAndAfterAll
 import java.util.{TreeMap => JTreeMap}
+import collection.immutable.SortedMap
 
 @RunWith(classOf[JUnitRunner])
 class AcceptorTest extends NiceTest with BeforeAndAfterAll {
@@ -33,22 +33,23 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "is lesser than or equal to its own") {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
-        val accepted = new JTreeMap[Long,PValue]();
-        accepted.put(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = new JTreeMap[Long,Tuple2[Long,PValue]]();
+        accepted.put(1L,(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
 
 
         acceptor.underlyingActor.ballotNum = ballotNum
-        acceptor.underlyingActor.accepted = accepted.clone().asInstanceOf[JTreeMap[Long, PValue]]
+        acceptor.underlyingActor.accepted = accepted.clone().
+          asInstanceOf[JTreeMap[Long, Tuple2[Long, PValue]]]
 
         val scoutProbe = TestProbe()
         val replyAs = TestProbe().ref
         acceptor ! Phase1A(scoutProbe.ref, Ballot(0, "a"), replyAs,0)
-        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, accepted.values.asScala.toSet))
+        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, Set(PValue(ballotNum, 1, Command(null, 1, Delete("1"))))))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
 
         acceptor ! Phase1A(scoutProbe.ref, ballotNum, replyAs,0)
-        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, accepted.values.asScala.toSet))
+        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, Set(PValue(ballotNum, 1, Command(null, 1, Delete("1"))))))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
       }
@@ -57,17 +58,18 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "Ballot is greater than its own") {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
-        val accepted = new JTreeMap[Long,PValue]();
-        accepted.put(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = new JTreeMap[Long,Tuple2[Long,PValue]]();
+        accepted.put(1L,(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
-        acceptor.underlyingActor.accepted = accepted.clone().asInstanceOf[JTreeMap[Long,PValue]]
+        acceptor.underlyingActor.accepted = accepted.clone().
+          asInstanceOf[JTreeMap[Long, Tuple2[Long, PValue]]]
 
         val scoutProbe = TestProbe()
         val replyAs = TestProbe().ref
         val biggerBallotNum = Ballot(2, "a")
         acceptor ! Phase1A(scoutProbe.ref, biggerBallotNum, replyAs,0)
-        scoutProbe.expectMsg(Phase1B(replyAs, biggerBallotNum, accepted.values.asScala.toSet))
+        scoutProbe.expectMsg(Phase1B(replyAs, biggerBallotNum,Set(PValue(ballotNum, 1, Command(null, 1, Delete("1"))))))
         assert(acceptor.underlyingActor.ballotNum === biggerBallotNum)
         assert(acceptor.underlyingActor.accepted === accepted)
       }
@@ -75,23 +77,27 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
 
-        val accepted = new JTreeMap[Long,PValue]();
-        accepted.put(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
-        accepted.put(2L,PValue(ballotNum,1,Command(null,1,Delete("2"))))
-        accepted.put(3L,PValue(ballotNum,1,Command(null,1,Delete("3"))))
-        accepted.put(4L,PValue(ballotNum,1,Command(null,1,Delete("something"))))
 
-        val trimmedAccepted = new JTreeMap[Long,PValue]()
-        trimmedAccepted.put(3L,PValue(ballotNum,1,Command(null,1,Delete("3"))))
-        trimmedAccepted.put(4L,PValue(ballotNum,1,Command(null,1,Delete("something"))))
+
+        val accepted = new JTreeMap[Long,Tuple2[Long,PValue]]();
+        accepted.put(1L,(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
+        accepted.put(2L,(1L,PValue(ballotNum,1,Command(null,1,Delete("2")))))
+        accepted.put(3L,(1L,PValue(ballotNum,1,Command(null,1,Delete("3")))))
+        accepted.put(4L,(1L,PValue(ballotNum,1,Command(null,1,Delete("something")))))
+
+        val trimmedAccepted = Set(
+          PValue(ballotNum,1,Command(null,1,Delete("3"))),
+          PValue(ballotNum,1,Command(null,1,Delete("something")))
+        )
 
         acceptor.underlyingActor.ballotNum = ballotNum
-        acceptor.underlyingActor.accepted = accepted.clone().asInstanceOf[JTreeMap[Long, PValue]]
+        acceptor.underlyingActor.accepted = accepted.clone().
+          asInstanceOf[JTreeMap[Long, Tuple2[Long, PValue]]]
 
         val scoutProbe = TestProbe()
         val replyAs = TestProbe().ref
         acceptor ! Phase1A(scoutProbe.ref, ballotNum, replyAs, 2L)
-        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, trimmedAccepted.values.asScala.toSet))
+        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, trimmedAccepted))
         assert(acceptor.underlyingActor.accepted === accepted)
       }
 
@@ -99,9 +105,9 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
 
-        val accepted = new JTreeMap[Long,PValue]();
-        accepted.put(2L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
-        accepted.put(3L,PValue(ballotNum,1,Command(null,1,Delete("2"))))
+        val accepted = new JTreeMap[Long,Tuple2[Long,PValue]]();
+        accepted.put(2L,(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
+        accepted.put(3L,(1L,PValue(ballotNum,1,Command(null,1,Delete("2")))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -109,7 +115,8 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val scoutProbe = TestProbe()
         val replyAs = TestProbe().ref
         acceptor ! Phase1A(scoutProbe.ref, ballotNum, replyAs, 1L)
-        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, accepted.values.asScala.toSet))
+        scoutProbe.expectMsg(Phase1B(replyAs, ballotNum, Set(PValue(ballotNum, 1, Command(null, 1, Delete("1"))),
+                                                             PValue(ballotNum, 1, Command(null, 1, Delete("2"))))))
         assert(acceptor.underlyingActor.accepted === accepted)
       }
     }
@@ -118,11 +125,11 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       it ("must not update its state if the incoming Ballot is outdated") {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
-        val accepted = new JTreeMap[Long,PValue]();
-        accepted.put(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = new JTreeMap[Long,Tuple2[Long, PValue]]();
+        accepted.put(1L,(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
-        acceptor.underlyingActor.accepted = accepted.clone().asInstanceOf[JTreeMap[Long,PValue]]
+        acceptor.underlyingActor.accepted = accepted.clone().asInstanceOf[JTreeMap[Long, Tuple2[Long, PValue]]]
 
         val commanderProbe = TestProbe()
         val replyAs = TestProbe().ref
@@ -136,12 +143,12 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "if the incoming ballotNum is greater than or equal to its own") {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
-        val accepted = new JTreeMap[Long,PValue]();
-        accepted.put(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        val accepted = new JTreeMap[Long,Tuple2[Long,PValue]]();
+        accepted.put(1L,(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
 
         acceptor.underlyingActor.ballotNum = ballotNum
 
-        acceptor.underlyingActor.accepted = accepted.clone().asInstanceOf[JTreeMap[Long,PValue]]
+        acceptor.underlyingActor.accepted = accepted.clone().asInstanceOf[JTreeMap[Long,Tuple2[Long,PValue]]]
 
         val commanderProbe = TestProbe()
         val replyAs = TestProbe().ref
@@ -150,24 +157,21 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         acceptor ! Phase2A(commanderProbe.ref, newPValue1, replyAs)
         commanderProbe.expectMsg(Phase2B(replyAs, ballotNum))
         assert(acceptor.underlyingActor.ballotNum === ballotNum)
-        accepted.put(2L,newPValue1)
-        assert(acceptor.underlyingActor.accepted === accepted)
+        assert(newPValue1 === acceptor.underlyingActor.accepted.get(2L)._2)
 
         val biggerBallot = Ballot(2, "a")
         val newPValue2 = PValue(biggerBallot, 3, Command(null, 3, Delete("4")))
         acceptor ! Phase2A(commanderProbe.ref, newPValue2, replyAs)
         commanderProbe.expectMsg(Phase2B(replyAs, biggerBallot))
         assert(acceptor.underlyingActor.ballotNum === biggerBallot)
-        accepted.put(3L,newPValue2)
-        assert(acceptor.underlyingActor.accepted === accepted)
+        assert(newPValue2 === acceptor.underlyingActor.accepted.get(3L)._2)
 
         val evenBiggerBallot = Ballot(3, "a")
         val newPValue3 = PValue(evenBiggerBallot, 3, Command(null, 3, Delete("5")))
         acceptor ! Phase2A(commanderProbe.ref, newPValue3, replyAs)
         commanderProbe.expectMsg(Phase2B(replyAs, evenBiggerBallot))
         assert(acceptor.underlyingActor.ballotNum === evenBiggerBallot)
-        accepted.put(3L,newPValue3)
-        assert(acceptor.underlyingActor.accepted === accepted)
+        assert(newPValue3 === acceptor.underlyingActor.accepted.get(3L)._2)
       }
 
       it ("must ignore the message if the slot is below its dignity") {
@@ -188,17 +192,17 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val acceptor = TestActorRef(new Acceptor(1, reapWindow))
 
         val now = System.currentTimeMillis()
-        val keepers = SortedMap[Long, PValue](
-          4L -> PValue(Ballot(3, "b"), 4, Command(null, now - 1000, Delete("3"))),
-          5L -> PValue(Ballot(3, "b"), 5, Command(null, 1L, Delete("Z"))),
-          6L -> PValue(Ballot(4, "b"), 6, Command(null, now, Delete("R")))
+        val keepers = SortedMap[Long,Tuple2[ Long,PValue]](
+          4L -> (now - 1000,PValue(Ballot(3, "b"), 4, Command(null, 1L, Delete("3")))),
+          5L -> (1L,PValue(Ballot(3, "b"), 5, Command(null, 1L, Delete("Z")))),
+          6L -> (now,PValue(Ballot(4, "b"), 6, Command(null, 1L, Delete("R"))))
         )
 
-        val accepted = new JTreeMap[Long,PValue]()
+        val accepted = new JTreeMap[Long,Tuple2[Long,PValue]]()
 
         accepted.putAll((SortedMap(
-          1L -> PValue(Ballot(1, "a"), 1, Command(null, (now - reapWindow - 100L), Delete("1"))),
-          2L -> PValue(Ballot(2, "b"), 2, Command(null, (now - reapWindow - 105L), Delete("2")))
+          1L -> (1L, PValue(Ballot(1, "a"), 1, Command(null, (now - reapWindow - 100L), Delete("1")))),
+          2L -> (1L, PValue(Ballot(2, "b"), 2, Command(null, (now - reapWindow - 105L), Delete("2"))))
         ) ++ keepers).asJava)
 
         acceptor.underlyingActor.accepted = accepted
@@ -213,15 +217,15 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       it ("must not update its lowestAcceptableSlotNumber if nothing is reaped") {
         val acceptor = TestActorRef(new Acceptor(10, 30 * 60 * 1000L))
 
-        acceptor.underlyingActor.accepted = new JTreeMap[Long, PValue]()
+        acceptor.underlyingActor.accepted = new JTreeMap[Long, Tuple2[Long,PValue]]()
         acceptor ! Acceptor.Reap
         assert(10 === acceptor.underlyingActor.lowestAcceptableSlotNumber)
 
-        acceptor.underlyingActor.accepted = new JTreeMap[Long,PValue]()
+        acceptor.underlyingActor.accepted = new JTreeMap[Long,Tuple2[Long,PValue]]()
         acceptor.underlyingActor.accepted.putAll(
-        SortedMap[Long, PValue](
-          1L -> PValue(Ballot(1, "A"), 11, Command(null, System.currentTimeMillis(), Delete("Z")))
-        ).asJava)
+        SortedMap(
+          1L -> (System.currentTimeMillis,PValue(Ballot(1, "A"), 11, Command(null, 1L, Delete("Z")))
+        )).asJava)
         acceptor ! Acceptor.Reap
         assert(10 === acceptor.underlyingActor.lowestAcceptableSlotNumber)
       }
