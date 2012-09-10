@@ -13,7 +13,6 @@ import java.util.concurrent.Future
 import scalax.file.Path
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import java.util.{HashMap => JHashMap}
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -73,7 +72,6 @@ object SiriusImpl extends AkkaConfig {
  *
  * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
  * @param siriusLog the log to be used for persisting events
- * @param clusterConfigPath *** NOT USED, LEFT FOR API COMPATIBILITY FOR THE SHORT TERM
  * @param config SiriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration
  *            for more information
  * @param supPropsFactory a factory method for creating the Props of the SiriusSupervisor
@@ -83,11 +81,19 @@ object SiriusImpl extends AkkaConfig {
  */
 class SiriusImpl(requestHandler: RequestHandler,
                  siriusLog: SiriusLog,
-                 clusterConfigPath: Path,
                  config: SiriusConfiguration = new SiriusConfiguration,
                  supPropsFactory: SiriusImpl.SiriusSupPropsFactory = SiriusImpl.createSiriusSupervisor)
                 (implicit val actorSystem: ActorSystem)
     extends Sirius with AkkaConfig {
+
+  @deprecated("clusterConfigPath parameter is deprecated and will not be acknowledged", "2012-09-10")
+  def this(requestHandler: RequestHandler,
+           siriusLog: SiriusLog,
+           clusterConfigPath: Path, // <-- being deprecated
+           config: SiriusConfiguration = new SiriusConfiguration,
+           supPropsFactory: SiriusImpl.SiriusSupPropsFactory = SiriusImpl.createSiriusSupervisor)
+          (implicit actorSystem: ActorSystem) =
+    this(requestHandler, siriusLog, config, supPropsFactory)(actorSystem)
 
   val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, SiriusImpl.DEFAULT_SUPERVISOR_NAME)
 

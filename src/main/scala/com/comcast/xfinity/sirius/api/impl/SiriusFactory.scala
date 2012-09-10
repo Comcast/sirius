@@ -94,7 +94,6 @@ object SiriusFactory extends AkkaConfig {
     val impl = new SiriusImpl(
       requestHandler,
       siriusLog,
-      Path.fromString(siriusConfig.getClusterConfigPath),
       siriusConfig
     )
 
