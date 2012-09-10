@@ -48,23 +48,21 @@ object SiriusImpl extends AkkaConfig {
 
   // Type describing method signature for creating a SiriusSupervisor.  Pretty ugly, but
   // the goal is to slim this down with SiriusConfiguration
-  type SiriusSupPropsFactory = (RequestHandler, SiriusLog,
-                                  Agent[SiriusState], Agent[Set[ActorRef]],
-                                  Path, Boolean) => Props
+  type SiriusSupPropsFactory = (RequestHandler, SiriusLog, SiriusConfiguration,
+                                  Agent[SiriusState], Agent[Set[ActorRef]], Path) => Props
 
   private val createSiriusSupervisor: SiriusSupPropsFactory =
-    (requestHandler: RequestHandler,
-     siriusLog: SiriusLog, stateAgent: Agent[SiriusState],
-     membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path,
-     usePaxos: Boolean) => {
+    (requestHandler: RequestHandler, siriusLog: SiriusLog,
+     config: SiriusConfiguration, stateAgent: Agent[SiriusState],
+     membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path) => {
        Props(
          SiriusSupervisor(
           requestHandler,
           siriusLog,
+          config,
           stateAgent,
           membershipAgent,
-          clusterConfigPath,
-          usePaxos
+          clusterConfigPath
         )
       )
     }
@@ -96,7 +94,6 @@ class SiriusImpl(requestHandler: RequestHandler,
     extends Sirius with AkkaConfig {
 
   val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, SiriusImpl.DEFAULT_SUPERVISOR_NAME)
-  val usePaxos = config.getProp(SiriusConfiguration.USE_PAXOS, false)
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
 
@@ -107,10 +104,10 @@ class SiriusImpl(requestHandler: RequestHandler,
     supPropsFactory(
       requestHandler,
       siriusLog,
+      config,
       siriusStateAgent,
       membershipAgent,
-      clusterConfigPath,
-      usePaxos
+      clusterConfigPath
     ),
     supName
   )

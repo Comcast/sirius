@@ -30,9 +30,9 @@ object SiriusImplTestCompanion {
                              supProbe: TestProbe, siriusStateAgent: Agent[SiriusState],
                              membershipAgent: Agent[Set[ActorRef]], clusterConfigPath: Path): SiriusImpl = {
     val createSiriusSupervisor: SiriusImpl.SiriusSupPropsFactory =
-      (_handler: RequestHandler,
-        _log: SiriusLog, _siriusStateAgent: Agent[SiriusState],
-        _membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path, _usePaxos: Boolean)
+      (_handler: RequestHandler, _log: SiriusLog,
+        _config: SiriusConfiguration, _siriusStateAgent: Agent[SiriusState],
+        _membershipAgent: Agent[Set[ActorRef]], _clusterConfigPath: Path)
       => Props(new ProbeWrapper(supProbe))
     new SiriusImpl(handler, siriusLog, clusterConfigPath, new SiriusConfiguration, createSiriusSupervisor)(actorSystem)
   }

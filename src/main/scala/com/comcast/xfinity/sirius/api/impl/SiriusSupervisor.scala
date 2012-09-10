@@ -4,7 +4,6 @@ import membership._
 import paxos.PaxosMessages.PaxosMessage
 import paxos.{ PaxosSup, NaiveOrderingActor }
 import persistence._
-import com.comcast.xfinity.sirius.api.RequestHandler
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -16,6 +15,7 @@ import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.event.Logging
+import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
 
 object SiriusSupervisor {
 
@@ -44,14 +44,14 @@ object SiriusSupervisor {
   def apply(
     _requestHandler: RequestHandler,
     _siriusLog: SiriusLog,
+    _config: SiriusConfiguration,
     _siriusStateAgent: Agent[SiriusState],
     _membershipAgent: Agent[Set[ActorRef]],
-    _clusterConfigPath: Path,
-    _usePaxos: Boolean): SiriusSupervisor = {
+    _clusterConfigPath: Path): SiriusSupervisor = {
     
     new SiriusSupervisor with DependencyProvider {
       val siriusStateAgent = _siriusStateAgent
-      val usePaxos = _usePaxos
+      val usePaxos = _config.getProp(SiriusConfiguration.USE_PAXOS, false)
       
       val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, _siriusStateAgent)), "state")
       val membershipActor = context.actorOf(Props(new MembershipActor(_membershipAgent, _siriusStateAgent, _clusterConfigPath)), "membership")
