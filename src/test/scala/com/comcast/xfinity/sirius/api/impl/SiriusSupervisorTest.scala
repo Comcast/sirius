@@ -95,7 +95,6 @@ class SiriusSupervisorTest extends NiceTest {
 
     supervisor = TestActorRef(new SiriusSupervisor with SiriusSupervisor.DependencyProvider {
       val siriusStateAgent: Agent[SiriusState] = _siriusStateAgent
-      val usePaxos: Boolean = false
 
       val stateSup: ActorRef = stateProbe.ref
       val membershipActor: ActorRef = membershipProbe.ref
