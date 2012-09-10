@@ -49,6 +49,7 @@ object SiriusConfiguration {
    *          as long as this instance isn't clustered
    * @param logLocation location on the filesystem of the Sirius persistent log.
    */
+  @deprecated("Don't think this is used, setting fields directly is preferred", "2012-9-10")
   def create(host: String,
              port: Int,
              clusterConfigPath: String,
@@ -67,6 +68,7 @@ object SiriusConfiguration {
    * Scala syntax sugar friendly version of create
    * @see create
    */
+  @deprecated("Don't think this is used, setting fields directly is preferred", "2012-9-10")
   def apply(host: String,
             port: Int,
             clusterConfigPath: String,
@@ -77,10 +79,10 @@ object SiriusConfiguration {
 }
 
 /**
- * Configuration object for Sirius.  Meant to encapsulate some arbitrary,
- * and not so arbitrary configuration data.
+ * Configuration object for Sirius.  Encapsulates arbitrary String key/Any value data.
+ *
+ * @see SiriusConfiguration$ constants for information of fields.
  */
-// XXX: scaladoc on these bean properties is sort of awkward...
 class SiriusConfiguration {
 
   import SiriusConfiguration._
