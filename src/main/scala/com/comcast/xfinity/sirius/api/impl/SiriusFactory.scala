@@ -11,6 +11,7 @@ import akka.actor.{ActorRef, ActorSystem}
 import management.ManagementFactory
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
+import javax.management.MBeanServer
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -90,6 +91,9 @@ object SiriusFactory extends AkkaConfig {
     val host = siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName)
     val port = siriusConfig.getProp(SiriusConfiguration.PORT, 2552)
 
+    val mbeanServer = ManagementFactory.getPlatformMBeanServer
+    siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
+
     implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(host, port))
     val impl = new SiriusImpl(
       requestHandler,
@@ -97,8 +101,8 @@ object SiriusFactory extends AkkaConfig {
       siriusConfig
     )
 
-    // create the stuff to expose mbeans
-    val admin = createAdmin(host, port, impl.supervisor)
+    // create some more stuff to expose over mbeans
+    val admin = createAdmin(mbeanServer, host, port, impl.supervisor)
     admin.registerMbeans()
 
     // need to shut down the actor system and unregister the mbeans when sirius is done
@@ -125,9 +129,7 @@ object SiriusFactory extends AkkaConfig {
     hostPortConfig.withFallback(baseAkkaConfig)
   }
 
-  private def createAdmin(host: String, port: Int, supervisorRef: ActorRef) = {
-    val mbeanServer = ManagementFactory.getPlatformMBeanServer
-
+  private def createAdmin(mbeanServer: MBeanServer, host: String, port: Int, supervisorRef: ActorRef) = {
     val info = new SiriusInfo(port, host, supervisorRef)
     new SiriusAdmin(info, mbeanServer)
   }

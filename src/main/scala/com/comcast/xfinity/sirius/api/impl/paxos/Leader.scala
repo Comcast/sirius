@@ -3,12 +3,13 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{ Props, Actor, ActorRef }
 import akka.agent.Agent
-import akka.util.duration._
 import akka.event.Logging
 import java.util.UUID
 import java.util.{TreeMap => JTreeMap}
 import scala.util.control.Breaks._
 import scala.collection.JavaConversions._
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object Leader {
   trait HelperProvider {
@@ -18,8 +19,9 @@ object Leader {
   }
 
   def apply(membership: Agent[Set[ActorRef]],
-            startingSeqNum: Long): Leader = {
-    new Leader(membership, startingSeqNum) with HelperProvider {
+            startingSeqNum: Long,
+            config: SiriusConfiguration): Leader = {
+    new Leader(membership, startingSeqNum)(config) with HelperProvider {
       val leaderHelper = new LeaderHelper()
 
       def startCommander(pval: PValue) {
@@ -36,7 +38,9 @@ object Leader {
 }
 
 class Leader(membership: Agent[Set[ActorRef]],
-             startingSeqNum: Long) extends Actor {
+             startingSeqNum: Long)
+            (implicit config: SiriusConfiguration = new SiriusConfiguration)
+      extends Actor with MonitoringHooks {
     this: Leader.HelperProvider =>
 
   val logger = Logging(context.system, "Sirius")
@@ -53,6 +57,14 @@ class Leader(membership: Agent[Set[ActorRef]],
   logger.info("Starting leader using ballotNum={}", ballotNum)
 
   startScout()
+
+  override def preStart() {
+    registerMonitor(new LeaderInfo, config)
+  }
+
+  override def postStop() {
+    unregisterMonitors(config)
+  }
 
   def receive = {
     case Propose(slotNum, command) if !proposals.containsKey(slotNum) && slotNum > latestDecidedSlot =>
@@ -114,5 +126,21 @@ class Leader(membership: Agent[Set[ActorRef]],
     logger.debug("Reaped proposals for slots up to {}", latestDecidedSlot)
 
     toClean
+  }
+
+  // monitoring hooks, to close over the scope of the class, it has to be this way
+  //  because of jmx
+  trait LeaderInfoMBean {
+    def getBallotNum: String
+    def getActive: Boolean
+    def getLatestDecidedSlot: Long
+    def getProposalCount: Int
+  }
+
+  class LeaderInfo extends LeaderInfoMBean{
+    def getBallotNum = ballotNum.toString
+    def getActive = active
+    def getLatestDecidedSlot = latestDecidedSlot
+    def getProposalCount = proposals.size
   }
 }
