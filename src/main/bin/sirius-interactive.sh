@@ -17,7 +17,8 @@ function onExit {
 
 trap onExit EXIT
 
-SIRIUS_CLASSPATH=$sirius_base/bin/sirius.jar:${CLASSPATH:=.}
+SIRIUS_CLASSPATH=${CLASSPATH:=.}:$sirius_base/conf/:$sirius_base/bin
+SIRIUS_CLASSPATH=$SIRIUS_CLASSPATH:$sirius_base/bin/sirius.jar
 for j in `ls $sirius_base/lib/*.jar`; do
     SIRIUS_CLASSPATH=$SIRIUS_CLASSPATH:$j
 done

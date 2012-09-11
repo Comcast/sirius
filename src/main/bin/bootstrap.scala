@@ -3,7 +3,22 @@ import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.api.impl.persistence._
 import com.comcast.xfinity.sirius.writeaheadlog._
 
-import scalax.io.CloseableIterator
+class NoopRequestHandler extends RequestHandler {
+  def handleGet(key: String) = SiriusResult.none
+  def handlePut(key: String, body: Array[Byte]) = SiriusResult.none
+  def handleDelete(key: String) = SiriusResult.none
+}
+
+def createSirius(logLocation: String = "/tmp/uberlog",
+                 clusterConfig: String = "/tmp/cluster-config",
+                 usePaxos: Boolean = true) = {
+  val cfg = new SiriusConfiguration
+  cfg.setProp(SiriusConfiguration.LOG_LOCATION, logLocation)
+  cfg.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfig)
+  cfg.setProp(SiriusConfiguration.USE_PAXOS, usePaxos)
+  SiriusFactory.createInstance(new NoopRequestHandler, cfg)
+}
+
 
 println()
 println("Most of the Sirius classes have been imported, nonetheless we may have missed some...")
