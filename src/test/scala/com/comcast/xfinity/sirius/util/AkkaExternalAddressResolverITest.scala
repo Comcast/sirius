@@ -5,7 +5,6 @@ import org.scalatest.BeforeAndAfterAll
 import com.typesafe.config.ConfigFactory
 import java.util.{HashMap => JHashMap}
 import akka.actor.{Actor, Props, ActorSystem}
-import java.net.InetAddress
 
 object AkkaExternalAddressResolverITest {
   class SuperSimpleActor extends Actor {
