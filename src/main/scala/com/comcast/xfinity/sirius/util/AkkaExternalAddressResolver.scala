@@ -20,9 +20,12 @@ object AkkaExternalAddressResolver extends ExtensionKey[AkkaExternalAddressResol
  */
 class AkkaExternalAddressResolver(system: ExtendedActorSystem) extends Extension {
 
+  /**
+   * The address of this ActorSystem, as seen externally
+   */
   // the idea here is to discover our external address, by getting our address
   //  relative to an external host, "akka://@nohost:0"
-  private final val externalAddress =
+  final val externalAddress =
     system.provider.getExternalAddressFor(new Address("akka", "", "nohost", 0))
 
   /**

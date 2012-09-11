@@ -68,6 +68,12 @@ object SiriusConfiguration {
   final val ACCEPTOR_CLEANUP_FREQ = "sirius.paxos.acceptor.acceptor-cleanup-freq-secs"
 
   /**
+   * An MBeanServer, that if configured, will be used to expose metrics around Sirius
+   * (MBeanServer)
+   */
+  final val MBEAN_SERVER = "sirius.monitoring.mbean-server"
+
+  /**
    * Factory method to create a SiriusConfiguration object.
    *
    * @param hostName the hostName or IP to which this instance should bind.  It is important that other
