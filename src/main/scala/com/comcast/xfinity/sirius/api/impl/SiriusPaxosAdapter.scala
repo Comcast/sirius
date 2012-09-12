@@ -58,7 +58,9 @@ class SiriusPaxosAdapter(membership: Agent[Set[ActorRef]],
                          siriusSupActor: ActorRef,
                          config: SiriusConfiguration)(implicit context: ActorContext) {
 
-  val paxosStateBridge = context.actorOf(Props(new PaxosStateBridge(startingSeq, persistenceActor, logRequestActor, siriusSupActor)), "paxos-state-bridge")
+  val paxosStateBridge = context.actorOf(Props(
+    PaxosStateBridge(startingSeq,  persistenceActor, logRequestActor,
+                     siriusSupActor, config)), "paxos-state-bridge")
 
   val paxosSubSystem = context.actorOf(Props(
     PaxosSup(membership, startingSeq, SiriusPaxosAdapter.createPerformFun(paxosStateBridge), config)),

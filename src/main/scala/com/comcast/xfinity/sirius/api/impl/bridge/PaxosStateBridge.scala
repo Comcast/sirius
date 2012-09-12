@@ -3,15 +3,26 @@ package com.comcast.xfinity.sirius.api.impl.bridge
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import collection.SortedMap
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import com.comcast.xfinity.sirius.api.SiriusResult
+import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import annotation.tailrec
 import akka.actor.{Actor, ActorRef}
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.persistence.{RequestLogFromAnyRemote, BoundedLogRange}
 import akka.event.Logging
+import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object PaxosStateBridge {
   object RequestGaps
+
+  def apply(startingSeq: Long,
+            stateSupActor: ActorRef,
+            logRequestActor: ActorRef,
+            siriusSupActor: ActorRef,
+            config: SiriusConfiguration) = {
+
+    // TODO add grabbing request gaps delay from config, pass into constructor?
+    new PaxosStateBridge(startingSeq, stateSupActor, logRequestActor, siriusSupActor)(config)
+  }
 }
 
 /**
@@ -47,7 +58,9 @@ object PaxosStateBridge {
 class PaxosStateBridge(startingSeq: Long,
                        stateSupActor: ActorRef,
                        logRequestActor: ActorRef,
-                       siriusSupActor: ActorRef) extends Actor {
+                       siriusSupActor: ActorRef)
+                      (implicit config: SiriusConfiguration = new SiriusConfiguration)
+      extends Actor with MonitoringHooks {
     import PaxosStateBridge._
 
   val logger = Logging(context.system, "Sirius")
@@ -61,7 +74,13 @@ class PaxosStateBridge(startingSeq: Long,
   var nextSeq: Long = startingSeq
   var eventBuffer = SortedMap[Long, OrderedEvent]()
 
-  override def postStop() { requestGapsCancellable.cancel() }
+  override def preStart() {
+    registerMonitor(new PaxosStateBridgeInfo, config)
+  }
+  override def postStop() {
+    unregisterMonitors(config)
+    requestGapsCancellable.cancel()
+  }
 
   def receive = {
 
@@ -171,5 +190,18 @@ class PaxosStateBridge(startingSeq: Long,
       case None =>
         accum
     }
+  }
+
+  /**
+   * Monitoring hooks
+   */
+  trait PaxosStateBridgeInfoMBean {
+    def getNextSeq: Long
+    def getEventBufferSize: Int
+  }
+
+  class PaxosStateBridgeInfo extends PaxosStateBridgeInfoMBean {
+    def getNextSeq = nextSeq
+    def getEventBufferSize = eventBuffer.size
   }
 }
