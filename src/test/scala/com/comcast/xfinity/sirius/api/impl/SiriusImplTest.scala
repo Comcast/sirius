@@ -26,13 +26,12 @@ object SiriusImplTestCompanion {
   }
 
   // Create an extended impl for testing
-  def createProbedSiriusImpl(handler: RequestHandler, actorSystem: ActorSystem, siriusLog: SiriusLog,
-                             supProbe: TestProbe, siriusStateAgent: Agent[SiriusState],
-                             membershipAgent: Agent[Set[ActorRef]]): SiriusImpl = {
+  def createProbedSiriusImpl(handler: RequestHandler,
+                             actorSystem: ActorSystem,
+                             siriusLog: SiriusLog,
+                             supProbe: TestProbe): SiriusImpl = {
     val createSiriusSupervisor: SiriusImpl.SiriusSupPropsFactory =
-      (_handler: RequestHandler, _log: SiriusLog,
-        _config: SiriusConfiguration, _siriusStateAgent: Agent[SiriusState],
-        _membershipAgent: Agent[Set[ActorRef]])
+      (_handler: RequestHandler, _log: SiriusLog, _config: SiriusConfiguration)
       => Props(new ProbeWrapper(supProbe))
     new SiriusImpl(handler, siriusLog, new SiriusConfiguration, createSiriusSupervisor)(actorSystem)
   }
@@ -50,8 +49,6 @@ class SiriusImplTest extends NiceTest with TimedTest {
   val timeout: Timeout = (5 seconds)
   var siriusLog: SiriusLog = _
   var membership: Set[ActorRef] = _
-  var siriusStateAgent: Agent[SiriusState] = _
-  var membershipAgent: Agent[Set[ActorRef]] = _
 
   before {
     actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
@@ -83,8 +80,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
     siriusLog = mock[SiriusLog]
 
     underTest = SiriusImplTestCompanion
-      .createProbedSiriusImpl(mockRequestHandler, actorSystem, siriusLog, supervisorActorProbe, siriusStateAgent,
-      membershipAgent)
+      .createProbedSiriusImpl(mockRequestHandler, actorSystem, siriusLog, supervisorActorProbe)
 
   }
 

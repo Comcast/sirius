@@ -29,6 +29,7 @@ object SiriusSupervisor {
     val orderingActor: ActorRef
     val logRequestActor: ActorRef
     val membershipActor: ActorRef
+    val membershipAgent: Agent[Set[ActorRef]]
     val siriusStateAgent: Agent[SiriusState]
   }
 
@@ -43,14 +44,13 @@ object SiriusSupervisor {
   def apply(
     _requestHandler: RequestHandler,
     _siriusLog: SiriusLog,
-    config: SiriusConfiguration,
-    _siriusStateAgent: Agent[SiriusState],
-    _membershipAgent: Agent[Set[ActorRef]]): SiriusSupervisor = {
+    config: SiriusConfiguration): SiriusSupervisor = {
     
     new SiriusSupervisor with DependencyProvider {
-      val siriusStateAgent = _siriusStateAgent
+      val siriusStateAgent = Agent(new SiriusState)(context.system)
+      val membershipAgent = Agent(Set[ActorRef]())(context.system)
       
-      val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, _siriusStateAgent)), "state")
+      val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, siriusStateAgent)), "state")
 
       val membershipActor = {
         val clusterConfigPath = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG) match {
@@ -59,16 +59,16 @@ object SiriusSupervisor {
         }
         context.actorOf(
           Props(
-            new MembershipActor(_membershipAgent, _siriusStateAgent, Path.fromString(clusterConfigPath))
+            new MembershipActor(membershipAgent, siriusStateAgent, Path.fromString(clusterConfigPath))
           ), "membership")
       }
 
-      val logRequestActor = context.actorOf(Props(new LogRequestActor(100, _siriusLog, self, _membershipAgent)), "log")
+      val logRequestActor = context.actorOf(Props(new LogRequestActor(100, _siriusLog, self, membershipAgent)), "log")
 
       val orderingActor =
         if (config.getProp(SiriusConfiguration.USE_PAXOS, false)) {
           val siriusPaxosAdapter = new SiriusPaxosAdapter(
-            _membershipAgent,
+            membershipAgent,
             _siriusLog.getNextSeq,
             stateSup,
             logRequestActor,
@@ -95,6 +95,11 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
 
   val initSchedule = context.system.scheduler
     .schedule(Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest)
+
+  override def postStop() {
+    siriusStateAgent.close()
+    membershipAgent.close()
+  }
 
   def receive = {
     case SiriusSupervisor.IsInitializedRequest => {

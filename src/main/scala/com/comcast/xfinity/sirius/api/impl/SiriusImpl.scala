@@ -20,20 +20,15 @@ object SiriusImpl extends AkkaConfig {
 
   // Type describing method signature for creating a SiriusSupervisor.  Pretty ugly, but
   // the goal is to slim this down with SiriusConfiguration
-  type SiriusSupPropsFactory = (RequestHandler, SiriusLog, SiriusConfiguration,
-                                  Agent[SiriusState], Agent[Set[ActorRef]]) => Props
+  type SiriusSupPropsFactory = (RequestHandler, SiriusLog, SiriusConfiguration) => Props
 
   private val createSiriusSupervisor: SiriusSupPropsFactory =
-    (requestHandler: RequestHandler, siriusLog: SiriusLog,
-     config: SiriusConfiguration, stateAgent: Agent[SiriusState],
-     membershipAgent: Agent[Set[ActorRef]]) => {
+    (requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration) => {
        Props(
          SiriusSupervisor(
           requestHandler,
           siriusLog,
-          config,
-          stateAgent,
-          membershipAgent
+          config
         )
       )
     }
@@ -63,16 +58,11 @@ class SiriusImpl(requestHandler: RequestHandler,
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
 
-  val membershipAgent = Agent(Set[ActorRef]())(actorSystem)
-  val siriusStateAgent: Agent[SiriusState] = Agent(new SiriusState())(actorSystem)
-
   val supervisor = actorSystem.actorOf(
     supPropsFactory(
       requestHandler,
       siriusLog,
-      config,
-      siriusStateAgent,
-      membershipAgent
+      config
     ),
     supName
   )
@@ -132,8 +122,6 @@ class SiriusImpl(requestHandler: RequestHandler,
    */
   def shutdown() {
     supervisor ! Kill
-    membershipAgent.close()
-    siriusStateAgent.close()
     onShutdownHook match {
       case Some(shutdownHook) => shutdownHook()
       case None => //do nothing

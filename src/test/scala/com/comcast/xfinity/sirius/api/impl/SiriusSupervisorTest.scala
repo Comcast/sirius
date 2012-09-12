@@ -4,11 +4,9 @@ import membership._
 import com.typesafe.config.ConfigFactory
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{TestProbe, TestActor, TestActorRef}
-import org.mockito.Mockito._
 import akka.dispatch.Await
 import akka.pattern.ask
 import akka.util.duration._
@@ -17,9 +15,6 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
-import scalax.file.Path
-import scalax.io.Line.Terminators.NewLine
-import scalax.io.LongTraversable
 
 
 @RunWith(classOf[JUnitRunner])
@@ -31,16 +26,9 @@ class SiriusSupervisorTest extends NiceTest {
   var persistenceProbe: TestProbe = _
   var stateProbe: TestProbe = _
   var membershipProbe: TestProbe = _
-  var nodeToJoinProbe: TestProbe = _
-
-  var membershipAgent: Agent[Set[ActorRef]] = _
-  var _siriusStateAgent: Agent[SiriusState] = _
 
   var handler: RequestHandler = _
   var siriusLog: SiriusLog = _
-  var siriusState: SiriusState = _
-  var clusterConfigPath: Path = _
-
 
   var supervisor: TestActorRef[SiriusSupervisor with SiriusSupervisor.DependencyProvider] = _
 
@@ -54,10 +42,6 @@ class SiriusSupervisorTest extends NiceTest {
     //setup mocks
     handler = mock[RequestHandler]
     siriusLog = mock[SiriusLog]
-    clusterConfigPath = mock[Path]
-
-    when(clusterConfigPath.lastModified).thenReturn(1L)
-    when(clusterConfigPath.lines(NewLine, includeTerminator = false)).thenReturn(LongTraversable("dummyhost:8080"))
 
     membershipProbe = TestProbe()(actorSystem)
     membershipProbe.setAutoPilot(new TestActor.AutoPilot {
@@ -89,12 +73,9 @@ class SiriusSupervisorTest extends NiceTest {
 
     persistenceProbe = TestProbe()(actorSystem)
 
-    membershipAgent = mock[Agent[Set[ActorRef]]]
-    siriusState = new SiriusState
-    _siriusStateAgent = Agent(siriusState)(actorSystem)
-
     supervisor = TestActorRef(new SiriusSupervisor with SiriusSupervisor.DependencyProvider {
-      val siriusStateAgent: Agent[SiriusState] = _siriusStateAgent
+      val siriusStateAgent = Agent(new SiriusState)(context.system)
+      val membershipAgent = Agent(Set[ActorRef]())(context.system)
 
       val stateSup: ActorRef = stateProbe.ref
       val membershipActor: ActorRef = membershipProbe.ref
@@ -108,7 +89,11 @@ class SiriusSupervisorTest extends NiceTest {
     actorSystem.shutdown()
   }
 
-  def initializeSupervisor(supervisor: ActorRef) {
+  def initializeSupervisor(supervisor: TestActorRef[SiriusSupervisor with SiriusSupervisor.DependencyProvider]) {
+    val siriusStateAgent = supervisor.underlyingActor.siriusStateAgent
+    // XXX: the following works because siriusState is mutable, nothing wrong with that,
+    //      just wanted to state the obvious
+    val siriusState = siriusStateAgent.get()
     siriusState.updateStateActorState(SiriusState.StateActorState.Initialized)
     siriusState.updatePersistenceState(SiriusState.PersistenceState.Initialized)
     siriusState.updateMembershipActorState(SiriusState.MembershipActorState.Initialized)
@@ -120,12 +105,14 @@ class SiriusSupervisorTest extends NiceTest {
 
   describe("a SiriusSupervisor") {
     it("should start in the uninitialized state") {
+      val siriusState = supervisor.underlyingActor.siriusStateAgent()
       assert(siriusState.supervisorState === SiriusState.SupervisorState.Uninitialized)
     }
 
     it("should transition into the initialized state") {
       initializeSupervisor(supervisor)
-      assert(_siriusStateAgent.await(timeout).supervisorState === SiriusState.SupervisorState.Initialized)
+      val stateAgent = supervisor.underlyingActor.siriusStateAgent
+      assert(stateAgent.await(timeout).supervisorState === SiriusState.SupervisorState.Initialized)
 
     }
 
