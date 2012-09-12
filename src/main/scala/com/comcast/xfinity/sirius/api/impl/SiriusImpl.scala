@@ -19,32 +19,6 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
  */
 object SiriusImpl extends AkkaConfig {
 
-  /**
-   * @see [[com.comcast.xfinity.sirius.api.impl.SiriusFactory$]]
-   */
-  @deprecated("Moved to SiriusFactory", "2012-08-10")
-  def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl =
-    SiriusFactory.createInstance(requestHandler, siriusConfig)
-
-  /**
-   * USE ONLY FOR TESTING TO MOCK OUT A LOG!
-   * @see [[com.comcast.xfinity.sirius.api.impl.SiriusFactory$]]
-   */
-  @deprecated("Moved to SiriusFactory", "2012-08-10")
-  private[sirius] def createSirius(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
-                   siriusLog: SiriusLog): SiriusImpl = {
-    SiriusFactory.createInstance(requestHandler, siriusConfig, siriusLog)
-  }
-
-  /**
-   * @see [[com.comcast.xfinity.sirius.api.impl.SiriusFactory$]]
-   */
-  @deprecated("Moved to SiriusFactory", "2012-08-10")
-  private[sirius] def createSirius(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
-                   clusterConfigPath: String, usePaxos: Boolean): SiriusImpl = {
-    SiriusFactory.createInstance(requestHandler, siriusLog, hostName, port, clusterConfigPath, usePaxos)
-  }
-
   // Type describing method signature for creating a SiriusSupervisor.  Pretty ugly, but
   // the goal is to slim this down with SiriusConfiguration
   type SiriusSupPropsFactory = (RequestHandler, SiriusLog, SiriusConfiguration,
