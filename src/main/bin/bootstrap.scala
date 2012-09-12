@@ -11,11 +11,13 @@ class NoopRequestHandler extends RequestHandler {
 
 def createSirius(logLocation: String = "/tmp/uberlog",
                  clusterConfig: String = "/tmp/cluster-config",
-                 usePaxos: Boolean = true) = {
+                 usePaxos: Boolean = true,
+                 port: Int = 2552) = {
   val cfg = new SiriusConfiguration
   cfg.setProp(SiriusConfiguration.LOG_LOCATION, logLocation)
   cfg.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfig)
   cfg.setProp(SiriusConfiguration.USE_PAXOS, usePaxos)
+  cfg.setProp(SiriusConfiguration.PORT, port)
   SiriusFactory.createInstance(new NoopRequestHandler, cfg)
 }
 
