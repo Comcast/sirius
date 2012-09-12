@@ -113,7 +113,9 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
 
         initSchedule.cancel()
         membershipActor ! CheckClusterConfig
-        sender ! new SiriusSupervisor.IsInitializedResponse(isPersistenceInitialized)
+        sender ! new SiriusSupervisor.IsInitializedResponse(true)
+      } else {
+        sender ! new SiriusSupervisor.IsInitializedResponse(false)
       }
     }
 

@@ -132,68 +132,29 @@ class SiriusImplTest extends NiceTest with TimedTest {
     }
 
     describe(".isOnline") {
-      it("returns true if state, membership, and persistence are initialized") {
-        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Initialized
-        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Initialized
-        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Initialized
+      // we need a better way of terminating...
+      it ("returns false if the supervisor is shut down")(pending)
 
-        assert(underTest.isOnline);
+      it ("returns true if the supervisor is up and reports that it is initialized") {
+        supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
+          def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
+            case SiriusSupervisor.IsInitializedRequest =>
+              sender ! SiriusSupervisor.IsInitializedResponse(true)
+              None
+          }
+        })
+        assert(true === underTest.isOnline)
       }
 
-      it("returns false if state, membership, and persistence are uninitialized") {
-        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Uninitialized
-        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Uninitialized
-        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
-
-        assert(!underTest.isOnline);
-      }
-
-      it("returns false if state and membership are uninitialized") {
-        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Uninitialized
-        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Uninitialized
-        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Initialized
-
-        assert(!underTest.isOnline);
-      }
-
-      it("returns false if state and persistence are uninitialized") {
-        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Uninitialized
-        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Initialized
-        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
-
-        assert(!underTest.isOnline);
-      }
-
-      it("returns false if membership and persistence are uninitialized") {
-        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Initialized
-        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Uninitialized
-        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
-
-        assert(!underTest.isOnline);
-      }
-
-      it("returns false if state is uninitialized") {
-        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Uninitialized
-        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Initialized
-        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Initialized
-
-        assert(!underTest.isOnline);
-      }
-
-      it("returns false if membership is uninitialized") {
-        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Initialized
-        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Uninitialized
-        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Initialized
-
-        assert(!underTest.isOnline);
-      }
-
-      it("returns false if persistence is uninitialized") {
-        underTest.siriusStateAgent().stateActorState = SiriusState.StateActorState.Initialized
-        underTest.siriusStateAgent().membershipActorState = SiriusState.MembershipActorState.Initialized
-        underTest.siriusStateAgent().persistenceState = SiriusState.PersistenceState.Uninitialized
-
-        assert(!underTest.isOnline);
+      it ("returns false if the supervisor is up and reports that it is not initialized") {
+        supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
+          def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
+            case SiriusSupervisor.IsInitializedRequest =>
+              sender ! SiriusSupervisor.IsInitializedResponse(false)
+              None
+          }
+        })
+        assert(false === underTest.isOnline)
       }
     }
 

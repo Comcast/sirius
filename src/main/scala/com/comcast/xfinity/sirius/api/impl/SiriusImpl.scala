@@ -4,7 +4,6 @@ import compat.AkkaFutureAdapter
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
 import akka.pattern.ask
-import akka.dispatch.{Future => AkkaFuture}
 import membership._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
@@ -12,6 +11,7 @@ import akka.actor._
 import java.util.concurrent.Future
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import akka.dispatch.{Await, Future => AkkaFuture}
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -87,20 +87,7 @@ class SiriusImpl(requestHandler: RequestHandler,
    *
    * @return true if system is ready, false if not
    */
-  def isOnline: Boolean = {
-    // XXX: the following is not pretty, we will not want to do it this way for real, this is
-    //      a sacrifice that must be made to start getting a stable api build though, at the time
-    //      this was written, the success rate was 7%
-    if (supervisor.isTerminated) {
-      false
-    } else {
-      val siriusStateSnapshot = siriusStateAgent()
-      ((siriusStateSnapshot.stateActorState == SiriusState.StateActorState.Initialized) &&
-        (siriusStateSnapshot.membershipActorState == SiriusState.MembershipActorState.Initialized) &&
-        (siriusStateSnapshot.persistenceState == SiriusState.PersistenceState.Initialized))
-    }
-
-  }
+  def isOnline: Boolean = !supervisor.isTerminated && askIfInitialized(supervisor)
 
   def checkClusterConfig() {
     supervisor ! CheckClusterConfig
@@ -151,7 +138,12 @@ class SiriusImpl(requestHandler: RequestHandler,
       case Some(shutdownHook) => shutdownHook()
       case None => //do nothing
     }
-
   }
 
+
+  private def askIfInitialized(supRef: ActorRef): Boolean = {
+    val isInitializedFuture =
+        (supRef ? SiriusSupervisor.IsInitializedRequest).mapTo[SiriusSupervisor.IsInitializedResponse]
+      Await.result(isInitializedFuture, timeout.duration).initialized
+  }
 }
