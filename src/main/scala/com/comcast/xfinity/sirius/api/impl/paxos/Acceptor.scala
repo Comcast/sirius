@@ -15,7 +15,7 @@ object Acceptor {
   case object Reap
 
   def apply(startingSeqNum: Long, config: SiriusConfiguration): Acceptor = {
-    val reapWindow = config.getProp(SiriusConfiguration.ACCEPTOR_WINDOW, 30 * 60 * 1000L)
+    val reapWindow = config.getProp(SiriusConfiguration.ACCEPTOR_WINDOW, 10 * 60 * 1000L)
     val reapFreqSecs = config.getProp(SiriusConfiguration.ACCEPTOR_CLEANUP_FREQ, 30)
 
     new Acceptor(startingSeqNum, reapWindow) {
@@ -30,7 +30,7 @@ object Acceptor {
 }
 
 class Acceptor(startingSeqNum: Long,
-               reapWindow: Long = 30 * 60 * 1000L) extends Actor {
+               reapWindow: Long = 10 * 60 * 1000L) extends Actor {
 
   import Acceptor._
 
