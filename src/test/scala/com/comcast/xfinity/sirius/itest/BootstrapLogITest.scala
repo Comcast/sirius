@@ -54,7 +54,7 @@ class BootstrapLogITest extends NiceTest with TimedTest {
     val config = new SiriusConfiguration
     config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath.path)
 
-    sirius = new SiriusImpl(
+    sirius = SiriusImpl(
       stringRequestHandler,
       logWriter,
       config

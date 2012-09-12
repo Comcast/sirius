@@ -5,7 +5,6 @@ import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
 import akka.pattern.ask
 import membership._
-import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.actor._
 import java.util.concurrent.Future
@@ -13,59 +12,45 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import akka.dispatch.{Await, Future => AkkaFuture}
 
-/**
- * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
- */
-object SiriusImpl extends AkkaConfig {
+object SiriusImpl {
 
-  // Type describing method signature for creating a SiriusSupervisor.  Pretty ugly, but
-  // the goal is to slim this down with SiriusConfiguration
-  type SiriusSupPropsFactory = (RequestHandler, SiriusLog, SiriusConfiguration) => Props
+  /**
+   * Create a new SiriusImpl.
+   *
+   * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
+   * @param siriusLog the log to be used for persisting events
+   * @param config SiriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration
+   *            for more information
+   */
+  def apply(requestHandler: RequestHandler,
+            siriusLog: SiriusLog,
+            config: SiriusConfiguration)
+           (implicit actorSystem: ActorSystem): SiriusImpl = {
+    val supProps = Props(SiriusSupervisor(requestHandler, siriusLog, config))
+    new SiriusImpl(config, supProps)
+  }
 
-  private val createSiriusSupervisor: SiriusSupPropsFactory =
-    (requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration) => {
-       Props(
-         SiriusSupervisor(
-          requestHandler,
-          siriusLog,
-          config
-        )
-      )
-    }
 
 }
 
 /**
- * A Sirius implementation implemented in Scala built on top of Akka.
+ * Create a SiriusImpl
  *
- * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
- * @param siriusLog the log to be used for persisting events
+ * This is a semi-internal API, you should prefer the companion object's apply.
+ *
  * @param config SiriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration
  *            for more information
- * @param supPropsFactory a factory method for creating the Props of the SiriusSupervisor
- *            *** THIS SHOULD NOT BE USED EXTERNALLY, IT IS ONLY FOR DI, AND WILL PROBABLY CHANGE SOON ***
- * @param actorSystem the actorSystem to use to create the Actors for Sirius (Note, this param will likely be
- *            moved in future refactorings to be an implicit parameter at the end of the argument list)
+ * @param supProps Props factory for creating the supervisor
+ * @param actorSystem the actorSystem to use to create the Actors for Sirius
  */
-class SiriusImpl(requestHandler: RequestHandler,
-                 siriusLog: SiriusLog,
-                 config: SiriusConfiguration = new SiriusConfiguration,
-                 supPropsFactory: SiriusImpl.SiriusSupPropsFactory = SiriusImpl.createSiriusSupervisor)
-                (implicit val actorSystem: ActorSystem)
+class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val actorSystem: ActorSystem)
     extends Sirius with AkkaConfig {
 
-  val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, SiriusImpl.DEFAULT_SUPERVISOR_NAME)
+  val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, DEFAULT_SUPERVISOR_NAME)
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
 
-  val supervisor = actorSystem.actorOf(
-    supPropsFactory(
-      requestHandler,
-      siriusLog,
-      config
-    ),
-    supName
-  )
+  val supervisor = actorSystem.actorOf(supProps, supName)
 
   def getMembership = {
     val akkaFuture = (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[Set[ActorRef]]]

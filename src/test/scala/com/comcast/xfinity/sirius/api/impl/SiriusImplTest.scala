@@ -7,15 +7,12 @@ import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
 import akka.actor._
-import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import akka.agent.Agent
 import java.util.concurrent.TimeUnit
-import scalax.file.Path
 import com.comcast.xfinity.sirius.api.impl.membership._
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
-import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler, SiriusResult}
+import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 
 object SiriusImplTestCompanion {
 
@@ -26,14 +23,9 @@ object SiriusImplTestCompanion {
   }
 
   // Create an extended impl for testing
-  def createProbedSiriusImpl(handler: RequestHandler,
-                             actorSystem: ActorSystem,
-                             siriusLog: SiriusLog,
+  def createProbedSiriusImpl(actorSystem: ActorSystem,
                              supProbe: TestProbe): SiriusImpl = {
-    val createSiriusSupervisor: SiriusImpl.SiriusSupPropsFactory =
-      (_handler: RequestHandler, _log: SiriusLog, _config: SiriusConfiguration)
-      => Props(new ProbeWrapper(supProbe))
-    new SiriusImpl(handler, siriusLog, new SiriusConfiguration, createSiriusSupervisor)(actorSystem)
+    new SiriusImpl(new SiriusConfiguration, Props(new ProbeWrapper(supProbe)))(actorSystem)
   }
 }
 
@@ -41,13 +33,10 @@ object SiriusImplTestCompanion {
 @RunWith(classOf[JUnitRunner])
 class SiriusImplTest extends NiceTest with TimedTest {
 
-  var mockRequestHandler: RequestHandler = _
-
   var supervisorActorProbe: TestProbe = _
   var underTest: SiriusImpl = _
   var actorSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
-  var siriusLog: SiriusLog = _
   var membership: Set[ActorRef] = _
 
   before {
@@ -77,10 +66,8 @@ class SiriusImplTest extends NiceTest with TimedTest {
       }
     })
 
-    siriusLog = mock[SiriusLog]
-
     underTest = SiriusImplTestCompanion
-      .createProbedSiriusImpl(mockRequestHandler, actorSystem, siriusLog, supervisorActorProbe)
+      .createProbedSiriusImpl(actorSystem, supervisorActorProbe)
 
   }
 

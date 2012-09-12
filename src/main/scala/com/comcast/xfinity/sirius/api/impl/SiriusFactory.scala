@@ -61,11 +61,7 @@ object SiriusFactory extends AkkaConfig {
     siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
 
     implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(host, port))
-    val impl = new SiriusImpl(
-      requestHandler,
-      siriusLog,
-      siriusConfig
-    )
+    val impl = SiriusImpl(requestHandler, siriusLog, siriusConfig)
 
     // create some more stuff to expose over mbeans
     val admin = createAdmin(mbeanServer, host, port, impl.supervisor)
