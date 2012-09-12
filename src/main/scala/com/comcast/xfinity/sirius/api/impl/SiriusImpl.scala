@@ -10,7 +10,6 @@ import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.actor._
 import java.util.concurrent.Future
-import scalax.file.Path
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
@@ -59,15 +58,6 @@ class SiriusImpl(requestHandler: RequestHandler,
                  supPropsFactory: SiriusImpl.SiriusSupPropsFactory = SiriusImpl.createSiriusSupervisor)
                 (implicit val actorSystem: ActorSystem)
     extends Sirius with AkkaConfig {
-
-  @deprecated("clusterConfigPath parameter is deprecated and will not be acknowledged", "2012-09-10")
-  def this(requestHandler: RequestHandler,
-           siriusLog: SiriusLog,
-           clusterConfigPath: Path, // <-- being deprecated
-           config: SiriusConfiguration = new SiriusConfiguration,
-           supPropsFactory: SiriusImpl.SiriusSupPropsFactory = SiriusImpl.createSiriusSupervisor)
-          (implicit actorSystem: ActorSystem) =
-    this(requestHandler, siriusLog, config, supPropsFactory)(actorSystem)
 
   val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, SiriusImpl.DEFAULT_SUPERVISOR_NAME)
 
