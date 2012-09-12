@@ -40,40 +40,6 @@ object SiriusFactory extends AkkaConfig {
     createInstance(requestHandler, siriusConfig, log)
   }
 
-/**
-   * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
-   * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
-   * shutdown the dependent ActorSystem.
-   *
-   * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
-   * @param siriusLog the persistence layer to which events should be committed to and replayed from
-   *          note, this parameter may be removed in future refactorings
-   * @param hostName the hostName or IP to which this instance should bind.  It is important that other
-   *          Sirius instances identify this host by this name.  This is passed directly to Akka's
-   *          configuration, for the interested
-   * @param port the port which this instance should bind to.  This is passed directly to Akka's
-   *          configuration, for the interested
-   * @param clusterConfigPath string pointing to the location of this cluster's configuration.  This should
-   *          be a file with Akka style addresses on each line indicating membership. For more information
-   *          see http://doc.akka.io/docs/akka/snapshot/general/addressing.html
-   * @param usePaxos should the underlying implementation use Paxos for ordering events? If true it will,
-   *          if not it will use use a simple monotonically increasing counter, which is good enough
-   *          as long as this instance isn't clustered
-   *
-   * @return A SiriusImpl constructed using the parameters
-   */
-  private[sirius] def createInstance(requestHandler: RequestHandler, siriusLog: SiriusLog, hostName: String, port: Int,
-                   clusterConfigPath: String, usePaxos: Boolean): SiriusImpl = {
-
-    val siriusConfig = new SiriusConfiguration
-    siriusConfig.setProp(SiriusConfiguration.HOST, hostName)
-    siriusConfig.setProp(SiriusConfiguration.PORT, port)
-    siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath)
-    siriusConfig.setProp(SiriusConfiguration.USE_PAXOS, usePaxos)
-
-    createInstance(requestHandler, siriusConfig, siriusLog)
-  }
-
   /**
    * USE ONLY FOR TESTING HOOK WHEN YOU NEED TO MOCK OUT A LOG.
    * Real code should use the two argument factory method.
