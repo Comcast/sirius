@@ -52,7 +52,6 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   val myLeaderId = AkkaExternalAddressResolver(context.system).externalAddressFor(self)
   var ballotNum = Ballot(0, myLeaderId)
-  var active = false
   var proposals = new JTreeMap[Long, Command]()
 
   var latestDecidedSlot: Long = startingSeqNum - 1
@@ -75,7 +74,7 @@ class Leader(membership: Agent[Set[ActorRef]],
   def receive = {
     case propose @ Propose(slotNum, command) if !proposals.containsKey(slotNum) && slotNum > latestDecidedSlot =>
       electedLeaderBallot match {
-        case Some(electedBallot) if (ballotNum == electedBallot && active == true) =>
+        case Some(electedBallot) if (ballotNum == electedBallot) =>
           proposals.put(slotNum, command)
           startCommander(PValue(ballotNum, slotNum, command))
         case Some(electedBallot @ Ballot(_, leaderId)) if (ballotNum != electedBallot) =>
@@ -89,12 +88,10 @@ class Leader(membership: Agent[Set[ActorRef]],
       for (slot <- proposals.keySet) {
         startCommander(PValue(ballotNum, slot, proposals.get(slot)))
       }
-      active = true
       electedLeaderBallot = Some(ballotNum)
 
     // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
     case Preempted(newBallot) if newBallot > ballotNum =>
-      active = false
       electedLeaderBallot = Some(newBallot)
       val electedLeader = context.actorFor(newBallot.leaderId)
       for (slot <- proposals.keySet) {
@@ -105,7 +102,6 @@ class Leader(membership: Agent[Set[ActorRef]],
 
     // try to become the new leader; old leader has gone MIA
     case SeekLeadership =>
-      active = false
       electedLeaderBallot = None
 
       stopLeaderWatcher(currentLeaderWatcher)
@@ -180,15 +176,15 @@ class Leader(membership: Agent[Set[ActorRef]],
   //  because of jmx
   trait LeaderInfoMBean {
     def getBallotNum: String
-    def getActive: Boolean
     def getLatestDecidedSlot: Long
     def getProposalCount: Int
+    def getElectedLeaderBallot: String
   }
 
   class LeaderInfo extends LeaderInfoMBean{
     def getBallotNum = ballotNum.toString
-    def getActive = active
     def getLatestDecidedSlot = latestDecidedSlot
     def getProposalCount = proposals.size
+    def getElectedLeaderBallot = electedLeaderBallot.toString
   }
 }

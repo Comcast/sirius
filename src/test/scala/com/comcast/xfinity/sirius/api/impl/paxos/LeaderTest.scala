@@ -43,11 +43,9 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   describe("A Leader") {
     describe("on instantiation") {
       it("must spin up a scout") {
-        val membership = Agent(Set[ActorRef]())
         val scoutProbe = TestProbe()
 
         makeMockedUpLeader(
-          membership,
           startScoutFun = { scoutProbe.ref ! 'hi }
         )
 
@@ -71,12 +69,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
     describe("when receiving an Adopted message") {
       it ("must start commanders for its proposals using the current ballot") {
         val mockHelper = mock[LeaderHelper]
-        val membership = Agent(Set[ActorRef]())
 
         var pvalsCommandered = Set[PValue]()
 
         val leader = makeMockedUpLeader(
-          membership,
           helper = mockHelper,
           startCommanderFun = (pval =>
             // ignore ts, because we don't care
@@ -107,31 +103,20 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         assert(expectedPvalsCommandered === pvalsCommandered)
       }
 
-      it ("must become active") {
-        val leader = makeMockedUpLeader()
-
-        leader ! Adopted(leader.underlyingActor.ballotNum, Set())
-
-        assert(true === leader.underlyingActor.active)
-      }
-
       it ("must set its electedLeaderBallot to its own current ballot") {
         val leader = makeMockedUpLeader()
 
         leader ! Adopted(leader.underlyingActor.ballotNum, Set())
 
         assert(Some(leader.underlyingActor.ballotNum) === leader.underlyingActor.electedLeaderBallot)
-
       }
     }
 
     describe("when receiving a Propose message") {
       it ("must ignore such if a proposal already exists for this slot") {
         val mockHelper = mock[LeaderHelper]
-        val membership = Agent(Set[ActorRef]())
 
         val leader = makeMockedUpLeader(
-          membership,
           helper = mockHelper
         )
 
@@ -145,15 +130,13 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         }
       }
 
-      it ("must add the Command to its proposals, but not start a commander if not " +
-        "active and has no elected leader") {
+      it ("must add the Command to its proposals, but not start a commander if it " +
+        "has no elected leader") {
         val mockHelper = mock[LeaderHelper]
-        val membership = Agent(Set[ActorRef]())
 
         var commanderStarted = false
 
         val leader = makeMockedUpLeader(
-          membership,
           helper = mockHelper,
           startCommanderFun = p => commanderStarted = true
         )
@@ -169,14 +152,12 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
       }
 
       it ("must not add the Command to its proposals or start a commander" +
-        "if not active and there exists an elected leader") {
+        "if there exists an elected leader") {
         val mockHelper = mock[LeaderHelper]
-        val membership = Agent(Set[ActorRef]())
 
         var commanderStarted = false
 
         val leader = makeMockedUpLeader(
-          membership,
           helper = mockHelper,
           startCommanderFun = p => commanderStarted = true
         )
@@ -191,20 +172,17 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         assert(false === commanderStarted)
       }
 
-      it ("must add the Command to its proposals and start a commander if active") {
+      it ("must add the Command to its proposals and start a commander if it is the leader") {
         val mockHelper = mock[LeaderHelper]
-        val membership = Agent(Set[ActorRef]())
 
         var commanderStarted = false
 
         val leader = makeMockedUpLeader(
-          membership,
           helper = mockHelper,
           startCommanderFun = p => commanderStarted = true
         )
 
         leader.underlyingActor.electedLeaderBallot = Some(leader.underlyingActor.ballotNum)
-        leader.underlyingActor.active = true
 
         val slotNum = 1L
         val command = Command(null, 1, Delete("2"))
@@ -218,23 +196,13 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
     describe("when receiving a Preempted message") {
       it ("must ignore such if the attached Ballot is outdated") {
-        val membership = Agent(Set[ActorRef]())
-
-        val leader = makeMockedUpLeader(membership)
+        val leader = makeMockedUpLeader()
 
         leader.underlyingActor.ballotNum = Ballot(1, "asdf")
 
         intercept[MatchError] {
           leader.underlyingActor.receive(Preempted(Ballot(0, "asdf")))
         }
-      }
-
-      it ("must become inactive") {
-        val leader = makeMockedUpLeader()
-
-        leader ! Preempted(Ballot(1, "asdf"))
-
-        assert(false === leader.underlyingActor.active)
       }
 
       it ("must set its currentLeaderBallot") {
@@ -278,27 +246,19 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
     }
 
     describe("when receiving a SeekLeadership message") {
-      it ("must become inactive") {
-        val membership = Agent(Set[ActorRef]())
-
-        var scoutStarted = false
-
-        val leader = makeMockedUpLeader(
-          membership,
-          startScoutFun = { scoutStarted = true }
-        )
+      it ("must set electedLeaderBallot to None") {
+        val leader = makeMockedUpLeader()
+        leader.underlyingActor.electedLeaderBallot = Some(Ballot(1, ""))
 
         leader ! SeekLeadership
 
-        assert(false === leader.underlyingActor.active)
+        assert(None === leader.underlyingActor.electedLeaderBallot)
       }
-      it ("must spawn a scout for a new, greater ballot") {
-        val membership = Agent(Set[ActorRef]())
 
+      it ("must spawn a scout for a new, greater ballot") {
         var scoutStarted = false
 
         val leader = makeMockedUpLeader(
-          membership,
           startScoutFun = { scoutStarted = true }
         )
 
@@ -311,12 +271,9 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
     describe("when receiving a ScoutTimeout") {
       it ("must start a new Scout but retain its current Ballot") {
-        val membership = Agent(Set[ActorRef]())
-
         var scoutStarted = false
 
         val leader = makeMockedUpLeader(
-          membership,
           startScoutFun = { scoutStarted = true }
         )
 
@@ -331,14 +288,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
     describe("when receiving a DecisionHint message") {
       it ("creates some decided slots, if not exist") {
-        val membership = Agent(Set[ActorRef]())
-
-        var scoutStarted = false
-
-        val leader = makeMockedUpLeader(
-          membership,
-          startScoutFun = { scoutStarted = true }
-        )
+        val leader = makeMockedUpLeader()
 
         leader ! DecisionHint(1L)
 
@@ -346,14 +296,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
       }
 
       it ("creates adds to decided slots, if it exists") {
-        val membership = Agent(Set[ActorRef]())
-
-        var scoutStarted = false
-
-        val leader = makeMockedUpLeader(
-          membership,
-          startScoutFun = { scoutStarted = true }
-        )
+        val leader = makeMockedUpLeader()
 
         leader.underlyingActor.latestDecidedSlot = 1L
 
