@@ -1,15 +1,17 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.actor.{ Props, Actor, ActorRef }
+import akka.actor.{Props, Actor, ActorRef}
 import akka.agent.Agent
 import akka.event.Logging
-import java.util.UUID
 import java.util.{TreeMap => JTreeMap}
 import scala.util.control.Breaks._
 import scala.collection.JavaConversions._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
+import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{SeekLeadership, Close}
 
 object Leader {
   trait HelperProvider {
@@ -48,11 +50,15 @@ class Leader(membership: Agent[Set[ActorRef]],
   val acceptors = membership
   val replicas = membership
 
-  var ballotNum = Ballot(0, UUID.randomUUID().toString)
+  val myLeaderId = AkkaExternalAddressResolver(context.system).externalAddressFor(self)
+  var ballotNum = Ballot(0, myLeaderId)
   var active = false
   var proposals = new JTreeMap[Long, Command]()
 
   var latestDecidedSlot: Long = startingSeqNum - 1
+
+  var electedLeaderBallot: Option[Ballot] = None
+  var currentLeaderWatcher: Option[ActorRef] = None
 
   logger.info("Starting leader using ballotNum={}", ballotNum)
 
@@ -67,10 +73,15 @@ class Leader(membership: Agent[Set[ActorRef]],
   }
 
   def receive = {
-    case Propose(slotNum, command) if !proposals.containsKey(slotNum) && slotNum > latestDecidedSlot =>
-      proposals.put(slotNum, command)
-      if (active) {
-        startCommander(PValue(ballotNum, slotNum, command))
+    case propose @ Propose(slotNum, command) if !proposals.containsKey(slotNum) && slotNum > latestDecidedSlot =>
+      electedLeaderBallot match {
+        case Some(electedBallot) if (ballotNum == electedBallot && active == true) =>
+          proposals.put(slotNum, command)
+          startCommander(PValue(ballotNum, slotNum, command))
+        case Some(electedBallot @ Ballot(_, leaderId)) if (ballotNum != electedBallot) =>
+          context.actorFor(leaderId) forward propose
+        case None =>
+          proposals.put(slotNum, command)
       }
 
     case Adopted(newBallotNum, pvals) if ballotNum == newBallotNum =>
@@ -79,11 +90,33 @@ class Leader(membership: Agent[Set[ActorRef]],
         startCommander(PValue(ballotNum, slot, proposals.get(slot)))
       }
       active = true
+      electedLeaderBallot = Some(ballotNum)
 
+    // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
     case Preempted(newBallot) if newBallot > ballotNum =>
       active = false
-      ballotNum = Ballot(newBallot.seq + 1, ballotNum.leaderId)
+      electedLeaderBallot = Some(newBallot)
+      val electedLeader = context.actorFor(newBallot.leaderId)
+      for (slot <- proposals.keySet) {
+        electedLeader ! Propose(slot, proposals(slot))
+      }
+      stopLeaderWatcher(currentLeaderWatcher)
+      currentLeaderWatcher = Some(createLeaderWatcher(newBallot, self))
+
+    // try to become the new leader; old leader has gone MIA
+    case SeekLeadership =>
+      active = false
+      electedLeaderBallot = None
+
+      stopLeaderWatcher(currentLeaderWatcher)
+      currentLeaderWatcher = None
+
+      ballotNum = Ballot(ballotNum.seq + 1, ballotNum.leaderId)
       startScout()
+
+    // respond to Ping from LeaderPinger with our current leader ballot information
+    case Ping =>
+      sender ! Pong(electedLeaderBallot)
 
     // if our scout fails to make progress, retry
     case ScoutTimeout => startScout()
@@ -93,6 +126,21 @@ class Leader(membership: Agent[Set[ActorRef]],
     case DecisionHint(lastSlot) =>
       latestDecidedSlot = lastSlot
       reapProposals()
+
+  }
+
+  /**
+   * kill this leaderWatcher, if it is instantiated and is alive
+   */
+  private[paxos] def stopLeaderWatcher(leaderWatcher: Option[ActorRef]) {
+    leaderWatcher match {
+      case Some(ref) if (!ref.isTerminated) => ref ! Close
+      case _ =>
+    }
+  }
+
+  private[paxos] def createLeaderWatcher(newBallot: Ballot, replyTo: ActorRef) = {
+    context.actorOf(Props(new LeaderWatcher(newBallot, replyTo)))
   }
 
   private def reapProposals() {

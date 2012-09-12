@@ -1,26 +1,32 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import org.scalatest.BeforeAndAfterAll
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import com.comcast.xfinity.sirius.NiceTest
+import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import akka.agent.Agent
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
 import org.mockito.Mockito._
 import org.mockito.Matchers._
-import akka.actor.{ActorRef, actorRef2Scala, ActorSystem}
-import com.comcast.xfinity.sirius.api.impl.Delete
+import akka.actor._
 import collection.immutable.SortedMap
 import java.util.{TreeMap => JTreeMap}
 import scala.collection.JavaConversions._
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+import scala.Some
+import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{Close, SeekLeadership}
 
-object LeaderTest {
-  def makeMockedUpLeader(membership: Agent[Set[ActorRef]],
+class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
+  implicit val actorSystem = ActorSystem("LeaderTest")
+
+  // XXX this should really be in the companion object, but we need the actorSystem
+  //     defined in order to default things like Agents and TestProbes.  Need to figure
+  //     out how to move it up without defining an ActorSystem in the companion object.
+  def makeMockedUpLeader(membership: Agent[Set[ActorRef]] = Agent(Set[ActorRef]()),
                          startingSeqNum: Long = 1,
-                         helper: LeaderHelper = mock(classOf[LeaderHelper]),
+                         helper: LeaderHelper = mock[LeaderHelper],
                          startScoutFun: => Unit = {},
-                         startCommanderFun: (PValue) => Unit = p => {})
-                        (implicit as: ActorSystem) = {
+                         startCommanderFun: (PValue) => Unit = p => {}) = {
     TestActorRef(
       new Leader(membership, startingSeqNum) with Leader.HelperProvider {
         val leaderHelper = helper
@@ -29,13 +35,6 @@ object LeaderTest {
       }
     )
   }
-}
-
-class LeaderTest extends NiceTest with BeforeAndAfterAll {
-
-  import LeaderTest._
-
-  implicit val actorSystem = ActorSystem("LeaderTest")
 
   override def afterAll {
     actorSystem.shutdown()
@@ -54,11 +53,23 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
 
         scoutProbe.expectMsg('hi)
       }
+
+      it("must set currentLeaderWatcher to None") {
+        val leaderRef = makeMockedUpLeader()
+
+        assert(None === leaderRef.underlyingActor.currentLeaderWatcher)
+      }
+    }
+
+      it("must set electedLeaderBallot to None") {
+        val leaderRef = makeMockedUpLeader()
+
+        assert(None === leaderRef.underlyingActor.electedLeaderBallot)
+      }
     }
 
     describe("when receiving an Adopted message") {
-      it("must start commanders for its proposals using the current ballot " +
-         "and become active") {
+      it ("must start commanders for its proposals using the current ballot") {
         val mockHelper = mock[LeaderHelper]
         val membership = Agent(Set[ActorRef]())
 
@@ -75,16 +86,16 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
 
 
         val sProposals = SortedMap[Long, Command](
-            (1L -> Command(null, 1, Delete("2"))),
-            (2L -> Command(null, 2, Delete("3")))
-          )
+          (1L -> Command(null, 1, Delete("2"))),
+          (2L -> Command(null, 2, Delete("3")))
+        )
         val proposals = new JTreeMap[Long, Command](sProposals)
 
         doReturn(new JTreeMap[Long, Command]()).
           when(mockHelper).pmax(any(classOf[Set[PValue]]))
         doReturn(proposals).
           when(mockHelper).update(any(classOf[JTreeMap[Long, Command]]),
-                                  any(classOf[JTreeMap[Long, Command]]))
+          any(classOf[JTreeMap[Long, Command]]))
 
         leader ! Adopted(leader.underlyingActor.ballotNum, Set())
 
@@ -94,7 +105,23 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         }
 
         assert(expectedPvalsCommandered === pvalsCommandered)
+      }
+
+      it ("must become active") {
+        val leader = makeMockedUpLeader()
+
+        leader ! Adopted(leader.underlyingActor.ballotNum, Set())
+
         assert(true === leader.underlyingActor.active)
+      }
+
+      it ("must set its electedLeaderBallot to its own current ballot") {
+        val leader = makeMockedUpLeader()
+
+        leader ! Adopted(leader.underlyingActor.ballotNum, Set())
+
+        assert(Some(leader.underlyingActor.ballotNum) === leader.underlyingActor.electedLeaderBallot)
+
       }
     }
 
@@ -118,7 +145,8 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         }
       }
 
-      it ("must add the Command to its proposals, but not start a commander if not active") {
+      it ("must add the Command to its proposals, but not start a commander if not " +
+        "active and has no elected leader") {
         val mockHelper = mock[LeaderHelper]
         val membership = Agent(Set[ActorRef]())
 
@@ -129,6 +157,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           helper = mockHelper,
           startCommanderFun = p => commanderStarted = true
         )
+        leader.underlyingActor.electedLeaderBallot = None
 
         val slotNum = 1L
         val command = Command(null, 1, Delete("2"))
@@ -136,6 +165,29 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         leader ! Propose(slotNum, command)
 
         assert(new JTreeMap[Long, Command](SortedMap(slotNum -> command)) === leader.underlyingActor.proposals)
+        assert(false === commanderStarted)
+      }
+
+      it ("must not add the Command to its proposals or start a commander" +
+        "if not active and there exists an elected leader") {
+        val mockHelper = mock[LeaderHelper]
+        val membership = Agent(Set[ActorRef]())
+
+        var commanderStarted = false
+
+        val leader = makeMockedUpLeader(
+          membership,
+          helper = mockHelper,
+          startCommanderFun = p => commanderStarted = true
+        )
+        leader.underlyingActor.electedLeaderBallot = Some(Ballot(0, ""))
+
+        val slotNum = 1L
+        val command = Command(null, 1, Delete("2"))
+
+        leader ! Propose(slotNum, command)
+
+        assert(new JTreeMap[Long, Command]() === leader.underlyingActor.proposals)
         assert(false === commanderStarted)
       }
 
@@ -151,6 +203,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           startCommanderFun = p => commanderStarted = true
         )
 
+        leader.underlyingActor.electedLeaderBallot = Some(leader.underlyingActor.ballotNum)
         leader.underlyingActor.active = true
 
         val slotNum = 1L
@@ -164,7 +217,7 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
     }
 
     describe("when receiving a Preempted message") {
-      it ("must ignnore such if the attached Ballot is outdated") {
+      it ("must ignore such if the attached Ballot is outdated") {
         val membership = Agent(Set[ActorRef]())
 
         val leader = makeMockedUpLeader(membership)
@@ -176,7 +229,56 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         }
       }
 
-      it ("must become inactive, and spawn a scout for a new, greater ballot") {
+      it ("must become inactive") {
+        val leader = makeMockedUpLeader()
+
+        leader ! Preempted(Ballot(1, "asdf"))
+
+        assert(false === leader.underlyingActor.active)
+      }
+
+      it ("must set its currentLeaderBallot") {
+        val leader = makeMockedUpLeader()
+
+        val preemptingBallot = Ballot(1, "asdf")
+
+        leader ! Preempted(preemptingBallot)
+
+        assert(Some(preemptingBallot) === leader.underlyingActor.electedLeaderBallot)
+      }
+
+      it ("must kill currentLeaderWatcher if it is running") {
+        val watcherProbe = TestProbe()
+
+        val leader = makeMockedUpLeader()
+        leader.underlyingActor.currentLeaderWatcher = Some(watcherProbe.ref)
+
+        val preemptingBallot = Ballot(1, "asdf")
+
+        leader ! Preempted(preemptingBallot)
+
+        watcherProbe.expectMsg(Close)
+      }
+
+      it ("must spawn a new currentLeaderWatcher with the current leader ballot") {
+        val watcherProbe = TestProbe()
+
+        val leader = makeMockedUpLeader()
+        leader.underlyingActor.currentLeaderWatcher = Some(watcherProbe.ref)
+
+        val preemptingBallot = Ballot(1, "asdf")
+
+        assert(Some(watcherProbe.ref) === leader.underlyingActor.currentLeaderWatcher)
+
+        leader ! Preempted(preemptingBallot)
+
+        assert(Some(watcherProbe.ref) != leader.underlyingActor.currentLeaderWatcher)
+        assert(!leader.underlyingActor.currentLeaderWatcher.get.isTerminated)
+      }
+    }
+
+    describe("when receiving a SeekLeadership message") {
+      it ("must become inactive") {
         val membership = Agent(Set[ActorRef]())
 
         var scoutStarted = false
@@ -186,13 +288,23 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
           startScoutFun = { scoutStarted = true }
         )
 
-        // will most probably be greater than the initial value :)
-        val preemptingBallot = Ballot(1, "asdf")
+        leader ! SeekLeadership
 
-        leader ! Preempted(preemptingBallot)
-
-        assert(leader.underlyingActor.ballotNum > preemptingBallot)
         assert(false === leader.underlyingActor.active)
+      }
+      it ("must spawn a scout for a new, greater ballot") {
+        val membership = Agent(Set[ActorRef]())
+
+        var scoutStarted = false
+
+        val leader = makeMockedUpLeader(
+          membership,
+          startScoutFun = { scoutStarted = true }
+        )
+
+        leader ! SeekLeadership
+
+        assert(leader.underlyingActor.ballotNum > Ballot(0, leader.underlyingActor.myLeaderId))
         assert(scoutStarted)
       }
     }
@@ -272,8 +384,5 @@ class LeaderTest extends NiceTest with BeforeAndAfterAll {
         assert(new JTreeMap[Long, Command](keepers) === leader.underlyingActor.proposals)
       }
 
-     }
-
-  }
-
+    }
 }
