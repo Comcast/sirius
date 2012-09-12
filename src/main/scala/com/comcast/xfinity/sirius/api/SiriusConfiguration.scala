@@ -73,49 +73,6 @@ object SiriusConfiguration {
    */
   final val MBEAN_SERVER = "sirius.monitoring.mbean-server"
 
-  /**
-   * Factory method to create a SiriusConfiguration object.
-   *
-   * @param hostName the hostName or IP to which this instance should bind.  It is important that other
-   *          Sirius instances identify this host by this name.  This is passed directly to Akka's
-   *          configuration, for the interested
-   * @param port the port which this instance should bind to.  This is passed directly to Akka's
-   *          configuration, for the interested
-   * @param clusterConfigPath string pointing to the location of this cluster's configuration.  This should
-   *          be a file with Akka style addresses on each line indicating membership. For more information
-   *          see http://doc.akka.io/docs/akka/snapshot/general/addressing.html
-   * @param usePaxos should the underlying implementation use Paxos for ordering events? If true it will,
-   *          if not it will use use a simple monotonically increasing counter, which is good enough
-   *          as long as this instance isn't clustered
-   * @param logLocation location on the filesystem of the Sirius persistent log.
-   */
-  @deprecated("Don't think this is used, setting fields directly is preferred", "2012-9-10")
-  def create(host: String,
-             port: Int,
-             clusterConfigPath: String,
-             usePaxos: Boolean,
-             logLocation: String): SiriusConfiguration = {
-    val conf = new SiriusConfiguration()
-    conf.setProp(HOST, host)
-    conf.setProp(PORT, port)
-    conf.setProp(CLUSTER_CONFIG, clusterConfigPath)
-    conf.setProp(USE_PAXOS, usePaxos)
-    conf.setProp(LOG_LOCATION, logLocation)
-    conf
-  }
-
-  /**
-   * Scala syntax sugar friendly version of create
-   * @see create
-   */
-  @deprecated("Don't think this is used, setting fields directly is preferred", "2012-9-10")
-  def apply(host: String,
-            port: Int,
-            clusterConfigPath: String,
-            usePaxos: Boolean,
-            logLocation: String): SiriusConfiguration =
-    create(host, port, clusterConfigPath, usePaxos, logLocation)
-
 }
 
 /**
@@ -162,68 +119,32 @@ class SiriusConfiguration {
   }
 
   /**
-   * convenience for setting host to use, going away soon
-   */
-  @deprecated("use setProp(HOST_KEY) instead", "2012-09-07")
-  def setHost(host: String) {
-    setProp(HOST, host)
-  }
-
-  /**
    * convenience for getting the host to use, going away soon
    */
   def getHost: String = getProp(HOST, "")
 
   /**
-   * convenience for setting the port to use, going away soon
-   */
-  @deprecated("use setProp(PORT_KEY) instead", "2012-09-07")
-  def setPort(port: Int) {
-    setProp(PORT, port)
-  }
-
-  /**
    * convenience for getting the port to use
    */
+  @deprecated("use getProp(PORT) instead", "2012-09-12")
   def getPort: Int = getProp(PORT, 2552)
-
-  /**
-   * convenience for setting the cluster configuration location, going away soon
-   */
-  @deprecated("use setProp(CLUSTER_CONFIG_KEY) instead", "2012-09-07")
-  def setClusterConfigPath(path: String) {
-    setProp(CLUSTER_CONFIG, path)
-  }
 
   /**
    * convenience for getting the cluster configuration location, going away soon
    */
+  @deprecated("use getProp(CLUSTER_CONFIG) instead", "2012-09-12")
   def getClusterConfigPath: String = getProp(CLUSTER_CONFIG, null)
-
-  /**
-   * convenience for setting enabling paxos or not, going away soon
-   */
-  @deprecated("use setProp(USE_PAXOS_KEY) instead", "2012-09-07")
-  def setUsePaxos(usePaxos: Boolean) {
-    setProp(USE_PAXOS, usePaxos)
-  }
 
   /**
    * convenience for getting whether or not to use paxos, going away soon
    */
+  @deprecated("use getProp(USE)PAXOS) instead", "2012-09-12")
   def getUsePaxos: Boolean = getProp(USE_PAXOS, true)
-
-  /**
-   * convenience for setting the location of uberstore, going away soon
-   */
-  @deprecated("use setProp(LOG_LOCATION_KEY) instead", "2012-09-07")
-  def setLogLocation(logDir: String) {
-    setProp(LOG_LOCATION, logDir)
-  }
 
   /**
    * convenience for getting the location of uberstore, going away soon
    */
+  @deprecated("use getProp(LOG_LOCATION) instead", "2012-09-12")
   def getLogLocation: String = getProp(LOG_LOCATION, null)
 
 }
