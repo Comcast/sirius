@@ -73,6 +73,16 @@ object SiriusConfiguration {
    */
   final val MBEAN_SERVER = "sirius.monitoring.mbean-server"
 
+  /**
+   * Number of events to request from a remote node in a single chunk
+   */
+  final val LOG_REQUEST_CHUNK_SIZE = "sirius.log-request.chunk-size"
+
+  /**
+   * How long (in seconds) to wait for a log chunk reply before considering it timed out
+   */
+  final val LOG_REQUEST_RECEIVE_TIMEOUT_SECS = "sirius.log-request.receive-timeout-secs"
+
 }
 
 /**
