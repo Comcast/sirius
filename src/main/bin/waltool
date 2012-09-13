@@ -3,7 +3,7 @@
 sirius_base=`dirname $0`
 sirius_base=`cd $sirius_base/..; pwd`
 
-SIRIUS_CLASSPATH=$sirius_base/bin/sirius.jar:$CLASSPATH
+SIRIUS_CLASSPATH=$CLASSPATH
 for j in `ls $sirius_base/lib/*.jar`; do
     SIRIUS_CLASSPATH=$SIRIUS_CLASSPATH:$j
 done
