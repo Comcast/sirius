@@ -24,9 +24,8 @@ class SiriusStateActor(requestHandler: RequestHandler,
   val logger = Logging(context.system, "Sirius")
 
   override def preStart() {
-    siriusStateAgent send ((state: SiriusState) => {
-          state.updateStateActorState(SiriusState.StateActorState.Initialized)
-    })
+    // XXX: do we really need this...
+    siriusStateAgent send (_.copy(stateInitialized = true))
   }
   
   def receive = {

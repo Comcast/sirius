@@ -69,9 +69,7 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
     updateMembership()
 
     // XXX: how much do we get by making this "synchronous", the rest of boot up doesn't care...
-    siriusStateAgent send ((state: SiriusState) => {
-      state.updateMembershipActorState(SiriusState.MembershipActorState.Initialized)
-    })
+    siriusStateAgent send (_.copy(membershipInitialized = true))
   }
 
   override def postStop() {

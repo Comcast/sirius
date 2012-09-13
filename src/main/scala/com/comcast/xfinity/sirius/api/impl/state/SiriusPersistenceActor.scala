@@ -65,9 +65,11 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
   import SiriusPersistenceActor._
 
   override def preStart() {
-    siriusStateAgent send ((state: SiriusState) => {
-      state.updatePersistenceState(SiriusState.PersistenceState.Initialized)
-    })
+    // if replay is done externally, do we still need this?  my thought is yes,
+    //  because if we got to this point it _implies_ that we have completed replay,
+    //  but we can probably move this elsewhere where it's actually right after
+    //  replay
+    siriusStateAgent send (_.copy(persistenceInitialized = true))
   }
 
   def receive = {

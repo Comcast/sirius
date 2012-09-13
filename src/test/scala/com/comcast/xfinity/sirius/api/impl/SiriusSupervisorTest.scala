@@ -4,7 +4,6 @@ import membership._
 import com.typesafe.config.ConfigFactory
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.{TestProbe, TestActor, TestActorRef}
 import akka.dispatch.Await
@@ -15,10 +14,11 @@ import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.SiriusResult
+import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 
 
 @RunWith(classOf[JUnitRunner])
-class SiriusSupervisorTest extends NiceTest {
+class SiriusSupervisorTest extends NiceTest with TimedTest {
 
   var actorSystem: ActorSystem = _
 
@@ -91,12 +91,10 @@ class SiriusSupervisorTest extends NiceTest {
 
   def initializeSupervisor(supervisor: TestActorRef[SiriusSupervisor with SiriusSupervisor.DependencyProvider]) {
     val siriusStateAgent = supervisor.underlyingActor.siriusStateAgent
-    // XXX: the following works because siriusState is mutable, nothing wrong with that,
-    //      just wanted to state the obvious
-    val siriusState = siriusStateAgent.get()
-    siriusState.updateStateActorState(SiriusState.StateActorState.Initialized)
-    siriusState.updatePersistenceState(SiriusState.PersistenceState.Initialized)
-    siriusState.updateMembershipActorState(SiriusState.MembershipActorState.Initialized)
+    siriusStateAgent send (SiriusState(false, true, true, true))
+    // wait for agent to get updated, just in case
+    assert(waitForTrue(siriusStateAgent().areSubsystemsInitialized, 1000, 250))
+
     val isInitializedFuture = supervisor ? SiriusSupervisor.IsInitializedRequest
     val expected = SiriusSupervisor.IsInitializedResponse(true)
     assert(expected === Await.result(isInitializedFuture, timeout.duration))
@@ -106,14 +104,13 @@ class SiriusSupervisorTest extends NiceTest {
   describe("a SiriusSupervisor") {
     it("should start in the uninitialized state") {
       val siriusState = supervisor.underlyingActor.siriusStateAgent()
-      assert(siriusState.supervisorState === SiriusState.SupervisorState.Uninitialized)
+      assert(false === siriusState.supervisorInitialized)
     }
 
     it("should transition into the initialized state") {
       initializeSupervisor(supervisor)
       val stateAgent = supervisor.underlyingActor.siriusStateAgent
-      assert(stateAgent.await(timeout).supervisorState === SiriusState.SupervisorState.Initialized)
-
+      assert(true === stateAgent.await(timeout).supervisorInitialized)
     }
 
     it("should forward MembershipMessages to the membershipActor") {
