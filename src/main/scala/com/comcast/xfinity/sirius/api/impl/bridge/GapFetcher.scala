@@ -3,12 +3,9 @@ package com.comcast.xfinity.sirius.api.impl.bridge
 import akka.actor.{ReceiveTimeout, ActorRef, Actor}
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{GetLogSubrange, LogSubrange}
 
 object GapFetcher {
-  // XXX extend some message type so the ChunkRequest can be routed to SiriusPersistenceActor
-  case class Chunk(events: Seq[OrderedEvent])
-  case class RequestChunk(startingSeq: Long, chunkSize: Int)
 
   def apply(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, config: SiriusConfiguration) {
     val chunkSize = config.getProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, 1000)
@@ -30,7 +27,6 @@ object GapFetcher {
  */
 class GapFetcher(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, chunkSize: Int, chunkReceiveTimeout: Int)
                 extends Actor {
-    import GapFetcher._
 
   context.setReceiveTimeout(chunkReceiveTimeout seconds)
 
@@ -38,13 +34,13 @@ class GapFetcher(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, chunkSi
   requestChunk(firstGapSeq, chunkSize)
 
   def receive = {
-    case chunk @ Chunk(events) if (events.last.sequence >= currentGapSeq + chunkSize - 1) =>
-      processChunk(chunk, replyTo)
+    case logChunk @ LogSubrange(events) if (events.last.sequence >= currentGapSeq + chunkSize - 1) =>
+      processChunk(logChunk, replyTo)
       currentGapSeq = currentGapSeq + chunkSize
       requestChunk(currentGapSeq, chunkSize)
 
-    case chunk: Chunk =>
-      processChunk(chunk, replyTo)
+    case logChunk: LogSubrange =>
+      processChunk(logChunk, replyTo)
       context.stop(self)
 
     case ReceiveTimeout =>
@@ -52,10 +48,11 @@ class GapFetcher(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, chunkSi
   }
 
   private[bridge] def requestChunk(currentGapSeq: Long, chunkSize: Int) {
-    target ! RequestChunk(currentGapSeq, chunkSize)
+    target ! GetLogSubrange(currentGapSeq, currentGapSeq + chunkSize-1)
   }
 
-  private[bridge] def processChunk(chunk: Chunk, replyTo: ActorRef) {
-    chunk.events.foreach(replyTo ! _)
+  private[bridge] def processChunk(logSubrange: LogSubrange, replyTo: ActorRef) {
+    logSubrange.events.foreach(replyTo ! _)
   }
 }
+
