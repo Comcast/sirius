@@ -255,7 +255,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         assert(None === leader.underlyingActor.electedLeaderBallot)
       }
 
-      it ("must spawn a scout for a new, greater ballot") {
+      it ("must spawn a scout") {
         var scoutStarted = false
 
         val leader = makeMockedUpLeader(
@@ -264,18 +264,65 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         leader ! SeekLeadership
 
-        assert(leader.underlyingActor.ballotNum > Ballot(0, leader.underlyingActor.myLeaderId))
         assert(scoutStarted)
+      }
+
+      it ("must set its new ballot to one higher than its old ballot " +
+        "if there was no previously elected leader") {
+        val leader = makeMockedUpLeader()
+        val oldBallot = Ballot(10, "a")
+
+        leader.underlyingActor.ballotNum = oldBallot
+        leader.underlyingActor.electedLeaderBallot = None
+
+        leader ! SeekLeadership
+
+        val newBallot = leader.underlyingActor.ballotNum
+        assert(newBallot > oldBallot)
+      }
+
+      it ("must set its new ballot to one higher than both its own old ballot " +
+        "AND the previous leader's ballot") {
+        val leader = makeMockedUpLeader()
+        val oldBallot = Ballot(10, "a")
+        val electedBallot = Ballot(11, "b")
+
+        leader.underlyingActor.ballotNum = oldBallot
+        leader.underlyingActor.electedLeaderBallot = Some(electedBallot)
+
+        leader ! SeekLeadership
+
+        val newBallot = leader.underlyingActor.ballotNum
+        assert(newBallot > oldBallot)
+        assert(newBallot > electedBallot)
       }
     }
 
     describe("when receiving a ScoutTimeout") {
-      it ("must start a new Scout but retain its current Ballot") {
+      it ("must do nothing if a leader has been elected in the meantime") {
         var scoutStarted = false
 
         val leader = makeMockedUpLeader(
           startScoutFun = { scoutStarted = true }
         )
+        leader.underlyingActor.electedLeaderBallot = Some(Ballot(1, "asdf"))
+
+        // have to reset it to false, scout is started on instantiation
+        scoutStarted = false
+
+        leader ! ScoutTimeout
+
+        assert(scoutStarted == false)
+      }
+
+      it ("must start a new Scout but retain its current Ballot if " +
+        "there is still no leader") {
+        var scoutStarted = false
+
+        val leader = makeMockedUpLeader(
+          startScoutFun = { scoutStarted = true }
+        )
+        leader.underlyingActor.electedLeaderBallot = None
 
         val initialBallot = leader.underlyingActor.ballotNum
 

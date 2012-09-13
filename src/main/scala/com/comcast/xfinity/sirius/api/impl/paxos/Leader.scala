@@ -102,12 +102,20 @@ class Leader(membership: Agent[Set[ActorRef]],
 
     // try to become the new leader; old leader has gone MIA
     case SeekLeadership =>
+      /* Get the sequence number that should be used in a new
+       * ballot.  If there is (or was) an elected leader, increment that
+       * ballot number; otherwise increment our own.
+       */
+      ballotNum = Ballot(electedLeaderBallot match {
+        case Some(Ballot(seq, _)) => seq + 1
+        case _ => ballotNum.seq + 1
+      }, myLeaderId)
+
       electedLeaderBallot = None
 
       stopLeaderWatcher(currentLeaderWatcher)
       currentLeaderWatcher = None
 
-      ballotNum = Ballot(ballotNum.seq + 1, ballotNum.leaderId)
       startScout()
 
     // respond to Ping from LeaderPinger with our current leader ballot information
@@ -115,7 +123,8 @@ class Leader(membership: Agent[Set[ActorRef]],
       sender ! Pong(electedLeaderBallot)
 
     // if our scout fails to make progress, retry
-    case ScoutTimeout => startScout()
+    case ScoutTimeout =>
+      if (electedLeaderBallot == None) startScout()
 
     // the SirusPaxosBridge will notify the Leader of the last decision.  We can then use this to reduce the number
     // of accepted decisions we need from the Acceptor
