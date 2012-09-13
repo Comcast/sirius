@@ -140,7 +140,9 @@ class Leader(membership: Agent[Set[ActorRef]],
   }
 
   private def reapProposals() {
+    val start = System.currentTimeMillis
     val newProposals = filterOldProposals(proposals)
+    logger.debug("Reaped Old Proposals in {}ms", System.currentTimeMillis-start)
     proposals = newProposals
   }
 

@@ -79,8 +79,10 @@ class Acceptor(startingSeqNum: Long,
     // Periodic cleanup
     case Reap =>
       logger.debug("Accepted count: {}", accepted.size)
+      val start = System.currentTimeMillis
       val (newLowestSlotNumber, newAccepted) = cleanOldAccepted(lowestAcceptableSlotNumber, accepted)
       lowestAcceptableSlotNumber = newLowestSlotNumber
+      logger.debug("Reaped Old Accpeted in {}ms", System.currentTimeMillis-start)
       accepted = newAccepted
   }
 
