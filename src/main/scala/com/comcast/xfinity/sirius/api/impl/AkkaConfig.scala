@@ -7,5 +7,4 @@ trait AkkaConfig {
   implicit val timeout: Timeout = (5 seconds)
   val DEFAULT_PORT: Int = 2552
   val SYSTEM_NAME = "sirius-system"
-  val DEFAULT_SUPERVISOR_NAME = "sirius"
 }

@@ -11,6 +11,8 @@ import java.util.concurrent.Future
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import akka.dispatch.{Await, Future => AkkaFuture}
+import akka.util.Timeout
+import akka.util.duration._
 
 object SiriusImpl {
 
@@ -44,9 +46,11 @@ object SiriusImpl {
  * @param actorSystem the actorSystem to use to create the Actors for Sirius
  */
 class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val actorSystem: ActorSystem)
-    extends Sirius with AkkaConfig {
+    extends Sirius {
 
-  val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, DEFAULT_SUPERVISOR_NAME)
+  val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, "sirius")
+  implicit val timeout: Timeout =
+    (config.getProp(SiriusConfiguration.CLIENT_TIMEOUT_MS, 5000) milliseconds)
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
 

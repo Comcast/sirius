@@ -83,6 +83,11 @@ object SiriusConfiguration {
    */
   final val LOG_REQUEST_RECEIVE_TIMEOUT_SECS = "sirius.log-request.receive-timeout-secs"
 
+  /**
+   * How long (in milliseconds) for requests in SiriusImpl to wait for a response from
+   * the underlying actor (int)
+   */
+  final val CLIENT_TIMEOUT_MS = "sirius.client.ask-timeout-ms"
 }
 
 /**
