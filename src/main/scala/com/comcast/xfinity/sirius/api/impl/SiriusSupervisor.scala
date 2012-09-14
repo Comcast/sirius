@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.api.impl
 
 import membership._
 import paxos.PaxosMessages.PaxosMessage
-import paxos.{ PaxosSup, NaiveOrderingActor }
+import paxos.NaiveOrderingActor
 import persistence._
 import akka.actor.Actor
 import akka.actor.ActorRef
@@ -16,6 +16,9 @@ import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
+import status.StatusWorker
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+import status.StatusWorker.StatusQuery
 
 object SiriusSupervisor {
 
@@ -29,6 +32,7 @@ object SiriusSupervisor {
     val orderingActor: ActorRef
     val logRequestActor: ActorRef
     val membershipActor: ActorRef
+    val statusSubsystem: ActorRef
     val membershipAgent: Agent[Set[ActorRef]]
     val siriusStateAgent: Agent[SiriusState]
   }
@@ -36,16 +40,18 @@ object SiriusSupervisor {
   /**
    * @param requestHandler User implemented RequestHandler.
    * @param siriusLog Interface into the Sirius persistent log.
-   * @param siriusStateAgent Keeps track of the overall initialization state of Sirius.
-   * @param membershipAgent Keeps track of the members of the Sirius cluster.
-   * @param clusterConfigPath Path to a static file containing the cluster members. 
-   * @param usePaxos True if we should use Paxos for ordering, false if we just use our naieve single node counter.
+   * @param config the SiriusConfiguration for this node
    */
   def apply(
     _requestHandler: RequestHandler,
     _siriusLog: SiriusLog,
     config: SiriusConfiguration): SiriusSupervisor = {
-    
+
+    // XXX: the following is EXTREMELY busy, it needs clean up, but
+    //      im not sure what the best way to do this is. I know it's
+    //      probably not popular, but if we don't test this with unit
+    //      tests it can get much simpler, it's still covered by integration
+    //      tests, so it may be ok...
     new SiriusSupervisor with DependencyProvider {
       val siriusStateAgent = Agent(new SiriusState)(context.system)
       val membershipAgent = Agent(Set[ActorRef]())(context.system)
@@ -79,8 +85,16 @@ object SiriusSupervisor {
         } else {
           context.actorOf(Props(new NaiveOrderingActor(stateSup, _siriusLog.getNextSeq)), "paxos")
         }
+
+      val statusSubsystem = context.actorOf(
+        Props(
+          StatusWorker(
+            AkkaExternalAddressResolver(context.system).externalAddressFor(self),
+            config
+          )
+        )
+      )
     }
-    
   }
 }
 
@@ -128,6 +142,7 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case paxosMessage: PaxosMessage => orderingActor forward paxosMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
+    case statusQuery: StatusQuery => statusSubsystem forward statusQuery
     case TransferComplete => logger.info("Log transfer complete")
     case transferFailed: TransferFailed => logger.info("Log transfer failed, reason: " + transferFailed.reason)
     case logRequestMessage: LogRequestMessage => logRequestActor forward logRequestMessage

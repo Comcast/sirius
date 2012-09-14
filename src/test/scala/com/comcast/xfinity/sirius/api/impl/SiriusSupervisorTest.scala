@@ -81,6 +81,7 @@ class SiriusSupervisorTest extends NiceTest with TimedTest {
       val membershipActor: ActorRef = membershipProbe.ref
       val logRequestActor: ActorRef = null
       val orderingActor: ActorRef = paxosProbe.ref
+      val statusSubsystem = TestProbe()(context.system).ref
       
     })(actorSystem)
   }

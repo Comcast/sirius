@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit
 import com.comcast.xfinity.sirius.api.impl.membership._
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
+import status.NodeStats.FullNodeStatus
+import status.StatusWorker._
 
 object SiriusImplTestCompanion {
 
@@ -39,6 +41,8 @@ class SiriusImplTest extends NiceTest with TimedTest {
   val timeout: Timeout = (5 seconds)
   var membership: Set[ActorRef] = _
 
+  val mockNodeStatus = mock[FullNodeStatus]
+
   before {
     actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
             akka.event-handlers = ["akka.testkit.TestEventListener"]
@@ -62,6 +66,9 @@ class SiriusImplTest extends NiceTest with TimedTest {
           sender ! membership
           Some(this)
         case CheckClusterConfig =>
+          Some(this)
+        case GetStatus =>
+          sender ! mockNodeStatus
           Some(this)
       }
     })
@@ -111,7 +118,12 @@ class SiriusImplTest extends NiceTest with TimedTest {
     it("should issue a \"tell\" CheckClusterConfig when checkClusterConfig is called") {
       underTest.checkClusterConfig()
       supervisorActorProbe.expectMsg(CheckClusterConfig)
+    }
 
+    it ("must send a GetStatus message to the supervisor and return the resultant future") {
+      val nodeStatusFuture = underTest.getStatus
+      assert(mockNodeStatus === nodeStatusFuture.get(1, TimeUnit.SECONDS))
+      supervisorActorProbe.expectMsg(GetStatus)
     }
 
     describe(".isOnline") {

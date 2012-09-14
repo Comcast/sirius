@@ -13,6 +13,8 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import akka.dispatch.{Await, Future => AkkaFuture}
 import akka.util.Timeout
 import akka.util.duration._
+import status.NodeStats.FullNodeStatus
+import status.StatusWorker._
 
 object SiriusImpl {
 
@@ -94,6 +96,15 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
    */
   def enqueueDelete(key: String): Future[SiriusResult] = {
     val akkaFuture = (supervisor ? Delete(key)).asInstanceOf[AkkaFuture[SiriusResult]]
+    new AkkaFutureAdapter(akkaFuture)
+  }
+
+  /**
+   * Get this nodes status, included in the result are the nodes address,
+   * configuration, and value of any monitors, if configured
+   */
+  def getStatus: Future[FullNodeStatus] = {
+    val akkaFuture = (supervisor ? GetStatus).asInstanceOf[AkkaFuture[FullNodeStatus]]
     new AkkaFutureAdapter(akkaFuture)
   }
 
