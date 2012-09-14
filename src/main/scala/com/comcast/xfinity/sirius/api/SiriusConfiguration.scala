@@ -102,6 +102,15 @@ class SiriusConfiguration {
   private var conf = Map[String, Any]()
 
   /**
+   * Return the underlying Map[String, Any] configuring this instance
+   *
+   * Not Java API friendly, if we so find the need, we can add a conversion
+   *
+   * @return Map[String, Any] of all configuration
+   */
+  def getConfigMap: Map[String, Any] = conf
+
+  /**
    * Set an arbitrary property on this configuration
    *
    * @param name name of the property
