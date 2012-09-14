@@ -3,10 +3,11 @@ package com.comcast.xfinity.sirius.api.impl.state
 import akka.actor.Actor
 import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.SiriusResult
+import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl._
 import persistence.BoundedLogRange
+import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object SiriusPersistenceActor {
 
@@ -60,9 +61,12 @@ object SiriusPersistenceActor {
  *            once bootstrapping has completed
  */
 class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, siriusStateAgent: Agent[SiriusState])
-    extends Actor {
+    (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
 
   import SiriusPersistenceActor._
+
+  var numWrites = 0L
+  var totalWriteTime = 0L
 
   override def preStart() {
     // if replay is done externally, do we still need this?  my thought is yes,
@@ -70,12 +74,21 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
     //  but we can probably move this elsewhere where it's actually right after
     //  replay
     siriusStateAgent send (_.copy(persistenceInitialized = true))
+    registerMonitor(new SiriusPersistenceActorInfo, config)
+  }
+
+  override def postStop() {
+    unregisterMonitors(config)
   }
 
   def receive = {
     case event: OrderedEvent =>
+      val now = System.currentTimeMillis()
       siriusLog.writeEntry(event)
       stateActor ! event.request
+
+      numWrites += 1
+      totalWriteTime += System.currentTimeMillis() - now
 
     // XXX: cap max request chunk size hard coded at 1000 for now for sanity
     case GetLogSubrange(begin, end) if begin <= end && (begin - end) < 1000 =>
@@ -90,4 +103,17 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
     case _: SiriusResult =>
   }
 
+  /**
+   * Monitoring hooks
+   */
+  trait SiriusPersistenceActorInfoMBean {
+    def getAveragePersistDuration: Double
+  }
+
+  class SiriusPersistenceActorInfo extends SiriusPersistenceActorInfoMBean {
+    def getAveragePersistDuration = numWrites match {
+      case 0 => 0
+      case _ => totalWriteTime / numWrites
+    }
+  }
 }

@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.state
 
-import com.comcast.xfinity.sirius.api.RequestHandler
+import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.actor.{Props, ActorRef, Actor}
@@ -27,7 +27,8 @@ object StateSup {
    */
   def apply(requestHandler: RequestHandler,
             siriusLog: SiriusLog,
-            siriusStateAgent: Agent[SiriusState]): StateSup = {
+            siriusStateAgent: Agent[SiriusState],
+            config: SiriusConfiguration): StateSup = {
     new StateSup with ChildProvider {
 
       val logger = Logging(context.system, "Sirius")
@@ -43,7 +44,7 @@ object StateSup {
         context.actorOf(Props(new SiriusStateActor(requestHandler, siriusStateAgent)), "memory_state")
 
       val persistenceActor =
-        context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)), "persistence")
+        context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)(config)), "persistence")
     }
   }
 

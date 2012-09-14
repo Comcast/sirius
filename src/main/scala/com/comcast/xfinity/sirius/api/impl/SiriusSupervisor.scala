@@ -56,7 +56,7 @@ object SiriusSupervisor {
       val siriusStateAgent = Agent(new SiriusState)(context.system)
       val membershipAgent = Agent(Set[ActorRef]())(context.system)
       
-      val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, siriusStateAgent)), "state")
+      val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, siriusStateAgent, config)), "state")
 
       val membershipActor = {
         val clusterConfigPath = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG) match {
