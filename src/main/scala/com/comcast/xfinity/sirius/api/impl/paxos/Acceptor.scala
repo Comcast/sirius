@@ -45,6 +45,11 @@ class Acceptor(startingSeqNum: Long,
 
   var ballotNum: Ballot = Ballot.empty
 
+
+  // XXX for monitoring...
+  var lastDuration = 0L
+  var longestDuration = 0L
+
   // slot -> (ts,PValue)
   var accepted = new JTreeMap[Long, Tuple2[Long, PValue]]()
 
@@ -99,7 +104,8 @@ class Acceptor(startingSeqNum: Long,
    */
   private def cleanOldAccepted(currentLowestSlot: Long, toReap: JTreeMap[Long, Tuple2[Long, PValue]]) = {
     var highestReapedSlot: Long = currentLowestSlot - 1
-    val reapBeforeTs = System.currentTimeMillis - reapWindow
+    val now = System.currentTimeMillis()
+    val reapBeforeTs = now - reapWindow
     breakable {
       val keys = toReap.keySet.toArray
       for (i <- 0 to keys.size - 1) {
@@ -112,6 +118,11 @@ class Acceptor(startingSeqNum: Long,
         }
       }
     }
+    val duration = System.currentTimeMillis() - now
+    lastDuration = duration
+    if (duration > longestDuration)
+      longestDuration = duration
+
     logger.debug("Reaped PValues for all commands between {} and {}", currentLowestSlot - 1, highestReapedSlot)
     (highestReapedSlot + 1, toReap)
   }
@@ -140,11 +151,15 @@ class Acceptor(startingSeqNum: Long,
     def getAcceptedSize: Int
     def getLowestAcceptableSlotNum: Long
     def getBallot: Ballot
+    def getLastDuration: Long
+    def getLongestDuration: Long
   }
 
   class AcceptorInfo extends AcceptorInfoMBean {
     def getAcceptedSize = accepted.size
     def getLowestAcceptableSlotNum = lowestAcceptableSlotNumber
     def getBallot = ballotNum
+    def getLastDuration = lastDuration
+    def getLongestDuration = longestDuration
   }
 }

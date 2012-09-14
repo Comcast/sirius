@@ -65,6 +65,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   // XXX for monitoring...
   var longestReapDuration = 0L
+  var lastReapDuration = 0L
   var currentLeaderElectedSince = 0L
 
   override def preStart() {
@@ -157,10 +158,13 @@ class Leader(membership: Agent[Set[ActorRef]],
   private def reapProposals() {
     val start = System.currentTimeMillis
     val newProposals = filterOldProposals(proposals)
+
     val duration = System.currentTimeMillis() - start
     logger.debug("Reaped Old Proposals in {}ms", duration)
+    lastReapDuration = duration
     if (duration > longestReapDuration)
       longestReapDuration = duration
+
     proposals = newProposals
   }
 
@@ -201,6 +205,7 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getElectedLeaderBallot: String
     def getCurrentLeaderElectedSince: Long
     def getLongestReapDuration: Long
+    def getLastReapDuration: Long
   }
 
   class LeaderInfo extends LeaderInfoMBean{
@@ -210,5 +215,6 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getElectedLeaderBallot = electedLeaderBallot.toString
     def getCurrentLeaderElectedSince = currentLeaderElectedSince
     def getLongestReapDuration = longestReapDuration
+    def getLastReapDuration = lastReapDuration
   }
 }

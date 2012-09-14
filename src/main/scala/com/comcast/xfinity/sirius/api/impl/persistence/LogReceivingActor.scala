@@ -29,9 +29,10 @@ class LogReceivingActor(targetActor: ActorRef) extends Actor {
     // XXX: do we need a way to time out one of these transactions? else we may wind up with
     //      leaked actors, and lots of them
     case DoneMsg =>
-      logger.info("Received {} events in {} ms", numLinesReceived, System.currentTimeMillis() - startTime)
+      val duration = System.currentTimeMillis() - startTime
+      logger.info("Received {} events in {} ms", numLinesReceived, duration)
       sender ! DoneAck
-      context.parent ! TransferComplete
+      context.parent ! TransferComplete(duration)
       context.stop(self)
   }
 }

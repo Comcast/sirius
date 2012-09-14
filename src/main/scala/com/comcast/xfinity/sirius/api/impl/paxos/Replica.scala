@@ -86,6 +86,9 @@ class Replica(localLeader: ActorRef,
   // XXX for monitoring...
   var lastProposed = ""
   var numProposed = 0
+  var lastDuration = 0L
+  var longestDuration = 0L
+
 
 
   /**
@@ -153,6 +156,11 @@ class Replica(localLeader: ActorRef,
         }
       }
     }
+    val duration = System.currentTimeMillis() - now
+    lastDuration = duration
+    if (duration > longestDuration)
+      longestDuration = duration
+
   }
 
   /**
@@ -186,6 +194,8 @@ class Replica(localLeader: ActorRef,
     def getLowestUnusedSlotNum: Long
     def getLastProposed: String
     def getNumProposed: Int
+    def getLastDuration: Long
+    def getLongestDuration: Long
   }
 
   class ReplicaInfo extends ReplicaInfoMBean {
@@ -193,5 +203,7 @@ class Replica(localLeader: ActorRef,
     def getLowestUnusedSlotNum = lowestUnusedSlotNum
     def getLastProposed = lastProposed
     def getNumProposed = numProposed
+    def getLastDuration = lastDuration
+    def getLongestDuration = longestDuration
   }
 }

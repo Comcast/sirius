@@ -69,7 +69,7 @@ object SiriusSupervisor {
           ), "membership")
       }
 
-      val logRequestActor = context.actorOf(Props(new LogRequestActor(100, _siriusLog, self, membershipAgent)), "log")
+      val logRequestActor = context.actorOf(Props(new LogRequestActor(100, _siriusLog, self, membershipAgent)(config)), "log")
 
       val orderingActor =
         if (config.getProp(SiriusConfiguration.USE_PAXOS, false)) {

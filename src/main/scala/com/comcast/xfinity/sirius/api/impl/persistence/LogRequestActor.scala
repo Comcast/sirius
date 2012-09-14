@@ -5,13 +5,15 @@ import scala.None
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.membership._
 import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 
 sealed trait LogRequestMessage
 case class RequestLogFromRemote(remote: ActorRef, logRange: LogRange, targetActor: ActorRef) extends LogRequestMessage
 case class RequestLogFromAnyRemote(logRange: LogRange, targetActor: ActorRef) extends LogRequestMessage
 case class InitiateTransfer(receiver: ActorRef, logRange: LogRange) extends LogRequestMessage
-case object TransferComplete extends LogRequestMessage
+case class TransferComplete(duration: Long) extends LogRequestMessage
 case class TransferFailed(reason: String) extends LogRequestMessage
 
 object LogRequestActor {
@@ -25,7 +27,18 @@ object LogRequestActor {
  * @param membershipAgent agent holding current membership information
  */
 class LogRequestActor(chunkSize: Int, source: LogIteratorSource,
-      localSiriusRef: ActorRef, membershipAgent: Agent[Set[ActorRef]]) extends Actor {
+      localSiriusRef: ActorRef, membershipAgent: Agent[Set[ActorRef]])
+      (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
+
+  override def preStart() {
+    registerMonitor(new LogRequestActorInfo, config)
+  }
+  override def postStop() {
+    unregisterMonitors(config)
+  }
+
+  // XXX for monitoring...
+  var lastTransferDuration = 0L
 
   def membershipHelper = new MembershipHelper
 
@@ -52,7 +65,19 @@ class LogRequestActor(chunkSize: Int, source: LogIteratorSource,
       val logSender = createSender()
       logSender ! Start(receiver, source, logRange, chunkSize)
 
-    case TransferComplete =>
+    case TransferComplete(duration) =>
+      lastTransferDuration = duration
       context.parent ! TransferComplete
+  }
+
+  /**
+   * Monitoring hooks
+   */
+  trait LogRequestActorInfoMBean {
+    def getLastTransferDuration: Long
+  }
+
+  class LogRequestActorInfo extends LogRequestActorInfoMBean {
+    def getLastTransferDuration = lastTransferDuration
   }
 }
