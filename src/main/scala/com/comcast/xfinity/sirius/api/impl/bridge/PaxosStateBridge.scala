@@ -63,6 +63,9 @@ class PaxosStateBridge(startingSeq: Long,
       extends Actor with MonitoringHooks {
     import PaxosStateBridge._
 
+  // XXX added for monitoring...
+  var totalGapsRequested = 0
+
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
 
@@ -165,6 +168,7 @@ class PaxosStateBridge(startingSeq: Long,
         logRequestActor ! RequestLogFromAnyRemote(br, self)
       }
     )
+    totalGapsRequested += gaps.size
     logger.debug("Requested {} gaps", gaps.size)
   }
 
@@ -198,10 +202,12 @@ class PaxosStateBridge(startingSeq: Long,
   trait PaxosStateBridgeInfoMBean {
     def getNextSeq: Long
     def getEventBufferSize: Int
+    def getTotalGapsRequested: Int
   }
 
   class PaxosStateBridgeInfo extends PaxosStateBridgeInfoMBean {
     def getNextSeq = nextSeq
     def getEventBufferSize = eventBuffer.size
+    def getTotalGapsRequested = totalGapsRequested
   }
 }

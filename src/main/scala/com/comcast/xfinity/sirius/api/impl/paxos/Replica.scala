@@ -8,6 +8,7 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import java.util.{TreeMap => JTreeMap}
 import scala.util.control.Breaks._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object Replica {
 
@@ -52,10 +53,17 @@ object Replica {
     val reapWindowMillis = config.getProp(SiriusConfiguration.REPROPOSAL_WINDOW, 10000L)
     val reapFreqSecs = config.getProp(SiriusConfiguration.REPROPOSAL_CLEANUP_FREQ, 1)
 
-    new Replica(localLeader, startingSeqNum, performFun, reapWindowMillis) {
+    new Replica(localLeader, startingSeqNum, performFun, reapWindowMillis)(config) {
       val reapCancellable =
         context.system.scheduler.schedule(reapFreqSecs seconds,
                                           reapFreqSecs seconds, self, Reap)
+      override def preStart() {
+        registerMonitor(new ReplicaInfo, config)
+      }
+      override def postStop() {
+        unregisterMonitors(config)
+        reapCancellable.cancel()
+      }
     }
   }
 }
@@ -63,7 +71,8 @@ object Replica {
 class Replica(localLeader: ActorRef,
               startingSeqNum: Long,
               performFun: Replica.PerformFun,
-              reapWindow: Long) extends Actor {
+              reapWindow: Long)
+             (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
 
   import Replica._
 
@@ -73,6 +82,11 @@ class Replica(localLeader: ActorRef,
   val traceLogger = Logging(context.system, "SiriusTrace")
 
   var lowestUnusedSlotNum: Long = startingSeqNum
+
+  // XXX for monitoring...
+  var lastProposed = ""
+  var numProposed = 0
+
 
   /**
    * Propose a command to the local leader, either from a new Request or due
@@ -85,7 +99,12 @@ class Replica(localLeader: ActorRef,
   def propose(command: Command) {
     localLeader ! Propose(lowestUnusedSlotNum, command)
     proposals.put(lowestUnusedSlotNum, command)
-    traceLogger.debug("Proposing slot {} for {}", lowestUnusedSlotNum, command)
+
+    numProposed += 1
+    lastProposed = "Proposing slot %s for %s".format(lowestUnusedSlotNum, command)
+
+    traceLogger.debug(lastProposed)
+
     lowestUnusedSlotNum = lowestUnusedSlotNum + 1
   }
 
@@ -157,5 +176,22 @@ class Replica(localLeader: ActorRef,
       propose(proposedCommand)
       proposals.remove(slot)
     case null =>
+  }
+
+  /**
+   * Monitoring hooks
+   */
+  trait ReplicaInfoMBean {
+    def getProposalsSize: Int
+    def getLowestUnusedSlotNum: Long
+    def getLastProposed: String
+    def getNumProposed: Int
+  }
+
+  class ReplicaInfo extends ReplicaInfoMBean {
+    def getProposalsSize = proposals.size
+    def getLowestUnusedSlotNum = lowestUnusedSlotNum
+    def getLastProposed = lastProposed
+    def getNumProposed = numProposed
   }
 }

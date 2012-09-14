@@ -63,6 +63,10 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   startScout()
 
+  // XXX for monitoring...
+  var longestReapDuration = 0L
+  var currentLeaderElectedSince = 0L
+
   override def preStart() {
     registerMonitor(new LeaderInfo, config)
   }
@@ -88,10 +92,12 @@ class Leader(membership: Agent[Set[ActorRef]],
       for (slot <- proposals.keySet) {
         startCommander(PValue(ballotNum, slot, proposals.get(slot)))
       }
+      currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(ballotNum)
 
     // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
     case Preempted(newBallot) if newBallot > ballotNum =>
+      currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(newBallot)
       val electedLeader = context.actorFor(newBallot.leaderId)
       for (slot <- proposals.keySet) {
@@ -151,7 +157,10 @@ class Leader(membership: Agent[Set[ActorRef]],
   private def reapProposals() {
     val start = System.currentTimeMillis
     val newProposals = filterOldProposals(proposals)
-    logger.debug("Reaped Old Proposals in {}ms", System.currentTimeMillis-start)
+    val duration = System.currentTimeMillis() - start
+    logger.debug("Reaped Old Proposals in {}ms", duration)
+    if (duration > longestReapDuration)
+      longestReapDuration = duration
     proposals = newProposals
   }
 
@@ -190,6 +199,8 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getLatestDecidedSlot: Long
     def getProposalCount: Int
     def getElectedLeaderBallot: String
+    def getCurrentLeaderElectedSince: Long
+    def getLongestReapDuration: Long
   }
 
   class LeaderInfo extends LeaderInfoMBean{
@@ -197,5 +208,7 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getLatestDecidedSlot = latestDecidedSlot
     def getProposalCount = proposals.size
     def getElectedLeaderBallot = electedLeaderBallot.toString
+    def getCurrentLeaderElectedSince = currentLeaderElectedSince
+    def getLongestReapDuration = longestReapDuration
   }
 }

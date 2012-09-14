@@ -9,6 +9,7 @@ import scala.util.control.Breaks._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import collection.immutable.HashSet
 import collection.mutable.SetBuilder
+import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object Acceptor {
 
@@ -18,11 +19,15 @@ object Acceptor {
     val reapWindow = config.getProp(SiriusConfiguration.ACCEPTOR_WINDOW, 10 * 60 * 1000L)
     val reapFreqSecs = config.getProp(SiriusConfiguration.ACCEPTOR_CLEANUP_FREQ, 30)
 
-    new Acceptor(startingSeqNum, reapWindow) {
+    new Acceptor(startingSeqNum, reapWindow)(config) {
       val reapCancellable =
         context.system.scheduler.schedule(reapFreqSecs seconds, reapFreqSecs seconds, self, Reap)
 
+      override def preStart() {
+        registerMonitor(new AcceptorInfo, config)
+      }
       override def postStop() {
+        unregisterMonitors(config)
         reapCancellable.cancel()
       }
     }
@@ -30,7 +35,8 @@ object Acceptor {
 }
 
 class Acceptor(startingSeqNum: Long,
-               reapWindow: Long = 10 * 60 * 1000L) extends Actor {
+               reapWindow: Long = 10 * 60 * 1000L)
+              (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
 
   import Acceptor._
 
@@ -69,8 +75,8 @@ class Acceptor(startingSeqNum: Long,
         // also update the ts w/ localtime in our accepted map for reaping
         val now = System.currentTimeMillis
         accepted.get(pval.slotNum) match {
-          case ((_,oldPval: PValue)) if oldPval.ballot > pval.ballot => accepted.put(oldPval.slotNum, (now, oldPval))
-          case ((_,oldPval: PValue)) => accepted.put(pval.slotNum, (now, pval))
+          case ((_, oldPval: PValue)) if oldPval.ballot > pval.ballot => accepted.put(oldPval.slotNum, (now, oldPval))
+          case ((_, oldPval: PValue)) => accepted.put(pval.slotNum, (now, pval))
           case null => accepted.put(pval.slotNum, (now, pval))
         }
       }
@@ -125,5 +131,20 @@ class Acceptor(startingSeqNum: Long,
       }
     }
     undecidedPvalues.result()
+  }
+
+  /**
+   * Monitoring hooks
+   */
+  trait AcceptorInfoMBean {
+    def getAcceptedSize: Int
+    def getLowestAcceptableSlotNum: Long
+    def getBallot: Ballot
+  }
+
+  class AcceptorInfo extends AcceptorInfoMBean {
+    def getAcceptedSize = accepted.size
+    def getLowestAcceptableSlotNum = lowestAcceptableSlotNumber
+    def getBallot = ballotNum
   }
 }
