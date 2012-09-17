@@ -1,7 +1,6 @@
 #!/bin/bash
 
-UBERSTORE_BASE=`dirname $0`
-UBERSTORE_BASE=`cd $UBERSTORE_BASE/../..; pwd`
+UBERSTORE_BASE=$1
 
 WAL_DIR=$UBERSTORE_BASE/uberstore
 BACKUP_WAL_DIR=$UBERSTORE_BASE/uberstore-backup
