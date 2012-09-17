@@ -36,8 +36,14 @@ object NodeStats {
    * @param configMap config keys to values
    */
   case class NodeConfig(configMap: Map[String, Any]) {
-    override def toString =
-      "NodeConfig:\n  " + configMap.mkString("\n  ")
+    override def toString = {
+      val sb = new StringBuilder
+      sb.append("NodeConfig:\n")
+      configMap.foreach(
+        kv => sb.append("  %15s: %s\n".format(kv._1, kv._2))
+      )
+      sb.mkString
+    }
   }
 
   /**
@@ -47,7 +53,25 @@ object NodeStats {
    *          where stats is a collection of objectName -> (attribute -> value)
    */
   case class MonitorStats(statsOpt: Option[Map[String, Map[String, Any]]]) {
-    override def toString =
-      "Monitors: " + statsOpt
+    override def toString = {
+      val sb = new StringBuilder
+      sb.append("Monitors:\n")
+      statsOpt match {
+        case None => "Not Configured"
+        case Some(stats) =>
+          stats.foreach {
+            case (objName, attrs) => {
+              sb.append("  %s:\n".format(objName))
+              attrs.foreach(
+                kv =>
+                  sb.append("    %-15s: %s\n".format(kv._1, kv._2))
+              )
+            }
+          }
+      }
+      sb.mkString
+    }
+
+
   }
 }
