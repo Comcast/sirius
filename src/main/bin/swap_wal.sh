@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ $# -ne 2 ]
+then
+  echo "Usage: replace_logs.sh <base_dir> <staging_dir>"
+  exit 1
+fi
+
 UBERSTORE_BASE=$1
 STAGED_WAL_DIR=$2
 

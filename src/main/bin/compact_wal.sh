@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ $# -ne 1 ]
+then
+  echo "Usage: compact_logs.sh <base_dir>"
+  exit 1
+fi
+
 UBERSTORE_BASE=$1
 
 WAL_DIR=$UBERSTORE_BASE/uberstore
