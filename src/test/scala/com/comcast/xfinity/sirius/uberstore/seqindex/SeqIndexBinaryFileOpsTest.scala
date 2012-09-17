@@ -2,7 +2,6 @@ package com.comcast.xfinity.sirius.uberstore.seqindex
 
 import com.comcast.xfinity.sirius.NiceTest
 import java.io.RandomAccessFile
-import com.comcast.xfinity.sirius.uberstore.Checksummer
 import org.mockito.stubbing.Answer
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.ArgumentCaptor
@@ -13,6 +12,7 @@ import org.mockito.Matchers.{any, anyInt}
 import collection.immutable.SortedMap
 import java.util.{TreeMap => JTreeMap}
 import collection.JavaConversions._
+import com.comcast.xfinity.sirius.uberstore.common.Checksummer
 
 object SeqIndexBinaryFileOpsTest {
   trait FauxChecksummer extends Checksummer {

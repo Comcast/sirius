@@ -1,4 +1,4 @@
-package com.comcast.xfinity.sirius.uberstore
+package com.comcast.xfinity.sirius.uberstore.data
 
 import com.comcast.xfinity.sirius.api.impl.{Delete, Put, OrderedEvent}
 import java.nio.ByteBuffer

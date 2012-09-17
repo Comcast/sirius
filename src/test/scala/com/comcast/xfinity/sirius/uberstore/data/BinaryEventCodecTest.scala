@@ -1,4 +1,4 @@
-package com.comcast.xfinity.sirius.uberstore
+package com.comcast.xfinity.sirius.uberstore.data
 
 import com.comcast.xfinity.sirius.NiceTest
 import java.lang.Object

@@ -2,7 +2,6 @@ package com.comcast.xfinity.sirius.uberstore.data
 
 import com.comcast.xfinity.sirius.NiceTest
 import java.io.RandomAccessFile
-import com.comcast.xfinity.sirius.uberstore.{UberStoreFileOps, OrderedEventCodec}
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete}
 import org.mockito.Matchers.{any, same}

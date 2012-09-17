@@ -1,6 +1,8 @@
 package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.NiceTest
+import common.Checksummer
+import data.UberStoreBinaryFileOps
 import java.io.RandomAccessFile
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito._

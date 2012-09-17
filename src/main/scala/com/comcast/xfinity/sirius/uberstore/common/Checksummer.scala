@@ -1,4 +1,4 @@
-package com.comcast.xfinity.sirius.uberstore
+package com.comcast.xfinity.sirius.uberstore.common
 
 /**
  * Trait supplying checksumming capabilities

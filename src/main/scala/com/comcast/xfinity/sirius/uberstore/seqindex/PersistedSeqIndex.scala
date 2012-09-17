@@ -1,8 +1,8 @@
 package com.comcast.xfinity.sirius.uberstore.seqindex
 
 import java.io.RandomAccessFile
-import com.comcast.xfinity.sirius.uberstore.Fnv1aChecksummer
 import java.util.{TreeMap => JTreeMap}
+import com.comcast.xfinity.sirius.uberstore.common.Fnv1aChecksummer
 
 object PersistedSeqIndex {
 

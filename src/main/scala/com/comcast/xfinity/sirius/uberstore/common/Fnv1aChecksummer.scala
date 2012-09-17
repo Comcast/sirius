@@ -1,4 +1,4 @@
-package com.comcast.xfinity.sirius.uberstore
+package com.comcast.xfinity.sirius.uberstore.common
 
 /**
  * Trait supplying the FNV-1a checksum algorithm, as defined by

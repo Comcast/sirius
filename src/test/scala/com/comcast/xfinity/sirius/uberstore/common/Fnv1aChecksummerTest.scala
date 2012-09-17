@@ -1,4 +1,4 @@
-package com.comcast.xfinity.sirius.uberstore
+package com.comcast.xfinity.sirius.uberstore.common
 
 import com.comcast.xfinity.sirius.NiceTest
 

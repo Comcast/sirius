@@ -1,9 +1,9 @@
 package com.comcast.xfinity.sirius.uberstore.seqindex
 
 import java.io.RandomAccessFile
-import com.comcast.xfinity.sirius.uberstore.Checksummer
 import java.nio.ByteBuffer
 import java.util.{TreeMap => JTreeMap}
+import com.comcast.xfinity.sirius.uberstore.common.Checksummer
 
 /**
  * Class providing low level file operations for a binary

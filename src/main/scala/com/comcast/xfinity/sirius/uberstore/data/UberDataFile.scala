@@ -2,8 +2,8 @@ package com.comcast.xfinity.sirius.uberstore.data
 
 import java.io.RandomAccessFile
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.uberstore._
 import annotation.tailrec
+import com.comcast.xfinity.sirius.uberstore.common.Fnv1aChecksummer
 
 object UberDataFile {
 
