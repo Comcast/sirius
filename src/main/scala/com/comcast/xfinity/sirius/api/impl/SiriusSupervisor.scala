@@ -118,13 +118,11 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
   def receive = {
     case SiriusSupervisor.IsInitializedRequest =>
       if (siriusStateAgent().areSubsystemsInitialized) {
-        context.become(initialized)
+        initSchedule.cancel()
 
         siriusStateAgent send (_.copy(supervisorInitialized = true))
 
-        initSchedule.cancel()
-
-        membershipActor ! CheckClusterConfig
+        context.become(initialized)
 
         sender ! new SiriusSupervisor.IsInitializedResponse(true)
       } else {

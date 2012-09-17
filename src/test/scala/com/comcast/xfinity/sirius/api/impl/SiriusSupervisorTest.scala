@@ -99,7 +99,6 @@ class SiriusSupervisorTest extends NiceTest with TimedTest {
     val isInitializedFuture = supervisor ? SiriusSupervisor.IsInitializedRequest
     val expected = SiriusSupervisor.IsInitializedResponse(true)
     assert(expected === Await.result(isInitializedFuture, timeout.duration))
-    membershipProbe.expectMsg(CheckClusterConfig)
   }
 
   describe("a SiriusSupervisor") {
