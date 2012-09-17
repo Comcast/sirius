@@ -40,7 +40,7 @@ class LogRequestActor(chunkSize: Int, source: LogIteratorSource,
   // XXX for monitoring...
   var lastTransferDuration = 0L
 
-  def membershipHelper = new MembershipHelper
+  lazy val membershipHelper = MembershipHelper(membershipAgent, localSiriusRef)
 
   def createSender(): ActorRef =
     context.actorOf(Props(new LogSendingActor))
@@ -54,7 +54,7 @@ class LogRequestActor(chunkSize: Int, source: LogIteratorSource,
       remote ! InitiateTransfer(receiver, logRange)
 
     case RequestLogFromAnyRemote(logRange, targetActor) => {
-      val membershipData = membershipHelper.getRandomMember(membershipAgent(), localSiriusRef)
+      val membershipData = membershipHelper.getRandomMember
       membershipData match {
         case None => context.parent ! TransferFailed(LogRequestActor.NO_MEMBER_FAIL_MSG)
         case Some(member) => self ! RequestLogFromRemote(member, logRange, targetActor)

@@ -38,8 +38,8 @@ object SiriusSupervisor {
   }
 
   /**
-   * @param requestHandler User implemented RequestHandler.
-   * @param siriusLog Interface into the Sirius persistent log.
+   * @param _requestHandler User implemented RequestHandler.
+   * @param _siriusLog Interface into the Sirius persistent log.
    * @param config the SiriusConfiguration for this node
    */
   def apply(
@@ -55,7 +55,7 @@ object SiriusSupervisor {
     new SiriusSupervisor with DependencyProvider {
       val siriusStateAgent = Agent(new SiriusState)(context.system)
       val membershipAgent = Agent(Set[ActorRef]())(context.system)
-      
+
       val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, siriusStateAgent, config)), "state")
 
       val membershipActor = {
@@ -77,7 +77,6 @@ object SiriusSupervisor {
             membershipAgent,
             _siriusLog.getNextSeq,
             stateSup,
-            logRequestActor,
             self,
             config
           )

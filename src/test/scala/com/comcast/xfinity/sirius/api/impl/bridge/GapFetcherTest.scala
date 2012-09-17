@@ -3,8 +3,11 @@ package com.comcast.xfinity.sirius.api.impl.bridge
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{ReceiveTimeout, ActorRef, ActorSystem}
 import akka.testkit.{TestActorRef, TestProbe}
+import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{LogSubrange, GetLogSubrange}
+import org.mockito.Matchers
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
 
 class GapFetcherTest extends NiceTest {
 
@@ -32,7 +35,7 @@ class GapFetcherTest extends NiceTest {
   }
 
   describe ("upon receiving a chunk") {
-    it ("should send the events to replyTo") {
+    it ("should send the chunk to replyTo") {
       val events = List[OrderedEvent](
         OrderedEvent(1, 1, Delete("1")), OrderedEvent(2, 2, Delete("2"))
       )
@@ -43,49 +46,22 @@ class GapFetcherTest extends NiceTest {
 
       underTest ! chunk
 
-      val receivedEvents = parentProbe.receiveN(2)
+      val receivedChunk = parentProbe.receiveOne(100 milliseconds)
 
-      assert(events === receivedEvents)
+      assert(chunk === receivedChunk)
     }
+  }
 
-    describe ("that fully fulfills the request") {
-      it ("should request another chunk") {
-        val events = List[OrderedEvent](
-          OrderedEvent(1, 1, Delete("1")), OrderedEvent(2, 2, Delete("2")),
-          OrderedEvent(3, 3, Delete("3")), OrderedEvent(4, 4, Delete("4")),
-          OrderedEvent(5, 5, Delete("5"))
-        )
-        val chunk = LogSubrange(events)
-        val parentProbe = TestProbe()
-        val targetProbe = TestProbe()
+  describe ("upon receiving a RequestFromSeq message") {
+    it ("should request another chunk from the target") {
+      val targetProbe = TestProbe()
 
-        val underTest = makeGapFetcher(replyTo = parentProbe.ref, target = targetProbe.ref)
-        targetProbe.expectMsg(GetLogSubrange(1, 5))
+      val gapFetcher = makeGapFetcher(target = targetProbe.ref)
 
-        underTest ! chunk
+      targetProbe.expectMsg(GetLogSubrange(1, 5))
 
-        targetProbe.expectMsg(GetLogSubrange(6, 10))
-        targetProbe.expectNoMsg()
-      }
-    }
-    describe ("that does not fully fulfill the request") {
-      it ("should die quietly") {
-        val events = List[OrderedEvent](
-          OrderedEvent(1, 1, Delete("1")), OrderedEvent(2, 2, Delete("2")),
-          OrderedEvent(3, 3, Delete("3")), OrderedEvent(4, 4, Delete("4"))
-        )
-        val chunk = LogSubrange(events)
-        val parentProbe = TestProbe()
-        val targetProbe = TestProbe()
-
-        val underTest = makeGapFetcher(replyTo = parentProbe.ref, target = targetProbe.ref)
-        targetProbe.expectMsg(GetLogSubrange(1, 5))
-
-        underTest ! chunk
-
-        targetProbe.expectNoMsg()
-        assert(underTest.isTerminated)
-      }
+      gapFetcher ! RequestFromSeq(11)
+      targetProbe.expectMsg(GetLogSubrange(11, 15))
     }
   }
 

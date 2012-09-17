@@ -5,23 +5,25 @@ import collection.SortedMap
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import annotation.tailrec
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Props, Actor, ActorRef}
 import akka.util.duration._
-import com.comcast.xfinity.sirius.api.impl.persistence.{RequestLogFromAnyRemote, BoundedLogRange}
 import akka.event.Logging
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 
 object PaxosStateBridge {
-  object RequestGaps
+  case object RequestGaps
+  case class RequestFromSeq(begin: Long)
 
   def apply(startingSeq: Long,
             stateSupActor: ActorRef,
-            logRequestActor: ActorRef,
             siriusSupActor: ActorRef,
+            membershipHelper: MembershipHelper,
             config: SiriusConfiguration) = {
 
     // TODO add grabbing request gaps delay from config, pass into constructor?
-    new PaxosStateBridge(startingSeq, stateSupActor, logRequestActor, siriusSupActor)(config)
+    new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper)(config)
   }
 }
 
@@ -50,29 +52,29 @@ object PaxosStateBridge {
  *            everything through the state subsystem supervisor for abstraction,
  *            such that we can easily refactor and not worry about messing stuff
  *            up.
- * @param logRequestActor reference to actor that will handle requests for log ranges.
  * @param siriusSupActor reference to the Sirius Supervisor Actor for routing
  *          DecisionHints to the Paxos Subsystem
- *
+ * @param membershipHelper reference to object that knows how to get a random
+ *                         remote cluster member
  */
 class PaxosStateBridge(startingSeq: Long,
                        stateSupActor: ActorRef,
-                       logRequestActor: ActorRef,
-                       siriusSupActor: ActorRef)
+                       siriusSupActor: ActorRef,
+                       membershipHelper: MembershipHelper)
                       (implicit config: SiriusConfiguration = new SiriusConfiguration)
       extends Actor with MonitoringHooks {
     import PaxosStateBridge._
 
-  // XXX added for monitoring...
-  var totalGapsRequested = 0
-
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
 
+  var gapFetcher: Option[ActorRef] = None
+
   // TODO: make this configurable- it's cool hardcoded for now, but once
   //       SiriusConfig matures this would be pretty clean to configure
+  // also, start immediately.
   val requestGapsCancellable =
-    context.system.scheduler.schedule(60 seconds, 60 seconds, self, RequestGaps)
+    context.system.scheduler.schedule(0 seconds, 30 seconds, self, RequestGaps)
 
   var nextSeq: Long = startingSeq
   var eventBuffer = SortedMap[Long, OrderedEvent]()
@@ -103,35 +105,41 @@ class PaxosStateBridge(startingSeq: Long,
       traceLogger.debug("Time to respond to client for sequence={}: {}ms", slot, System.currentTimeMillis() - ts)
 
     /**
-     * When receiving an OrderedEvent, we just need to send it through the normal
-     * eventBuffer process, adding it and flushing any contiguous sequences if
-     * possible.  This occurs as a result of RequestGaps (OrderedEvents will be
-     * sent to us by a LogReceivingActor).
+     * When receiving a LogSubrange, we need to check to see whether it's useful.  These
+     * messages originate from the GapFetcher, which proactively seeks out new updates
+     * that might be locally missed.  If we receive this message and it's helpful, indicate
+     * to the GapFetcher that we're ready for more.  Otherwise, let it die of RequestTimeout
+     * starvation.
      */
-    case event @ OrderedEvent(slot, ts, _) if slot >= nextSeq && !eventBuffer.contains(slot) =>
-      processOrderedEvent(event)
-      traceLogger.debug("Writing caught-up event for sequence={}, " +
-        "time since original command submission: {}ms", slot, System.currentTimeMillis() - ts)
+    case LogSubrange(events) if (events.last.sequence >= nextSeq) =>
+      events.foreach((event: OrderedEvent) => {
+        processOrderedEvent(event)
+        traceLogger.debug("Writing caught-up event for sequence={}, " +
+          "time since original command submission: {}ms", event.sequence,
+          System.currentTimeMillis() - event.timestamp)
+      })
+      requestNextChunk()
 
     case RequestGaps =>
       //XXX: logging unreadyDecisions... should remove in favor or better monitoring later
       logger.debug("Unready Decisions count: {}", eventBuffer.size)
-      requestGaps()
+      runGapFetcher()
   }
 
   /**
    * Add this event to the event buffer and fire off the method that flushes
    * any ready decisions from the buffer.
    *
-   * Note: this method assumes that the event does not already exist in the buffer,
-   * and adds the event to the buffer blindly.  If it matters to your implementation,
-   * make sure to guard against calling this with duplicate events!
+   * This method will only have side-effects if the event *should* be processed.
+   * That is, if the sequence number of the event is >= nextSeq.
    *
    * @param event OrderedEvent to add/process
    */
   private def processOrderedEvent(event: OrderedEvent) {
-    eventBuffer += (event.sequence -> event)
-    executeReadyDecisions()
+    if (event.sequence >= nextSeq) {
+      eventBuffer += (event.sequence -> event)
+      executeReadyDecisions()
+    }
   }
 
   /**
@@ -157,44 +165,47 @@ class PaxosStateBridge(startingSeq: Long,
   }
 
   /**
-   * Given the current nextSeq and eventBuffer, finds current gaps that are preventing persistence
-   * and requests them from the local logRequestActor.  Does not modify nextSeq or eventBuffer.
+   * Called when the last chunk we received was helpful.  Request another one if
+   * the fetcher is alive and well.
    */
-  private def requestGaps() {
-    val gaps = findAllGaps(nextSeq, eventBuffer)
-    gaps.foreach(
-      (br: BoundedLogRange) => {
-        traceLogger.debug("Requesting log range: {} to {}", br.start, br.end)
-        logRequestActor ! RequestLogFromAnyRemote(br, self)
-      }
-    )
-    totalGapsRequested += gaps.size
-    logger.debug("Requested {} gaps", gaps.size)
+  private[bridge] def requestNextChunk() {
+    gapFetcher match {
+      case Some(fetcher) if !fetcher.isTerminated =>
+        fetcher ! RequestFromSeq(nextSeq)
+      case _ =>
+      // do nothing for now; only handle the case where the fetcher is alive and well
+    }
   }
 
   /**
-   * Generate list of "gaps" in an event buffer.  Gaps are ranges of sequence numbers that:
-   * - do not appear in the buffer
-   * - are preventing later writes from being persisted
-   *
-   * @param nextSeqExpected next expected sequence number
-   * @param buffer buffer to search
-   * @param accum accumulator, defaults to empty if not provided
-   * @return list of bounded log ranges representing gaps.
+   * Checks whether there is currently a GapFetcher running.  If there is,
+   * does nothing, assuming the fetcher is still working properly.  Otherwise,
+   * starts a new one, which will start requesting gaps at nextSeq (next
+   * sequence number needed to enable writes from the buffer).
    */
-  @tailrec
-  private def findAllGaps(nextSeqExpected: Long,
-                          buffer: SortedMap[Long, OrderedEvent],
-                          accum: List[BoundedLogRange] = Nil): List[BoundedLogRange] = {
-    buffer.headOption match {
-      case Some((seq, event)) if seq > nextSeqExpected =>
-        findAllGaps(seq + 1, buffer.tail, accum :+ BoundedLogRange(nextSeqExpected, seq - 1))
-      case Some((seq, event)) =>
-        findAllGaps(seq + 1, buffer.tail, accum)
-      case None =>
-        accum
+  private[bridge] def runGapFetcher() {
+    gapFetcher match {
+      case Some(fetcher) if !fetcher.isTerminated =>
+        // do nothing, fetcher is still working
+      case _ =>
+        gapFetcher = createGapFetcher(nextSeq)
     }
   }
+
+  private[bridge] def createGapFetcher(seq: Long): Option[ActorRef] = {
+    val randomMember = membershipHelper.getRandomMember
+    randomMember match {
+      case Some(member) =>
+        Some(createGapFetcherActor(seq, member))
+      case None =>
+        logger.warning("Failed to create GapFetcher: could not get remote" +
+          "member for transfer request.")
+        None
+    }
+  }
+
+  def createGapFetcherActor(seq: Long, target: ActorRef) =
+    context.actorOf(Props(GapFetcher(seq, target, self, config)), "gapfetcher")
 
   /**
    * Monitoring hooks
@@ -202,12 +213,10 @@ class PaxosStateBridge(startingSeq: Long,
   trait PaxosStateBridgeInfoMBean {
     def getNextSeq: Long
     def getEventBufferSize: Int
-    def getTotalGapsRequested: Int
   }
 
   class PaxosStateBridgeInfo extends PaxosStateBridgeInfoMBean {
     def getNextSeq = nextSeq
     def getEventBufferSize = eventBuffer.size
-    def getTotalGapsRequested = totalGapsRequested
   }
 }

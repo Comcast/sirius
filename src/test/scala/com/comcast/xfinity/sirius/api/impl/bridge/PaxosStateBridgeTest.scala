@@ -4,16 +4,31 @@ import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.SiriusResult
-import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestGaps
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{RequestFromSeq, RequestGaps}
 import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, RequestLogFromAnyRemote}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, OrderedEvent, Delete}
-import akka.actor.ActorSystem
+import akka.actor.{PoisonPill, ActorRef, ActorSystem}
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
+import org.mockito.Mockito._
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 
 class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConfig {
 
   implicit val actorSystem = ActorSystem("PaxosStateBridgeTest")
+
+  val defaultMockMembershipHelper = mock[MembershipHelper]
+  doReturn(Some(TestProbe().ref)).when(defaultMockMembershipHelper).getRandomMember
+  def makeStateBridge(startingSeq: Long,
+                      stateSupActor: ActorRef = TestProbe().ref,
+                      siriusSupActor: ActorRef = TestProbe().ref,
+                      membershipHelper: MembershipHelper = defaultMockMembershipHelper,
+                      gapFetcherActor: ActorRef = TestProbe().ref) = {
+    TestActorRef(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper) {
+      override def createGapFetcherActor(seq: Long, target: ActorRef) = gapFetcherActor
+    })
+  }
 
   override def afterAll {
     actorSystem.shutdown()
@@ -22,91 +37,18 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
   describe("when receiving a UnreadyDecisionsCountReq") {
     it("must return the count of buffered decisions") {
       val senderProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, TestProbe().ref, TestProbe().ref, TestProbe().ref))
+      val stateBridge = makeStateBridge(10)
       senderProbe.send(stateBridge, UnreadyDecisionsCountReq)
       senderProbe.expectMsg(UnreadyDecisionCount(0))
 
     }
   }
 
-  describe("when receiving an OrderedEvent") {
-    it("must queue unready events and apply them when their time comes") {
-      val stateProbe = TestProbe()
-      val logRequestProbe = TestProbe()
-
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
-
-
-      stateBridge ! OrderedEvent(11, 1, Delete("a"))
-      stateProbe.expectNoMsg(100 millis)
-      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
-
-      stateBridge ! OrderedEvent(13, 2, Delete("b"))
-      stateProbe.expectNoMsg(100 millis)
-      assert(2 === stateBridge.underlyingActor.eventBuffer.size)
-
-      stateBridge ! OrderedEvent(10, 3, Delete("c"))
-      stateProbe.expectMsg(OrderedEvent(10, 3, Delete("c")))
-      stateProbe.expectMsg(OrderedEvent(11, 1, Delete("a")))
-      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
-
-      stateBridge ! OrderedEvent(12, 4, Delete("d"))
-      stateProbe.expectMsg(OrderedEvent(12, 4, Delete("d")))
-      stateProbe.expectMsg(OrderedEvent(13, 2, Delete("b")))
-      assert(0 === stateBridge.underlyingActor.eventBuffer.size)
-    }
-
-    it ("should drop events with seq < nextSeq on the floor") {
-      val stateProbe = TestProbe()
-      val logRequestProbe = TestProbe()
-
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
-
-      stateBridge ! OrderedEvent(9, 2, Delete("b"))
-      stateProbe.expectNoMsg(100 millis)
-      assert(0 === stateBridge.underlyingActor.eventBuffer.size)
-      assert(10 === stateBridge.underlyingActor.nextSeq)
-    }
-
-    it ("should drop already seen events on the floor") {
-      val stateProbe = TestProbe()
-      val logRequestProbe = TestProbe()
-
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
-
-      stateBridge ! OrderedEvent(11, 1, Delete("a"))
-      stateProbe.expectNoMsg(100 millis)
-      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
-
-      stateBridge ! OrderedEvent(11, 2, Delete("b"))
-      stateProbe.expectNoMsg(100 millis)
-      assert(1 === stateBridge.underlyingActor.eventBuffer.size)
-    }
-    it("should send a DecisionHint to the SiriusSupervisor with the latest decided slot"){
-      val siriusSupProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(11, TestProbe().ref, TestProbe().ref, siriusSupProbe.ref))
-      stateBridge ! OrderedEvent(11, 1, Delete("a"))
-      siriusSupProbe.expectMsg(DecisionHint(11L))
-    }
-
-    it("should send a DecisionHint with a list of slots to the SiriusSupervisor when an eventbuffer with gaps gets filled"){
-      val siriusSupProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(11, TestProbe().ref, TestProbe().ref, siriusSupProbe.ref))
-      stateBridge ! OrderedEvent(12, 1, Delete("a"))
-      stateBridge ! OrderedEvent(13, 1, Delete("a"))
-      stateBridge ! OrderedEvent(11, 1, Delete("a"))
-      siriusSupProbe.expectMsg(DecisionHint(13L))
-    }
-
-
-  }
-
   describe("when receiving a Decision message") {
     it("must not acknowledge an Decision below it's slotnum") {
       val stateProbe = TestProbe()
-      val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
+      val stateBridge = makeStateBridge(10, stateSupActor = stateProbe.ref)
 
       stateBridge ! Decision(9, Command(clientProbe.ref, 1, Delete("z")))
       clientProbe.expectNoMsg(100 millis)
@@ -116,10 +58,9 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
     it("must, in the presence of multiple Decisions for a slot, " +
       "only acknowledge and apply the first") {
       val stateProbe = TestProbe()
-      val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
+      val stateBridge = makeStateBridge(10, stateSupActor = stateProbe.ref)
 
       val theDecision = Decision(10, Command(clientProbe.ref, 1, Delete("z")))
 
@@ -134,10 +75,9 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
 
     it ("should drop already seen decisions on the floor") {
       val stateProbe = TestProbe()
-      val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
+      val stateBridge = makeStateBridge(10, stateSupActor = stateProbe.ref)
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
       stateProbe.expectNoMsg(100 millis)
@@ -152,10 +92,9 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
 
     it("must queue unready Decisions and apply them when their time comes") {
       val stateProbe = TestProbe()
-      val logRequestProbe = TestProbe()
       val clientProbe = TestProbe()
 
-      val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
+      val stateBridge = makeStateBridge(10, stateSupActor = stateProbe.ref)
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
       clientProbe.expectMsg(SiriusResult.none())
@@ -182,64 +121,123 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
     }
     it("should send a DecisionHint to the SiriusSupervisor with the last decided slot"){
       val siriusSupProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(12, TestProbe().ref, TestProbe().ref, siriusSupProbe.ref))
+      val stateBridge = makeStateBridge(12, siriusSupActor = siriusSupProbe.ref)
       stateBridge !  Decision(12, Command(TestProbe().ref, 4, Delete("d")))
       siriusSupProbe.expectMsg(DecisionHint(12L))
     }
 
     it("should send a DecisionHint with multiple slots when an eventbuffer with gaps is filled"){
       val siriusSupProbe = TestProbe()
-      val stateBridge = TestActorRef(new PaxosStateBridge(12, TestProbe().ref, TestProbe().ref, siriusSupProbe.ref))
+      val stateBridge = makeStateBridge(12, siriusSupActor = siriusSupProbe.ref)
       stateBridge !  Decision(13, Command(TestProbe().ref, 4, Delete("d")))
       stateBridge !  Decision(14, Command(TestProbe().ref, 4, Delete("d")))
       stateBridge !  Decision(12, Command(TestProbe().ref, 4, Delete("d")))
 
       siriusSupProbe.expectMsg(DecisionHint(14L))
     }
-
   }
 
-  it("must find no gaps for an empty event buffer") {
-    val stateProbe = TestProbe()
-    val logRequestProbe = TestProbe()
+  describe("upon receiving a RequestGaps message") {
+    it ("must start a new GapFetcher if gapFetcher == None") {
+      val gapFetcherActor = TestProbe()
+      val stateBridge = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)
 
-    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
+      stateBridge.underlyingActor.gapFetcher = None
+      stateBridge ! RequestGaps
+      assert(Some(gapFetcherActor.ref) === stateBridge.underlyingActor.gapFetcher)
+    }
 
-    stateBridge ! RequestGaps
-    logRequestProbe.expectNoMsg(100 millis)
+    it ("must start a new GapFetcher if gapFetcher has terminated") {
+      val gapFetcherActor = TestProbe()
+      val stateBridge = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)
+
+      val gapFetcherToDie = TestProbe()
+      stateBridge.underlyingActor.gapFetcher = Some(gapFetcherToDie.ref)
+      gapFetcherToDie.ref ! PoisonPill
+
+      stateBridge ! RequestGaps
+      assert(Some(gapFetcherActor.ref) === stateBridge.underlyingActor.gapFetcher)
+    }
+
+    it ("must not start a new GapFetcher if a live one already exists") {
+      val gapFetcherActor = TestProbe()
+      val gapFetcherActorAlreadyRunning = TestProbe()
+      val stateBridge = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)
+
+      stateBridge.underlyingActor.gapFetcher = Some(gapFetcherActorAlreadyRunning.ref)
+
+      stateBridge ! RequestGaps
+      assert(Some(gapFetcherActorAlreadyRunning.ref) === stateBridge.underlyingActor.gapFetcher)
+    }
   }
 
-  it("must be able to identify a single gap") {
-    val stateProbe = TestProbe()
-    val logRequestProbe = TestProbe()
-    val clientProbe = TestProbe()
+  describe ("upon receiving a LogSubrange message") {
+    describe ("that does not contain useful events") {
+      it ("should ignore it") {
+        val gapFetcher = TestProbe()
+        val stateSup = TestProbe()
+        val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref, stateSupActor = stateSup.ref)
+        underTest ! LogSubrange(List(
+          OrderedEvent(8, 1, Delete("1")), OrderedEvent(9, 1, Delete("2"))
+        ))
 
-    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
+        gapFetcher.expectNoMsg()
+        stateSup.expectNoMsg()
+      }
+    }
+    describe ("that contains useful events (event.seq >= nextSeq)") {
+      it ("should process the events") {
+        val stateSup = TestProbe()
+        val underTest = makeStateBridge(10, stateSupActor = stateSup.ref)
+        underTest ! LogSubrange(List(
+          OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+        ))
 
-    stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
+        val expectedMessages = List(OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3")))
+        val stateMessages = stateSup.receiveN(2)
+        assert(expectedMessages === stateMessages)
+      }
+      describe ("if the gapFetcher is alive and well") {
+        it ("should ask for another chunk") {
+          val gapFetcher = TestProbe()
+          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref)
+          underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
 
-    stateBridge ! RequestGaps
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10), stateBridge))
-  }
+          underTest ! LogSubrange(List(
+            OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+          ))
 
-  it("must be able to identify multiple gaps") {
-    val stateProbe = TestProbe()
-    val logRequestProbe = TestProbe()
-    val clientProbe = TestProbe()
+          gapFetcher.expectMsg(RequestFromSeq(12L))
+        }
+      }
+      describe ("if the gapFetcher is nonexistent") {
+        it ("should do nothing further") {
+          val gapFetcher = TestProbe()
+          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref)
+          underTest.underlyingActor.gapFetcher = None
 
-    val stateBridge = TestActorRef(new PaxosStateBridge(10, stateProbe.ref, logRequestProbe.ref, TestProbe().ref))
+          underTest ! LogSubrange(List(
+            OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+          ))
 
-    stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
-    stateBridge ! Decision(15, Command(clientProbe.ref, 1, Delete("a")))
-    stateBridge ! Decision(19, Command(clientProbe.ref, 1, Delete("a")))
-    stateBridge ! Decision(20, Command(clientProbe.ref, 1, Delete("a")))
-    stateBridge ! Decision(25, Command(clientProbe.ref, 1, Delete("a")))
+          gapFetcher.expectNoMsg()
+        }
+      }
+      describe ("if the gapFetcher is dead") {
+        it ("should do nothing further") {
+          val gapFetcher = TestProbe()
+          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref)
+          underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
+          gapFetcher.ref ! PoisonPill
 
-    stateBridge ! RequestGaps
+          underTest ! LogSubrange(List(
+            OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+          ))
 
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(10, 10), stateBridge))
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(12, 14), stateBridge))
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(16, 18), stateBridge))
-    logRequestProbe.expectMsg(RequestLogFromAnyRemote(BoundedLogRange(21, 24), stateBridge))
+          gapFetcher.expectNoMsg()
+        }
+      }
+    }
+
   }
 }

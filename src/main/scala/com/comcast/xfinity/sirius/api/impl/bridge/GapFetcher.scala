@@ -4,10 +4,11 @@ import akka.actor.{ReceiveTimeout, ActorRef, Actor}
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{GetLogSubrange, LogSubrange}
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
 
 object GapFetcher {
 
-  def apply(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, config: SiriusConfiguration) {
+  def apply(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, config: SiriusConfiguration): GapFetcher = {
     val chunkSize = config.getProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, 1000)
     val chunkReceiveTimeout = config.getProp(SiriusConfiguration.LOG_REQUEST_RECEIVE_TIMEOUT_SECS, 5)
 
@@ -30,18 +31,14 @@ class GapFetcher(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, chunkSi
 
   context.setReceiveTimeout(chunkReceiveTimeout seconds)
 
-  var currentGapSeq = firstGapSeq
   requestChunk(firstGapSeq, chunkSize)
 
   def receive = {
-    case logChunk @ LogSubrange(events) if (events.last.sequence >= currentGapSeq + chunkSize - 1) =>
-      processChunk(logChunk, replyTo)
-      currentGapSeq = currentGapSeq + chunkSize
-      requestChunk(currentGapSeq, chunkSize)
-
     case logChunk: LogSubrange =>
-      processChunk(logChunk, replyTo)
-      context.stop(self)
+      replyTo ! logChunk
+
+    case RequestFromSeq(seq: Long) =>
+      requestChunk(seq, chunkSize)
 
     case ReceiveTimeout =>
       context.stop(self)
@@ -51,8 +48,5 @@ class GapFetcher(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, chunkSi
     target ! GetLogSubrange(currentGapSeq, currentGapSeq + chunkSize-1)
   }
 
-  private[bridge] def processChunk(logSubrange: LogSubrange, replyTo: ActorRef) {
-    logSubrange.events.foreach(replyTo ! _)
-  }
 }
 

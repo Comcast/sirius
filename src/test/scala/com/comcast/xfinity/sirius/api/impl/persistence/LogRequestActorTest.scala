@@ -56,44 +56,29 @@ class LogRequestActorTest extends NiceTest with BeforeAndAfterAll {
 
   private def createLogRequestActor(): LogRequestActor = {
     new LogRequestActor(chunkSize, source, localSiriusRef, mockMembershipAgent) {
-      override def membershipHelper = mockMembershipHelper
+      override lazy val membershipHelper = mockMembershipHelper
     }
   }
 
   describe("a LogRequestActor") {
     it("should report a 'no viable member to get logs from' message up to its parent as a failure") {
-      when(mockMembershipHelper.getRandomMember(
-        Matchers.any[Set[ActorRef]], Matchers.eq(localSiriusRef))).thenReturn(None)
+      doReturn(None).when(mockMembershipHelper).getRandomMember
       logRequestWrapper ! RequestLogFromAnyRemote(EntireLog, persistenceActorProbe.ref)
       parentProbe.expectMsg(5 seconds, TransferFailed(LogRequestActor.NO_MEMBER_FAIL_MSG))
     }
 
     it("should fire off a round of log requests when logs are requested from any remote.") {
       val probe = TestProbe()(actorSystem)
-      val paxosProbe = TestProbe()(actorSystem)
       val localLogRequestWrapper = Helper.wrapActorWithMockedSupervisor(
         Props(new LogRequestActor(chunkSize, source, localSiriusRef, mockMembershipAgent) {
         override def createReceiver(target: ActorRef): ActorRef = probe.ref
-        override def membershipHelper = mockMembershipHelper
+        override lazy val membershipHelper = mockMembershipHelper
       }), parentProbe.ref, actorSystem)
 
-      when(mockMembershipHelper.getRandomMember(
-        Matchers.any[Set[ActorRef]], Matchers.eq(localSiriusRef))).thenReturn(Some(probe.ref))
+      doReturn(Some(probe.ref)).when(mockMembershipHelper).getRandomMember
 
       val logRange = new BoundedLogRange(0, 100)
       localLogRequestWrapper ! RequestLogFromAnyRemote(logRange, persistenceActorProbe.ref)
-      probe.expectMsg(5 seconds, InitiateTransfer(probe.ref, logRange))
-    }
-
-    it("should fire off a round of log requests when logs are requested from a remote.") {
-      val probe = TestProbe()(actorSystem)
-      val localLogRequestWrapper = Helper.wrapActorWithMockedSupervisor(
-        Props(new LogRequestActor(chunkSize, source, localSiriusRef, mockMembershipAgent) {
-        override def createReceiver(target: ActorRef): ActorRef = probe.ref
-      }), parentProbe.ref, actorSystem)
-
-      val logRange = new BoundedLogRange(0, 100)
-      localLogRequestWrapper ! RequestLogFromRemote(probe.ref, logRange, persistenceActorProbe.ref)
       probe.expectMsg(5 seconds, InitiateTransfer(probe.ref, logRange))
     }
 
