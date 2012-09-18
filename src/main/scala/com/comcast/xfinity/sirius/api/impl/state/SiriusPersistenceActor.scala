@@ -66,7 +66,8 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
   import SiriusPersistenceActor._
 
   var numWrites = 0L
-  var totalWriteTime = 0L
+  var cummWeightedAvg = 0L
+  var lastWriteTime = 0L
 
   override def preStart() {
     // if replay is done externally, do we still need this?  my thought is yes,
@@ -81,14 +82,36 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
     unregisterMonitors(config)
   }
 
+
+
+  //XXX: this is a rough cummulative linear weighted avg.  Might want to see what else is out there in future
+  /*
+  Linear Weighted Cumulative Moving Average
+        http://www.had2know.com/finance/cumulative-weighted-moving-average-calculator.html
+        L(1) = x(1)
+        L(i+1) = (2/(i+2))x(i+1) + (i/(i+2))L(i)
+  */
+  def weightedAvg(num: Long, curr:Long, cummulative:Long):Long = num match{
+    case (n:Long) if n > 1 =>
+      val rhs = (2.0/(n+1))*curr
+      val lhs =   (n.toDouble-1)/(n.toDouble+1)*cummulative
+      (rhs+lhs).toLong
+    case _ => curr
+   }
+
+
   def receive = {
     case event: OrderedEvent =>
       val now = System.currentTimeMillis()
       siriusLog.writeEntry(event)
       stateActor ! event.request
 
+
+      val thisWriteTime = System.currentTimeMillis() - now
       numWrites += 1
-      totalWriteTime += System.currentTimeMillis() - now
+      cummWeightedAvg = weightedAvg(numWrites,thisWriteTime,cummWeightedAvg)
+
+      lastWriteTime = thisWriteTime
 
     // XXX: cap max request chunk size hard coded at 1000 for now for sanity
     case GetLogSubrange(begin, end) if begin <= end && (begin - end) < 1000 =>
@@ -111,9 +134,9 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
   }
 
   class SiriusPersistenceActorInfo extends SiriusPersistenceActorInfoMBean {
-    def getAveragePersistDuration = numWrites match {
-      case 0 => 0
-      case _ => totalWriteTime / numWrites
-    }
+
+
+
+    def getAveragePersistDuration = cummWeightedAvg
   }
 }

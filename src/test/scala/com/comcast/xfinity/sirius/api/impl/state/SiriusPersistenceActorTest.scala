@@ -94,5 +94,18 @@ class SiriusPersistenceActorTest extends NiceTest {
       senderProbe.send(underTestActor, GetNextLogSeq)
       senderProbe.expectMsg(expectedNextSeq)
     }
+    it("should calc weighted averages right")
+    {
+      val nums = Seq(50L,100L,1L,1L)
+      val shouldBe = Seq(50L,83L,42L,25L)
+      var areBe = Seq[Long]()
+      var weigtedAvg = 0L;
+      for (x <- 0 to nums.size-1){
+        nums(x)
+        weigtedAvg = underTestActor.underlyingActor.weightedAvg(x+1,nums(x),weigtedAvg)
+        areBe = areBe ++ Seq(weigtedAvg)
+      }
+      assert(shouldBe === areBe)
+    }
   }
 }
