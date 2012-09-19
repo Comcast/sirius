@@ -1,5 +1,7 @@
 package com.comcast.xfinity.sirius.api.impl.status
 
+import collection.SortedMap
+
 /**
  * General status case classes. The idea is that you can
  * call toString on these at it will look pretty.
@@ -39,7 +41,9 @@ object NodeStats {
     override def toString = {
       val sb = new StringBuilder
       sb.append("NodeConfig:\n")
-      configMap.foreach(
+
+      val sortedConfigMap = SortedMap(configMap.toArray:_*)
+      sortedConfigMap.foreach(
         kv => sb.append("  %15s: %s\n".format(kv._1, kv._2))
       )
       sb.mkString
@@ -59,7 +63,8 @@ object NodeStats {
       statsOpt match {
         case None => "Not Configured"
         case Some(stats) =>
-          stats.foreach {
+          val sortedStats = SortedMap(stats.toArray:_*)
+          sortedStats.foreach {
             case (objName, attrs) => {
               sb.append("  %s:\n".format(objName))
               attrs.foreach(
