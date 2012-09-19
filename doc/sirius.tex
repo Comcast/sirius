@@ -15,13 +15,13 @@
 \author{Platform \& APIs Team}
 \maketitle
 
-This document is intended document Sirius’ design, so future developers can understand the system at a reasonable level, and so that we can record important design decisions somewhere in prose.  
+This document is intended to document Sirius’ design, so future developers can understand the system at a reasonable level, and so that we can record important design decisions somewhere in prose.
 
 %%----------------------
 %% Theory of Operation
 %%----------------------
 \section{Theory of Operation}
-Sirius is intended to provide a means to replicate in memory state consistently
+Sirius is intended to provide a means to replicate in-memory state consistently
 across a cluster. This is accomplished by establishing a total ordering of all
 updates to the state stored by Sirius and distributing these updates across all
 nodes in the cluster. Updates are not applied until their turn comes. When
@@ -114,7 +114,7 @@ Ordered events are then properly applied in order, first to disk, then memory.
 %%------------------------------
 \subsection{Principles of Some Import}
 The Sirius write-ahead log was initially designed with the goals of replayability,
-compactability, and human readability in mind. However over time performance demands
+compactability, and human readability in mind. However, over time, performance demands
 came to reveal that a human readable format and efficient query operations over the
 log were at odds with each other.  Therefore, the human readable goal was forgone
 in favor of efficiency.
@@ -152,7 +152,7 @@ Facebook's Haystack\footnote{http://www.facebook.com/note.php?note\_id=761915439
 Entries are appended to one file, and sequence number to offset mappings are stored
 in a separate file. We refer to these as the {\em data} and {\em index} files. Both files
 are encoded in a binary format using the FNV-1a\footnote{http://en.wikipedia.org/wiki/Fowler\%E2\%80\%93Noll\%E2\%80\%93Vo\_hash\_function}
-checksum algorithm, chosen for it's speed and simplicity.
+checksum algorithm, chosen for its speed and simplicity.
 
 \subsection{UberStore}
 Data and Index Files are associated by their file name.  The naming convention for them
@@ -160,8 +160,8 @@ is the first sequence number contained in the pair with the extension "data" for
 Data File and "index" for an Index File.
 
 \subsection{Data File}
-The Data File is append only- all written data is immutable.  Data is stored in a binary
-format with numeric types encoded in big-endian byte-order. For the follwoing {\em int}s
+The Data File is append-only; all written data is immutable.  Data is stored in a binary
+format with numeric types encoded in big-endian byte-order. For the following {\em int}s
 are signed and 4 bytes, and {\em long}s are signed and 8 bytes.
 
 The base entry format is as follows:
@@ -244,11 +244,11 @@ regenerate.
 This is bad, if you're missing a Data File there's no recovery, because that's how it works.
 
 \subsection{Compaction Algorithm}
-The write-ahead log may grow indefinitely in size, therefor it is necessary to bound this
+The write-ahead log may grow indefinitely in size. Therefore, it is necessary to bound this
 growth to the best degree possible.
 
 Using the observation that {\em Put}s and {\em Delete}s for a given key cancel each
-other out this is reasonably simple and only involves retaining the last {\em Put}
+other, out this is reasonably simple and only involves retaining the last {\em Put}
 or {\em Delete} in a log for a given key. Once these have been selected we simply
 write them out to a new log in the order in which they appeared in the original
 log.
