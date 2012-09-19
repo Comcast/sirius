@@ -7,6 +7,8 @@ import akka.pattern.ask
 import akka.dispatch.Await
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import akka.actor.ActorRef
+import com.comcast.xfinity.sirius.api.impl.status.StatusWorker._
+import com.comcast.xfinity.sirius.api.impl.status.NodeStats.FullNodeStatus
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -43,10 +45,26 @@ object NodeTool {
         val lastSeq = getNextSeq(ref) - 1
         getLogRange(ref, lastSeq - 20, lastSeq).events.foreach(println)
 
+      case Array("status", nodeId) =>
+        val ref = ActorSystemHelper.getActorSystem().actorFor(nodeId)
+        println(getNodeStatus(ref))
+
       case _ =>
         printUsage()
         System.exit(1)
     }
+  }
+
+  /**
+   * Get the next expected sequence number from sirius node ref
+   *
+   * @param ref ActorRef for node to query
+   *
+   * @return Long value of the next expected sequence number
+   */
+  private def getNextSeq(ref: ActorRef) = {
+    val nextSeqFuture = ask(ref, GetNextLogSeq).mapTo[Long]
+    Await.result(nextSeqFuture, timeout.duration)
   }
 
   /**
@@ -64,15 +82,15 @@ object NodeTool {
   }
 
   /**
-   * Get the next expected sequence number from sirius node ref
+   * Get a nodes status
    *
    * @param ref ActorRef for node to query
    *
-   * @return Long value of the next expected sequence number
+   * @return FullNodeStatus with lots of metadata about that node
    */
-  private def getNextSeq(ref: ActorRef) = {
-    val nextSeqFuture = ask(ref, GetNextLogSeq).mapTo[Long]
-    Await.result(nextSeqFuture, timeout.duration)
+  private def getNodeStatus(ref: ActorRef): FullNodeStatus = {
+    val statusFuture = ask(ref, GetStatus).mapTo[FullNodeStatus]
+    Await.result(statusFuture, timeout.duration)
   }
 
   private def printUsage() {
@@ -85,6 +103,9 @@ object NodeTool {
     Console.err.println()
     Console.err.println("   log-tail <nodeId>")
     Console.err.println("       Print the last 20 events in nodeId's log")
+    Console.err.println()
+    Console.err.println("   status <nodeId>")
+    Console.err.println("       Get general status information for nodeId")
   }
 
 }
