@@ -8,9 +8,9 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.PValue
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.NiceTest
 
-import akka.actor.ActorSystem
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
+import akka.actor.{ReceiveTimeout, ActorSystem}
 
 
 class CommanderTest extends NiceTest with BeforeAndAfterAll {
@@ -84,6 +84,22 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
 
       replicaProbes.foreach(_.expectMsg(Decision(pvalue.slotNum, pvalue.proposedCommand)))
+      assert(commander.isTerminated)
+    }
+
+    it ("must notify it's leader of the PValue it timed out negotiating") {
+      val leaderProbe = TestProbe()
+      val acceptorProbes = Set(TestProbe())
+      val replicaProbes = Set(TestProbe())
+
+      val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
+      val commander = TestActorRef(new Commander(leaderProbe.ref,
+                                   acceptorProbes.map(_.ref),
+                                   replicaProbes.map(_.ref),
+                                   pvalue))
+
+      commander ! ReceiveTimeout
+      leaderProbe.expectMsg(Commander.CommanderTimeout(pvalue))
       assert(commander.isTerminated)
     }
   }

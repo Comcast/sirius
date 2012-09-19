@@ -67,6 +67,8 @@ class Leader(membership: Agent[Set[ActorRef]],
   var longestReapDuration = 0L
   var lastReapDuration = 0L
   var currentLeaderElectedSince = 0L
+  var commanderTimeoutCount = 0L
+  var lastTimedOutPValue: Option[PValue] = None
 
   override def preStart() {
     registerMonitor(new LeaderInfo, config)
@@ -132,6 +134,11 @@ class Leader(membership: Agent[Set[ActorRef]],
     // if our scout fails to make progress, retry
     case ScoutTimeout =>
       if (electedLeaderBallot == None) startScout()
+
+    // if the commander times out, record such
+    case Commander.CommanderTimeout(pvalue) =>
+      commanderTimeoutCount += 1
+      lastTimedOutPValue = Some(pvalue)
 
     // the SirusPaxosBridge will notify the Leader of the last decision.  We can then use this to reduce the number
     // of accepted decisions we need from the Acceptor
@@ -206,6 +213,8 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getCurrentLeaderElectedSince: Long
     def getLongestReapDuration: Long
     def getLastReapDuration: Long
+    def getCommanderTimeoutCount: Long
+    def getLastTimedOutPValue: String
   }
 
   class LeaderInfo extends LeaderInfoMBean{
@@ -216,5 +225,7 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getCurrentLeaderElectedSince = currentLeaderElectedSince
     def getLongestReapDuration = longestReapDuration
     def getLastReapDuration = lastReapDuration
+    def getCommanderTimeoutCount = commanderTimeoutCount
+    def getLastTimedOutPValue = lastTimedOutPValue.toString
   }
 }

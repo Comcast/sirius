@@ -375,4 +375,18 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
       }
 
     }
+
+    describe("when receiving a CommanderTimeout") {
+      it ("must update its internal record keeping") {
+        val leader = makeMockedUpLeader()
+
+        val lastTimeoutCount = leader.underlyingActor.commanderTimeoutCount
+
+        val pval = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
+        leader ! Commander.CommanderTimeout(pval)
+
+        assert(lastTimeoutCount + 1 === leader.underlyingActor.commanderTimeoutCount)
+        assert(Some(pval) === leader.underlyingActor.lastTimedOutPValue)
+      }
+    }
 }

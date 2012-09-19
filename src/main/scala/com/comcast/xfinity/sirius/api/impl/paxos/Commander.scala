@@ -4,6 +4,14 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import akka.actor.{ReceiveTimeout, Actor, ActorRef}
 
+case object Commander {
+
+  /**
+   * Message sent by a Commander to its leader when it times out
+   */
+  case class CommanderTimeout(pval: PValue)
+}
+
 class Commander(leader: ActorRef, acceptors: Set[ActorRef],
                 replicas: Set[ActorRef], pval: PValue) extends Actor {
 
@@ -34,6 +42,7 @@ class Commander(leader: ActorRef, acceptors: Set[ActorRef],
       context.stop(self)
 
     case ReceiveTimeout =>
+      leader ! Commander.CommanderTimeout(pval)
       context.stop(self)
   }
 }
