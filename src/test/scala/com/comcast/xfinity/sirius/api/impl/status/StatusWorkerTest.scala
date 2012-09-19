@@ -41,7 +41,8 @@ class StatusWorkerTest extends NiceTest with BeforeAndAfterAll {
       senderProbe.expectMsgPF(3 seconds) {
         case FullNodeStatus(nodeName, _: MemoryUsage, configInfo, stats) =>
           assert(nodeName === "akka://some-system@somehost:2552/user/sirius")
-          assert(NodeConfig(config.getConfigMap) === configInfo)
+          val stringifiedConfigMap = config.getConfigMap.map(kv => (kv._1, kv._2.toString))
+          assert(NodeConfig(stringifiedConfigMap) === configInfo)
           assert(MonitorStats(None) === stats)
 
       }

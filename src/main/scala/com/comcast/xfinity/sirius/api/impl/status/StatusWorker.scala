@@ -64,7 +64,10 @@ class StatusWorker(supAddressString: String,
     MemoryUsage(runtime.freeMemory, runtime.totalMemory)
   }
 
-  private def getConfigMap = NodeConfig(config.getConfigMap)
+  private def getConfigMap = {
+    val configMap = config.getConfigMap
+    NodeConfig(configMap.map(kv => (kv._1, kv._2.toString)))
+  }
 
   private def getMonitorStats = MonitorStats(monitorReader.getMonitorStats(config))
 }

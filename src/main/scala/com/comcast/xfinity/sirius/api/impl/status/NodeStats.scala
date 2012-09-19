@@ -35,9 +35,9 @@ object NodeStats {
   /**
    * Configuration information
    *
-   * @param configMap config keys to values
+   * @param configMap config keys to values, in string format
    */
-  case class NodeConfig(configMap: Map[String, Any]) {
+  case class NodeConfig(configMap: Map[String, String]) {
     override def toString = {
       val sb = new StringBuilder
       sb.append("NodeConfig:\n")
