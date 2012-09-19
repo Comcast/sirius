@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import collection.SortedMap
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import annotation.tailrec
@@ -11,6 +10,7 @@ import akka.event.Logging
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
+import java.util.{TreeMap => JTreeMap}
 
 object PaxosStateBridge {
   case object RequestGaps
@@ -77,7 +77,7 @@ class PaxosStateBridge(startingSeq: Long,
     context.system.scheduler.schedule(0 seconds, 30 seconds, self, RequestGaps)
 
   var nextSeq: Long = startingSeq
-  var eventBuffer = SortedMap[Long, OrderedEvent]()
+  var eventBuffer = new JTreeMap[Long, OrderedEvent]()
 
   override def preStart() {
     registerMonitor(new PaxosStateBridgeInfo, config)
@@ -99,7 +99,7 @@ class PaxosStateBridge(startingSeq: Long,
      * ones starting with the current sequence number) are sent to the persistence
      * layer to be written to disk and memory and are dropped from the buffer.
      */
-    case Decision(slot, Command(client, ts, op)) if slot >= nextSeq && !eventBuffer.contains(slot) =>
+    case Decision(slot, Command(client, ts, op)) if slot >= nextSeq && !eventBuffer.containsKey(slot) =>
       processOrderedEvent(OrderedEvent(slot, ts, op))
       client ! SiriusResult.none()
       traceLogger.debug("Time to respond to client for sequence={}: {}ms", slot, System.currentTimeMillis() - ts)
@@ -137,7 +137,7 @@ class PaxosStateBridge(startingSeq: Long,
    */
   private def processOrderedEvent(event: OrderedEvent) {
     if (event.sequence >= nextSeq) {
-      eventBuffer += (event.sequence -> event)
+      eventBuffer.put(event.sequence, event)
       executeReadyDecisions()
     }
   }
@@ -151,13 +151,13 @@ class PaxosStateBridge(startingSeq: Long,
 
     @tailrec
     def applyNextReadyDecision() {
-      eventBuffer.headOption match {
-        case Some((slot, orderedEvent)) if slot == nextSeq =>
-          stateSupActor ! orderedEvent
-          nextSeq += 1
-          eventBuffer = eventBuffer.tail
-          applyNextReadyDecision()
-        case _ =>
+      if (!eventBuffer.isEmpty && eventBuffer.containsKey(nextSeq)) {
+        // remove next event and send to stateSupActor
+        stateSupActor ! eventBuffer.remove(nextSeq)
+        nextSeq += 1
+        applyNextReadyDecision()
+      } else {
+        // terminate
       }
     }
     applyNextReadyDecision()
