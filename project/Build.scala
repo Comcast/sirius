@@ -32,6 +32,7 @@ object SiriusTestHarnessBuild extends Build {
         JRuntime.getRuntime.exec("chmod 755 " + binFile)
     )   
     JRuntime.getRuntime.exec("chmod 755 " + (binDir / "waltool").getPath)
+    JRuntime.getRuntime.exec("chmod 755 " + (binDir / "nodetool").getPath)
 
     JRuntime.getRuntime.exec("tar -C target -czf target/sirius-standalone.tgz sirius-standalone")
   }
