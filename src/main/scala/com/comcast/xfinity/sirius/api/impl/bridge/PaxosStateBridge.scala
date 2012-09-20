@@ -111,7 +111,7 @@ class PaxosStateBridge(startingSeq: Long,
      * to the GapFetcher that we're ready for more.  Otherwise, let it die of RequestTimeout
      * starvation.
      */
-    case LogSubrange(events) if (events.last.sequence >= nextSeq) =>
+    case LogSubrange(events) if (!events.isEmpty && events.last.sequence >= nextSeq) =>
       events.foreach((event: OrderedEvent) => {
         processOrderedEvent(event)
         traceLogger.debug("Writing caught-up event for sequence={}, " +

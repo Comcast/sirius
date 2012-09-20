@@ -9,6 +9,7 @@ import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.{SiriusFactory, NonCommutativeSiriusRequest, OrderedEvent, SiriusImpl}
+import scalax.io.CloseableIterator
 
 object FullSystemITest {
 
@@ -56,7 +57,7 @@ object FullSystemITest {
     }
 
     def createIterator(logRange: LogRange) = {
-      throw new IllegalStateException("not implemented")
+      CloseableIterator(Iterator[OrderedEvent]())
     }
 
     def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T = {

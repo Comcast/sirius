@@ -47,8 +47,8 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
 
       val decisionHint = DecisionHint(1L)
       senderProbe.send(paxosSup, decisionHint)
-      leaderProbe.expectMsg(decisionHint)
-      assert(senderProbe.ref === leaderProbe.lastSender)
+      replicaProbe.expectMsg(decisionHint)
+      assert(senderProbe.ref === replicaProbe.lastSender)
 
       val phase1A = Phase1A(senderProbe.ref, Ballot(1, "a"), senderProbe.ref,1L)
       senderProbe.send(paxosSup, phase1A)

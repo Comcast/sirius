@@ -2,13 +2,14 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import akka.actor.Actor
 import akka.actor.ActorRef
-import akka.util.duration._
 import akka.event.Logging
+import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import java.util.{TreeMap => JTreeMap}
-import scala.util.control.Breaks._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+import annotation.tailrec
+import com.comcast.xfinity.sirius.api.impl.paxos.Replica.Reap
 
 object Replica {
 
@@ -47,13 +48,13 @@ object Replica {
    *          @see SiriusConfiguration for more information
    */
   def apply(localLeader: ActorRef,
-            startingSeqNum: Long,
+            startingSlotNum: Long,
             performFun: PerformFun,
             config: SiriusConfiguration): Replica = {
-    val reapWindowMillis = config.getProp(SiriusConfiguration.REPROPOSAL_WINDOW, 10000L)
+
     val reapFreqSecs = config.getProp(SiriusConfiguration.REPROPOSAL_CLEANUP_FREQ, 1)
 
-    new Replica(localLeader, startingSeqNum, performFun, reapWindowMillis)(config) {
+    new Replica(localLeader, startingSlotNum, performFun)(config) {
       val reapCancellable =
         context.system.scheduler.schedule(reapFreqSecs seconds,
                                           reapFreqSecs seconds, self, Reap)
@@ -69,19 +70,19 @@ object Replica {
 }
 
 class Replica(localLeader: ActorRef,
-              startingSeqNum: Long,
-              performFun: Replica.PerformFun,
-              reapWindow: Long)
+              startingSlotNum: Long,
+              performFun: Replica.PerformFun)
              (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
 
-  import Replica._
+  // XXX 10 seconds, re-make this configurable for the love of god.  but tomorrow.
+  val reapWindow = 10 * 1000
 
+  var slotNum = startingSlotNum
   val proposals = new JTreeMap[Long, Command]()
+  val decisions = new JTreeMap[Long, Command]()
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
-
-  var lowestUnusedSlotNum: Long = startingSeqNum
 
   // XXX for monitoring...
   var lastProposed = ""
@@ -89,41 +90,16 @@ class Replica(localLeader: ActorRef,
   var lastDuration = 0L
   var longestDuration = 0L
 
-
-
-  /**
-   * Propose a command to the local leader, either from a new Request or due
-   * to a triggered reproposal.
-   *
-   * Has side-effect of incrementing lowestUnusedSlotNum and adding proposal to
-   * proposals map.
-   * @param command Command to be proposed
-   */
-  def propose(command: Command) {
-    localLeader ! Propose(lowestUnusedSlotNum, command)
-    proposals.put(lowestUnusedSlotNum, command)
-
-    numProposed += 1
-    lastProposed = "Proposing slot %s for %s".format(lowestUnusedSlotNum, command)
-
-    traceLogger.debug(lastProposed)
-
-    lowestUnusedSlotNum = lowestUnusedSlotNum + 1
-  }
-
   def receive = {
-    case GetLowestUnusedSlotNum => sender ! LowestUnusedSlotNum(lowestUnusedSlotNum)
+    case GetLowestUnusedSlotNum => sender ! LowestUnusedSlotNum(nextAvailableSlotNum)
     case Request(command: Command) =>
       propose(command)
 
-    case decision @ Decision(slot, decidedCommand) =>
-      traceLogger.debug("Received decision slot {} for {}",
-        slot, decidedCommand)
-      if (slot >= lowestUnusedSlotNum) {
-        lowestUnusedSlotNum = slot + 1
-      }
+    case decision @ Decision(slot, decisionCommand) =>
+      traceLogger.debug("Received decision slot {} for {}", slot, decisionCommand)
 
-      checkForReproposal(slot, decidedCommand)
+      decisions.put(slot, decisionCommand)
+      reproposeIfClobbered(slot, decisionCommand)
 
       try {
         performFun(decision)
@@ -133,35 +109,51 @@ class Replica(localLeader: ActorRef,
           logger.error("Received exception applying decision {}: {}", decision, t)
       }
 
-    case Reap =>
-      reapProposals()
+    case decisionHint @ DecisionHint(decisionHintSlotNum) =>
+      slotNum = decisionHintSlotNum + 1
+      reapLessThanOrEqualTo(slotNum, proposals)
+      reapLessThanOrEqualTo(slotNum, decisions)
+      localLeader forward decisionHint
 
+    case Reap =>
+      reapStagnantProposals()
   }
 
   /**
-   * Check for items in proposals older than reapWindow seconds, delete them.
-   * Uses timestamp in the Command, since that was generated in the local PaxosSup
-   * and thus we don't have to worry about clock skew.
+   * Propose a command to the local leader, either from a new Request or due
+   * to a triggered reproposal.
+   *
+   * Has side-effect of adding proposal to proposals map.
+   * @param command Command to be proposed
    */
-  private def reapProposals() {
-    val now = System.currentTimeMillis()
-    breakable {
-      val keys = proposals.keySet.toArray
-      for (i <- 0 to keys.size - 1) {
-        val slot = keys(i)
-        if (proposals.get(slot).ts < now - reapWindow) {
-          proposals.remove(slot)
-        } else {
-          break()
-        }
-      }
-    }
-    val duration = System.currentTimeMillis() - now
-    lastDuration = duration
-    if (duration > longestDuration)
-      longestDuration = duration
+  private def propose(command: Command) {
+    val nextSlotNum = nextAvailableSlotNum
 
+    localLeader ! Propose(nextSlotNum, command)
+    proposals.put(nextSlotNum, command)
+
+    logProposal(nextSlotNum, command)
   }
+
+  @tailrec
+  private def reapLessThanOrEqualTo(min: Long, target: JTreeMap[Long, Command]) {
+    if (target.isEmpty || target.firstKey() > min) return
+    else {
+      target.remove(target.firstKey())
+      reapLessThanOrEqualTo(min, target)
+    }
+  }
+
+  @tailrec
+  private def findNextAvailableSlotNum(minSlotNum: Long): Long = {
+    if (proposals.containsKey(minSlotNum) || decisions.containsKey(minSlotNum)) {
+      findNextAvailableSlotNum(minSlotNum + 1)
+    } else {
+      minSlotNum
+    }
+  }
+
+  private[paxos] def nextAvailableSlotNum = findNextAvailableSlotNum(slotNum)
 
   /**
    * Check whether the decided command is one of the following:
@@ -169,21 +161,43 @@ class Replica(localLeader: ActorRef,
    * - someone else's proposal, in which case we need to repropose our old proposal
    * - for a slot we haven't seen, in which case we do nothing
    *
-   * @param slot sequence number for this command
-   * @param decidedCommand command that has been decided for the sequence number
+   * @param slot slot number for this command
+   * @param decisionCommand command that has been decided for the slot number
    * @return
    */
-  def checkForReproposal(slot: Long, decidedCommand: Command) = proposals.get(slot) match {
-    // decidedCommand is our proposed command, we can just remove it
-    case proposedCommand: Command if decidedCommand == proposedCommand =>
-      proposals.remove(slot)
-    // decidedCommand is a different command; repropose our existing one
-    case proposedCommand: Command =>
-      traceLogger.debug("Recieved different decision for slot number " +
-        "proposed by this Replica, reproposing {}", decidedCommand)
-      propose(proposedCommand)
-      proposals.remove(slot)
-    case null =>
+  private def reproposeIfClobbered(slot: Long, decisionCommand: Command) {
+    proposals.get(slot) match {
+      case proposalCommand: Command if decisionCommand != proposalCommand =>
+        traceLogger.debug("Recieved different decision for slot number proposed by this Replica, reproposing {}", decisionCommand)
+        propose(proposalCommand)
+      case _ =>
+    }
+  }
+
+  private def logProposal(nextSlotNum: Long, command: PaxosMessages.Command) {
+    numProposed += 1
+    lastProposed = "Proposing slot %s for %s".format(nextSlotNum, command)
+    traceLogger.debug(lastProposed)
+  }
+
+  private def reapStagnantProposals() {
+    @tailrec
+    def reapProposalsBefore(timeCutoff: Long, target: JTreeMap[Long, Command]) {
+      if (target.isEmpty) {
+        // terminate
+      } else {
+        val first = target.firstEntry
+        first.getValue match {
+          case Command(_, ts, _) if ts < timeCutoff =>
+            target.remove(first.getKey)
+            reapProposalsBefore(timeCutoff, target)
+          case _ =>
+        }
+      }
+    }
+
+    val now = System.currentTimeMillis()
+    reapProposalsBefore(now - reapWindow, proposals)
   }
 
   /**
@@ -191,7 +205,7 @@ class Replica(localLeader: ActorRef,
    */
   trait ReplicaInfoMBean {
     def getProposalsSize: Int
-    def getLowestUnusedSlotNum: Long
+    def getNextAvailableSlotNum: Long
     def getLastProposed: String
     def getNumProposed: Int
     def getLastDuration: Long
@@ -200,7 +214,7 @@ class Replica(localLeader: ActorRef,
 
   class ReplicaInfo extends ReplicaInfoMBean {
     def getProposalsSize = proposals.size
-    def getLowestUnusedSlotNum = lowestUnusedSlotNum
+    def getNextAvailableSlotNum = nextAvailableSlotNum
     def getLastProposed = lastProposed
     def getNumProposed = numProposed
     def getLastDuration = lastDuration
