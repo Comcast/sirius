@@ -4,13 +4,27 @@ object SiriusConfiguration {
 
   /**
    * Host to bind akka to (string)
+   *
+   * Takes precedence over all other akka configuration for host
    */
   final val HOST = "sirius.akka.host"
 
   /**
    * Port to bind akka to (int)
+   *
+   * Takes precedence over all other akka configuration for port
    */
   final val PORT = "sirius.akka.port"
+
+  /**
+   * External akka ActorSystem configuration. It this location exists
+   * on the file system it is loaded, else it is loaded from the
+   * classpath. (string)
+   *
+   * @see http://doc.akka.io/docs/akka/2.0.2/general/configuration.html
+   * for more information
+   */
+  final val AKKA_EXTERN_CONFIG = "sirius.akka.system-config-overrides"
 
   /**
    * Location of cluster membership configuration file (string)

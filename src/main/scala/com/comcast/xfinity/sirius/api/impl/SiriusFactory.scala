@@ -4,14 +4,14 @@ import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.writeaheadlog.{SiriusLog, CachedSiriusLog}
 import java.net.InetAddress
-import scalax.file.Path
 import java.util.{HashMap => JHashMap}
-import com.typesafe.config.{ConfigFactory, Config}
 import akka.actor.{ActorRef, ActorSystem}
 import management.ManagementFactory
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.admin.SiriusAdmin
 import javax.management.MBeanServer
+import com.typesafe.config.{ConfigFactory, Config}
+import java.io.File
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -60,7 +60,7 @@ object SiriusFactory extends AkkaConfig {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
 
-    implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(host, port))
+    implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(host, port, siriusConfig))
     val impl = SiriusImpl(requestHandler, siriusLog, siriusConfig)
 
     // create some more stuff to expose over mbeans
@@ -85,15 +85,43 @@ object SiriusFactory extends AkkaConfig {
     ConfigFactory.parseMap(configMap.asInstanceOf[JHashMap[String, _ <: AnyRef]])
   }
 
-  private def createActorSystemConfig(host: String, port: Int): Config = {
+  /**
+   * Creates configuration for the ActorSystem. The config precedence is as follows:
+   *   1) host/port config trump all
+   *   2) siriusConfig supplied external config next
+   *   3) sirius-akka-base.conf, packaged with sirius, loaded with ConfigFactory.load
+   */
+  private def createActorSystemConfig(host: String, port: Int, siriusConfig: SiriusConfiguration): Config = {
     val hostPortConfig = createHostPortConfig(host, port)
-    val baseAkkaConfig = ConfigFactory.load("akka.conf")
-    hostPortConfig.withFallback(baseAkkaConfig)
+    val externalConfig = createExternalConfig(siriusConfig)
+    val baseAkkaConfig = ConfigFactory.load("sirius-akka-base.conf")
+
+    hostPortConfig.withFallback(externalConfig).withFallback(baseAkkaConfig)
   }
 
   private def createAdmin(mbeanServer: MBeanServer, host: String, port: Int, supervisorRef: ActorRef) = {
     val info = new SiriusInfo(port, host, supervisorRef)
     new SiriusAdmin(info, mbeanServer)
   }
+
+
+  /**
+   * If siriusConfig is such configured, will load up an external configuration
+   * for the Akka ActorSystem which is created. The filesystem is checked first,
+   * then the classpath, if neither exist, or siriusConfig is not configured as
+   * much, then an empty Config object is returned.
+   */
+  private def createExternalConfig(siriusConfig: SiriusConfiguration): Config =
+    siriusConfig.getProp[String](SiriusConfiguration.AKKA_EXTERN_CONFIG) match {
+      case None => ConfigFactory.empty()
+      case Some(externConfig) =>
+        val externConfigFile = new File(externConfig)
+        if (externConfigFile.exists()) {
+          ConfigFactory.parseFile(externConfigFile)
+        } else {
+          ConfigFactory.parseResources(externConfig)
+        }
+
+    }
 
 }

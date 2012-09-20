@@ -12,12 +12,14 @@ class NoopRequestHandler extends RequestHandler {
 def createSirius(logLocation: String = "/tmp/uberlog",
                  clusterConfig: String = "/tmp/cluster-config",
                  usePaxos: Boolean = true,
-                 port: Int = 2552) = {
+                 port: Int = 2552,
+                 externAkkaConfig: String = "akka-overrides.conf") = {
   val cfg = new SiriusConfiguration
   cfg.setProp(SiriusConfiguration.LOG_LOCATION, logLocation)
   cfg.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfig)
   cfg.setProp(SiriusConfiguration.USE_PAXOS, usePaxos)
   cfg.setProp(SiriusConfiguration.PORT, port)
+  cfg.setProp(SiriusConfiguration.AKKA_EXTERN_CONFIG, externAkkaConfig)
   SiriusFactory.createInstance(new NoopRequestHandler, cfg)
 }
 
