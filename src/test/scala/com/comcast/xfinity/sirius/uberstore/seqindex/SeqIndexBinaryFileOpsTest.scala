@@ -70,20 +70,13 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
       val dummyChecksum: Long = 1234
       doReturn(dummyChecksum).when(mockChecksummer).checksum(any[Array[Byte]])
 
-      val dummyFileLen: Long = 48 // two entries
-      doReturn(dummyFileLen).when(mockHandle).length
-
-      // read two entries
-      doReturn(0L).doReturn(24L).doReturn(48L).when(mockHandle).getFilePointer
-
       val entry1Bytes = ByteBuffer.allocate(24).putLong(dummyChecksum).putLong(1L).putLong(2L).array
-      val entry1Answer = mockReadAnswerForBytes(entry1Bytes, entry1Bytes.length)
-
       val entry2Bytes = ByteBuffer.allocate(24).putLong(dummyChecksum).putLong(2L).putLong(3L).array
-      val entry2Answer = mockReadAnswerForBytes(entry2Bytes, entry2Bytes.length)
 
-      // XXX: readFully is final, but it just calls through to read/3, so we can mock that
-      doAnswer(entry1Answer).doAnswer(entry2Answer).when(mockHandle).read(any[Array[Byte]], anyInt, anyInt)
+      val chunkBytes = ByteBuffer.allocate(48).put(entry1Bytes).put(entry2Bytes).array
+      val chunkAnswer = mockReadAnswerForBytes(chunkBytes, chunkBytes.length)
+
+      doAnswer(chunkAnswer).when(mockHandle).read(any[Array[Byte]])
 
       val actual = underTest.loadIndex(mockHandle)
       val expected = new JTreeMap[Long, Long](SortedMap(1L -> 2L, 2L -> 3L))
@@ -95,31 +88,50 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
       val mockChecksummer = mock[Checksummer]
       val underTest = new SeqIndexBinaryFileOps(mockChecksummer)
 
+      val mockHandle = mock[RandomAccessFile]
+
+      val dummyChecksum: Long = 1234
+      doReturn(dummyChecksum).when(mockChecksummer).checksum(any[Array[Byte]])
+
+      val entry1Bytes = ByteBuffer.allocate(24).putLong(dummyChecksum).putLong(1L).putLong(2L).array
+      // This is the corrupted one!
+      val entry2Bytes = ByteBuffer.allocate(24).putLong(dummyChecksum + 1).putLong(2L).putLong(3L).array
+
+      val chunkBytes = ByteBuffer.allocate(48).put(entry1Bytes).put(entry2Bytes).array
+      val chunkAnswer = mockReadAnswerForBytes(chunkBytes, chunkBytes.length)
+
+      // XXX: readFully is final, but it just calls through to read/3, so we can mock that
+      doAnswer(chunkAnswer).when(mockHandle).read(any[Array[Byte]])
+
+      intercept[IllegalStateException] {
+        underTest.loadIndex(mockHandle)
+      }
+    }
+
+    it ("must properly read over chunk boundaries") {
+      val mockChecksummer = mock[Checksummer]
+      val underTest = new SeqIndexBinaryFileOps(mockChecksummer, 48)
 
       val mockHandle = mock[RandomAccessFile]
 
       val dummyChecksum: Long = 1234
       doReturn(dummyChecksum).when(mockChecksummer).checksum(any[Array[Byte]])
 
-      val dummyFileLen: Long = 48 // two entries
-      doReturn(dummyFileLen).when(mockHandle).length
-
-      // read two entries
-      doReturn(0L).doReturn(24L).doReturn(48L).when(mockHandle).getFilePointer
-
       val entry1Bytes = ByteBuffer.allocate(24).putLong(dummyChecksum).putLong(1L).putLong(2L).array
-      val entry1Answer = mockReadAnswerForBytes(entry1Bytes, entry1Bytes.length)
+      val entry2Bytes = ByteBuffer.allocate(24).putLong(dummyChecksum).putLong(2L).putLong(3L).array
+      val chunk1Bytes = ByteBuffer.allocate(48).put(entry1Bytes).put(entry2Bytes).array
+      val chunk1Answer = mockReadAnswerForBytes(chunk1Bytes, chunk1Bytes.length)
 
-      // This is the corrupted one!
-      val entry2Bytes = ByteBuffer.allocate(24).putLong(dummyChecksum + 1).putLong(2L).putLong(3L).array
-      val entry2Answer = mockReadAnswerForBytes(entry2Bytes, entry2Bytes.length)
+      val entry3Bytes = ByteBuffer.allocate(24).putLong(dummyChecksum).putLong(3L).putLong(4L).array
+      val chunk2Bytes = ByteBuffer.allocate(24).put(entry3Bytes).array
+      val chunk2Answer = mockReadAnswerForBytes(chunk2Bytes, chunk2Bytes.length)
 
-      // XXX: readFully is final, but it just calls through to read/3, so we can mock that
-      doAnswer(entry1Answer).doAnswer(entry2Answer).when(mockHandle).read(any[Array[Byte]], anyInt, anyInt)
+      doAnswer(chunk1Answer).doAnswer(chunk2Answer).when(mockHandle).read(any[Array[Byte]])
 
-      intercept[IllegalStateException] {
-        underTest.loadIndex(mockHandle)
-      }
+      val actual = underTest.loadIndex(mockHandle)
+      val expected = new JTreeMap[Long, Long](SortedMap(1L -> 2L, 2L -> 3L, 3L -> 4L))
+
+      assert(actual === expected)
     }
   }
 }
