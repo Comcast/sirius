@@ -5,7 +5,6 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.SiriusResult
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{RequestFromSeq, RequestGaps}
-import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, RequestLogFromAnyRemote}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, OrderedEvent, Delete}

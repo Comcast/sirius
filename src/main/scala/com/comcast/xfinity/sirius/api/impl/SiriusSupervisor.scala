@@ -30,7 +30,6 @@ object SiriusSupervisor {
   trait DependencyProvider {
     val stateSup: ActorRef
     val orderingActor: ActorRef
-    val logRequestActor: ActorRef
     val membershipActor: ActorRef
     val statusSubsystem: ActorRef
     val membershipAgent: Agent[Set[ActorRef]]
@@ -68,8 +67,6 @@ object SiriusSupervisor {
             new MembershipActor(membershipAgent, siriusStateAgent, Path.fromString(clusterConfigPath))
           ), "membership")
       }
-
-      val logRequestActor = context.actorOf(Props(new LogRequestActor(100, _siriusLog, self, membershipAgent)(config)), "log")
 
       val orderingActor =
         if (config.getProp(SiriusConfiguration.USE_PAXOS, false)) {
@@ -140,9 +137,6 @@ class SiriusSupervisor() extends Actor with AkkaConfig {
     case paxosMessage: PaxosMessage => orderingActor forward paxosMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
     case statusQuery: StatusQuery => statusSubsystem forward statusQuery
-    case TransferComplete => logger.info("Log transfer complete")
-    case transferFailed: TransferFailed => logger.info("Log transfer failed, reason: " + transferFailed.reason)
-    case logRequestMessage: LogRequestMessage => logRequestActor forward logRequestMessage
     case unknown: AnyRef => logger.warning("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
