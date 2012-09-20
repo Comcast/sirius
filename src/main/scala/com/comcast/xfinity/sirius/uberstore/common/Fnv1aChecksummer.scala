@@ -1,5 +1,17 @@
 package com.comcast.xfinity.sirius.uberstore.common
 
+import java.lang.Object
+
+object Fnv1aChecksummer {
+
+  /**
+   * Get an object with a Fnv1aChecksummer
+   *
+   * For the times that you don't want to do a mixin
+   */
+  def apply() = new Object with Fnv1aChecksummer
+}
+
 /**
  * Trait supplying the FNV-1a checksum algorithm, as defined by
  *

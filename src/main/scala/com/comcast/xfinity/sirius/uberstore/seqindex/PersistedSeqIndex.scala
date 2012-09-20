@@ -15,7 +15,7 @@ object PersistedSeqIndex {
    * @return a SeqIndex instance backed by seqFileName
    */
   def apply(seqFileName: String) = {
-    val fileOps = new SeqIndexBinaryFileOps with Fnv1aChecksummer
+    val fileOps = new SeqIndexBinaryFileOps(Fnv1aChecksummer())
     val writeHandle = new RandomAccessFile(seqFileName, "rw")
     new PersistedSeqIndex(writeHandle, fileOps)
   }

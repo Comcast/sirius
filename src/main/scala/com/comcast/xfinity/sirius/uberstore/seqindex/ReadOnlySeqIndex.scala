@@ -13,7 +13,7 @@ object ReadOnlySeqIndex {
    * @return a ReadOnlySeqIndex instance backed by seqFileName
    */
   def apply(seqFileName: String) = {
-    val fileOps = new SeqIndexBinaryFileOps with Fnv1aChecksummer
+    val fileOps = new SeqIndexBinaryFileOps(Fnv1aChecksummer())
     val readHandle = new RandomAccessFile(seqFileName, "r")
     new ReadOnlySeqIndex(readHandle, fileOps)
   }

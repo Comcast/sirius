@@ -8,9 +8,10 @@ import com.comcast.xfinity.sirius.uberstore.common.Checksummer
 /**
  * Class providing low level file operations for a binary
  * based sequence index with checksum based data protection.
+ *
+ * @param checksummer Checksummer used to calculate entry checksums
  */
-class SeqIndexBinaryFileOps extends SeqIndexFileOps {
-    this: Checksummer =>
+class SeqIndexBinaryFileOps(checksummer: Checksummer) extends SeqIndexFileOps {
 
   /**
    * @inheritdoc
@@ -19,7 +20,7 @@ class SeqIndexBinaryFileOps extends SeqIndexFileOps {
     val byteBuf = ByteBuffer.allocate(24)
     byteBuf.putLong(8, seq).putLong(16, offset)
 
-    val chksum = checksum(byteBuf.array)
+    val chksum = checksummer.checksum(byteBuf.array)
     byteBuf.putLong(0, chksum)
 
     writeHandle.write(byteBuf.array)
@@ -37,7 +38,7 @@ class SeqIndexBinaryFileOps extends SeqIndexFileOps {
 
       val chksum = byteBuf.getLong(0)
       byteBuf.putLong(0, 0L)
-      if (chksum != checksum(byteBuf.array)) {
+      if (chksum != checksummer.checksum(byteBuf.array)) {
         throw new IllegalStateException("Sequence cache corrupted at " +
           (indexFileHandle.getFilePointer - 24))
       }

@@ -15,15 +15,6 @@ import collection.JavaConversions._
 import com.comcast.xfinity.sirius.uberstore.common.Checksummer
 
 object SeqIndexBinaryFileOpsTest {
-  trait FauxChecksummer extends Checksummer {
-    var nextChecksum: Long = 0L
-
-    def setNextChecksum(chksum: Long) {
-      nextChecksum = chksum
-    }
-
-    def checksum(bytes: Array[Byte]): Long = nextChecksum
-  }
 
   def mockReadAnswerForBytes(bytes: Array[Byte], toReturn: Int) =
     new Answer[Int] {
@@ -41,7 +32,8 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
 
   describe("put") {
     it ("must properly record the Seq -> Offset mapping with checksum") {
-      val underTest = new SeqIndexBinaryFileOps with FauxChecksummer
+      val mockChecksummer = mock[Checksummer]
+      val underTest = new SeqIndexBinaryFileOps(mockChecksummer)
 
       val theSeq: Long = 10
       val theOffset: Long = 20
@@ -49,7 +41,7 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
       val dummyChecksum = 12345L
 
       val mockHandle = mock[RandomAccessFile]
-      underTest.setNextChecksum(dummyChecksum)
+      doReturn(dummyChecksum).when(mockChecksummer).checksum(any[Array[Byte]])
 
       val captor = ArgumentCaptor.forClass(classOf[Array[Byte]])
 
@@ -70,12 +62,13 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
 
   describe("loadIndex") {
     it ("must read to the end of the file and return all the mappings it finds") {
-      val underTest = new SeqIndexBinaryFileOps with FauxChecksummer
+      val mockChecksummer = mock[Checksummer]
+      val underTest = new SeqIndexBinaryFileOps(mockChecksummer)
 
       val mockHandle = mock[RandomAccessFile]
 
       val dummyChecksum: Long = 1234
-      underTest.setNextChecksum(dummyChecksum)
+      doReturn(dummyChecksum).when(mockChecksummer).checksum(any[Array[Byte]])
 
       val dummyFileLen: Long = 48 // two entries
       doReturn(dummyFileLen).when(mockHandle).length
@@ -99,12 +92,14 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
     }
 
     it ("must throw an IllegalStateException if corruption is detected") {
-      val underTest = new SeqIndexBinaryFileOps with FauxChecksummer
+      val mockChecksummer = mock[Checksummer]
+      val underTest = new SeqIndexBinaryFileOps(mockChecksummer)
+
 
       val mockHandle = mock[RandomAccessFile]
 
       val dummyChecksum: Long = 1234
-      underTest.setNextChecksum(dummyChecksum)
+      doReturn(dummyChecksum).when(mockChecksummer).checksum(any[Array[Byte]])
 
       val dummyFileLen: Long = 48 // two entries
       doReturn(dummyFileLen).when(mockHandle).length
