@@ -7,9 +7,8 @@ package com.comcast.xfinity.sirius.api.impl
  * an FSM, which just change states based on message passing..  
  */
 case class SiriusState(supervisorInitialized: Boolean = false,
-                       persistenceInitialized: Boolean = false,
                        stateInitialized: Boolean = false,
                        membershipInitialized: Boolean = false) {
 
-  def areSubsystemsInitialized = persistenceInitialized && stateInitialized && membershipInitialized
+  def areSubsystemsInitialized = stateInitialized && membershipInitialized
 }

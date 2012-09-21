@@ -22,14 +22,12 @@ class SiriusPersistenceActorTest extends NiceTest {
   var underTestActor: TestActorRef[SiriusPersistenceActor] = _
   var testStateWorkerProbe: TestProbe = _
   var mockSiriusLog: SiriusLog = _
-  var mockSiriusStateAgent: Agent[SiriusState] = _
 
   before {
     mockSiriusLog = mock[SiriusLog]
-    mockSiriusStateAgent = mock[Agent[SiriusState]]
     actorSystem = ActorSystem("testsystem")
     testStateWorkerProbe = TestProbe()(actorSystem)
-    underTestActor = TestActorRef(new SiriusPersistenceActor(testStateWorkerProbe.ref, mockSiriusLog, mockSiriusStateAgent))(actorSystem)
+    underTestActor = TestActorRef(new SiriusPersistenceActor(testStateWorkerProbe.ref, mockSiriusLog))(actorSystem)
 
   }
 
@@ -37,15 +35,9 @@ class SiriusPersistenceActorTest extends NiceTest {
     actorSystem.shutdown()
   }
 
-  //actionType: String, key: String, sequence: Long, timestamp: Long, payload: Option[Array[Byte]]
   describe("a SiriusPersistenceActor") {
 
     //TODO: Should have tests for calls to mockSiriusLog
-
-    it("should send an initialized message to StateActor on preStart()") {
-      verify(mockSiriusStateAgent).send(any(classOf[SiriusState => SiriusState]
-      ))
-    }
 
     it("should forward Put's to the state actor") {
       when(mockSiriusLog.getNextSeq).thenReturn(0)

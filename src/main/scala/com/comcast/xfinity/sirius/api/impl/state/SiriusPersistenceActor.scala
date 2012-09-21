@@ -4,7 +4,6 @@ import akka.actor.Actor
 import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
-import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl._
 import persistence.BoundedLogRange
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
@@ -57,10 +56,8 @@ object SiriusPersistenceActor {
  *
  * @param stateActor Actor wrapping in memory state of the system
  * @param siriusLog the log to record events to before sending to memory
- * @param siriusStateAgent agent containing an administrative state of the system to update
- *            once bootstrapping has completed
  */
-class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, siriusStateAgent: Agent[SiriusState])
+class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog)
     (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
 
   import SiriusPersistenceActor._
@@ -70,11 +67,6 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog, sir
   var lastWriteTime = 0L
 
   override def preStart() {
-    // if replay is done externally, do we still need this?  my thought is yes,
-    //  because if we got to this point it _implies_ that we have completed replay,
-    //  but we can probably move this elsewhere where it's actually right after
-    //  replay
-    siriusStateAgent send (_.copy(persistenceInitialized = true))
     registerMonitor(new SiriusPersistenceActorInfo, config)
   }
 

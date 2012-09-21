@@ -91,7 +91,7 @@ class SiriusSupervisorTest extends NiceTest with TimedTest {
 
   def initializeSupervisor(supervisor: TestActorRef[SiriusSupervisor with SiriusSupervisor.DependencyProvider]) {
     val siriusStateAgent = supervisor.underlyingActor.siriusStateAgent
-    siriusStateAgent send (SiriusState(false, true, true, true))
+    siriusStateAgent send (SiriusState(false, true, true))
     // wait for agent to get updated, just in case
     assert(waitForTrue(siriusStateAgent().areSubsystemsInitialized, 1000, 250))
 

@@ -3,15 +3,28 @@ package com.comcast.xfinity.sirius.api.impl.state
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import akka.actor.{Props, ActorRef, Actor}
 import com.comcast.xfinity.sirius.api.impl._
 import akka.event.Logging
 import state.SiriusPersistenceActor.LogQuery
+import akka.actor.{ActorContext, Props, ActorRef, Actor}
+import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object StateSup {
-  trait ChildProvider {
-    val stateActor: ActorRef
-    val persistenceActor: ActorRef
+
+  /**
+   * Helper class for creating Actors within the StateSup,
+   * externalized so we can mock it out and test.
+   */
+  private[state] class ChildProvider {
+    def makeStateActor(requestHandler: RequestHandler)
+                      (implicit context: ActorContext): ActorRef =
+      context.actorOf(Props(new SiriusStateActor(requestHandler)), "state")
+
+    def makePersistenceActor(stateActor: ActorRef,
+                             siriusLog: SiriusLog,
+                             config: SiriusConfiguration)
+                            (implicit context: ActorContext): ActorRef =
+      context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog)(config)), "persistence")
   }
 
   /**
@@ -29,55 +42,40 @@ object StateSup {
             siriusLog: SiriusLog,
             siriusStateAgent: Agent[SiriusState],
             config: SiriusConfiguration): StateSup = {
-    new StateSup with ChildProvider {
-
-      val logger = Logging(context.system, "Sirius")
-
-      // this stuff is essentially just autowiring, but we may want to move the contents
-      //  of this wiring to a top level-ish class for style
-      val start = System.currentTimeMillis
-      logger.info("Beginning SiriusLog replay at {}", start)
-      bootstrapState(requestHandler, siriusLog)
-      logger.info("Replayed SiriusLog in {}ms", System.currentTimeMillis - start)
-
-      val stateActor =
-        context.actorOf(Props(new SiriusStateActor(requestHandler, siriusStateAgent)), "memory_state")
-
-      val persistenceActor =
-        context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog, siriusStateAgent)(config)), "persistence")
-    }
-  }
-
-  /**
-   * Replay siriusLog into requestHandler (has side effects!)
-   *
-   * @param requestHandler the RequestHandler to replay into
-   * @param siriusLog the SiriusLog to replay from
-   */
-  def bootstrapState(requestHandler: RequestHandler, siriusLog: SiriusLog) {
-    // Perhaps we should think about adding the foreach abstraction back to SiriusLog
-    siriusLog.foldLeft(()) {
-      case (acc, OrderedEvent(_, _, Put(key, body))) =>
-        try {
-          requestHandler.handlePut(key, body); acc
-        } catch {
-          case _ => // XXX THIS IS ONLY TEMORARY!
-        }
-      case (acc, OrderedEvent(_, _, Delete(key))) =>
-        try {
-          requestHandler.handleDelete(key); acc
-        } catch {
-          case _ => // XXX THIS IS ONLY TEMPORARY!
-        }
-    }
+    val childProvider = new ChildProvider
+    new StateSup(requestHandler, siriusLog, siriusStateAgent, childProvider)(config)
   }
 }
 
 /**
  * Actors for supervising state related matters
  */
-class StateSup extends Actor {
-    this: StateSup.ChildProvider =>
+class StateSup(requestHandler: RequestHandler,
+               siriusLog: SiriusLog,
+               siriusStateAgent: Agent[SiriusState],
+               childProvider: StateSup.ChildProvider)
+              (implicit config: SiriusConfiguration = new SiriusConfiguration)
+    extends Actor with MonitoringHooks {
+
+  val logger = Logging(context.system, "Sirius")
+
+  val stateActor = childProvider.makeStateActor(requestHandler)
+  val persistenceActor = childProvider.makePersistenceActor(stateActor, siriusLog, config)
+
+  // monitor stuff
+  var eventReplayFailureCount: Long = 0
+  // it would be cool to be able to observe this during boot...
+  var bootstrapTime: Option[Long] = None
+
+  override def preStart() {
+    registerMonitor(new StateInfo, config)
+    bootstrapState()
+    siriusStateAgent send (_.copy(stateInitialized = true))
+  }
+
+  override def postStop() {
+    unregisterMonitors(config)
+  }
 
   def receive = {
     case get: Get =>
@@ -89,5 +87,39 @@ class StateSup extends Actor {
     case logQuery: LogQuery =>
       persistenceActor forward logQuery
 
+  }
+
+  private def bootstrapState() {
+    val start = System.currentTimeMillis
+
+    logger.info("Beginning SiriusLog replay at {}", start)
+    // perhaps the foreach abstraction will be nice to have back
+    //  in SiriusLog?
+    siriusLog.foldLeft(())(
+      (_, orderedEvent) =>
+        try {
+          orderedEvent.request match {
+            case Put(key, body) => requestHandler.handlePut(key, body)
+            case Delete(key) => requestHandler.handleDelete(key)
+          }
+        } catch {
+          case rte: RuntimeException =>
+            eventReplayFailureCount += 1
+            logger.error("Exception replaying {}: {}", orderedEvent, rte)
+        }
+    )
+    val totalBootstrapTime = System.currentTimeMillis - start
+    bootstrapTime = Some(totalBootstrapTime)
+    logger.info("Replayed SiriusLog in {}ms", totalBootstrapTime)
+  }
+
+  trait StateInfoMBean {
+    def getEventReplayFailureCount: Long
+    def getBootstrapTime: String
+  }
+
+  class StateInfo extends StateInfoMBean {
+    def getEventReplayFailureCount = eventReplayFailureCount
+    def getBootstrapTime = bootstrapTime.toString
   }
 }

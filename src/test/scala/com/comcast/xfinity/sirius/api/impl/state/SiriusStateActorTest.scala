@@ -16,13 +16,11 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
 
   var mockRequestHandler: RequestHandler = _
   var testActor: TestActorRef[SiriusStateActor] = _
-  var mockSiriusStateAgent: Agent[SiriusState] = _
 
   before {
     mockRequestHandler = mock[RequestHandler]
-    mockSiriusStateAgent = mock[Agent[SiriusState]]
 
-    testActor = TestActorRef(new SiriusStateActor(mockRequestHandler, mockSiriusStateAgent))
+    testActor = TestActorRef(new SiriusStateActor(mockRequestHandler))
   }
 
   override def afterAll {
@@ -30,12 +28,6 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
   }
 
   describe("A SiriusStateWorker") {
-
-    describe("on startup") {
-      it("should send an initialized message to StateActor on preStart()") {
-        verify(mockSiriusStateAgent).send(Matchers.any[SiriusState => SiriusState])
-      }
-    }
 
     describe("in response to a Put message") {
       it ("must forward the message to handler and reply with the result " +

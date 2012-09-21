@@ -2,12 +2,36 @@ package com.comcast.xfinity.sirius.api.impl.state
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.ActorSystem
 import akka.testkit.{TestActorRef, TestProbe}
-import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete, Get}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Delete, Get}
+import akka.agent.Agent
+import org.mockito.Mockito._
+import org.mockito.Matchers._
+import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
+import akka.actor.{ActorContext, ActorRef, ActorSystem}
+
+object StateSupTest {
+  def makeMockedUpChildProvider(implicit actorSystem: ActorSystem): (TestProbe, TestProbe, StateSup.ChildProvider) = {
+    val stateProbe = TestProbe()
+    val persistenceProbe = TestProbe()
+    val provider = new StateSup.ChildProvider {
+      override def makeStateActor(requestHandler: RequestHandler)
+                                 (implicit context: ActorContext): ActorRef = stateProbe.ref
+
+      override def makePersistenceActor(stateActor: ActorRef,
+                                        siriusLog: SiriusLog,
+                                        config: SiriusConfiguration)
+                                       (implicit context: ActorContext): ActorRef = persistenceProbe.ref
+    }
+    (stateProbe, persistenceProbe, provider)
+  }
+}
 
 class StateSupTest extends NiceTest with BeforeAndAfterAll {
+
+  import StateSupTest._
 
   implicit val actorSystem = ActorSystem("StateSupTest")
 
@@ -17,11 +41,13 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
   describe("when receiving a Get") {
     it ("must forward the message to the in memory state subsystem") {
-      val stateProbe = TestProbe()
-      val stateSup = TestActorRef(new StateSup with StateSup.ChildProvider {
-        val stateActor = stateProbe.ref
-        val persistenceActor = TestProbe().ref
-      })
+      val mockRequestHandler = mock[RequestHandler]
+      val mockLog = mock[SiriusLog]
+      val mockStateAgent = mock[Agent[SiriusState]]
+
+      val (stateProbe, _, mockChildProvider) = makeMockedUpChildProvider
+
+      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider))
 
       val senderProbe = TestProbe()
       senderProbe.send(stateSup, Get("asdf"))
@@ -32,11 +58,13 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
   describe("when receiving an OrderedEvent") {
     it ("must send the OrderedEvent to the persistence subsystem") {
-      val persistenceProbe = TestProbe()
-      val stateSup = TestActorRef(new StateSup with StateSup.ChildProvider {
-        val stateActor = TestProbe().ref
-        val persistenceActor = persistenceProbe.ref
-      })
+      val mockRequestHandler = mock[RequestHandler]
+      val mockLog = mock[SiriusLog]
+      val mockStateAgent = mock[Agent[SiriusState]]
+
+      val (_, persistenceProbe, mockChildProvider) = makeMockedUpChildProvider
+
+      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider))
 
       val orderedEvent = OrderedEvent(1, 1, Delete("asdf"))
       stateSup ! orderedEvent
@@ -47,11 +75,13 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
   describe("when receiving a LogQuery message") {
     it ("must forward the message to the persistence subsystem") {
-      val persistenceProbe = TestProbe()
-      val stateSup = TestActorRef(new StateSup with StateSup.ChildProvider {
-        val stateActor = TestProbe().ref
-        val persistenceActor = persistenceProbe.ref
-      })
+      val mockRequestHandler = mock[RequestHandler]
+      val mockLog = mock[SiriusLog]
+      val mockStateAgent = mock[Agent[SiriusState]]
+
+      val (_, persistenceProbe, mockChildProvider) = makeMockedUpChildProvider
+
+      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider))
 
       val senderProbe = TestProbe()
       senderProbe.send(stateSup, GetLogSubrange(1, 100))

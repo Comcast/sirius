@@ -2,7 +2,6 @@ package com.comcast.xfinity.sirius.api.impl.state
 
 import akka.actor.Actor
 import com.comcast.xfinity.sirius.api.impl._
-import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.impl.SiriusRequest
@@ -15,18 +14,10 @@ import com.comcast.xfinity.sirius.api.impl.SiriusRequest
  * In the future we may want to not respond to Put and Delete messages...
  *
  * @param requestHandler the request handler containing callbacks for manipulating state
- * @param siriusStateAgent the Agent to update once we have successfully initialized. This
- *              parameter may be removed in the future in favor of a different startup style
  */
-class SiriusStateActor(requestHandler: RequestHandler,
-                       siriusStateAgent: Agent[SiriusState]) extends Actor {
+class SiriusStateActor(requestHandler: RequestHandler) extends Actor {
 
   val logger = Logging(context.system, "Sirius")
-
-  override def preStart() {
-    // XXX: do we really need this...
-    siriusStateAgent send (_.copy(stateInitialized = true))
-  }
   
   def receive = {
     case req: SiriusRequest =>
