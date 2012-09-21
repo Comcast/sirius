@@ -57,8 +57,18 @@ object StateSup {
   def bootstrapState(requestHandler: RequestHandler, siriusLog: SiriusLog) {
     // Perhaps we should think about adding the foreach abstraction back to SiriusLog
     siriusLog.foldLeft(()) {
-      case (acc, OrderedEvent(_, _, Put(key, body))) => requestHandler.handlePut(key, body); acc
-      case (acc, OrderedEvent(_, _, Delete(key))) => requestHandler.handleDelete(key); acc
+      case (acc, OrderedEvent(_, _, Put(key, body))) =>
+        try {
+          requestHandler.handlePut(key, body); acc
+        } catch {
+          case _ => // XXX THIS IS ONLY TEMORARY!
+        }
+      case (acc, OrderedEvent(_, _, Delete(key))) =>
+        try {
+          requestHandler.handleDelete(key); acc
+        } catch {
+          case _ => // XXX THIS IS ONLY TEMPORARY!
+        }
     }
   }
 }
