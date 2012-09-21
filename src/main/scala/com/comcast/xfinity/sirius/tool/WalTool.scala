@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.tool
 
 import com.comcast.xfinity.sirius.uberstore.{UberStore, UberTool}
 import java.io.File
-import com.comcast.xfinity.sirius.writeaheadlog.{SiriusLog, SiriusFileLog}
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl.persistence.BoundedLogRange
 import com.comcast.xfinity.sirius.uberstore.seqindex.ReadOnlySeqIndex
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
@@ -17,19 +17,8 @@ object WalTool {
 
   private def printUsage() {
     Console.err.println("Usage:")
-    Console.err.println("   convert-to-uber <inWalName> <outWalDirName>")
-    Console.err.println("       Convert a legacy (line based) log to an UberStore.")
-    Console.err.println()
-    Console.err.println("   convert-to-legacy <inWalDir> <outWalName>")
-    Console.err.println("       Convert an UberStore into a legacy (line based) log")
-    Console.err.println()
     Console.err.println("   compact [two-pass] <inWalDir> <outWalDir>")
     Console.err.println("       Compact UberStore in inWalDir into new UberStore in outWalDir")
-    Console.err.println("       If two-pass is provided then the more memory efficient two pass")
-    Console.err.println("       compaction algorithm will be used")
-    Console.err.println()
-    Console.err.println("   compact-legacy [two-pass] <inWalDir> <outWalDir>")
-    Console.err.println("       Compact a legacy (line based) log into another")
     Console.err.println("       If two-pass is provided then the more memory efficient two pass")
     Console.err.println("       compaction algorithm will be used")
     Console.err.println()
@@ -43,21 +32,10 @@ object WalTool {
 
   def main(args: Array[String]) {
     args match {
-      case Array("convert-to-uber", inWalName, outWalDirName) =>
-        convertToUber(inWalName, outWalDirName)
-
-      case Array("convert-to-legacy", inWalDir, outWalName) =>
-        convertToLegacy(inWalDir, outWalName)
-
       case Array("compact", inWalDirName, outWalDirName) =>
         compact(inWalDirName, outWalDirName, false)
       case Array("compact", "two-pass", inWalDirName, outWalDirName) =>
         compact(inWalDirName, outWalDirName, true)
-
-      case Array("compact-legacy", inWalName, outWalName) =>
-        compactLegacy(inWalName, outWalName, false)
-      case Array("compact-legacy", "two-pass", inWalName, outWalName) =>
-        compactLegacy(inWalName, outWalName, true)
 
       case Array("tail", walDir) =>
         tailUber(walDir)
@@ -74,36 +52,6 @@ object WalTool {
   }
 
   /**
-   * Convert a SiriusFileLog specified by inWalName to an UberStore
-   * in outWalDirName. outWalDirName must not exist.
-   *
-   * @param inWalName file name specifying SiriusFileLog
-   * @param outWalDirName output directory name specifying where to base
-   *          new UberStore
-   */
-  private def convertToUber(inWalName: String, outWalDirName: String) {
-    val inWal = SiriusFileLog(inWalName)
-
-    createFreshDir(outWalDirName)
-    val outWal = UberStore(outWalDirName)
-
-    UberTool.copyLog(inWal, outWal)
-  }
-
-  /**
-   * Convert an UberStore specified by inWalDirName to a SiriusFileLog
-   * in outWalName.
-   *
-   * @param inDirName directory specifying UberStore
-   * @param outWalName file name specifying SiriusFileLog
-   */
-  private def convertToLegacy(inWalDirName: String, outWalName: String) {
-    val inWal = UberStore(inWalDirName)
-    val outWal = SiriusFileLog(outWalName)
-    UberTool.copyLog(inWal, outWal)
-  }
-
-  /**
    * Compact an UberStore
    *
    * @param inWalDirName directory specifying input UberStore
@@ -117,21 +65,6 @@ object WalTool {
 
     val inWal = UberStore(inWalDirName)
     val outWal = UberStore(outWalDirName)
-
-    doCompact(inWal, outWal, twoPass)
-  }
-
-  /**
-   * Compact a SiriusFileLog
-   *
-   * @param inWalName file name specifying input SiriusFileLog
-   * @param outWalName directory specifying output SiriusFileLog
-   * @param twoPass true to use slower, more memory efficient twoPass algorithm,
-   *          false to use faster, more memory intensive algorithm
-   */
-  private def compactLegacy(inWalName: String, outWalName: String, twoPass: Boolean) {
-    val inWal = SiriusFileLog(inWalName)
-    val outWal = SiriusFileLog(outWalName)
 
     doCompact(inWal, outWal, twoPass)
   }

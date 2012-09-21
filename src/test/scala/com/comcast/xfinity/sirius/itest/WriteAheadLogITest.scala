@@ -6,6 +6,8 @@ import com.comcast.xfinity.sirius.writeaheadlog._
 import com.comcast.xfinity.sirius.api.impl._
 
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import java.io.File
+import com.comcast.xfinity.sirius.uberstore.UberStore
 
 object WriteAheadLogITest {
   def readEntries(siriusLog: SiriusLog) =
@@ -20,13 +22,13 @@ class WriteAheadLogITest extends NiceTest {
 
   val tempFolder = new TemporaryFolder()
 
-  var siriusLog: SiriusFileLog = _
+  var siriusLog: SiriusLog = _
 
   before {
     tempFolder.create()
 
-    val logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
-    siriusLog = SiriusFileLog(logFilename)
+    val uberstorePath = tempFolder.newFolder("uberstore")
+    siriusLog = UberStore(uberstorePath.getAbsolutePath)
   }
 
   after {

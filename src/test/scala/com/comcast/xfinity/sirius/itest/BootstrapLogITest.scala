@@ -6,9 +6,11 @@ import com.comcast.xfinity.sirius.writeaheadlog._
 import scalax.file.Path
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import com.comcast.xfinity.sirius.api.impl.SiriusImpl
+import com.comcast.xfinity.sirius.api.impl.{Put, OrderedEvent, SiriusImpl}
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.uberstore.UberStore
+import java.io.File
 
 @RunWith(classOf[JUnitRunner])
 class BootstrapLogITest extends NiceTest with TimedTest {
@@ -18,7 +20,7 @@ class BootstrapLogITest extends NiceTest with TimedTest {
   var actorSystem: ActorSystem = _
 
   val tempFolder = new TemporaryFolder()
-  var logFilename: String = _
+  var logDir: File = _
 
   var stringRequestHandler: StringRequestHandler = _
   var clusterConfigPath: Path = _
@@ -29,10 +31,8 @@ class BootstrapLogITest extends NiceTest with TimedTest {
     stageClusterConfigFile()
   }
   private def stageLogFile() {
-    logFilename = tempFolder.newFile("sirius_wal.log").getAbsolutePath
-    val path = Path.fromString(logFilename)
-    path.append("38a3d11c36c4c4e1|PUT|key|123|19700101T000012.345Z|QQ==\n")
-    path.append("8e8ca658d0c63868|PUT|key|123|19700101T000012.345Z|QXxB\n")
+    logDir = tempFolder.newFolder("uberstore")
+    logDir.mkdirs()
   }
 
   private def stageClusterConfigFile() {
@@ -47,7 +47,9 @@ class BootstrapLogITest extends NiceTest with TimedTest {
 
     actorSystem = ActorSystem.create("Sirius")
 
-    val logWriter: SiriusFileLog = new SiriusFileLog(logFilename, new WriteAheadLogSerDe())
+    val logWriter = UberStore(logDir.getAbsolutePath)
+    logWriter.writeEntry(OrderedEvent(1, 2, Put("first", "jam".getBytes)))
+    logWriter.writeEntry(OrderedEvent(2, 3, Put("first", "jawn".getBytes)))
 
     stringRequestHandler = new StringRequestHandler()
 
