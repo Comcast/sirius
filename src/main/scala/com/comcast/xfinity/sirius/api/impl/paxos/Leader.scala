@@ -46,6 +46,7 @@ class Leader(membership: Agent[Set[ActorRef]],
     this: Leader.HelperProvider =>
 
   val logger = Logging(context.system, "Sirius")
+  val traceLogger = Logging(context.system, "SiriusTrace")
 
   val acceptors = membership
   val replicas = membership
@@ -135,8 +136,14 @@ class Leader(membership: Agent[Set[ActorRef]],
     case ScoutTimeout =>
       if (electedLeaderBallot == None) startScout()
 
-    // if the commander times out, record such
+    // if the commander times out we nullify it's slot in our proposals
+    //  and let someone else try out
     case Commander.CommanderTimeout(pvalue) =>
+      traceLogger.debug("Commander timed out for {}", pvalue)
+
+      proposals.remove(pvalue.slotNum)
+
+      // some record keeping
       commanderTimeoutCount += 1
       lastTimedOutPValue = Some(pvalue)
 
