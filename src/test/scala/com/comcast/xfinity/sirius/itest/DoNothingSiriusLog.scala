@@ -15,8 +15,9 @@ class DoNothingSiriusLog extends SiriusLog {
 
   override def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T = acc0
 
-  override def createIterator(logRange: LogRange): CloseableIterator[OrderedEvent] =
-    CloseableIterator(Iterator[OrderedEvent]())
+  override def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
+    acc0
+  }
 
   override def getNextSeq = 1L
 }

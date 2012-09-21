@@ -5,7 +5,7 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 /**
  * Defines the Log Writer
  */
-trait SiriusLog extends LogIteratorSource {
+trait SiriusLog {
 
   /**
    * Write an entry to the log
@@ -20,6 +20,15 @@ trait SiriusLog extends LogIteratorSource {
    * @param foldFun function to apply to the log entry, the result being the new accumulator
    */
   def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T
+
+  /**
+   * Fold left across a specified range of log entries
+   * @param startSeq sequence number to start with, inclusive
+   * @param endSeq sequence number to end with, inclusive
+   * @param acc0 initial accumulator value
+   * @param foldFun function to apply to the log entry, the result being the new accumulator
+   */
+  def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T
 
   def getNextSeq: Long
 

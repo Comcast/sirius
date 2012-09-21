@@ -65,9 +65,9 @@ class CachedSiriusLogTest extends NiceTest {
       )
       events.foreach(underTest.writeEntry(_))
 
-      val lineIterator = underTest.createIterator(BoundedLogRange(2, 3))
-      assert(lineIterator.next().sequence == 2L)
-      assert(lineIterator.next().sequence == 3L)
+      val foldedEvents = underTest.foldLeftRange(2, 3)(List[OrderedEvent]())((acc, event) => acc :+ event)
+      assert(foldedEvents(0).sequence == 2L)
+      assert(foldedEvents(1).sequence == 3L)
     }
 
     it("should attempt to return a range from the on-disk log if not in the write cache") {
@@ -82,10 +82,11 @@ class CachedSiriusLogTest extends NiceTest {
       )
       events.foreach(underTest.writeEntry(_))
 
-      underTest.createIterator(BoundedLogRange(2, 3))
+      val foldFun = (unit: Unit, event: OrderedEvent) => unit
+      underTest.foldLeftRange(2, 3)(())(foldFun)
 
       // verify it is pushed down to backend log
-      verify(mockLog).createIterator(BoundedLogRange(2, 3))
+      verify(mockLog).foldLeftRange(2, 3)(())(foldFun)
     }
   }
 }

@@ -11,9 +11,10 @@ import org.mockito.Matchers._
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Put, Delete}
 import akka.agent.Agent
-import scalax.io.CloseableIterator
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, LogRange}
+import org.mockito.Matchers
+import org.mockito.Matchers.{any, eq => meq, anyLong}
 
 class SiriusPersistenceActorTest extends NiceTest {
 
@@ -75,14 +76,14 @@ class SiriusPersistenceActorTest extends NiceTest {
         OrderedEvent(1, 2, Delete("first jawn")),
         OrderedEvent(3, 4, Delete("second jawn"))
       )
-      doReturn(CloseableIterator(expectedEvents.toIterator)).
-        when(mockSiriusLog).createIterator(any[LogRange])
+      doReturn(expectedEvents.reverse).when(mockSiriusLog).
+        foldLeftRange(anyLong, anyLong)(any[Symbol])(any[(Symbol, OrderedEvent) => Symbol]())
 
       val senderProbe = TestProbe()(actorSystem)
       senderProbe.send(underTestActor, GetLogSubrange(1, 3))
       senderProbe.expectMsg(LogSubrange(expectedEvents))
 
-      verify(mockSiriusLog).createIterator(BoundedLogRange(1, 3))
+      verify(mockSiriusLog).foldLeftRange(meq(1L), meq(3L))(meq(List[OrderedEvent]()))(any[(List[OrderedEvent], OrderedEvent) => List[OrderedEvent]]())
     }
 
     it("should reply to GetNextLogSeq requests directly") {

@@ -129,9 +129,9 @@ object WalTool {
    * @param last last seq to print
    */
   private def printSeq(wal: UberStore, first: Long, last: Long) {
-    val rangeIter = wal.createIterator(BoundedLogRange(first, last))
-
-    rangeIter.foreach((event) => println(event))
+    wal.foldLeftRange(first, last)(())((_, event) =>
+      println(event)
+    )
   }
 
 }

@@ -21,9 +21,6 @@ class UberStoreTest extends NiceTest {
 
   import UberStoreTest._
 
-  // NOTE: createIterator is tested in the integration tests, it's going to be
-  //       removed from the API, so whatever
-
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {
       val (mockDataFile, mockIndex, underTest) = createMockedUpLog

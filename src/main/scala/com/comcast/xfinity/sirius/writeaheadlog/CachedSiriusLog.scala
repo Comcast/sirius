@@ -74,20 +74,28 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
    * entries from memory if possible.  This should avoid seeking the range on disk
    * in most catch-up cases.
    *
-   * @param logRange the LogRange for the events to iterate
-   * @return Iterator of events in one (or more) log file(s)
+   * @param startSeq sequence number to start folding over, inclusive
+   * @param endSeq sequence number to end folding over, inclusive
+   * @param acc0 the starting value of the accumulator
+   * @param foldFun function that should take (accumulator, event) and return a new accumulator
+   * @return the final value of the accumulator
    */
-  override def createIterator(logRange: LogRange): CloseableIterator[OrderedEvent] = {
-    logRange match {
-      case BoundedLogRange(start, end) if (firstSeq <= start && end <= lastSeq) =>
-        createIteratorCached(start, end)
-      case range: LogRange =>
-        log.createIterator(logRange)
+  override def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
+    (startSeq, endSeq) match {
+      case (start, end) if (firstSeq <= start && end <= lastSeq) =>
+        foldLeftRangeCached(start, end)(acc0)(foldFun)
+      case (start, end) =>
+        log.foldLeftRange(start, end)(acc0)(foldFun)
     }
   }
 
-  private def createIteratorCached(start: Long, end: Long) = writeCache.synchronized {
-    CloseableIterator(writeCache.subMap(start, true, end, true).valuesIterator)
+  /**
+   * Private inner version of fold left.  This one hits the cache, and assumes that start/endSeqs are
+   * contained in the cache.  Synchronizes on writeCache so we can subMap with no fear.
+   */
+  private def foldLeftRangeCached[T](startSeq: Long, endSeq: Long)
+                                     (acc0: T)(foldFun: (T, OrderedEvent) => T): T = writeCache.synchronized {
+    writeCache.subMap(startSeq, true, endSeq, true).values.foldLeft(acc0)(foldFun)
   }
 
   /**

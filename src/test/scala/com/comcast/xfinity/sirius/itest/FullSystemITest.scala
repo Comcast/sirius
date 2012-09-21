@@ -56,14 +56,16 @@ object FullSystemITest {
       latch.countDown()
     }
 
-    def createIterator(logRange: LogRange) = {
-      CloseableIterator(Iterator[OrderedEvent]())
-    }
-
     def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
       entries.foldRight[T](acc0)(
         (event, acc) => foldFun(acc, event)
       )
+    }
+
+    def foldLeftRange[T](start: Long, end: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
+      val startIndex = entries.indexWhere((event) => event.sequence == start)
+      val endIndex = entries.indexWhere((event) => event.sequence == end)
+      entries.slice(startIndex, endIndex).foldLeft(acc0)(foldFun)
     }
 
     def getNextSeq = nextSeq

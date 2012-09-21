@@ -99,33 +99,9 @@ class UberStore(dataFile: UberDataFile,
     foldLeftRange(0, Long.MaxValue)(acc0)(foldFun)
 
   /**
-   * Retrieve a specified subrange of events from the log for sequential iteration.
-   *
-   * This method will be disappearing in the future in favor of foldLeftRange (private
-   * API at the moment).
-   *
-   * Requesting large log ranges is HIGHLY discouraged, we load the entire range of
-   * data into memory in this implementation.
-   *
-   * @param logRange LogRange specifying what subset of the log to return
-   *
-   * @return a StaticEventIterator of the events within the subrange
+   * @inheritdoc
    */
-  def createIterator(logRange: LogRange): CloseableIterator[OrderedEvent] = {
-    val (startSeq, endSeq) = logRange match {
-      case EntireLog => (0L, Long.MaxValue)
-      case BoundedLogRange(begin, end) => (begin, end)
-    }
-
-    val events = foldLeftRange(startSeq, endSeq)(List[OrderedEvent]())(
-      (acc, evt) => evt :: acc
-    ).reverse
-
-    CloseableIterator(events.iterator)
-  }
-
-  // foldLeft over sequence numbers startSeq -> endSeq, inclusive, this may become public...
-  private def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
+  def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
     val (startOffset, endOffset) = index.getOffsetRange(startSeq, endSeq)
     dataFile.foldLeftRange(startOffset, endOffset)(acc0)(
       (acc, _, evt) => foldFun(acc, evt)

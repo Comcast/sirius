@@ -78,20 +78,5 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
       assert(6L === uberStore.getNextSeq)
       assert(List(event1, event2, event3) === getAllEvents(uberStore))
     }
-
-    it ("must return an iterator for the entire log when asked for it") {
-      val fullLogIterator = uberStore.createIterator(EntireLog)
-      assert(event1 === fullLogIterator.next())
-      assert(event2 === fullLogIterator.next())
-      assert(event3 === fullLogIterator.next())
-      assert(false === fullLogIterator.hasNext)
-    }
-
-    it ("must return an iterator for a subrange of the log when asked for it") {
-      val subRangeIterator = uberStore.createIterator(BoundedLogRange(3, 5))
-      assert(event2 === subRangeIterator.next())
-      assert(event3 === subRangeIterator.next())
-      assert(false === subRangeIterator.hasNext)
-    }
   }
 }
