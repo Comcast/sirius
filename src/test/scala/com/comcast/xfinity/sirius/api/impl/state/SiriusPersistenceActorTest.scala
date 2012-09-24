@@ -7,13 +7,9 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 
 
 import org.mockito.Mockito._
-import org.mockito.Matchers._
 import com.comcast.xfinity.sirius.NiceTest
-import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Put, Delete}
-import akka.agent.Agent
+import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Put, Delete}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
-import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, LogRange}
-import org.mockito.Matchers
 import org.mockito.Matchers.{any, eq => meq, anyLong}
 
 class SiriusPersistenceActorTest extends NiceTest {

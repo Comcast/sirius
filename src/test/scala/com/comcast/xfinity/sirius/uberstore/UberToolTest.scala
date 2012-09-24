@@ -2,8 +2,6 @@ package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
-import scalax.io.CloseableIterator
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
 
 object UberToolTest {
@@ -25,8 +23,6 @@ object UberToolTest {
     def getNextSeq: Long =
       throw new IllegalStateException("not implemented")
 
-    def createIterator(range: LogRange): CloseableIterator[OrderedEvent] =
-      throw new IllegalStateException("not implemented")
   }
 }
 

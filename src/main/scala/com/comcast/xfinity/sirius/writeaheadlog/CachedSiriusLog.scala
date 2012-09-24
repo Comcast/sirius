@@ -1,10 +1,8 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, LogRange}
 import scala.collection.JavaConversions._
 import java.util.{TreeMap => JTreeMap}
-import scalax.io.CloseableIterator
 
 object CachedSiriusLog {
   /**

@@ -2,10 +2,8 @@ package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import scalax.io.CloseableIterator
 import data.UberDataFile
 import seqindex.{PersistedSeqIndex, SeqIndex}
-import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, EntireLog, LogRange}
 
 object UberStore {
 

@@ -4,7 +4,6 @@ import java.io.File
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
-import com.comcast.xfinity.sirius.api.impl.persistence.{BoundedLogRange, EntireLog}
 
 class UberStoreITest extends NiceTest with BeforeAndAfterAll {
 

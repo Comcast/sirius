@@ -1,11 +1,6 @@
 package com.comcast.xfinity.sirius
 
 import akka.actor.{Actor, Props, ActorRef, ActorSystem}
-import api.impl.OrderedEvent
-import api.impl.persistence.{EntireLog, LogRange}
-import com.comcast.xfinity.sirius.writeaheadlog.LogIteratorSource
-import org.mockito.Mockito._
-import scalax.io.CloseableIterator
 import org.scalatest.mock.MockitoSugar
 
 object Helper extends MockitoSugar {
@@ -30,12 +25,4 @@ object Helper extends MockitoSugar {
       }
     }))
   }
-
-  def createMockSource(iter: Iterator[OrderedEvent], expectedLogRange: LogRange): LogIteratorSource = {
-    val mockSource = mock[LogIteratorSource]
-    when(mockSource.createIterator(expectedLogRange)).thenReturn(CloseableIterator(iter))
-    mockSource
-  }
-
-  def createMockSource(seq: OrderedEvent*): LogIteratorSource = createMockSource(seq.iterator, EntireLog)
 }

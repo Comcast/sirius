@@ -5,7 +5,6 @@ import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl._
-import persistence.BoundedLogRange
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object SiriusPersistenceActor {

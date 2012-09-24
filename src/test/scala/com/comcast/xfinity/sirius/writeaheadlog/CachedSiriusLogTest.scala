@@ -4,7 +4,6 @@ import com.comcast.xfinity.sirius.NiceTest
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.Delete
-import com.comcast.xfinity.sirius.api.impl.persistence.BoundedLogRange
 
 class CachedSiriusLogTest extends NiceTest {
 

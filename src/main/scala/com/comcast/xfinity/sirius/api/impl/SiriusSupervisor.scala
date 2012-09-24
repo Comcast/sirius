@@ -3,7 +3,6 @@ package com.comcast.xfinity.sirius.api.impl
 import membership._
 import paxos.PaxosMessages.PaxosMessage
 import paxos.NaiveOrderingActor
-import persistence._
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props

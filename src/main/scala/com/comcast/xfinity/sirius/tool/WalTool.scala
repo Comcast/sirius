@@ -3,7 +3,6 @@ package com.comcast.xfinity.sirius.tool
 import com.comcast.xfinity.sirius.uberstore.{UberStore, UberTool}
 import java.io.File
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.impl.persistence.BoundedLogRange
 import com.comcast.xfinity.sirius.uberstore.seqindex.ReadOnlySeqIndex
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
 

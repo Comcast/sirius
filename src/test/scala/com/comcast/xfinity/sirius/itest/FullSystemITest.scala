@@ -5,11 +5,9 @@ import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
 import java.io.File
-import com.comcast.xfinity.sirius.api.impl.persistence.LogRange
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.{SiriusFactory, NonCommutativeSiriusRequest, OrderedEvent, SiriusImpl}
-import scalax.io.CloseableIterator
 
 object FullSystemITest {
 
