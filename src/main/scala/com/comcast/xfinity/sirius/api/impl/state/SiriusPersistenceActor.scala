@@ -121,7 +121,6 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog)
       ).reverse
       // maxSeq is either the highest seq we have, or the top seq they requested
       val maxSeq = min(siriusLog.getNextSeq - 1, rangeEnd)
-      println("%s %s %s".format(rangeStart, maxSeq, chunkRange))
       sender ! LogSubrange(rangeStart, maxSeq, chunkRange)
 
     case GetNextLogSeq =>
