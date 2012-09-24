@@ -156,33 +156,4 @@ class SiriusConfiguration {
     case None => default
   }
 
-  /**
-   * convenience for getting the host to use, going away soon
-   */
-  def getHost: String = getProp(HOST, "")
-
-  /**
-   * convenience for getting the port to use
-   */
-  @deprecated("use getProp(PORT) instead", "2012-09-12")
-  def getPort: Int = getProp(PORT, 2552)
-
-  /**
-   * convenience for getting the cluster configuration location, going away soon
-   */
-  @deprecated("use getProp(CLUSTER_CONFIG) instead", "2012-09-12")
-  def getClusterConfigPath: String = getProp(CLUSTER_CONFIG, null)
-
-  /**
-   * convenience for getting whether or not to use paxos, going away soon
-   */
-  @deprecated("use getProp(USE)PAXOS) instead", "2012-09-12")
-  def getUsePaxos: Boolean = getProp(USE_PAXOS, true)
-
-  /**
-   * convenience for getting the location of uberstore, going away soon
-   */
-  @deprecated("use getProp(LOG_LOCATION) instead", "2012-09-12")
-  def getLogLocation: String = getProp(LOG_LOCATION, null)
-
 }
