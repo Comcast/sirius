@@ -65,6 +65,10 @@ class PaxosStateBridge(startingSeq: Long,
       extends Actor with MonitoringHooks {
     import PaxosStateBridge._
 
+  // for gapFetcher instantiation
+  val chunkSize = config.getProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, 1000)
+  val chunkReceiveTimeout = config.getProp(SiriusConfiguration.LOG_REQUEST_RECEIVE_TIMEOUT_SECS, 5)
+
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
 
@@ -111,19 +115,48 @@ class PaxosStateBridge(startingSeq: Long,
      * to the GapFetcher that we're ready for more.  Otherwise, let it die of RequestTimeout
      * starvation.
      */
-    case LogSubrange(events) if (!events.isEmpty && events.last.sequence >= nextSeq) =>
-      events.foreach((event: OrderedEvent) => {
-        processOrderedEvent(event)
-        traceLogger.debug("Writing caught-up event for sequence={}, " +
-          "time since original command submission: {}ms", event.sequence,
-          System.currentTimeMillis() - event.timestamp)
-      })
-      requestNextChunk()
+    case logSubrange @ LogSubrange(rangeStart, rangeEnd, events) if rangeEnd >= nextSeq =>
+      val oldNextSeq = nextSeq
+      processLogSubrange(logSubrange)
+      if (oldNextSeq != nextSeq)
+        siriusSupActor ! DecisionHint(nextSeq - 1)
+
+      if (chunkSize == (rangeEnd - rangeStart) + 1)
+        requestNextChunk()
 
     case RequestGaps =>
       //XXX: logging unreadyDecisions... should remove in favor or better monitoring later
       logger.debug("Unready Decisions count: {}", eventBuffer.size)
       runGapFetcher()
+  }
+
+  def processLogSubrange(logSubrange: LogSubrange) {
+    logSubrange match {
+      case LogSubrange(rangeStart, rangeEnd, events) =>
+        // apply all events in range s.t. event.seqence >= nextSeq
+        events.foreach((event: OrderedEvent) => {
+          if (event.sequence >= nextSeq) {
+            stateSupActor ! event
+          }
+          traceLogger.debug("Writing caught-up event for sequence={}, " +
+            "time since original command submission: {}ms", event.sequence,
+            System.currentTimeMillis() - event.timestamp)
+        })
+        nextSeq = rangeEnd + 1
+        // drop things in the event buffer < nextSeq
+        dropBefore(nextSeq, eventBuffer)
+      case _ =>
+    }
+  }
+
+  @tailrec
+  private def dropBefore(key: Long, events: JTreeMap[Long, OrderedEvent]) {
+    if (!events.isEmpty && events.firstKey < key) {
+      events.remove(events.firstKey)
+      dropBefore(key, events)
+    } else {
+      // terminate
+    }
   }
 
   /**
@@ -205,7 +238,7 @@ class PaxosStateBridge(startingSeq: Long,
   }
 
   def createGapFetcherActor(seq: Long, target: ActorRef) =
-    context.actorOf(Props(GapFetcher(seq, target, self, config)), "gapfetcher")
+    context.actorOf(Props(new GapFetcher(seq, target, self, chunkSize, chunkReceiveTimeout)), "gapfetcher")
 
   /**
    * Monitoring hooks

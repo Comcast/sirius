@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.api.impl.bridge
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
-import com.comcast.xfinity.sirius.api.SiriusResult
+import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{RequestFromSeq, RequestGaps}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
@@ -12,20 +12,33 @@ import akka.actor.{PoisonPill, ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
+import collection.SortedMap
+import collection.JavaConversions._
+import org.mockito.Matchers.{anyInt, eq => meq}
 
 class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConfig {
 
   implicit val actorSystem = ActorSystem("PaxosStateBridgeTest")
 
+  val config = new SiriusConfiguration
   val defaultMockMembershipHelper = mock[MembershipHelper]
   doReturn(Some(TestProbe().ref)).when(defaultMockMembershipHelper).getRandomMember
   def makeStateBridge(startingSeq: Long,
                       stateSupActor: ActorRef = TestProbe().ref,
                       siriusSupActor: ActorRef = TestProbe().ref,
                       membershipHelper: MembershipHelper = defaultMockMembershipHelper,
-                      gapFetcherActor: ActorRef = TestProbe().ref) = {
-    TestActorRef(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper) {
+                      gapFetcherActor: ActorRef = TestProbe().ref,
+                      chunkSize: Option[Int] = None) = {
+
+    if (chunkSize != None)
+      config.setProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, chunkSize.get)
+
+    TestActorRef(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper)(config) {
       override def createGapFetcherActor(seq: Long, target: ActorRef) = gapFetcherActor
+      override def preStart() {}
+      override def postStop() {
+        requestGapsCancellable.cancel()
+      }
     })
   }
 
@@ -176,7 +189,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
         val gapFetcher = TestProbe()
         val stateSup = TestProbe()
         val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref, stateSupActor = stateSup.ref)
-        underTest ! LogSubrange(List(
+        underTest ! LogSubrange(8, 9, List(
           OrderedEvent(8, 1, Delete("1")), OrderedEvent(9, 1, Delete("2"))
         ))
 
@@ -184,11 +197,12 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
         stateSup.expectNoMsg()
       }
     }
+
     describe ("that contains useful events (event.seq >= nextSeq)") {
       it ("should process the events") {
         val stateSup = TestProbe()
         val underTest = makeStateBridge(10, stateSupActor = stateSup.ref)
-        underTest ! LogSubrange(List(
+        underTest ! LogSubrange(9, 11, List(
           OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
         ))
 
@@ -196,32 +210,89 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
         val stateMessages = stateSup.receiveN(2)
         assert(expectedMessages === stateMessages)
       }
+
+      it ("should update nextSeq to rangeEnd + 1") {
+        val underTest = makeStateBridge(10)
+        underTest ! LogSubrange(9, 11, List(
+          OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+        ))
+        assert(12 === underTest.underlyingActor.nextSeq)
+      }
+
+      it ("should drop eventBuffer items < the updated nextSeq") {
+        val underTest = makeStateBridge(10)
+        underTest.underlyingActor.eventBuffer.putAll(SortedMap[Long, OrderedEvent](
+          10L -> OrderedEvent(10, 1, Delete("2")),
+          13L -> OrderedEvent(13, 1, Delete("5"))
+        ))
+        underTest ! LogSubrange(9, 11, List(
+          OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+        ))
+
+        assert(1 === underTest.underlyingActor.eventBuffer.size)
+        assert(underTest.underlyingActor.eventBuffer.keySet.contains(13L))
+      }
+
+      it ("send a decision hint to siriusSup") {
+        val siriusSup = TestProbe()
+        val underTest = makeStateBridge(10, siriusSupActor = siriusSup.ref)
+        underTest ! LogSubrange(9, 11, List(
+          OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+        ))
+
+        siriusSup.expectMsg(DecisionHint(11))
+      }
+
       describe ("if the gapFetcher is alive and well") {
-        it ("should ask for another chunk") {
+        it ("should ask for another chunk if it got a full chunk") {
           val gapFetcher = TestProbe()
-          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref)
+          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref, chunkSize = Some(2))
           underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
 
-          underTest ! LogSubrange(List(
-            OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+          underTest ! LogSubrange(10, 11, List(
+            OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
           ))
 
           gapFetcher.expectMsg(RequestFromSeq(12L))
         }
+
+        it ("should not ask for anything further if the chunk was not complete") {
+          val gapFetcher = TestProbe()
+          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref, chunkSize = Some(3))
+          underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
+
+          underTest ! LogSubrange(10, 11, List(
+            OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
+          ))
+
+          gapFetcher.expectNoMsg()
+        }
+
+        it ("should correctly accept a subrange as 'complete', even if it has no events") {
+          val gapFetcher = TestProbe()
+          val underTest = makeStateBridge(1, gapFetcherActor = gapFetcher.ref, chunkSize = Some(10))
+          underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
+
+          underTest ! LogSubrange(1, 10, List())
+
+          gapFetcher.expectMsg(RequestFromSeq(11L))
+        }
       }
+
       describe ("if the gapFetcher is nonexistent") {
         it ("should do nothing further") {
           val gapFetcher = TestProbe()
           val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref)
           underTest.underlyingActor.gapFetcher = None
 
-          underTest ! LogSubrange(List(
+          underTest ! LogSubrange(9, 11, List(
             OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
           ))
 
           gapFetcher.expectNoMsg()
         }
       }
+
       describe ("if the gapFetcher is dead") {
         it ("should do nothing further") {
           val gapFetcher = TestProbe()
@@ -229,7 +300,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConf
           underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
           gapFetcher.ref ! PoisonPill
 
-          underTest ! LogSubrange(List(
+          underTest ! LogSubrange(9, 11, List(
             OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
           ))
 

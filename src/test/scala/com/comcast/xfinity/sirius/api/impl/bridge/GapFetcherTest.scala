@@ -39,7 +39,7 @@ class GapFetcherTest extends NiceTest {
       val events = List[OrderedEvent](
         OrderedEvent(1, 1, Delete("1")), OrderedEvent(2, 2, Delete("2"))
       )
-      val chunk = LogSubrange(events)
+      val chunk = LogSubrange(1, 2, events)
       val parentProbe = TestProbe()
 
       val underTest = makeGapFetcher(replyTo = parentProbe.ref)

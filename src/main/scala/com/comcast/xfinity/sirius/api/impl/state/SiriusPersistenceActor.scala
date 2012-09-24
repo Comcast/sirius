@@ -6,6 +6,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+import scala.math.min
 
 object SiriusPersistenceActor {
 
@@ -34,9 +35,17 @@ object SiriusPersistenceActor {
    * This message is necessary due to type erasure, OrderedEvent
    * is erased from the resultant List
    *
+   * @param lowestSeqContained lowest seq contained in this range.  may or may not
+   *                           have a corresponding OrderedEvent in events (could
+   *                           have been compacted away)
+   * @param highestSeqContained highest seq contained in this range.  may or may not
+   *                           have a corresponding OrderedEvent in events (could
+   *                           have been compacted away)
    * @param events the OrderedEvents in this range, in order
    */
-  case class LogSubrange(events: List[OrderedEvent])
+  case class LogSubrange(lowestSeqContained: Long,
+                         highestSeqContained: Long,
+                         events: List[OrderedEvent])
 
   /**
    * Message requesting maximum sequence number from a
@@ -106,11 +115,14 @@ class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog)
 
     // XXX: cap max request chunk size hard coded at 1000 for now for sanity
     // TODO make the maxChunkSize configurable
-    case GetLogSubrange(begin, end) if begin <= end && (begin - end) <= 1000 =>
-      val chunkRange = siriusLog.foldLeftRange(begin, end)(List[OrderedEvent]())(
+    case GetLogSubrange(rangeStart, rangeEnd) if rangeStart <= rangeEnd && (rangeStart - rangeEnd) <= 1000 =>
+      val chunkRange = siriusLog.foldLeftRange(rangeStart, rangeEnd)(List[OrderedEvent]())(
         (acc, event) => event :: acc
       ).reverse
-      sender ! LogSubrange(chunkRange)
+      // maxSeq is either the highest seq we have, or the top seq they requested
+      val maxSeq = min(siriusLog.getNextSeq - 1, rangeEnd)
+      println("%s %s %s".format(rangeStart, maxSeq, chunkRange))
+      sender ! LogSubrange(rangeStart, maxSeq, chunkRange)
 
     case GetNextLogSeq =>
       sender ! siriusLog.getNextSeq
