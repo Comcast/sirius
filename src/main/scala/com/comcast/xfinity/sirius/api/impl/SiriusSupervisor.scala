@@ -2,7 +2,6 @@ package com.comcast.xfinity.sirius.api.impl
 
 import membership._
 import paxos.PaxosMessages.PaxosMessage
-import paxos.NaiveOrderingActor
 import akka.actor.Actor
 import akka.actor.ActorRef
 import akka.actor.Props
@@ -67,19 +66,19 @@ object SiriusSupervisor {
           ), "membership")
       }
 
-      val orderingActor =
-        if (config.getProp(SiriusConfiguration.USE_PAXOS, false)) {
-          val siriusPaxosAdapter = new SiriusPaxosAdapter(
-            membershipAgent,
-            _siriusLog.getNextSeq,
-            stateSup,
-            self,
-            config
-          )
-          siriusPaxosAdapter.paxosSubSystem
-        } else {
-          context.actorOf(Props(new NaiveOrderingActor(stateSup, _siriusLog.getNextSeq)), "paxos")
-        }
+      val orderingActor = {
+        // TODO: now that there's no switch the bridge and paxos stuff
+        //        can be put together direcrly here
+        val siriusPaxosAdapter = new SiriusPaxosAdapter(
+          membershipAgent,
+          _siriusLog.getNextSeq,
+          stateSup,
+          self,
+          config
+        )
+        siriusPaxosAdapter.paxosSubSystem
+      }
+
 
       val statusSubsystem = context.actorOf(
         Props(

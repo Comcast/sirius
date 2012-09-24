@@ -39,6 +39,7 @@ object SiriusConfiguration {
   /**
    * Whether or not to use paxos (boolean)
    */
+  @deprecated("Paxos is always enabled, this option has no effect", "2012-09-24")
   final val USE_PAXOS = "sirius.paxos.enabled"
 
   /**
