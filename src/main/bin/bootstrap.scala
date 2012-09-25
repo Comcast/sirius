@@ -1,6 +1,5 @@
 import com.comcast.xfinity.sirius.api._
 import com.comcast.xfinity.sirius.api.impl._
-import com.comcast.xfinity.sirius.api.impl.persistence._
 import com.comcast.xfinity.sirius.writeaheadlog._
 
 class NoopRequestHandler extends RequestHandler {
@@ -17,7 +16,6 @@ def createSirius(logLocation: String = "/tmp/uberlog",
   val cfg = new SiriusConfiguration
   cfg.setProp(SiriusConfiguration.LOG_LOCATION, logLocation)
   cfg.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfig)
-  cfg.setProp(SiriusConfiguration.USE_PAXOS, usePaxos)
   cfg.setProp(SiriusConfiguration.PORT, port)
   cfg.setProp(SiriusConfiguration.AKKA_EXTERN_CONFIG, externAkkaConfig)
   SiriusFactory.createInstance(new NoopRequestHandler, cfg)
