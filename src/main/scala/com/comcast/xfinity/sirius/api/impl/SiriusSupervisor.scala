@@ -8,7 +8,6 @@ import akka.actor.Props
 import akka.agent.Agent
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
-import scalax.file.Path
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -55,16 +54,7 @@ object SiriusSupervisor {
 
       val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, siriusStateAgent, config)), "state")
 
-      val membershipActor = {
-        val clusterConfigPath = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG) match {
-          case Some(path) => path
-          case None => throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
-        }
-        context.actorOf(
-          Props(
-            new MembershipActor(membershipAgent, Path.fromString(clusterConfigPath))
-          ), "membership")
-      }
+      val membershipActor = context.actorOf(Props(MembershipActor(membershipAgent, config)), "membership")
 
       val orderingActor = {
         // TODO: now that there's no switch the bridge and paxos stuff
@@ -78,7 +68,6 @@ object SiriusSupervisor {
         )
         siriusPaxosAdapter.paxosSubSystem
       }
-
 
       val statusSubsystem = context.actorOf(
         Props(
