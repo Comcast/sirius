@@ -1,16 +1,14 @@
 package com.comcast.xfinity.sirius.info
 
-import akka.agent.Agent
-
-
-import com.comcast.xfinity.sirius.api.impl.{membership, AkkaConfig}
-import membership._
+import com.comcast.xfinity.sirius.api.impl.membership.GetMembershipData
 import akka.dispatch.Await
 import org.apache.commons.lang.builder.ReflectionToStringBuilder
 import akka.pattern.ask
-import akka.actor.{ActorRef, ActorSystem}
+import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import java.util.concurrent.TimeoutException
+import akka.util.Timeout
+import akka.util.duration._
 
 /**
  * An MBean that exposes information on this Sirius node.
@@ -18,8 +16,9 @@ import java.util.concurrent.TimeoutException
  */
 class SiriusInfo(val port: Int, val hostName: String,
                 supervisorRef:ActorRef)
-  extends SiriusInfoMBean with AkkaConfig {
+  extends SiriusInfoMBean {
 
+  implicit val timeout: Timeout = 5 seconds
 
   /**
    * Gets the name of this Sirius node.

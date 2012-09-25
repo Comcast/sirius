@@ -7,16 +7,15 @@ import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{RequestFromSeq, RequestGaps}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
-import com.comcast.xfinity.sirius.api.impl.{AkkaConfig, OrderedEvent, Delete}
+import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete}
 import akka.actor.{PoisonPill, ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import collection.SortedMap
 import collection.JavaConversions._
-import org.mockito.Matchers.{anyInt, eq => meq}
 
-class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with AkkaConfig {
+class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("PaxosStateBridgeTest")
 

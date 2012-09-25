@@ -16,7 +16,7 @@ import java.io.File
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
  */
-object SiriusFactory extends AkkaConfig {
+object SiriusFactory {
 
   /**
    * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
@@ -60,7 +60,7 @@ object SiriusFactory extends AkkaConfig {
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
 
-    implicit val actorSystem = ActorSystem(SYSTEM_NAME, createActorSystemConfig(host, port, siriusConfig))
+    implicit val actorSystem = ActorSystem("sirius-system", createActorSystemConfig(host, port, siriusConfig))
     val impl = SiriusImpl(requestHandler, siriusLog, siriusConfig)
 
     // create some more stuff to expose over mbeans

@@ -86,7 +86,7 @@ object SiriusSupervisor {
  * 
  * Don't use the constructor to construct this guy, use the companion object's apply.
  */
-class SiriusSupervisor() extends Actor with AkkaConfig {
+class SiriusSupervisor extends Actor {
   this: SiriusSupervisor.DependencyProvider =>
   private val logger = Logging(context.system, "Sirius")
 

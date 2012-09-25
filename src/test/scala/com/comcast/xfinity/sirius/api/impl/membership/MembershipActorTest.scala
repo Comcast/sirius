@@ -1,20 +1,16 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.dispatch.Await._
-import akka.util.duration._
-import akka.pattern.ask
 import org.mockito.Mockito._
-import akka.testkit.TestActorRef
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.impl.{SiriusState, AkkaConfig}
 import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
 import scalax.io.LongTraversable
 import org.mockito.Matchers._
 import akka.actor.{Props, Actor, ActorSystem, ActorRef}
+import akka.testkit.{TestProbe, TestActorRef}
 
-class MembershipActorTest extends NiceTest with AkkaConfig {
+class MembershipActorTest extends NiceTest {
 
   var actorSystem: ActorSystem = _
 
@@ -44,10 +40,12 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
 
   describe("a MembershipActor") {
     it("should report on cluster membership if it receives a GetMembershipData message") {
-      when(membershipAgent()).thenReturn(expectedSet)
-      val actualMembers = result((underTestActor ? GetMembershipData), (5 seconds))
+      val senderProbe = TestProbe()(actorSystem)
 
-      assert(expectedSet === actualMembers)
+      when(membershipAgent()).thenReturn(expectedSet)
+
+      senderProbe.send(underTestActor, GetMembershipData)
+      senderProbe.expectMsg(expectedSet)
     }
 
     it("should attempt to read in the cluster configuration and set the MembershipMap") {
