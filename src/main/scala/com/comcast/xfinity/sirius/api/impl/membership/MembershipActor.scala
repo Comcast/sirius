@@ -1,6 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
-import com.comcast.xfinity.sirius.api.impl._
 import akka.agent.Agent
 import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
@@ -9,6 +8,7 @@ import akka.util.Duration
 import akka.actor.{ActorRef, actorRef2Scala, Actor}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import akka.util.duration._
+import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object MembershipActor {
 
@@ -22,6 +22,9 @@ object MembershipActor {
    */
   def apply(membershipAgent: Agent[Set[ActorRef]],
             config: SiriusConfiguration): MembershipActor = {
+    // XXX: we should figure out if we're doing config parsing and injecting it, or doing it within the actor
+    //      the advantage of pulling out the config here is it makes testing easier, and it makes it obvious what
+    //      config is needed
     val clusterConfigPath = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG) match {
       case Some(path) => Path.fromString(path)
       case None => throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
@@ -32,7 +35,7 @@ object MembershipActor {
       membershipAgent,
       clusterConfigPath,
       checkIntervalSecs seconds
-    )
+    )(config)
   }
 }
 
@@ -47,10 +50,13 @@ object MembershipActor {
  * @param clusterConfigPath A scalax.file.Path containing the membership information
  *          for this cluster
  * @param checkInterval how often to check for updates to clusterConfigPath
+ * @param config SiriusConfiguration, used to register monitors
  */
 class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
                       clusterConfigPath: Path,
-                      checkInterval: Duration = (30 seconds)) extends Actor {
+                      checkInterval: Duration = (30 seconds))
+                     (implicit config: SiriusConfiguration = new SiriusConfiguration)
+    extends Actor with MonitoringHooks{
 
   val logger = Logging(context.system, "Sirius")
 
@@ -59,11 +65,14 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
   override def preStart() {
     logger.info("Initializing MembershipActor to check {} every {}", clusterConfigPath, checkInterval)
 
+    registerMonitor(new MembershipInfo, config)
+
     updateMembership()
   }
 
   override def postStop() {
     configCheckSchedule.cancel()
+    unregisterMonitors(config)
   }
 
 
@@ -101,4 +110,11 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
     )
   }
 
+  trait MembershipInfoMBean {
+    def getMembership: String
+  }
+
+  class MembershipInfo extends MembershipInfoMBean {
+    def getMembership: String = membershipAgent().toString
+  }
 }
