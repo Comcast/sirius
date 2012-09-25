@@ -23,27 +23,33 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
   override def afterAll() {
     actorSystem.shutdown()
   }
+
+  def makeReplica(localLeader: ActorRef = TestProbe().ref,
+                  startingSlot: Long = 1,
+                  performFun: Replica.PerformFun = d => (),
+                  reproposalWindowSecs: Int = 5) = {
+    TestActorRef(new Replica(localLeader, startingSlot, performFun, reproposalWindowSecs))
+  }
   
   describe("A Replica") {
     describe("when receiving a Request message") {
       it("must choose a slot number, send a Propose message to its local leader, update its lowest unused slot and" +
          "store the proposal") {
-        
-      }
         val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 1,  d => ()))
+        val replica = makeReplica(localLeader.ref)
         val command = Command(null, 1, Delete("1"))
 
         replica ! Request(command)
         localLeader.expectMsg(Propose(1, command))
         assert(2 === replica.underlyingActor.nextAvailableSlotNum)
+      }
     }
 
     describe("when receiving a Decision message") {
       it("must update its lowest unused slot number iff the decision is greater than or equal to the " +
          "current unused slot") {
         val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 2,  d => ()))
+        val replica = makeReplica(localLeader.ref, 2)
 
         replica ! Decision(1, Command(null, 1, Delete("1")))
         assert(2 == replica.underlyingActor.nextAvailableSlotNum)
@@ -58,12 +64,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
       it("must pass the decision to the delegated function for handling") {
         var appliedDecisions = Set[Decision]()
-        val localLeader = TestProbe()
-        val replica = TestActorRef(
-          new Replica(localLeader.ref, 1,
-                      d => appliedDecisions += d
-          )
-        )
+        val replica = makeReplica(performFun = d => appliedDecisions += d)
 
         val requester1 = TestProbe()
         val request1 = Delete("1")
@@ -85,7 +86,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         // TestActorRef so message handling is dispatched on the same thread
         val replica = TestActorRef(
           new Replica(localLeader.ref, 1,
-            d => throw new RuntimeException("The dishes are done man")
+            d => throw new RuntimeException("The dishes are done man"), 5
           ) {
             // this is weird, if the actor terminates, it is restarted
             //  asynchronously, so we need to propogate the failure in
@@ -113,7 +114,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
       it("must repropose a command if a different decision using the command's " +
         "proposed slot number arrives") {
         val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 2,  d => ()))
+        val replica = makeReplica(localLeader.ref, 2)
 
         val command1 = Command(null, 1, Delete("ThisThing"))
         replica ! Request(command1)
@@ -131,7 +132,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
       it("should handle a decision for a non-proposed slot number with no side-effects") {
         val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 2,  d => ()))
+        val replica = makeReplica(localLeader.ref, 2)
 
         replica ! Request(Command(null, 1, Delete("ThisThing")))
         assert(1 === replica.underlyingActor.proposals.size)
@@ -146,7 +147,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
     describe ("in response to a DecisionHint") {
       it("updates the slotNum") {
         val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 2,  d => ()))
+        val replica = makeReplica(localLeader.ref, 2)
 
         replica ! DecisionHint(3)
         assert(4 === replica.underlyingActor.slotNum)
@@ -154,7 +155,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
       it("sends its local leader the decision hint") {
         val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 2,  d => ()))
+        val replica = makeReplica(localLeader.ref, 2)
 
         replica ! DecisionHint(2)
         localLeader.expectMsg(DecisionHint(2))
@@ -162,7 +163,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
       it("must prune proposals when matching decision hint arrives") {
         val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 2,  d => ()))
+        val replica = makeReplica(localLeader.ref, 2)
 
         replica ! Request(Command(null, 1, Delete("ThisThing")))
         assert(replica.underlyingActor.proposals.size == 1)
@@ -172,8 +173,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it("must prune decisions when matching decision hint arrives") {
-        val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 2,  d => ()))
+        val replica = makeReplica(startingSlot = 2)
 
         replica ! Decision(2, Command(null, 1, Delete("ThisThing")))
         assert(replica.underlyingActor.decisions.size == 1)
@@ -181,12 +181,22 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         replica ! DecisionHint(2)
         assert(replica.underlyingActor.decisions.isEmpty)
       }
+
+      it("must not prune proposals too much when a decision hint arrives") {
+        val replica = makeReplica(startingSlot = 2)
+
+        replica ! Decision(2, Command(null, 1, Delete("ThisThing")))
+        replica ! Decision(3, Command(null, 1, Delete("ThatThing")))
+        assert(replica.underlyingActor.decisions.size == 2)
+
+        replica ! DecisionHint(2)
+        assert(1 === replica.underlyingActor.decisions.size)
+      }
     }
 
     describe("in response to a Reap message") {
       it ("must truncate the proposals that are out of date") {
-        val localLeader = TestProbe()
-        val replica = TestActorRef(new Replica(localLeader.ref, 2, d => ()))
+        val replica = makeReplica(startingSlot = 2)
 
         val now = System.currentTimeMillis()
         replica.underlyingActor.proposals.putAll(SortedMap[Long, Command](

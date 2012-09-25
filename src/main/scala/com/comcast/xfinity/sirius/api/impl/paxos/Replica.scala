@@ -53,8 +53,9 @@ object Replica {
             config: SiriusConfiguration): Replica = {
 
     val reapFreqSecs = config.getProp(SiriusConfiguration.REPROPOSAL_CLEANUP_FREQ, 1)
+    val reproposalWindowSecs = config.getProp(SiriusConfiguration.REPROPOSAL_WINDOW, 10)
 
-    new Replica(localLeader, startingSlotNum, performFun)(config) {
+    new Replica(localLeader, startingSlotNum, performFun, reproposalWindowSecs)(config) {
       val reapCancellable =
         context.system.scheduler.schedule(reapFreqSecs seconds,
                                           reapFreqSecs seconds, self, Reap)
@@ -71,11 +72,9 @@ object Replica {
 
 class Replica(localLeader: ActorRef,
               startingSlotNum: Long,
-              performFun: Replica.PerformFun)
+              performFun: Replica.PerformFun,
+              reproposalWindowSecs: Int)
              (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
-
-  // XXX 10 seconds, re-make this configurable for the love of god.  but tomorrow.
-  val reapWindow = 10 * 1000
 
   var slotNum = startingSlotNum
   val proposals = new JTreeMap[Long, Command]()
@@ -111,8 +110,8 @@ class Replica(localLeader: ActorRef,
 
     case decisionHint @ DecisionHint(decisionHintSlotNum) =>
       slotNum = decisionHintSlotNum + 1
-      reapLessThanOrEqualTo(slotNum, proposals)
-      reapLessThanOrEqualTo(slotNum, decisions)
+      reapLessThanOrEqualTo(decisionHintSlotNum, proposals)
+      reapLessThanOrEqualTo(decisionHintSlotNum, decisions)
       localLeader forward decisionHint
 
     case Reap =>
@@ -168,7 +167,7 @@ class Replica(localLeader: ActorRef,
   private def reproposeIfClobbered(slot: Long, decisionCommand: Command) {
     proposals.get(slot) match {
       case proposalCommand: Command if decisionCommand != proposalCommand =>
-        traceLogger.debug("Recieved different decision for slot number proposed by this Replica, reproposing {}", decisionCommand)
+        traceLogger.debug("Must repropose, slot {} conflict.  decisionCommand: {}, proposalCommand: {}", slot, decisionCommand.op, proposalCommand.op)
         propose(proposalCommand)
       case _ =>
     }
@@ -197,7 +196,7 @@ class Replica(localLeader: ActorRef,
     }
 
     val now = System.currentTimeMillis()
-    reapProposalsBefore(now - reapWindow, proposals)
+    reapProposalsBefore(now - reproposalWindowSecs * 1000, proposals)
   }
 
   /**
