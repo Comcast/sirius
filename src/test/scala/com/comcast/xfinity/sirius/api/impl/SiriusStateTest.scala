@@ -13,13 +13,8 @@ class SiriusStateTest extends NiceTest {
 
       assert(false === underTest.areSubsystemsInitialized)
 
-      assert(false === underTest.copy(
-        stateInitialized = true
-      ).areSubsystemsInitialized)
-
       assert(true === underTest.copy(
-        stateInitialized = true,
-        membershipInitialized = true
+        stateInitialized = true
       ).areSubsystemsInitialized)
     }
   }

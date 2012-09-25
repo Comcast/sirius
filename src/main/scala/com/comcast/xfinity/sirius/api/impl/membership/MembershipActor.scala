@@ -17,13 +17,10 @@ object MembershipActor {
    * updated.
    *
    * @param membershipAgent the Agent[Set[ActorRef]]() to keep updated with the cluster membership
-   * @param siriusStateAgent an Agent[SiriusState] to update when this node initializes (Developer's
-   *          note: do we need this?)
    * @param confing SiriusConfiguration object to use to configure this instance- see SiriusConfiguraiton
    *          for more information
    */
   def apply(membershipAgent: Agent[Set[ActorRef]],
-            siriusStateAgent: Agent[SiriusState],
             config: SiriusConfiguration): MembershipActor = {
     val clusterConfigPath = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG) match {
       case Some(path) => Path.fromString(path)
@@ -33,7 +30,6 @@ object MembershipActor {
 
     new MembershipActor(
       membershipAgent,
-      siriusStateAgent,
       clusterConfigPath,
       checkIntervalSecs seconds
     )
@@ -48,14 +44,11 @@ object MembershipActor {
  *
  * @param membershipAgent An Agent[Set[ActorRef]] that this actor will keep populated
  *          with the most up to date membership information
- * @param siriusStateAgent An Agent[SiriusState] which this actor will update with
- *          its status on initialization
  * @param clusterConfigPath A scalax.file.Path containing the membership information
  *          for this cluster
  * @param checkInterval how often to check for updates to clusterConfigPath
  */
 class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
-                      siriusStateAgent: Agent[SiriusState],
                       clusterConfigPath: Path,
                       checkInterval: Duration = (30 seconds)) extends Actor {
 
@@ -67,9 +60,6 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
     logger.info("Initializing MembershipActor to check {} every {}", clusterConfigPath, checkInterval)
 
     updateMembership()
-
-    // XXX: how much do we get by making this "synchronous", the rest of boot up doesn't care...
-    siriusStateAgent send (_.copy(membershipInitialized = true))
   }
 
   override def postStop() {

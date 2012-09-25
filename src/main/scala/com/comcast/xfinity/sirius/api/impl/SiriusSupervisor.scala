@@ -62,7 +62,7 @@ object SiriusSupervisor {
         }
         context.actorOf(
           Props(
-            new MembershipActor(membershipAgent, siriusStateAgent, Path.fromString(clusterConfigPath))
+            new MembershipActor(membershipAgent, Path.fromString(clusterConfigPath))
           ), "membership")
       }
 

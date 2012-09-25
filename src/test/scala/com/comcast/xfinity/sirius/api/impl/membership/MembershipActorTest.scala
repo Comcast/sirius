@@ -21,20 +21,18 @@ class MembershipActorTest extends NiceTest with AkkaConfig {
   var underTestActor: TestActorRef[MembershipActor] = _
 
   var expectedSet: Set[ActorRef] = _
-  var siriusStateAgent: Agent[SiriusState] = _
   var clusterConfigPath: Path = _
   var membershipAgent: Agent[Set[ActorRef]] = _
 
   before {
     actorSystem = ActorSystem("testsystem")
     membershipAgent = mock[Agent[Set[ActorRef]]]
-    siriusStateAgent = mock[Agent[SiriusState]]
     clusterConfigPath = mock[Path]
 
     when(clusterConfigPath.lines(NewLine, false)).thenReturn(LongTraversable("dummyhost:8080"))
 
     underTestActor = TestActorRef(
-      new MembershipActor(membershipAgent, siriusStateAgent, clusterConfigPath)
+      new MembershipActor(membershipAgent, clusterConfigPath)
     )(actorSystem)
 
     expectedSet = Set(underTestActor)

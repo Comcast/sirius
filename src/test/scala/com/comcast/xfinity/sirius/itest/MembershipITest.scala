@@ -10,6 +10,7 @@ import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.SiriusState
 import com.comcast.xfinity.sirius.api.impl.membership._
 import akka.actor.{Props, Kill, ActorSystem, ActorRef}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 @RunWith(classOf[JUnitRunner])
 class MembershipITest extends NiceTest with TimedTest with BeforeAndAfterAll {
@@ -19,7 +20,7 @@ class MembershipITest extends NiceTest with TimedTest with BeforeAndAfterAll {
   // XXX: this uses some weird voodoo, beware
   val tempFolder = new TemporaryFolder()
 
-  override def afterAll {
+  override def afterAll() {
     actorSystem.shutdown()
   }
 
@@ -41,10 +42,9 @@ class MembershipITest extends NiceTest with TimedTest with BeforeAndAfterAll {
       )
 
       val membership = Agent(Set[ActorRef]())
-      val siriusState = Agent(new SiriusState())
-      val membershipSubSystem = actorSystem.actorOf(
-        Props(new MembershipActor(membership, siriusState, clusterConfigPath))
-      )
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigFileName)
+      val membershipSubSystem = actorSystem.actorOf(Props(MembershipActor(membership, config)))
 
       // wait for membership to get updated
       assert(waitForTrue(!membership().isEmpty, 2000, 200), "Membership wasn't updated in a timely manor")
