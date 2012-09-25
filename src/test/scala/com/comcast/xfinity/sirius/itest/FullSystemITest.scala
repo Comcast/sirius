@@ -1,112 +1,47 @@
 package com.comcast.xfinity.sirius.itest
 
 import scalax.file.Path
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.{LatchedRequestHandler, TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
+import com.comcast.xfinity.sirius.api.{RequestHandler, SiriusConfiguration}
 import java.io.File
-import java.util.concurrent.{CountDownLatch, TimeUnit}
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import com.comcast.xfinity.sirius.api.impl.{SiriusFactory, NonCommutativeSiriusRequest, OrderedEvent, SiriusImpl}
+import com.comcast.xfinity.sirius.api.impl._
+import util.Random
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import scala.Some
+import scala.Tuple2
+import java.util.UUID
+import com.comcast.xfinity.sirius.uberstore.UberStore
 
 object FullSystemITest {
-
   /**
-   * Request handler for testing purposes that includes a countdown
-   * latch so that we can monitor it for completion of events
+   * get a list of (sequence num, request) from the wals for all their data
+   * @param wal log to query
+   * @return list of data
    */
-  class LatchedRequestHandler(expectedTicks: Int) extends RequestHandler {
-    var latch = new CountDownLatch(expectedTicks)
-
-    def handleGet(key: String): SiriusResult = SiriusResult.none()
-
-    def handlePut(key: String, body: Array[Byte]): SiriusResult = {
-      latch.countDown()
-      SiriusResult.none()
-    }
-
-    def handleDelete(key: String): SiriusResult = {
-      latch.countDown()
-      SiriusResult.none()
-    }
-
-    def await(timeout: Long, timeUnit: TimeUnit) {
-      latch.await(timeout, timeUnit)
-    }
-
-    def resetLatch(newExpectedTicks: Int) {
-      latch = new CountDownLatch(newExpectedTicks)
-    }
-  }
-
-  /**
-   * A SiriusLog implementation storing all events in memory
-   */
-  class InMemoryLatchedLog(expectedTicks: Int) extends SiriusLog {
-    var latch = new CountDownLatch(expectedTicks)
-
-    var entries = List[OrderedEvent]()
-    var nextSeq = 1L
-
-    def writeEntry(entry: OrderedEvent) {
-      entries = entry :: entries
-      nextSeq = entry.sequence + 1
-      latch.countDown()
-    }
-
-    def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
-      entries.foldRight[T](acc0)(
-        (event, acc) => foldFun(acc, event)
-      )
-    }
-
-    def foldLeftRange[T](start: Long, end: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
-      val startIndex = entries.indexWhere((event) => event.sequence == start)
-      val endIndex = entries.indexWhere((event) => event.sequence == end)
-      entries.slice(startIndex, endIndex).foldLeft(acc0)(foldFun)
-    }
-
-    def getNextSeq = nextSeq
-
-    def resetLatch(newExpectedTicks: Int) {
-      latch = new CountDownLatch(newExpectedTicks)
-    }
-
-    def await(timeout: Long, timeUnit: TimeUnit) {
-      latch.await(timeout, timeUnit)
-    }
+  def extractEvents(wal: SiriusLog) = wal.foldLeft(List[(Long, NonCommutativeSiriusRequest)]()) {
+    case (acc, OrderedEvent(seq, _, req)) => Tuple2(seq, req) :: acc
   }
 
   /**
    * Check equality of writeAheadLogs
    */
-  def verifyWalsAreEquivalent(expectedSize: Int,
-                 first: SiriusLog, rest: SiriusLog*) {
-
-    val wals = Seq(first) ++ rest
-
-    // Timestamps on OrderedEvents are decided at Decision time, so they are not
-    // consistent across nodes, they can/should probably be pushed down to be the
-    // responsibility of the log
-    def extractEvents(wal: SiriusLog) = wal.foldLeft(List[(Long, NonCommutativeSiriusRequest)]()) {
-      case (acc, OrderedEvent(seq, _, req)) => Tuple2(seq, req) :: acc
-    }
-
+  def verifyWalsAreEquivalent[A <: SiriusLog](wals: List[A]): Boolean = {
     val walDatas = wals.map(extractEvents(_))
 
-    val areAllSame = walDatas.sliding(2).forall {
+    walDatas.sliding(2).forall {
       case Seq(lhs, rhs) => lhs == rhs
       case Seq(_) => true
     }
+  }
+  def verifyWalsAreEquivalent(first: SiriusLog, rest: SiriusLog*): Boolean = {
+    verifyWalsAreEquivalent(List(first) ++ rest)
+  }
 
-    if (!areAllSame) {
-      assert(false, "Logs did not match: " + walDatas.map(_ + "\n"))
-    }
-
-    assert(expectedSize == walDatas.head.size,
-      "WALs do not contain all events, " +
-        "expected " + expectedSize + ", " +
-        "but was " + walDatas.head.size)
+  def verifyWalSize(wal: SiriusLog, expectedSize: Long): Boolean = {
+    val walData = extractEvents(wal)
+    println("Verifying wal size: expected=%s actual=%s".format(expectedSize, walData.size))
+    walData.size >= expectedSize
   }
 }
 
@@ -114,19 +49,46 @@ class FullSystemITest extends NiceTest with TimedTest {
 
   import FullSystemITest._
 
+  def makeSirius(port: Int,
+                 latchTicks: Int = 3,
+                 handler: Option[RequestHandler] = None,
+                 wal: Option[SiriusLog] = None,
+                 chunkSize: Int = 100):
+                (SiriusImpl, RequestHandler, SiriusLog) = {
+
+    val finalHandler = handler match {
+      case Some(requestHandler) => requestHandler
+      case None => new LatchedRequestHandler(latchTicks)
+    }
+    val finalWal = wal match {
+      case Some(siriusLog) => siriusLog
+      case None => {
+        val uberstoreFile = new File(tempDir, UUID.randomUUID().toString)
+        uberstoreFile.mkdir
+        UberStore(uberstoreFile.getAbsolutePath)
+      }
+    }
+
+    val siriusConfig = new SiriusConfiguration()
+    siriusConfig.setProp(SiriusConfiguration.HOST, "localhost")
+    siriusConfig.setProp(SiriusConfiguration.PORT, port)
+    siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, membershipPath)
+    siriusConfig.setProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, chunkSize)
+
+    val sirius = SiriusFactory.createInstance(
+      finalHandler,
+      siriusConfig,
+      finalWal
+    )
+
+    assert(waitForTrue(sirius.isOnline, 2000, 500), "Sirius Node failed to come up within alloted 2 seconds")
+
+    (sirius, finalHandler, finalWal)
+  }
+
   var tempDir: File = _
-
-  var reqHandler1: LatchedRequestHandler = _
-  var reqHandler2: LatchedRequestHandler = _
-  var reqHandler3: LatchedRequestHandler = _
-
-  var wal1: InMemoryLatchedLog = _
-  var wal2: InMemoryLatchedLog = _
-  var wal3: InMemoryLatchedLog = _
-
-  var sirius1: SiriusImpl = _
-  var sirius2: SiriusImpl = _
-  var sirius3: SiriusImpl = _
+  var membershipPath: String = _
+  var sirii: List[SiriusImpl] = _
 
   before {
     // incredibly ghetto, but TemporaryFolder was doing some weird stuff...
@@ -144,90 +106,58 @@ class FullSystemITest extends NiceTest with TimedTest {
       "akka://sirius-system@localhost:42290/user/sirius\n" +
       "akka://sirius-system@localhost:42291/user/sirius\n"
     )
-
-    // helper for booting up a sirius impl, it would be nice
-    // to move this out once we abstract the actor system
-    // stuff out of sirius
-    def bootNode(handler: RequestHandler, wal: SiriusLog, port: Int) = {
-      val siriusConfig = new SiriusConfiguration()
-      siriusConfig.setProp(SiriusConfiguration.HOST, "localhost")
-      siriusConfig.setProp(SiriusConfiguration.PORT, port)
-      siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, membershipFile.getAbsolutePath)
-
-      val sirius = SiriusFactory.createInstance(
-        handler,
-        siriusConfig,
-        wal
-      )
-
-      assert(waitForTrue(sirius.isOnline, 2000, 500), "Sirius Node failed to come up within alloted 2 seconds")
-
-      sirius
-    }
-
-    // Spin up 3 implementations that will make up our cluster,
-    // the port numbers match those of the membership
-    reqHandler1 = new LatchedRequestHandler(3)
-    wal1 = new InMemoryLatchedLog(3)
-    sirius1 = bootNode(reqHandler1, wal1, 42289)
-
-    reqHandler2 = new LatchedRequestHandler(3)
-    wal2 = new InMemoryLatchedLog(3)
-    sirius2 = bootNode(reqHandler2, wal2, 42290)
-
-    reqHandler3 = new LatchedRequestHandler(3)
-    wal3 = new InMemoryLatchedLog(3)
-    sirius3 = bootNode(reqHandler3, wal3, 42291)
+    membershipPath = membershipFile.getAbsolutePath
   }
 
   after {
-    sirius1.shutdown()
-    sirius2.shutdown()
-    sirius3.shutdown()
+    sirii.foreach(_.shutdown())
+    sirii = List()
     tempDir.delete()
   }
 
-  it ("must reach a decision on a series of requests when requests are safely " +
-      "set to each node") {
-    val reqHandlers = List(reqHandler1, reqHandler2, reqHandler3)
-    val logs = List(wal1, wal2, wal3)
+  def fireRandomCommands(sirii: List[SiriusImpl], numCommand: Int, startNum: Int = 1) {
+    val numSirii = sirii.size
+    (startNum to numCommand + startNum - 1).foreach((i) => {
+      val siriusNum = Random.nextInt(numSirii)
+      sirii(siriusNum).enqueueDelete(i.toString)
+      Thread.sleep(10)
+    })
+  }
 
-    // Submit requests to node 1, and await ordering
-    val result1 = sirius1.enqueuePut("hello", "world".getBytes)
-    val result2 = sirius1.enqueueDelete("world")
-    val result3 = sirius1.enqueueDelete("yo")
+  describe("a full sirius implementation") {
+    it ("must reach a decision for lots of slots") {
+      val numCommands = 50
+      val (sirius1, _, log1) = makeSirius(42289)
+      val (sirius2, _, log2) = makeSirius(42290)
+      val (sirius3, _, log3) = makeSirius(42291)
+      sirii = List(sirius1, sirius2, sirius3)
+      val logs = List(log1, log2, log3)
 
-    // Wait for the requests to hit all the logs and request handlers
-    logs.foreach(_.await(2, TimeUnit.SECONDS))
-    reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
+      fireRandomCommands(sirii, numCommands)
 
-    // Make sure results are complete and the value checks out
-    assert(SiriusResult.none === result1.get(500, TimeUnit.MILLISECONDS))
-    assert(SiriusResult.none === result2.get(500, TimeUnit.MILLISECONDS))
-    assert(SiriusResult.none === result3.get(500, TimeUnit.MILLISECONDS))
+      assert(waitForTrue(verifyWalSize(log1, numCommands), 10000, 500))
+      assert(waitForTrue(verifyWalsAreEquivalent(logs), 500, 100))
+    }
 
-    // verify equivalence
-    verifyWalsAreEquivalent(3, wal1, wal2, wal3)
+    it ("must be able to make progress with a node being down and then catch up") {
+      val numCommands = 50
+      val (sirius1, _, log1) = makeSirius(42289)
+      val (sirius2, _, log2) = makeSirius(42290)
+      sirii = List(sirius1, sirius2)
 
-    // same deal, node2
-    logs.foreach(_.resetLatch(1))
-    reqHandlers.foreach(_.resetLatch(1))
-    sirius2.enqueueDelete("asdf")
-    logs.foreach(_.await(2, TimeUnit.SECONDS))
-    reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
+      fireRandomCommands(sirii, numCommands)
 
-    // verify equivalence
-    verifyWalsAreEquivalent(4, wal1, wal2, wal3)
+      assert(waitForTrue(verifyWalSize(log1, numCommands), 10000, 500))
+      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2), 500, 100))
 
-    // same deal, node 3
-    logs.foreach(_.resetLatch(1))
-    reqHandlers.foreach(_.resetLatch(1))
-    sirius3.enqueuePut("xyz", "abc".getBytes)
-    logs.foreach(_.await(2, TimeUnit.SECONDS))
-    reqHandlers.foreach(_.await(2, TimeUnit.SECONDS))
+      val (sirius3, _, log3) = makeSirius(42291)
 
-    // verify equivalence
-    verifyWalsAreEquivalent(5, wal1, wal2, wal3)
+      assert(waitForTrue(verifyWalSize(log3, numCommands), 10000, 500))
+      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2, log3), 500, 100))
+
+      // so they're all shut down in the end...
+      sirii = List(sirius1, sirius2, sirius3)
+    }
   }
 
 }
