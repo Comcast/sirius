@@ -64,7 +64,7 @@ trait MonitoringHooks {
     kvs.put("sysname", actorSystem.name)
 
     val statClass = mbean.getClass.getSimpleName
-    kvs.put("type", statClass)
+    kvs.put("name", statClass)
 
     new ObjectName("com.comcast.xfinity.sirius", kvs)
   }

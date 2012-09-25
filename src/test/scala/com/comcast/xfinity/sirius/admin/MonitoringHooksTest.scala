@@ -46,7 +46,7 @@ class MonitoringHooksTest extends NiceTest with TimedTest {
         kvs.put("port", "")
         kvs.put("sysname", "test-system")
         kvs.put("path", "/user/test")
-        kvs.put("type", "DummyMonitor")
+        kvs.put("name", "DummyMonitor")
         new ObjectName("com.comcast.xfinity.sirius", kvs)
       }
 
@@ -86,7 +86,7 @@ class MonitoringHooksTest extends NiceTest with TimedTest {
         kvs.put("port", "2556")
         kvs.put("sysname", "test-system")
         kvs.put("path", "/user/test")
-        kvs.put("type", "DummyMonitor")
+        kvs.put("name", "DummyMonitor")
         new ObjectName("com.comcast.xfinity.sirius", kvs)
       }
 
