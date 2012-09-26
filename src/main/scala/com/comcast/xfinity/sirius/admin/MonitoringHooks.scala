@@ -2,9 +2,7 @@ package com.comcast.xfinity.sirius.admin
 
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import javax.management.{ObjectName, MBeanServer}
-import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
-import java.util.{Hashtable => JHashtable}
-import akka.actor.{ActorContext, Address, ActorRef, ActorSystem}
+import akka.actor.ActorContext
 
 /**
  * Trait for easily registering MBeans from an Actor
@@ -13,6 +11,8 @@ import akka.actor.{ActorContext, Address, ActorRef, ActorSystem}
  * to unregister all MBeans registered by this instance
  */
 trait MonitoringHooks {
+
+  private[admin] val objectNameHelper = new ObjectNameHelper
 
   private[admin] var objectNames = Set[ObjectName]()
 
@@ -33,7 +33,7 @@ trait MonitoringHooks {
   def registerMonitor(mbean: => Any, siriusConfig: SiriusConfiguration)(implicit context: ActorContext) {
     siriusConfig.getProp[MBeanServer](SiriusConfiguration.MBEAN_SERVER) match {
       case Some(mbeanServer) =>
-        val objectName = getObjectName(mbean, context.self, context.system)
+        val objectName = objectNameHelper.getObjectName(mbean, context.self, context.system)
         mbeanServer.registerMBean(mbean, objectName)
         objectNames += objectName
       case None => // no-op
@@ -54,30 +54,4 @@ trait MonitoringHooks {
     }
   }
 
-  private def getObjectName(mbean: Any, actor: ActorRef, actorSystem: ActorSystem): ObjectName = {
-    val kvs = new JHashtable[String, String]
-    kvs.put("path", "/" + actor.path.elements.reduceLeft(_ + "/" + _))
-
-    val (host, port) = getHostPort(actorSystem)
-    kvs.put("host", host)
-    kvs.put("port", port)
-    kvs.put("sysname", actorSystem.name)
-
-    val statClass = mbean.getClass.getSimpleName
-    kvs.put("name", statClass)
-
-    new ObjectName("com.comcast.xfinity.sirius", kvs)
-  }
-
-  private def getHostPort(actorSystem: ActorSystem): (String, String) =
-    AkkaExternalAddressResolver(actorSystem).externalAddress match {
-        case None => ("", "")
-        case Some(address) =>
-          val host = address.host.getOrElse("")
-          val port = address.port match {
-            case None => ""
-            case Some(portNo) => portNo.toString
-          }
-          (host, port)
-      }
 }
