@@ -8,10 +8,10 @@ import java.util.{HashMap => JHashMap}
 import akka.actor.{ActorRef, ActorSystem}
 import management.ManagementFactory
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.admin.SiriusAdmin
-import javax.management.MBeanServer
 import com.typesafe.config.{ConfigFactory, Config}
 import java.io.File
+import com.comcast.xfinity.sirius.admin.{ObjectNameHelper}
+import javax.management.{ObjectName, MBeanServer}
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -54,35 +54,34 @@ object SiriusFactory {
   private[sirius] def createInstance(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
                    siriusLog: SiriusLog): SiriusImpl = {
 
-    val host = siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName)
-    val port = siriusConfig.getProp(SiriusConfiguration.PORT, 2552)
+    implicit val actorSystem = ActorSystem("sirius-system", createActorSystemConfig(siriusConfig))
 
+    // inject an mbean server, without regard for the one that may have been there
     val mbeanServer = ManagementFactory.getPlatformMBeanServer
     siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
 
-    implicit val actorSystem = ActorSystem("sirius-system", createActorSystemConfig(host, port, siriusConfig))
+    // here it is! the real deal creation
     val impl = SiriusImpl(requestHandler, siriusLog, siriusConfig)
 
-    // create some more stuff to expose over mbeans
-    val admin = createAdmin(mbeanServer, host, port, impl.supervisor)
-    admin.registerMbeans()
+    // create a SiriusInfo MBean which will remain registered until we explicity shutdown sirius
+    val (siriusInfoObjectName, siriusInfo) = createSiriusInfoMBean(actorSystem, impl.supervisor)
+    mbeanServer.registerMBean(siriusInfo, siriusInfoObjectName)
 
     // need to shut down the actor system and unregister the mbeans when sirius is done
     impl.onShutdown({
       actorSystem.shutdown()
       actorSystem.awaitTermination()
-      admin.unregisterMbeans()
+      mbeanServer.unregisterMBean(siriusInfoObjectName)
     })
 
     impl
   }
 
-  private def createHostPortConfig(host: String, port: Int): Config = {
-    val configMap = new JHashMap[String, Any]()
-    configMap.put("akka.remote.netty.hostname", host)
-    configMap.put("akka.remote.netty.port", port)
-    // this is just so that the intellij shuts up
-    ConfigFactory.parseMap(configMap.asInstanceOf[JHashMap[String, _ <: AnyRef]])
+  private def createSiriusInfoMBean(actorSystem: ActorSystem, siriusSup: ActorRef): (ObjectName, SiriusInfo) = {
+    val siriusInfo = new SiriusInfo(actorSystem, siriusSup)
+    val objectNameHelper = new ObjectNameHelper
+    val siriusInfoObjectName = objectNameHelper.getObjectName(siriusInfo, siriusSup, actorSystem)
+    (siriusInfoObjectName, siriusInfo)
   }
 
   /**
@@ -91,19 +90,26 @@ object SiriusFactory {
    *   2) siriusConfig supplied external config next
    *   3) sirius-akka-base.conf, packaged with sirius, loaded with ConfigFactory.load
    */
-  private def createActorSystemConfig(host: String, port: Int, siriusConfig: SiriusConfiguration): Config = {
-    val hostPortConfig = createHostPortConfig(host, port)
+  private def createActorSystemConfig(siriusConfig: SiriusConfiguration): Config = {
+    val hostPortConfig = createHostPortConfig(siriusConfig)
     val externalConfig = createExternalConfig(siriusConfig)
+
     val baseAkkaConfig = ConfigFactory.load("sirius-akka-base.conf")
 
     hostPortConfig.withFallback(externalConfig).withFallback(baseAkkaConfig)
   }
 
-  private def createAdmin(mbeanServer: MBeanServer, host: String, port: Int, supervisorRef: ActorRef) = {
-    val info = new SiriusInfo(port, host, supervisorRef)
-    new SiriusAdmin(info, mbeanServer)
-  }
+  private def createHostPortConfig(siriusConfig: SiriusConfiguration): Config = {
+    val configMap = new JHashMap[String, Any]()
 
+    configMap.put("akka.remote.netty.hostname",
+      siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
+    configMap.put("akka.remote.netty.port",
+      siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
+
+    // this is just so that the intellij shuts up
+    ConfigFactory.parseMap(configMap.asInstanceOf[JHashMap[String, _ <: AnyRef]])
+  }
 
   /**
    * If siriusConfig is such configured, will load up an external configuration

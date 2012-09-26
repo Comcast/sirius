@@ -1,15 +1,21 @@
 package com.comcast.xfinity.sirius.info
 
-/**
- * Trait for the SiriusMBean.  This is needed because JMX MBeans require both an interface
- * and implementation class, this compiles down to an interface.
+/*
+ * An MBean exposing the address of this node and whether or not it is terminated.
+ *
+ * This MBean will remain even if the sirius node crashes.
  */
-trait SiriusInfoMBean {
+ trait SiriusInfoMBean {
 
-  def getName: String
+  /**
+   * Get the node's address, as seen externally
+   */
+  def getNodeAddress: String
 
-  def getMembership : String
-
-  def getLatestSlot : String
+  /**
+   * Is the node terminated? If this turns false, things
+   * may be real bad...
+   */
+  def getIsNodeTerminated: Boolean
 
 }
