@@ -112,22 +112,21 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it("must repropose a command if a different decision using the command's " +
-        "proposed slot number arrives") {
+        "proposed slot number arrives, updating outstanding proposals") {
         val localLeader = TestProbe()
         val replica = makeReplica(localLeader.ref, 2)
 
-        val command1 = Command(null, 1, Delete("ThisThing"))
-        replica ! Request(command1)
-        localLeader.expectMsg(Propose(2, command1))
-        assert(replica.underlyingActor.proposals.size == 1)
-        assert(replica.underlyingActor.proposals.containsKey(2L))
+        val commandToBeReproposed = Command(null, 1, Delete("ThisThing"))
+        replica ! Request(commandToBeReproposed)
+        localLeader.expectMsg(Propose(2, commandToBeReproposed))
+        assert(replica.underlyingActor.outstandingProposals.size == 1)
+        assert(replica.underlyingActor.outstandingProposals.containsKey(2L))
 
-        replica ! Decision(2, Command(null, 1, Delete("ADifferentThing")))
-        localLeader.expectMsg(Propose(3, command1))
+        replica ! Decision(2, Command(null, 1, Delete("ADifferntThing")))
+        localLeader.expectMsg(Propose(3, commandToBeReproposed))
 
-        assert(replica.underlyingActor.proposals.size == 2)
-        assert(replica.underlyingActor.proposals.containsKey(2L))
-        assert(replica.underlyingActor.proposals.containsKey(3L))
+        assert(1 === replica.underlyingActor.outstandingProposals.size)
+        assert(commandToBeReproposed === replica.underlyingActor.outstandingProposals.get(3L))
       }
 
       it("should handle a decision for a non-proposed slot number with no side-effects") {
@@ -135,11 +134,11 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         val replica = makeReplica(localLeader.ref, 2)
 
         replica ! Request(Command(null, 1, Delete("ThisThing")))
-        assert(1 === replica.underlyingActor.proposals.size)
+        assert(1 === replica.underlyingActor.outstandingProposals.size)
         localLeader.expectMsg(Propose(2, Command(null, 1, Delete("ThisThing"))))
 
         replica ! Decision(1, Command(null, 1, Delete("ThisOtherThing")))
-        assert(1 === replica.underlyingActor.proposals.size)
+        assert(1 === replica.underlyingActor.outstandingProposals.size)
         localLeader.expectNoMsg()
       }
     }
@@ -166,10 +165,10 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         val replica = makeReplica(localLeader.ref, 2)
 
         replica ! Request(Command(null, 1, Delete("ThisThing")))
-        assert(replica.underlyingActor.proposals.size == 1)
+        assert(replica.underlyingActor.outstandingProposals.size == 1)
 
         replica ! DecisionHint(2)
-        assert(replica.underlyingActor.proposals.isEmpty)
+        assert(replica.underlyingActor.outstandingProposals.isEmpty)
       }
 
       it("must prune decisions when matching decision hint arrives") {
@@ -199,7 +198,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         val replica = makeReplica(startingSlot = 2)
 
         val now = System.currentTimeMillis()
-        replica.underlyingActor.proposals.putAll(SortedMap[Long, Command](
+        replica.underlyingActor.outstandingProposals.putAll(SortedMap[Long, Command](
           1L -> Command(null, now - 15000, Delete("1")),
           2L -> Command(null, now - 12000, Delete("1")),
           3L -> Command(null, now, Delete("1"))
@@ -207,8 +206,8 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
         replica ! Reap
 
-        assert(1 === replica.underlyingActor.proposals.size)
-        assert(replica.underlyingActor.proposals.containsKey(3L))
+        assert(1 === replica.underlyingActor.outstandingProposals.size)
+        assert(replica.underlyingActor.outstandingProposals.containsKey(3L))
       }
     }
   }

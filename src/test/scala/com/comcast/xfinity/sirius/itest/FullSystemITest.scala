@@ -41,7 +41,7 @@ object FullSystemITest {
   def verifyWalSize(wal: SiriusLog, expectedSize: Long): Boolean = {
     val walData = extractEvents(wal)
     println("Verifying wal size: expected=%s actual=%s".format(expectedSize, walData.size))
-    walData.size >= expectedSize
+    walData.size == expectedSize
   }
 }
 

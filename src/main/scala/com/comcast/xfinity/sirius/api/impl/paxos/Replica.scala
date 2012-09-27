@@ -77,7 +77,7 @@ class Replica(localLeader: ActorRef,
              (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
 
   var slotNum = startingSlotNum
-  val proposals = new JTreeMap[Long, Command]()
+  val outstandingProposals = new JTreeMap[Long, Command]()
   val decisions = new JTreeMap[Long, Command]()
 
   val logger = Logging(context.system, "Sirius")
@@ -109,7 +109,7 @@ class Replica(localLeader: ActorRef,
 
     case decisionHint @ DecisionHint(decisionHintSlotNum) =>
       slotNum = decisionHintSlotNum + 1
-      reapLessThanOrEqualTo(decisionHintSlotNum, proposals)
+      reapLessThanOrEqualTo(decisionHintSlotNum, outstandingProposals)
       reapLessThanOrEqualTo(decisionHintSlotNum, decisions)
       localLeader forward decisionHint
 
@@ -128,7 +128,7 @@ class Replica(localLeader: ActorRef,
     val nextSlotNum = nextAvailableSlotNum
 
     localLeader ! Propose(nextSlotNum, command)
-    proposals.put(nextSlotNum, command)
+    outstandingProposals.put(nextSlotNum, command)
 
     logProposal(nextSlotNum, command)
   }
@@ -144,7 +144,7 @@ class Replica(localLeader: ActorRef,
 
   @tailrec
   private def findNextAvailableSlotNum(minSlotNum: Long): Long = {
-    if (proposals.containsKey(minSlotNum) || decisions.containsKey(minSlotNum)) {
+    if (outstandingProposals.containsKey(minSlotNum) || decisions.containsKey(minSlotNum)) {
       findNextAvailableSlotNum(minSlotNum + 1)
     } else {
       minSlotNum
@@ -164,7 +164,7 @@ class Replica(localLeader: ActorRef,
    * @return
    */
   private def reproposeIfClobbered(slot: Long, decisionCommand: Command) {
-    proposals.get(slot) match {
+    outstandingProposals.remove(slot) match {
       case proposalCommand: Command if decisionCommand != proposalCommand =>
         traceLogger.debug("Must repropose, slot {} conflict.  decisionCommand: {}, proposalCommand: {}", slot, decisionCommand.op, proposalCommand.op)
         propose(proposalCommand)
@@ -195,7 +195,7 @@ class Replica(localLeader: ActorRef,
     }
 
     val now = System.currentTimeMillis()
-    reapProposalsBefore(now - reproposalWindowSecs * 1000, proposals)
+    reapProposalsBefore(now - reproposalWindowSecs * 1000, outstandingProposals)
   }
 
   /**
@@ -211,7 +211,7 @@ class Replica(localLeader: ActorRef,
   }
 
   class ReplicaInfo extends ReplicaInfoMBean {
-    def getProposalsSize = proposals.size
+    def getProposalsSize = outstandingProposals.size
     def getNextAvailableSlotNum = nextAvailableSlotNum
     def getLastProposed = lastProposed
     def getNumProposed = numProposed
