@@ -93,8 +93,6 @@ class PaxosStateBridge(startingSeq: Long,
 
   def receive = {
 
-    case UnreadyDecisionsCountReq => sender ! UnreadyDecisionCount(eventBuffer.size)
-
     /*
      * When a decision arrives for the first time the actor identified by
      * Decision.command.client is sent a SiriusResult.none message to aknowledge the

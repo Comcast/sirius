@@ -45,16 +45,6 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
     actorSystem.shutdown()
   }
 
-  describe("when receiving a UnreadyDecisionsCountReq") {
-    it("must return the count of buffered decisions") {
-      val senderProbe = TestProbe()
-      val stateBridge = makeStateBridge(10)
-      senderProbe.send(stateBridge, UnreadyDecisionsCountReq)
-      senderProbe.expectMsg(UnreadyDecisionCount(0))
-
-    }
-  }
-
   describe("when receiving a Decision message") {
     it("must not acknowledge an Decision below it's slotnum") {
       val stateProbe = TestProbe()

@@ -53,7 +53,6 @@ class PaxosSup extends Actor {
 
   def receive = {
     // Replica messages
-    case GetLowestUnusedSlotNum => replica forward GetLowestUnusedSlotNum
     case req: NonCommutativeSiriusRequest =>
       traceLog.debug("Received event for submission {}", req)
       val command = Command(sender, System.currentTimeMillis(), req)

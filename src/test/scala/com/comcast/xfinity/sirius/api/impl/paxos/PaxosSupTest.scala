@@ -31,10 +31,6 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
 
       val senderProbe = TestProbe()
 
-      senderProbe.send(paxosSup, GetLowestUnusedSlotNum)
-      replicaProbe.expectMsg(GetLowestUnusedSlotNum)
-      assert(senderProbe.ref === replicaProbe.lastSender)
-
       val decision = Decision(1, Command(null, 1, Delete("2")))
       senderProbe.send(paxosSup, decision)
       replicaProbe.expectMsg(decision)

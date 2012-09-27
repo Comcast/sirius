@@ -90,7 +90,6 @@ class Replica(localLeader: ActorRef,
   var longestDuration = 0L
 
   def receive = {
-    case GetLowestUnusedSlotNum => sender ! LowestUnusedSlotNum(nextAvailableSlotNum)
     case Request(command: Command) =>
       propose(command)
 
