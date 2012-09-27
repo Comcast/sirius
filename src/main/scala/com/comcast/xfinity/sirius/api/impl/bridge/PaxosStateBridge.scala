@@ -78,7 +78,7 @@ class PaxosStateBridge(startingSeq: Long,
   //       SiriusConfig matures this would be pretty clean to configure
   // also, start immediately.
   val requestGapsCancellable =
-    context.system.scheduler.schedule(0 seconds, 30 seconds, self, RequestGaps)
+    context.system.scheduler.schedule(30 seconds, 30 seconds, self, RequestGaps)
 
   var nextSeq: Long = startingSeq
   var eventBuffer = new JTreeMap[Long, OrderedEvent]()

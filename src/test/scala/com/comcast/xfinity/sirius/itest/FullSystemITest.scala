@@ -6,6 +6,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{RequestHandler, SiriusConfiguration}
 import java.io.File
 import com.comcast.xfinity.sirius.api.impl._
+import bridge.PaxosStateBridge
 import util.Random
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import scala.Some
@@ -156,7 +157,12 @@ class FullSystemITest extends NiceTest with TimedTest {
 
       val (sirius3, _, log3) = makeSirius(42291)
 
-      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2, log3), 500, 100),
+      // TODO: this is gross, we should instead make the catch up interval small in config,
+      //       and pass it down.  Just doing this temporarily until we fix the alleged
+      //       Bridge/Replica bug
+      sirius3.actorSystem.actorFor("/user/sirius/paxos-state-bridge") ! PaxosStateBridge.RequestGaps
+
+      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2, log3), 2000, 250),
         "The newly booted node was not equivalent to the rest")
 
       // so they're all shut down in the end...
