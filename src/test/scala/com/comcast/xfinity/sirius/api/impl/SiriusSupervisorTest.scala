@@ -33,6 +33,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
 
       val stateSup: ActorRef = stateProbe.ref
       val membershipActor: ActorRef = membershipProbe.ref
+      val stateBridge: ActorRef = TestProbe().ref
       val orderingActor: ActorRef = paxosProbe.ref
       val statusSubsystem: ActorRef = TestProbe().ref
       

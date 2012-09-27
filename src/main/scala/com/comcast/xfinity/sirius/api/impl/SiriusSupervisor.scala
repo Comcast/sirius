@@ -1,5 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl
 
+import bridge.PaxosStateBridge
 import membership._
 import paxos.PaxosMessages.PaxosMessage
 import akka.actor.Actor
@@ -8,6 +9,7 @@ import akka.actor.Props
 import akka.agent.Agent
 import akka.util.Duration
 import java.util.concurrent.TimeUnit
+import paxos.PaxosSup
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -25,12 +27,14 @@ object SiriusSupervisor {
   case class IsInitializedResponse(initialized: Boolean)
 
   trait DependencyProvider {
-    val stateSup: ActorRef
-    val orderingActor: ActorRef
-    val membershipActor: ActorRef
-    val statusSubsystem: ActorRef
-    val membershipAgent: Agent[Set[ActorRef]]
     val siriusStateAgent: Agent[SiriusState]
+    val membershipAgent: Agent[Set[ActorRef]]
+
+    val stateSup: ActorRef
+    val membershipActor: ActorRef
+    val orderingActor: ActorRef
+    val stateBridge: ActorRef
+    val statusSubsystem: ActorRef
   }
 
   /**
@@ -39,11 +43,11 @@ object SiriusSupervisor {
    * @param config the SiriusConfiguration for this node
    */
   def apply(
-    _requestHandler: RequestHandler,
-    _siriusLog: SiriusLog,
+    requestHandler: RequestHandler,
+    siriusLog: SiriusLog,
     config: SiriusConfiguration): SiriusSupervisor = {
 
-    // XXX: the following is EXTREMELY busy, it needs clean up, but
+    // XXX: the following is quite busy, it needs clean up, but
     //      im not sure what the best way to do this is. I know it's
     //      probably not popular, but if we don't test this with unit
     //      tests it can get much simpler, it's still covered by integration
@@ -52,30 +56,29 @@ object SiriusSupervisor {
       val siriusStateAgent = Agent(new SiriusState)(context.system)
       val membershipAgent = Agent(Set[ActorRef]())(context.system)
 
-      val stateSup = context.actorOf(Props(StateSup(_requestHandler, _siriusLog, siriusStateAgent, config)), "state")
+      val stateSup = context.actorOf(
+        Props(StateSup(requestHandler, siriusLog, siriusStateAgent, config)),
+        "state"
+      )
 
-      val membershipActor = context.actorOf(Props(MembershipActor(membershipAgent, config)), "membership")
+      val membershipActor = context.actorOf(
+        Props(MembershipActor(membershipAgent, config)),
+        "membership"
+      )
 
-      val orderingActor = {
-        // TODO: now that there's no switch the bridge and paxos stuff
-        //        can be put together direcrly here
-        val siriusPaxosAdapter = new SiriusPaxosAdapter(
-          membershipAgent,
-          _siriusLog.getNextSeq,
-          stateSup,
-          self,
-          config
-        )
-        siriusPaxosAdapter.paxosSubSystem
-      }
+      val stateBridge = context.actorOf(Props(
+        PaxosStateBridge(siriusLog.getNextSeq, stateSup, self, MembershipHelper(membershipAgent, self), config)),
+        "paxos-state-bridge"
+      )
+
+      val orderingActor = context.actorOf(
+        Props(PaxosSup(membershipAgent, siriusLog.getNextSeq, stateBridge ! _, config)),
+        "paxos"
+      )
 
       val statusSubsystem = context.actorOf(
-        Props(
-          StatusWorker(
-            AkkaExternalAddressResolver(context.system).externalAddressFor(self),
-            config
-          )
-        )
+        Props(StatusWorker(AkkaExternalAddressResolver(context.system).externalAddressFor(self), config)),
+        "status"
       )
     }
   }
