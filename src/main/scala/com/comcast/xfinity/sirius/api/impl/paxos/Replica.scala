@@ -179,23 +179,13 @@ class Replica(localLeader: ActorRef,
   }
 
   private def reapStagnantProposals() {
-    @tailrec
-    def reapProposalsBefore(timeCutoff: Long, target: JTreeMap[Long, Command]) {
-      if (target.isEmpty) {
-        // terminate
-      } else {
-        val first = target.firstEntry
-        first.getValue match {
-          case Command(_, ts, _) if ts < timeCutoff =>
-            target.remove(first.getKey)
-            reapProposalsBefore(timeCutoff, target)
-          case _ =>
-        }
+    val cutoff = System.currentTimeMillis() - reproposalWindowSecs * 1000
+
+    for (slot <- outstandingProposals.keySet().toArray) {
+      if (outstandingProposals.get(slot).ts < cutoff) {
+        outstandingProposals.remove(slot)
       }
     }
-
-    val now = System.currentTimeMillis()
-    reapProposalsBefore(now - reproposalWindowSecs * 1000, outstandingProposals)
   }
 
   /**

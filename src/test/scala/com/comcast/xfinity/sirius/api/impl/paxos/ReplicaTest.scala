@@ -194,20 +194,20 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
     }
 
     describe("in response to a Reap message") {
-      it ("must truncate the proposals that are out of date") {
+      it ("must truncate the proposals that are out of date, regardless of slot") {
         val replica = makeReplica(startingSlot = 2)
 
         val now = System.currentTimeMillis()
         replica.underlyingActor.outstandingProposals.putAll(SortedMap[Long, Command](
           1L -> Command(null, now - 15000, Delete("1")),
-          2L -> Command(null, now - 12000, Delete("1")),
-          3L -> Command(null, now, Delete("1"))
+          2L -> Command(null, now, Delete("2")),
+          3L -> Command(null, now - 12000, Delete("3"))
         ))
 
         replica ! Reap
 
         assert(1 === replica.underlyingActor.outstandingProposals.size)
-        assert(replica.underlyingActor.outstandingProposals.containsKey(3L))
+        assert(replica.underlyingActor.outstandingProposals.containsKey(2L))
       }
     }
   }
