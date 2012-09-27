@@ -135,8 +135,10 @@ class FullSystemITest extends NiceTest with TimedTest {
 
       fireRandomCommands(sirii, numCommands)
 
-      assert(waitForTrue(verifyWalSize(log1, numCommands), 10000, 500))
-      assert(waitForTrue(verifyWalsAreEquivalent(logs), 500, 100))
+      assert(waitForTrue(verifyWalSize(log1, numCommands), 10000, 500),
+        "Log did not contain enough events")
+      assert(waitForTrue(verifyWalsAreEquivalent(logs), 500, 100),
+        "Logs were not equivalent")
     }
 
     it ("must be able to make progress with a node being down and then catch up") {
@@ -147,13 +149,15 @@ class FullSystemITest extends NiceTest with TimedTest {
 
       fireRandomCommands(sirii, numCommands)
 
-      assert(waitForTrue(verifyWalSize(log1, numCommands), 10000, 500))
-      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2), 500, 100))
+      assert(waitForTrue(verifyWalSize(log1, numCommands), 10000, 500),
+        "Pre-new-node log did not contain enough events")
+      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2), 500, 100),
+        "Pre-new-node logs not equivalent")
 
       val (sirius3, _, log3) = makeSirius(42291)
 
-      assert(waitForTrue(verifyWalSize(log3, numCommands), 10000, 500))
-      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2, log3), 500, 100))
+      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2, log3), 500, 100),
+        "The newly booted node was not equivalent to the rest")
 
       // so they're all shut down in the end...
       sirii = List(sirius1, sirius2, sirius3)
