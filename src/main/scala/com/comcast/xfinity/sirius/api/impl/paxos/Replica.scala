@@ -5,11 +5,11 @@ import akka.actor.ActorRef
 import akka.event.Logging
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import java.util.{TreeMap => JTreeMap}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import annotation.tailrec
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica.Reap
+import com.comcast.xfinity.sirius.util.RichJTreeMap
 
 object Replica {
 
@@ -77,8 +77,8 @@ class Replica(localLeader: ActorRef,
              (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
 
   var slotNum = startingSlotNum
-  val outstandingProposals = new JTreeMap[Long, Command]()
-  val decisions = new JTreeMap[Long, Command]()
+  val outstandingProposals = new RichJTreeMap[Long, Command]()
+  val decisions = new RichJTreeMap[Long, Command]()
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
@@ -109,8 +109,10 @@ class Replica(localLeader: ActorRef,
 
     case decisionHint @ DecisionHint(decisionHintSlotNum) =>
       slotNum = decisionHintSlotNum + 1
-      reapLessThanOrEqualTo(decisionHintSlotNum, outstandingProposals)
-      reapLessThanOrEqualTo(decisionHintSlotNum, decisions)
+
+      outstandingProposals.filter((k, _) => k > decisionHintSlotNum)
+      decisions.filter((k, _) => k > decisionHintSlotNum)
+
       localLeader forward decisionHint
 
     case Reap =>
@@ -131,15 +133,6 @@ class Replica(localLeader: ActorRef,
     outstandingProposals.put(nextSlotNum, command)
 
     logProposal(nextSlotNum, command)
-  }
-
-  @tailrec
-  private def reapLessThanOrEqualTo(min: Long, target: JTreeMap[Long, Command]) {
-    if (target.isEmpty || target.firstKey() > min) return
-    else {
-      target.remove(target.firstKey())
-      reapLessThanOrEqualTo(min, target)
-    }
   }
 
   @tailrec
@@ -180,12 +173,7 @@ class Replica(localLeader: ActorRef,
 
   private def reapStagnantProposals() {
     val cutoff = System.currentTimeMillis() - reproposalWindowSecs * 1000
-
-    for (slot <- outstandingProposals.keySet().toArray) {
-      if (outstandingProposals.get(slot).ts < cutoff) {
-        outstandingProposals.remove(slot)
-      }
-    }
+    outstandingProposals.filter((_, v) => v.ts >= cutoff)
   }
 
   /**
