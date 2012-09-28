@@ -162,6 +162,8 @@ class FullSystemITest extends NiceTest with TimedTest {
       //       Bridge/Replica bug
       sirius3.actorSystem.actorFor("/user/sirius/paxos-state-bridge") ! PaxosStateBridge.RequestGaps
 
+      assert(waitForTrue(verifyWalSize(log3, numCommands), 10000, 500),
+        "the newly booted node's log did not contain enough events")
       assert(waitForTrue(verifyWalsAreEquivalent(log1, log2, log3), 2000, 250),
         "The newly booted node was not equivalent to the rest")
 
