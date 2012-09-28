@@ -45,7 +45,6 @@ class Acceptor(startingSeqNum: Long,
 
   var ballotNum: Ballot = Ballot.empty
 
-
   // XXX for monitoring...
   var lastDuration = 0L
   var longestDuration = 0L
@@ -74,15 +73,15 @@ class Acceptor(startingSeqNum: Long,
       if (pval.ballot >= ballotNum) {
         ballotNum = pval.ballot
 
-        //if pval is already accepted on higher ballot number then do nothing
+        // if pval is already accepted on higher ballot number then just update the timestamp
         //    in other words
         // if pval not accepted or accepted and with lower or equal ballot number then replace accepted pval w/ pval
         // also update the ts w/ localtime in our accepted map for reaping
-        val now = System.currentTimeMillis
         accepted.get(pval.slotNum) match {
-          case ((_, oldPval: PValue)) if oldPval.ballot > pval.ballot => accepted.put(oldPval.slotNum, (now, oldPval))
-          case ((_, oldPval: PValue)) => accepted.put(pval.slotNum, (now, pval))
-          case null => accepted.put(pval.slotNum, (now, pval))
+          case (_, oldPval) if oldPval.ballot > pval.ballot =>
+            accepted.put(oldPval.slotNum, (System.currentTimeMillis, oldPval))
+          case _ =>
+            accepted.put(pval.slotNum, (System.currentTimeMillis, pval))
         }
       }
       commander ! Phase2B(replyAs, ballotNum)
@@ -90,11 +89,16 @@ class Acceptor(startingSeqNum: Long,
     // Periodic cleanup
     case Reap =>
       logger.debug("Accepted count: {}", accepted.size)
+
       val start = System.currentTimeMillis
-      val (newLowestSlotNumber, newAccepted) = cleanOldAccepted(lowestAcceptableSlotNumber, accepted)
-      lowestAcceptableSlotNumber = newLowestSlotNumber
+      cleanOldAccepted()
+      val duration = System.currentTimeMillis - start
+
+      lastDuration = duration
+      if (duration > longestDuration)
+        longestDuration = duration
+
       logger.debug("Reaped Old Accpeted in {}ms", System.currentTimeMillis-start)
-      accepted = newAccepted
   }
 
   /* Remove 'old' pvals from the system.  A pval is old if we got it farther in the past than our reap limit.
@@ -102,29 +106,23 @@ class Acceptor(startingSeqNum: Long,
    *
    * Note: this method has the side-effect of modifying toReap.
    */
-  private def cleanOldAccepted(currentLowestSlot: Long, toReap: JTreeMap[Long, Tuple2[Long, PValue]]) = {
-    var highestReapedSlot: Long = currentLowestSlot - 1
-    val now = System.currentTimeMillis()
-    val reapBeforeTs = now - reapWindow
+  private def cleanOldAccepted() {
+    var highestReapedSlot: Long = lowestAcceptableSlotNumber - 1
+    val reapBeforeTs = System.currentTimeMillis - reapWindow
     breakable {
-      val keys = toReap.keySet.toArray
+      val keys = accepted.keySet.toArray
       for (i <- 0 to keys.size - 1) {
         val slot = keys(i)
-        if (toReap.get(slot)._1 < reapBeforeTs) {
-          highestReapedSlot = toReap.get(slot)._2.slotNum
-          toReap.remove(slot)
+        if (accepted.get(slot)._1 < reapBeforeTs) {
+          highestReapedSlot = accepted.get(slot)._2.slotNum
+          accepted.remove(slot)
         } else {
           break()
         }
       }
     }
-    val duration = System.currentTimeMillis() - now
-    lastDuration = duration
-    if (duration > longestDuration)
-      longestDuration = duration
-
-    logger.debug("Reaped PValues for all commands between {} and {}", currentLowestSlot - 1, highestReapedSlot)
-    (highestReapedSlot + 1, toReap)
+    logger.debug("Reaped PValues for all commands between {} and {}", lowestAcceptableSlotNumber - 1, highestReapedSlot)
+    lowestAcceptableSlotNumber = highestReapedSlot + 1
   }
 
   /**
@@ -132,16 +130,15 @@ class Acceptor(startingSeqNum: Long,
    *
    */
   private def undecidedAccepted(latestDecidedSlot: Long): Set[PValue] = {
-    val empty = new HashSet[PValue]()
-    var undecidedPvalues = new SetBuilder[PValue, HashSet[PValue]](empty)
+    var undecidedPValues = Set[PValue]()
     val iterator = accepted.keySet().iterator
     while (iterator.hasNext) {
       val slot = iterator.next
       if (slot > latestDecidedSlot) {
-        undecidedPvalues += accepted.get(slot)._2
+        undecidedPValues += accepted.get(slot)._2
       }
     }
-    undecidedPvalues.result()
+    undecidedPValues
   }
 
   /**
