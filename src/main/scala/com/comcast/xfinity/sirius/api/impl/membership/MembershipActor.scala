@@ -84,10 +84,11 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
   }
 
   private def updateMembership() {
+    val oldMembership = membershipAgent()
     val newMembership = createMembership(clusterConfigPath)
     membershipAgent send newMembership
 
-    if (membershipAgent.get != newMembership) {
+    if (oldMembership != newMembership) {
       logger.info("Updated membership. New value: {}", newMembership)
     }
   }
