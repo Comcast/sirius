@@ -4,12 +4,9 @@ import akka.actor.Actor
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import akka.event.Logging
-import java.util.{TreeMap => JTreeMap}
-import scala.util.control.Breaks._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import collection.immutable.HashSet
-import collection.mutable.SetBuilder
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+import com.comcast.xfinity.sirius.util.RichJTreeMap
 
 object Acceptor {
 
@@ -50,7 +47,7 @@ class Acceptor(startingSeqNum: Long,
   var longestDuration = 0L
 
   // slot -> (ts,PValue)
-  var accepted = new JTreeMap[Long, Tuple2[Long, PValue]]()
+  var accepted = new RichJTreeMap[Long, Tuple2[Long, PValue]]()
 
   // if we receive a Phase2A for a slot less than this we refuse to
   // handle it since it is out of date by our terms
@@ -109,17 +106,11 @@ class Acceptor(startingSeqNum: Long,
   private def cleanOldAccepted() {
     var highestReapedSlot: Long = lowestAcceptableSlotNumber - 1
     val reapBeforeTs = System.currentTimeMillis - reapWindow
-    breakable {
-      val keys = accepted.keySet.toArray
-      for (i <- 0 to keys.size - 1) {
-        val slot = keys(i)
-        if (accepted.get(slot)._1 < reapBeforeTs) {
-          highestReapedSlot = accepted.get(slot)._2.slotNum
-          accepted.remove(slot)
-        } else {
-          break()
-        }
-      }
+    accepted.dropWhile {
+      case (slot, (ts, _)) if ts < reapBeforeTs =>
+        highestReapedSlot = slot
+        true
+      case _ => false
     }
     logger.debug("Reaped PValues for all commands between {} and {}", lowestAcceptableSlotNumber - 1, highestReapedSlot)
     lowestAcceptableSlotNumber = highestReapedSlot + 1
@@ -131,12 +122,10 @@ class Acceptor(startingSeqNum: Long,
    */
   private def undecidedAccepted(latestDecidedSlot: Long): Set[PValue] = {
     var undecidedPValues = Set[PValue]()
-    val iterator = accepted.keySet().iterator
-    while (iterator.hasNext) {
-      val slot = iterator.next
-      if (slot > latestDecidedSlot) {
-        undecidedPValues += accepted.get(slot)._2
-      }
+    accepted.foreach {
+      case (slot, (_, pval)) if slot > latestDecidedSlot =>
+        undecidedPValues += pval
+      case _ => //no-op
     }
     undecidedPValues
   }
