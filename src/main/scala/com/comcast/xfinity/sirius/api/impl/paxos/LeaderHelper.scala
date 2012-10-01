@@ -1,8 +1,7 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import collection.immutable.SortedMap
-import java.util.{TreeMap => JTreeMap}
-import scala.collection.JavaConversions._
+import com.comcast.xfinity.sirius.util.RichJTreeMap
 
 /**
  * Some helpers for more complex operations on the Leader.  Ideally this
@@ -12,21 +11,19 @@ import scala.collection.JavaConversions._
 class LeaderHelper {
 
   /**
-   * Takes the union of all key/values in y and all key/values in x such that no value
-   * exists for the key in y.
+   * Overlays x with all entries from y, with the side effect of modifying x.
    *
-   * @param x
-   * @param y
-   * @return
+   * Returns reference to x- this is an artifact of when this was immutable and more
+   * complex, this method should get factored out soon.
+   *
+   * @param x a RichJTreeMap which is modified in place, being overlayed with all values
+   *          from y
+   * @param y values to overlay on x
+   * @return reference to x, which is mutated
    */
-  def update[T](x: JTreeMap[Long, T], y: JTreeMap[Long, T]): JTreeMap[Long, T] = {
-    val toReturn: JTreeMap[Long, T] = y.clone.asInstanceOf[JTreeMap[Long, T]]
-    for (key <- x.keySet) {
-      if (!toReturn.containsKey(key)) {
-        toReturn.put(key, x.get(key))
-      }
-    }
-    toReturn
+  def update[T](x: RichJTreeMap[Long, T], y: RichJTreeMap[Long, T]): RichJTreeMap[Long, T] = {
+    x.putAll(y)
+    x
   }
 
   /**
@@ -36,7 +33,7 @@ class LeaderHelper {
    * @param pvals
    * @return
    */
-  def pmax(pvals: Set[PValue]): JTreeMap[Long, Command] = {
+  def pmax(pvals: Set[PValue]): RichJTreeMap[Long, Command] = {
     def updateWithMaxBallot(acc: SortedMap[Long, PValue], pval: PValue) = acc.get(pval.slotNum) match {
       case None  => acc + (pval.slotNum -> pval)
       case Some(PValue(otherBallot, _, _)) if pval.ballot >= otherBallot => acc + (pval.slotNum -> pval)
@@ -44,7 +41,7 @@ class LeaderHelper {
     }
 
     val maxBallotMap = pvals.foldLeft(SortedMap[Long, PValue]())(updateWithMaxBallot)
-    maxBallotMap.foldLeft(new JTreeMap[Long, Command]()) {
+    maxBallotMap.foldLeft(new RichJTreeMap[Long, Command]()) {
       case (acc, (slot, pval)) =>
         acc.put(slot, pval.proposedCommand)
         acc

@@ -9,9 +9,9 @@ import scala.util.control.Breaks._
 import scala.collection.JavaConversions._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
-import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{SeekLeadership, Close}
+import com.comcast.xfinity.sirius.util.{RichJTreeMap, AkkaExternalAddressResolver}
 
 object Leader {
   trait HelperProvider {
@@ -53,16 +53,12 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   val myLeaderId = AkkaExternalAddressResolver(context.system).externalAddressFor(self)
   var ballotNum = Ballot(0, myLeaderId)
-  var proposals = new JTreeMap[Long, Command]()
+  var proposals = new RichJTreeMap[Long, Command]()
 
   var latestDecidedSlot: Long = startingSeqNum - 1
 
   var electedLeaderBallot: Option[Ballot] = None
   var currentLeaderWatcher: Option[ActorRef] = None
-
-  logger.info("Starting leader using ballotNum={}", ballotNum)
-
-  startScout()
 
   // XXX for monitoring...
   var longestReapDuration = 0L
@@ -70,6 +66,8 @@ class Leader(membership: Agent[Set[ActorRef]],
   var currentLeaderElectedSince = 0L
   var commanderTimeoutCount = 0L
   var lastTimedOutPValue: Option[PValue] = None
+
+  startScout()
 
   override def preStart() {
     registerMonitor(new LeaderInfo, config)
@@ -92,10 +90,12 @@ class Leader(membership: Agent[Set[ActorRef]],
       }
 
     case Adopted(newBallotNum, pvals) if ballotNum == newBallotNum =>
+      // XXX: update actually has side effects, however this assignment
+      //      is necessary for testing :/ removing in a later commit
       proposals = leaderHelper.update(proposals, leaderHelper.pmax(pvals))
-      for (slot <- proposals.keySet) {
-        startCommander(PValue(ballotNum, slot, proposals.get(slot)))
-      }
+      proposals.foreach(
+        (slot, command) => startCommander(PValue(ballotNum, slot, command))
+      )
       currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(ballotNum)
 
@@ -104,9 +104,9 @@ class Leader(membership: Agent[Set[ActorRef]],
       currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(newBallot)
       val electedLeader = context.actorFor(newBallot.leaderId)
-      for (slot <- proposals.keySet) {
-        electedLeader ! Propose(slot, proposals(slot))
-      }
+      proposals.foreach(
+        (slot, command) => electedLeader ! Propose(slot, command)
+      )
       stopLeaderWatcher(currentLeaderWatcher)
       currentLeaderWatcher = Some(createLeaderWatcher(newBallot, self))
 
@@ -169,45 +169,19 @@ class Leader(membership: Agent[Set[ActorRef]],
     context.actorOf(Props(new LeaderWatcher(newBallot, replyTo)))
   }
 
+  // drops all proposals held locally whos slot is <= latestDecidedSlot
   private def reapProposals() {
     val start = System.currentTimeMillis
-    val newProposals = filterOldProposals(proposals)
-
+    proposals.dropWhile(
+      (slot, _) => slot <= latestDecidedSlot
+    )
     val duration = System.currentTimeMillis() - start
-    logger.debug("Reaped Old Proposals in {}ms", duration)
+
+    logger.debug("Reaped old proposals up to {} in {}ms", latestDecidedSlot, duration)
+
     lastReapDuration = duration
     if (duration > longestReapDuration)
       longestReapDuration = duration
-
-    proposals = newProposals
-  }
-
-  /**
-   * Drops all all items from the beginning of toClean who's timestamp is greater than thirty
-   * minutes ago, until it encounters an item whose timestamp is current.  For example if the items
-   * in positions 1 and 3 were outdated, but the item in position 2 was current, only 1 would
-   * be dropped.  Returns the tuple of the position of the next highest command it did not reap,
-   * and the rest of the map after cleaning.
-   *
-   * This also has the side effect of altering toClean.  Send in a clone (don't you love farce?)
-   * if you need to keep the original.
-   */
-  private def filterOldProposals(toClean: JTreeMap[Long, Command]) = {
-    breakable {
-      for (key <- toClean.keySet.toArray) {
-        val slot = key.asInstanceOf[Long]
-        if (slot <= latestDecidedSlot) {
-          toClean.remove(slot)
-        } else {
-          // break on first that does not need to be reaped
-          break()
-        }
-      }
-    }
-
-    logger.debug("Reaped proposals for slots up to {}", latestDecidedSlot)
-
-    toClean
   }
 
   // monitoring hooks, to close over the scope of the class, it has to be this way

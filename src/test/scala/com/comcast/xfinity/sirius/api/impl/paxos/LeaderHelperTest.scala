@@ -3,9 +3,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.impl.Delete
-import collection.immutable.SortedMap
-import java.util.{TreeMap => JTreeMap}
-import scala.collection.JavaConversions._
+import com.comcast.xfinity.sirius.util.RichJTreeMap
 
 class LeaderHelperTest extends NiceTest {
 
@@ -14,16 +12,20 @@ class LeaderHelperTest extends NiceTest {
   describe("LeaderHelper") {
 
     describe("update") {
-      it ("must return a map containing all of the key/values in y, and all of the key/values in x without " +
-          "a corresponding key in y") {
-        val x = new JTreeMap[Long, Int](SortedMap((1L -> 5), (2L -> 3)))
-        val y = new JTreeMap[Long, Int](SortedMap((1L -> 2), (3L -> 4)))
+      it ("must return a reference to x, with all of the values from y overlaid on top of it") {
+        val x = new RichJTreeMap[Long, Int]()
+        x.put(1L, 5)
+        x.put(2L, 3)
 
-        val expected = new JTreeMap[Long, Int](SortedMap(
-          (1L -> 2), (2L -> 3), (3L -> 4)
-        ))
+        val y = new RichJTreeMap[Long, Int]()
+        y.put(1L, 2)
+        y.put(3L, 4)
 
-        assert(expected === leaderHelper.update(x, y))
+        assert(x === leaderHelper.update(x, y))
+        assert(3 === x.size)
+        assert(2 === x.get(1L))
+        assert(3 === x.get(2L))
+        assert(4 === x.get(3L))
       }
     }
 
@@ -36,10 +38,9 @@ class LeaderHelperTest extends NiceTest {
           PValue(Ballot(1, "a"), 2, Command(null, 123, Delete("3")))
         )
 
-        val expected = new JTreeMap[Long, Command](SortedMap[Long, Command](
-          (1L -> Command(null, 12345, Delete("2"))),
-          (2L -> Command(null, 123, Delete("3")))
-        ))
+        val expected = new RichJTreeMap[Long, Command]
+        expected.put(1L, Command(null, 12345, Delete("2")))
+        expected.put(2L, Command(null, 123, Delete("3")))
 
         assert(expected === leaderHelper.pmax(pvals))
       }
