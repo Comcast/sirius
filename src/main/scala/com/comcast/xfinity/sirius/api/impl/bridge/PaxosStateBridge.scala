@@ -10,7 +10,7 @@ import akka.event.Logging
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
-import java.util.{TreeMap => JTreeMap}
+import com.comcast.xfinity.sirius.util.RichJTreeMap
 
 object PaxosStateBridge {
   case object RequestGaps
@@ -81,7 +81,7 @@ class PaxosStateBridge(startingSeq: Long,
     context.system.scheduler.schedule(30 seconds, 30 seconds, self, RequestGaps)
 
   var nextSeq: Long = startingSeq
-  var eventBuffer = new JTreeMap[Long, OrderedEvent]()
+  var eventBuffer = new RichJTreeMap[Long, OrderedEvent]()
 
   override def preStart() {
     registerMonitor(new PaxosStateBridgeInfo, config)
@@ -142,18 +142,8 @@ class PaxosStateBridge(startingSeq: Long,
         })
         nextSeq = rangeEnd + 1
         // drop things in the event buffer < nextSeq
-        dropBefore(nextSeq, eventBuffer)
+        eventBuffer.dropWhile((slot, _) => slot < nextSeq)
       case _ =>
-    }
-  }
-
-  @tailrec
-  private def dropBefore(key: Long, events: JTreeMap[Long, OrderedEvent]) {
-    if (!events.isEmpty && events.firstKey < key) {
-      events.remove(events.firstKey)
-      dropBefore(key, events)
-    } else {
-      // terminate
     }
   }
 
