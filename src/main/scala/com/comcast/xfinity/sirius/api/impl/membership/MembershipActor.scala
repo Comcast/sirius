@@ -17,7 +17,7 @@ object MembershipActor {
    * updated.
    *
    * @param membershipAgent the Agent[Set[ActorRef]]() to keep updated with the cluster membership
-   * @param confing SiriusConfiguration object to use to configure this instance- see SiriusConfiguraiton
+   * @param config SiriusConfiguration object to use to configure this instance- see SiriusConfiguraiton
    *          for more information
    */
   def apply(membershipAgent: Agent[Set[ActorRef]],
@@ -29,7 +29,7 @@ object MembershipActor {
       case Some(path) => Path.fromString(path)
       case None => throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
     }
-    val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 30)
+    val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 2)
 
     new MembershipActor(
       membershipAgent,

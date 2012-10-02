@@ -32,9 +32,16 @@ object SiriusConfiguration {
   final val CLUSTER_CONFIG = "sirius.membership.config-path"
 
   /**
-   * How often to check CLUSTER_CONFIG for updates, in seconds (int)
+   * How often to check CLUSTER_CONFIG for updates, in seconds (int).
+   * Also is used to control how often Supervisor checks for updates to membership.
    */
   final val MEMBERSHIP_CHECK_INTERVAL = "sirius.membership.check-interval-secs"
+
+  /**
+   * How often to check the membershipAgent for updates, in seconds (int).
+   * Used by the supervisor when determining whether to keep paxos on or off.
+   */
+  final val PAXOS_MEMBERSHIP_CHECK_INTERVAL = "sirius.supervisor.paxos-check-interval-secs"
 
   /**
    * Whether or not to use paxos (boolean)
@@ -99,10 +106,16 @@ object SiriusConfiguration {
   final val LOG_REQUEST_RECEIVE_TIMEOUT_SECS = "sirius.log-request.receive-timeout-secs"
 
   /**
+   * How long (in seconds) to wait between checking for gaps
+   */
+  final val LOG_REQUEST_FREQ_SECS = "sirius.log-request.freq-secs"
+
+  /**
    * How long (in milliseconds) for requests in SiriusImpl to wait for a response from
    * the underlying actor (int)
    */
   final val CLIENT_TIMEOUT_MS = "sirius.client.ask-timeout-ms"
+
 }
 
 /**

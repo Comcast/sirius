@@ -4,7 +4,7 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import annotation.tailrec
-import akka.actor.{Props, Actor, ActorRef}
+import akka.actor.{InvalidActorNameException, Props, Actor, ActorRef}
 import akka.util.duration._
 import akka.event.Logging
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
@@ -74,11 +74,9 @@ class PaxosStateBridge(startingSeq: Long,
 
   var gapFetcher: Option[ActorRef] = None
 
-  // TODO: make this configurable- it's cool hardcoded for now, but once
-  //       SiriusConfig matures this would be pretty clean to configure
-  // also, start immediately.
+  val requestGapsFreq = config.getProp(SiriusConfiguration.LOG_REQUEST_FREQ_SECS, 30)
   val requestGapsCancellable =
-    context.system.scheduler.schedule(30 seconds, 30 seconds, self, RequestGaps)
+    context.system.scheduler.schedule(requestGapsFreq seconds, requestGapsFreq seconds, self, RequestGaps)
 
   var nextSeq: Long = startingSeq
   var eventBuffer = new RichJTreeMap[Long, OrderedEvent]()
@@ -226,7 +224,7 @@ class PaxosStateBridge(startingSeq: Long,
   }
 
   def createGapFetcherActor(seq: Long, target: ActorRef) =
-    context.actorOf(Props(new GapFetcher(seq, target, self, chunkSize, chunkReceiveTimeout)), "gapfetcher")
+    context.actorOf(Props(new GapFetcher(seq, target, self, chunkSize, chunkReceiveTimeout)))
 
   /**
    * Monitoring hooks
