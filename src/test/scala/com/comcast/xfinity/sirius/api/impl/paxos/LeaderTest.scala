@@ -27,11 +27,11 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
                          startingSeqNum: Long = 1,
                          helper: LeaderHelper = mock[LeaderHelper],
                          startScoutFun: => Unit = {},
-                         startCommanderFun: (PValue) => Unit = p => {}) = {
+                         startCommanderFun: (PValue, Int) => Unit = (p, i) => {}) = {
     TestActorRef(
       new Leader(membership, startingSeqNum) with Leader.HelperProvider {
         val leaderHelper = helper
-        def startCommander(pval: PValue) { startCommanderFun(pval) }
+        def startCommander(pval: PValue, ticks: Int = 0) { startCommanderFun(pval, ticks) }
         def startScout() { startScoutFun }
       }
     )
@@ -75,7 +75,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(
           helper = mockHelper,
-          startCommanderFun = (pval =>
+          startCommanderFun = ((pval, retries) =>
             // ignore ts, because we don't care
             pvalsCommandered += PValue(pval.ballot, pval.slotNum, pval.proposedCommand)
           )
@@ -145,7 +145,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(
           helper = mockHelper,
-          startCommanderFun = p => commanderStarted = true
+          startCommanderFun = (p, i) => commanderStarted = true
         )
         leader.underlyingActor.electedLeaderBallot = None
 
@@ -166,7 +166,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(
           helper = mockHelper,
-          startCommanderFun = p => commanderStarted = true
+          startCommanderFun = (p, i) => commanderStarted = true
         )
         leader.underlyingActor.electedLeaderBallot = Some(Ballot(0, ""))
 
@@ -186,7 +186,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(
           helper = mockHelper,
-          startCommanderFun = p => commanderStarted = true
+          startCommanderFun = (p, i) => commanderStarted = true
         )
 
         leader.underlyingActor.electedLeaderBallot = Some(leader.underlyingActor.ballotNum)
@@ -378,12 +378,14 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         assert(new JTreeMap[Long, Command](keepers) === leader.underlyingActor.proposals)
       }
-
     }
 
     describe("when receiving a CommanderTimeout") {
       it ("must nullify the commandered slot and update its internal record keeping") {
-        val leader = makeMockedUpLeader()
+        var commandersStarted = 0
+        val leader = makeMockedUpLeader(startCommanderFun = (p, i) =>
+          commandersStarted = commandersStarted + 1
+        )
 
         // stage a proposal
         val slot = 1L
@@ -394,12 +396,36 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         val lastTimeoutCount = leader.underlyingActor.commanderTimeoutCount
 
         val pval = PValue(Ballot(1, "a"), slot, command)
-        leader ! Commander.CommanderTimeout(pval)
+        leader ! Commander.CommanderTimeout(pval, 0)
 
-        assert(!leader.underlyingActor.proposals.containsKey(slot))
-
+        assert(0 === commandersStarted)
         assert(lastTimeoutCount + 1 === leader.underlyingActor.commanderTimeoutCount)
         assert(Some(pval) === leader.underlyingActor.lastTimedOutPValue)
+      }
+
+      it ("must count down retry ticks and not restart commanders if ticks <= 0") {
+        var commandersStarted = 0
+        var retriesLeft = 2
+        val leader = makeMockedUpLeader(startCommanderFun = (p, i) => {
+          commandersStarted = commandersStarted + 1
+          retriesLeft = i
+        })
+        val pval = PValue(Ballot(1, "a"), 1L, Command(null, 12345L, Delete("2")))
+
+        leader ! Commander.CommanderTimeout(pval, retriesLeft)
+
+        assert(1 === commandersStarted)
+        assert(1 === retriesLeft)
+
+        leader ! Commander.CommanderTimeout(pval, retriesLeft)
+
+        assert(2 === commandersStarted)
+        assert(0 === retriesLeft)
+
+        leader ! Commander.CommanderTimeout(pval, retriesLeft)
+
+        assert(2 === commandersStarted)
+        assert(0 === retriesLeft)
       }
     }
 }

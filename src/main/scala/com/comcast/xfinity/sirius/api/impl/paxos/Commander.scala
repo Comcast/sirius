@@ -9,11 +9,11 @@ case object Commander {
   /**
    * Message sent by a Commander to its leader when it times out
    */
-  case class CommanderTimeout(pval: PValue)
+  case class CommanderTimeout(pval: PValue, retriesLeft: Int)
 }
 
 class Commander(leader: ActorRef, acceptors: Set[ActorRef],
-                replicas: Set[ActorRef], pval: PValue) extends Actor {
+                replicas: Set[ActorRef], pval: PValue, retriesLeft: Int) extends Actor {
 
   var decidedAcceptors = Set[ActorRef]()
 
@@ -42,7 +42,7 @@ class Commander(leader: ActorRef, acceptors: Set[ActorRef],
       context.stop(self)
 
     case ReceiveTimeout =>
-      leader ! Commander.CommanderTimeout(pval)
+      leader ! Commander.CommanderTimeout(pval, retriesLeft)
       context.stop(self)
   }
 }

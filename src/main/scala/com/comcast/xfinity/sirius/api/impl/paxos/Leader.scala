@@ -16,20 +16,24 @@ import com.comcast.xfinity.sirius.util.{RichJTreeMap, AkkaExternalAddressResolve
 object Leader {
   trait HelperProvider {
     val leaderHelper: LeaderHelper
-    def startCommander(pval: PValue): Unit
+    def startCommander(pval: PValue, ticks: Int = 0): Unit
     def startScout(): Unit
   }
 
   def apply(membership: Agent[Set[ActorRef]],
             startingSeqNum: Long,
             config: SiriusConfiguration): Leader = {
+
+    //XXX make configurable!
+    val defaultRetries = 2
+
     new Leader(membership, startingSeqNum)(config) with HelperProvider {
       val leaderHelper = new LeaderHelper()
 
-      def startCommander(pval: PValue) {
+      def startCommander(pval: PValue, ticks: Int = defaultRetries) {
         // XXX: more members may show up between when acceptors() and replicas(),
         //      we may want to combine the two, and just reference membership
-        context.actorOf(Props(new Commander(self, acceptors(), replicas(), pval)))
+        context.actorOf(Props(new Commander(self, acceptors(), replicas(), pval, ticks)))
       }
 
       def startScout() {
@@ -138,10 +142,15 @@ class Leader(membership: Agent[Set[ActorRef]],
 
     // if the commander times out we nullify it's slot in our proposals
     //  and let someone else try out
-    case Commander.CommanderTimeout(pvalue) =>
+    case Commander.CommanderTimeout(pvalue, ticks) =>
       traceLogger.debug("Commander timed out for {}", pvalue)
 
-      proposals.remove(pvalue.slotNum)
+      if (ticks > 0) {
+        traceLogger.debug("Restarting commander for {}, {} ticks left", pvalue, ticks - 1)
+        startCommander(pvalue, ticks - 1)
+      } else {
+        proposals.remove(pvalue.slotNum)
+      }
 
       // some record keeping
       commanderTimeoutCount += 1

@@ -29,7 +29,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue))
+                                   pvalue, 0))
       acceptorProbes.foreach(
         probe => probe.expectMsg(Phase2A(commander, pvalue, probe.ref))
       )
@@ -45,7 +45,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue))
+                                   pvalue, 0))
 
       val biggerBallot = Ballot(2, "b")
       commander ! Phase2B(anAcceptorProbe.ref, biggerBallot)
@@ -62,7 +62,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue))
+                                   pvalue, 0))
 
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
 
@@ -79,7 +79,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue))
+                                   pvalue, 0))
 
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
 
@@ -87,7 +87,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       assert(commander.isTerminated)
     }
 
-    it ("must notify it's leader of the PValue it timed out negotiating") {
+    it ("must notify its leader of the PValue and retryCount it timed out negotiating") {
       val leaderProbe = TestProbe()
       val acceptorProbes = Set(TestProbe())
       val replicaProbes = Set(TestProbe())
@@ -96,10 +96,10 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue))
+                                   pvalue, 1))
 
       commander ! ReceiveTimeout
-      leaderProbe.expectMsg(Commander.CommanderTimeout(pvalue))
+      leaderProbe.expectMsg(Commander.CommanderTimeout(pvalue, 1))
       assert(commander.isTerminated)
     }
   }
