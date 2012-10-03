@@ -57,6 +57,9 @@ class FullSystemITest extends NiceTest with TimedTest {
 
   import FullSystemITest._
 
+  // the system name this sirius created on will be sirius-$port
+  // so that we can better get an idea of what's going on in the
+  // logs
   def makeSirius(port: Int,
                  latchTicks: Int = 3,
                  handler: Option[RequestHandler] = None,
@@ -81,6 +84,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     val siriusConfig = new SiriusConfiguration()
     siriusConfig.setProp(SiriusConfiguration.HOST, "localhost")
     siriusConfig.setProp(SiriusConfiguration.PORT, port)
+    siriusConfig.setProp(SiriusConfiguration.AKKA_SYSTEM_NAME, "sirius-%d".format(port))
     siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, membershipPath)
     siriusConfig.setProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, chunkSize)
     siriusConfig.setProp(SiriusConfiguration.LOG_REQUEST_FREQ_SECS, gapRequestFreqSecs)
@@ -114,9 +118,9 @@ class FullSystemITest extends NiceTest with TimedTest {
     val membershipFile = new File(tempDir, "membership")
     membershipPath = membershipFile.getAbsolutePath
     Path.fromString(membershipPath).append(
-      "akka://sirius-system@localhost:42289/user/sirius\n" +
-      "akka://sirius-system@localhost:42290/user/sirius\n" +
-      "akka://sirius-system@localhost:42291/user/sirius\n"
+      "akka://sirius-42289@localhost:42289/user/sirius\n" +
+      "akka://sirius-42290@localhost:42290/user/sirius\n" +
+      "akka://sirius-42291@localhost:42291/user/sirius\n"
     )
   }
 
@@ -226,9 +230,9 @@ class FullSystemITest extends NiceTest with TimedTest {
       val path = Path.fromString(membershipPath)
       path.delete()
       path.append(
-        "akka://sirius-system@localhost:42289/user/sirius\n" +
-        "akka://sirius-system@localhost:42290/user/sirius\n" +
-        "akka://sirius-system@localhost:42291/user/sirius\n"
+        "akka://sirius-42289@localhost:42289/user/sirius\n" +
+        "akka://sirius-42290@localhost:42290/user/sirius\n" +
+        "akka://sirius-42291@localhost:42291/user/sirius\n"
       )
 
       val numCommands = 50
@@ -256,8 +260,8 @@ class FullSystemITest extends NiceTest with TimedTest {
 
       path.delete()
       path.append(
-        "akka://sirius-system@localhost:42289/user/sirius\n" +
-        "akka://sirius-system@localhost:42291/user/sirius\n"
+        "akka://sirius-42289@localhost:42289/user/sirius\n" +
+        "akka://sirius-42291@localhost:42291/user/sirius\n"
       )
       waitForMembership(sirii, 2)
 

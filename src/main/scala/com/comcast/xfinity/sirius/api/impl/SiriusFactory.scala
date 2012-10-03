@@ -54,7 +54,9 @@ object SiriusFactory {
   private[sirius] def createInstance(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
                    siriusLog: SiriusLog): SiriusImpl = {
 
-    implicit val actorSystem = ActorSystem("sirius-system", createActorSystemConfig(siriusConfig))
+    val systemName = siriusConfig.getProp(SiriusConfiguration.AKKA_SYSTEM_NAME, "sirius-system")
+
+    implicit val actorSystem = ActorSystem(systemName, createActorSystemConfig(siriusConfig))
 
     // inject an mbean server, without regard for the one that may have been there
     val mbeanServer = ManagementFactory.getPlatformMBeanServer

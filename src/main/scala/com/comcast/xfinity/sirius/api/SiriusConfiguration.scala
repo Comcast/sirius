@@ -27,6 +27,15 @@ object SiriusConfiguration {
   final val AKKA_EXTERN_CONFIG = "sirius.akka.system-config-overrides"
 
   /**
+   * The name of the ActorSystem. Defaults to sirius-system. (string)
+   *
+   * End users will probably never override this, but it is convenient
+   * for when running multiple nodes on the same host sharing the same
+   * log, ie when testing :).
+   */
+  final val AKKA_SYSTEM_NAME = "sirius.akka.actor-system.name"
+
+  /**
    * Location of cluster membership configuration file (string)
    */
   final val CLUSTER_CONFIG = "sirius.membership.config-path"
