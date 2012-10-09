@@ -162,11 +162,13 @@ class SiriusSupervisor(implicit config: SiriusConfiguration = new SiriusConfigur
     }
     case paxosMessage: PaxosMessage => orderingActor match {
       case Some(actor) => actor forward paxosMessage
-      case None => // drop it like it's hot
+      case None =>
+        logger.debug("Dropping {} PaxosMessage because Paxos is not up (yet?)", paxosMessage.getClass.getName)
     }
     case orderedReq: NonCommutativeSiriusRequest => orderingActor match {
       case Some(actor) => actor forward orderedReq
-      case None => // drop it like it's hot
+      case None =>
+        logger.debug("Dropping {} because Paxos is not up (yet?)", orderedReq)
     }
     case unknown: AnyRef => logger.warning("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
