@@ -81,6 +81,9 @@ class PaxosStateBridge(startingSeq: Long,
   var nextSeq: Long = startingSeq
   var eventBuffer = new RichJTreeMap[Long, OrderedEvent]()
 
+  logger.info("Starting PaxosStateBridge with nextSeq {}, attempting catch up every {}s",
+    nextSeq, requestGapsFreq)
+
   override def preStart() {
     registerMonitor(new PaxosStateBridgeInfo, config)
   }
@@ -121,8 +124,6 @@ class PaxosStateBridge(startingSeq: Long,
         requestNextChunk()
 
     case RequestGaps =>
-      //XXX: logging unreadyDecisions... should remove in favor or better monitoring later
-      logger.debug("Unready Decisions count: {}", eventBuffer.size)
       runGapFetcher()
   }
 
@@ -133,10 +134,10 @@ class PaxosStateBridge(startingSeq: Long,
         events.foreach((event: OrderedEvent) => {
           if (event.sequence >= nextSeq) {
             stateSupActor ! event
+            traceLogger.debug("Wrote caught-up event for sequence={}, " +
+              "time since original command submission: {}ms", event.sequence,
+              System.currentTimeMillis() - event.timestamp)
           }
-          traceLogger.debug("Writing caught-up event for sequence={}, " +
-            "time since original command submission: {}ms", event.sequence,
-            System.currentTimeMillis() - event.timestamp)
         })
         nextSeq = rangeEnd + 1
         // drop things in the event buffer < nextSeq
@@ -223,8 +224,10 @@ class PaxosStateBridge(startingSeq: Long,
     }
   }
 
-  def createGapFetcherActor(seq: Long, target: ActorRef) =
+  def createGapFetcherActor(seq: Long, target: ActorRef) = {
+    traceLogger.debug("Creating gap fetcher to request {} events starting at {} from {}", chunkSize, seq, target)
     context.actorOf(Props(new GapFetcher(seq, target, self, chunkSize, chunkReceiveTimeout)))
+  }
 
   /**
    * Monitoring hooks

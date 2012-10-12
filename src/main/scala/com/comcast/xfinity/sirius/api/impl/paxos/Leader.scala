@@ -94,6 +94,8 @@ class Leader(membership: Agent[Set[ActorRef]],
       }
 
     case Adopted(newBallotNum, pvals) if ballotNum == newBallotNum =>
+      logger.debug("Assuming leadership using {}", ballotNum)
+
       // XXX: update actually has side effects, however this assignment
       //      is necessary for testing :/ removing in a later commit
       proposals = leaderHelper.update(proposals, leaderHelper.pmax(pvals))
@@ -105,6 +107,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
     // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
     case Preempted(newBallot) if newBallot > ballotNum =>
+      logger.debug("Becoming subservient to new leader with ballot {}", newBallot)
       currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(newBallot)
       val electedLeader = context.actorFor(newBallot.leaderId)
