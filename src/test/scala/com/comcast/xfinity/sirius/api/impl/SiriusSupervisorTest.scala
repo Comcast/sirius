@@ -116,7 +116,10 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
 
       supervisor ! CheckPaxosMembership
 
-      startStopProbe.expectMsg('Start)
+      startStopProbe.fishForMessage(hint="Expected 'Start evantually") {
+        case 'Start => true
+        case 'Stop => false
+      }
     }
 
     it("should fire off stopOrderingActor if it checks membership and it's not in there") {

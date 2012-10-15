@@ -3,11 +3,9 @@ package com.comcast.xfinity.sirius.api.impl
 import bridge.PaxosStateBridge
 import membership._
 import paxos.PaxosMessages.PaxosMessage
-import akka.actor.{Kill, Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.agent.Agent
-import akka.util.Duration
 import akka.util.duration._
-import java.util.concurrent.TimeUnit
 import paxos.PaxosSup
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
@@ -117,7 +115,7 @@ class SiriusSupervisor(implicit config: SiriusConfiguration = new SiriusConfigur
   private val logger = Logging(context.system, "Sirius")
 
   val initSchedule = context.system.scheduler
-    .schedule(Duration.Zero, Duration.create(50, TimeUnit.MILLISECONDS), self, SiriusSupervisor.IsInitializedRequest)
+    .schedule(0 seconds, 50 milliseconds, self, SiriusSupervisor.IsInitializedRequest)
 
   val checkIntervalSecs = config.getProp(SiriusConfiguration.PAXOS_MEMBERSHIP_CHECK_INTERVAL, 2.0)
   val membershipCheckSchedule = context.system.scheduler.
