@@ -18,9 +18,8 @@ import scala.util.parsing.combinator.RegexParsers
  *  system@host:1234/path -> akka://system@host:1234/path
  *  /local/path           -> /local/path
  *
- * All of the above inputs may also be prefixed with "akka://" with the
- * exception of /local/path, which is a special case that allows us to
- * still supply a local path.
+ * Anything prefixed with "akka://" will be passed through without any
+ * parsing.
  */
 object SiriusShortNameParser extends RegexParsers {
 
@@ -53,8 +52,8 @@ object SiriusShortNameParser extends RegexParsers {
       case shp ~ None => SysHostPortPath(shp, "/user/sirius")
     }
 
-  private def akkaAddress: Parser[String] =
-    opt("akka://") ~> systemHostPortPath ^^ {
+  private def shortAddress: Parser[String] =
+    systemHostPortPath ^^ {
       case SysHostPortPath(
         SysHostPort(sysName,
           HostPort(hostName, portNum)
@@ -72,9 +71,14 @@ object SiriusShortNameParser extends RegexParsers {
    *         None if parsing failed
    */
   // XXX: is Option really the right return?
-  def parse(shortName: String): Option[String] =
-    parseAll(akkaAddress, shortName) match {
-      case Success(v, _) => Some(v)
-      case f => None
+  def parse(shortName: String): Option[String] = {
+    if (shortName.startsWith("akka://")) {
+      Some(shortName)
+    } else {
+      parseAll(shortAddress, shortName) match {
+        case Success(v, _) => Some(v)
+        case f => None
+      }
     }
+  }
 }
