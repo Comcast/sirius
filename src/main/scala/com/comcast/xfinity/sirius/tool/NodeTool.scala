@@ -9,6 +9,7 @@ import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import akka.actor.ActorRef
 import com.comcast.xfinity.sirius.api.impl.status.StatusWorker._
 import com.comcast.xfinity.sirius.api.impl.status.NodeStats.FullNodeStatus
+import com.comcast.xfinity.sirius.util.SiriusShortNameParser
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -33,20 +34,20 @@ object NodeTool {
   private def doMain(args: Array[String]) {
     args match {
       case Array("next-seq", nodeId) =>
-        val ref = ActorSystemHelper.getActorSystem().actorFor(nodeId)
+        val ref = getNodeRef(nodeId)
         println(getNextSeq(ref))
 
       case Array("log-range", begin, end, nodeId) =>
-        val ref = ActorSystemHelper.getActorSystem().actorFor(nodeId)
+        val ref = getNodeRef(nodeId)
         getLogRange(ref, begin.toLong, end.toLong).events.foreach(println)
 
       case Array("log-tail", nodeId) =>
-        val ref = ActorSystemHelper.getActorSystem().actorFor(nodeId)
+        val ref = getNodeRef(nodeId)
         val lastSeq = getNextSeq(ref) - 1
         getLogRange(ref, lastSeq - 20, lastSeq).events.foreach(println)
 
       case Array("status", nodeId) =>
-        val ref = ActorSystemHelper.getActorSystem().actorFor(nodeId)
+        val ref = getNodeRef(nodeId)
         println(getNodeStatus(ref))
 
       case _ =>
@@ -92,6 +93,16 @@ object NodeTool {
     val statusFuture = ask(ref, GetStatus).mapTo[FullNodeStatus]
     Await.result(statusFuture, timeout.duration)
   }
+
+  private def getNodeRef(nodeAddrStr: String): ActorRef =
+    SiriusShortNameParser.parse(nodeAddrStr) match {
+      case Some(addr) =>
+        ActorSystemHelper.getActorSystem().actorFor(addr)
+      case None =>
+        throw new IllegalArgumentException(nodeAddrStr + " does not appear to be a vaild " +
+          "Akka address or Sirius node short name")
+    }
+
 
   private def printUsage() {
     Console.err.println("Usage:")
