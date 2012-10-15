@@ -15,7 +15,6 @@ import scala.Tuple2
 import java.util.UUID
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
-import java.util.concurrent.TimeUnit
 import annotation.tailrec
 
 object FullSystemITest {
@@ -39,12 +38,8 @@ object FullSystemITest {
       case Seq(_) => true
     }
   }
-  def verifyWalsAreEquivalent(first: SiriusLog, rest: SiriusLog*): Boolean = {
-    verifyWalsAreEquivalent(List(first) ++ rest)
-  }
 
-  def getWalSize(wal: SiriusLog) =
-    extractEvents(wal).size
+  def getWalSize(wal: SiriusLog) = extractEvents(wal).size
 
   def verifyWalSize(wal: SiriusLog, expectedSize: Long): Boolean = {
     val walSize = getWalSize(wal)
@@ -149,7 +144,8 @@ class FullSystemITest extends NiceTest with TimedTest {
     futures.foldLeft(List[String]()) {
       case (acc, (future, command)) =>
         try {
-          if (false != future.get.hasValue) {
+          // We're expecting SiriusResult.none, so having a value is bad
+          if (future.get.hasValue) {
             command :: acc
           } else {
             acc
@@ -184,15 +180,19 @@ class FullSystemITest extends NiceTest with TimedTest {
       val (sirius3, _, log3) = makeSirius(42291)
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
-      val logs = List(log1, log2, log3)
 
       val failed = fireAndRetryCommands(sirii, 1, numCommands, 3)
       println("No response for %s out of %s".format(failed.size, numCommands))
       assert(0 === failed.size, "There were failed commands")
 
       assert(waitForTrue(verifyWalSize(log1, numCommands), 20000, 500),
-        "Wal did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
-      assert(waitForTrue(verifyWalsAreEquivalent(logs), 500, 100),
+        "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
+      assert(waitForTrue(verifyWalSize(log2, numCommands), 5000, 500),
+        "Wal 2 did not contain expected number of events (%s out of %s)".format(getWalSize(log2), numCommands))
+      assert(waitForTrue(verifyWalSize(log3, numCommands), 5000, 500),
+        "Wal 3 did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands))
+
+      assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
         "Wals were not equivalent")
     }
 
@@ -207,22 +207,20 @@ class FullSystemITest extends NiceTest with TimedTest {
       println("No response for %s out of %s".format(failed.size, numCommands))
 
       assert(waitForTrue(verifyWalSize(log1, numCommands), 20000, 500),
-        "Wal did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
-      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2), 500, 100),
+        "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
+      assert(waitForTrue(verifyWalSize(log2, numCommands), 5000, 500),
+        "Wal 2 did not contain expected number of events (%s out of %s)".format(getWalSize(log2), numCommands))
+
+      assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2)), 500, 100),
         "Wals were not equivalent")
 
-      val (sirius3, _, log3) = makeSirius(42291)
+      val (sirius3, _, log3) = makeSirius(42291, gapRequestFreqSecs = 3)
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
 
-      // TODO: this is gross, we should instead make the catch up interval small in config,
-      //       and pass it down.  Just doing this temporarily until we fix the alleged
-      //       Bridge/Replica bug
-      sirius3.actorSystem.actorFor("/user/sirius/paxos-state-bridge") ! PaxosStateBridge.RequestGaps
-
       assert(waitForTrue(verifyWalSize(log3, numCommands), 20000, 500),
         "Caught-up wal did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands))
-      assert(waitForTrue(verifyWalsAreEquivalent(log1, log2, log3), 2000, 250),
+      assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 2000, 250),
         "Original and caught-up wals were not equivalent")
     }
 
@@ -242,15 +240,17 @@ class FullSystemITest extends NiceTest with TimedTest {
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
 
-      val logs = List(log1, log2, log3)
-
       val failed = fireAndRetryCommands(sirii, 1, numCommands, 3)
       println("No response for %s out of %s".format(failed.size, numCommands))
 
-      // log1 and log2 are working together
       assert(waitForTrue(verifyWalSize(log1, numCommands), 20000, 500),
-        "Wal did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
-      assert(waitForTrue(verifyWalsAreEquivalent(logs), 500, 100),
+        "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
+      assert(waitForTrue(verifyWalSize(log2, numCommands), 5000, 500),
+        "Wal 2 did not contain expected number of events (%s out of %s)".format(getWalSize(log2), numCommands))
+      assert(waitForTrue(verifyWalSize(log3, numCommands), 5000, 500),
+        "Wal 3 did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands))
+
+      assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
         "Wals were not equivalent")
 
       // ok, now let's take 2 out of the cluster...
@@ -258,7 +258,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       //   and wait for leader election.
       // XXX "probably" above, arg
 
-      path.delete()
+      path.truncate(0)
       path.append(
         "akka://sirius-42289@localhost:42289/user/sirius\n" +
         "akka://sirius-42291@localhost:42291/user/sirius\n"
@@ -268,15 +268,17 @@ class FullSystemITest extends NiceTest with TimedTest {
       val failed2 = fireAndRetryCommands(List(sirius1, sirius3), numCommands + 1, numCommands * 2, 3)
       println("No response for %s out of %s".format(failed2.size, numCommands))
 
-      // log1 and log3 are working together
+      // nodes of log1 and log3 are running normally
       assert(waitForTrue(verifyWalSize(log1, numCommands * 2), 20000, 500),
-        "Wal did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands * 2))
+        "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands * 2))
+      assert(waitForTrue(verifyWalSize(log3, numCommands * 2), 5000, 500),
+        "Wal 3 did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands * 2))
 
       // log2 is in slave mode, catching up
       assert(waitForTrue(verifyWalSize(log2, numCommands * 2), 20000, 500),
         "Slave did not catch up for all commands (%s out of %s)".format(getWalSize(log2), numCommands * 2))
 
-      assert(waitForTrue(verifyWalsAreEquivalent(logs), 500, 100),
+      assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
         "Master and slave wals not equivalent")
     }
   }
