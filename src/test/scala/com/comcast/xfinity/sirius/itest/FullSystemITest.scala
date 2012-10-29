@@ -130,7 +130,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     assert(waitForTrue(sirii.forall(_.getMembership.get.size == membersExpected), 5000, 500),
       "Membership did not reach expected size")
     sirii.foreach(_.supervisor ! CheckPaxosMembership)
-    Thread.sleep(1000)
+    Thread.sleep(2000)
   }
 
   def fireAndAwait(sirii: List[SiriusImpl], commands: List[String]) = {
@@ -152,7 +152,6 @@ class FullSystemITest extends NiceTest with TimedTest {
           }
         } catch {
           case ex: Exception =>
-            println("Got exception collecting future for %s: %s".format(command, ex))
             command :: acc
         }
     }.reverse
@@ -181,15 +180,15 @@ class FullSystemITest extends NiceTest with TimedTest {
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
 
-      val failed = fireAndRetryCommands(sirii, 1, numCommands, 3)
+      val failed = fireAndRetryCommands(sirii, 1, numCommands, 4)
       println("No response for %s out of %s".format(failed.size, numCommands))
       assert(0 === failed.size, "There were failed commands")
 
-      assert(waitForTrue(verifyWalSize(log1, numCommands), 20000, 500),
+      assert(waitForTrue(verifyWalSize(log1, numCommands), 30000, 500),
         "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
-      assert(waitForTrue(verifyWalSize(log2, numCommands), 5000, 500),
+      assert(waitForTrue(verifyWalSize(log2, numCommands), 30000, 500),
         "Wal 2 did not contain expected number of events (%s out of %s)".format(getWalSize(log2), numCommands))
-      assert(waitForTrue(verifyWalSize(log3, numCommands), 5000, 500),
+      assert(waitForTrue(verifyWalSize(log3, numCommands), 30000, 500),
         "Wal 3 did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands))
 
       assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
@@ -203,12 +202,12 @@ class FullSystemITest extends NiceTest with TimedTest {
       sirii = List(sirius1, sirius2)
       waitForMembership(sirii, 3)
 
-      val failed = fireAndRetryCommands(sirii, 1, numCommands, 3)
+      val failed = fireAndRetryCommands(sirii, 1, numCommands, 4)
       println("No response for %s out of %s".format(failed.size, numCommands))
 
-      assert(waitForTrue(verifyWalSize(log1, numCommands), 20000, 500),
+      assert(waitForTrue(verifyWalSize(log1, numCommands), 30000, 500),
         "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
-      assert(waitForTrue(verifyWalSize(log2, numCommands), 5000, 500),
+      assert(waitForTrue(verifyWalSize(log2, numCommands), 30000, 500),
         "Wal 2 did not contain expected number of events (%s out of %s)".format(getWalSize(log2), numCommands))
 
       assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2)), 500, 100),
@@ -218,7 +217,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
 
-      assert(waitForTrue(verifyWalSize(log3, numCommands), 20000, 500),
+      assert(waitForTrue(verifyWalSize(log3, numCommands), 30000, 500),
         "Caught-up wal did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands))
       assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 2000, 250),
         "Original and caught-up wals were not equivalent")
@@ -240,14 +239,14 @@ class FullSystemITest extends NiceTest with TimedTest {
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
 
-      val failed = fireAndRetryCommands(sirii, 1, numCommands, 3)
+      val failed = fireAndRetryCommands(sirii, 1, numCommands, 4)
       println("No response for %s out of %s".format(failed.size, numCommands))
 
-      assert(waitForTrue(verifyWalSize(log1, numCommands), 20000, 500),
+      assert(waitForTrue(verifyWalSize(log1, numCommands), 30000, 500),
         "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
-      assert(waitForTrue(verifyWalSize(log2, numCommands), 5000, 500),
+      assert(waitForTrue(verifyWalSize(log2, numCommands), 30000, 500),
         "Wal 2 did not contain expected number of events (%s out of %s)".format(getWalSize(log2), numCommands))
-      assert(waitForTrue(verifyWalSize(log3, numCommands), 5000, 500),
+      assert(waitForTrue(verifyWalSize(log3, numCommands), 30000, 500),
         "Wal 3 did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands))
 
       assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
@@ -265,17 +264,17 @@ class FullSystemITest extends NiceTest with TimedTest {
       )
       waitForMembership(sirii, 2)
 
-      val failed2 = fireAndRetryCommands(List(sirius1, sirius3), numCommands + 1, numCommands * 2, 3)
+      val failed2 = fireAndRetryCommands(List(sirius1, sirius3), numCommands + 1, numCommands * 2, 4)
       println("No response for %s out of %s".format(failed2.size, numCommands))
 
       // nodes of log1 and log3 are running normally
-      assert(waitForTrue(verifyWalSize(log1, numCommands * 2), 20000, 500),
+      assert(waitForTrue(verifyWalSize(log1, numCommands * 2), 30000, 500),
         "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands * 2))
-      assert(waitForTrue(verifyWalSize(log3, numCommands * 2), 5000, 500),
+      assert(waitForTrue(verifyWalSize(log3, numCommands * 2), 30000, 500),
         "Wal 3 did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands * 2))
 
       // log2 is in slave mode, catching up
-      assert(waitForTrue(verifyWalSize(log2, numCommands * 2), 20000, 500),
+      assert(waitForTrue(verifyWalSize(log2, numCommands * 2), 30000, 500),
         "Slave did not catch up for all commands (%s out of %s)".format(getWalSize(log2), numCommands * 2))
 
       assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
