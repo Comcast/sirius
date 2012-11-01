@@ -4,6 +4,12 @@ version := "1.0"
 
 scalaVersion := "2.9.2"
 
+// Set the artifact name.
+artifactName := { (String, ModuleID, Artifact) => "sirius.jar" }
+
+// disable using the Scala version in output paths and artifacts
+crossPaths := false
+
 // compiler options
 javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
