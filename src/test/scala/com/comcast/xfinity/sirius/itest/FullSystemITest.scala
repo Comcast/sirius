@@ -3,10 +3,8 @@ package com.comcast.xfinity.sirius.itest
 import scalax.file.Path
 import com.comcast.xfinity.sirius.{LatchedRequestHandler, TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.{RequestHandler, SiriusConfiguration}
 import java.io.File
 import com.comcast.xfinity.sirius.api.impl._
-import bridge.PaxosStateBridge
 import membership.CheckClusterConfig
 import util.Random
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
@@ -16,6 +14,7 @@ import java.util.UUID
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import annotation.tailrec
+import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
 
 object FullSystemITest {
   /**
@@ -135,26 +134,24 @@ class FullSystemITest extends NiceTest with TimedTest {
 
   def fireAndAwait(sirii: List[SiriusImpl], commands: List[String]) = {
     val numSirii = sirii.size
-    val futures = commands.map(
+    val futuresAndCommands = commands.map(
       (i) => {
         Thread.sleep(10)
         (sirii(Random.nextInt(numSirii)).enqueueDelete(i), i)
       }
     )
-    futures.foldLeft(List[String]()) {
-      case (acc, (future, command)) =>
+    val failedFuturesAndCommands = futuresAndCommands.filterNot (
+      (futureAndCommand) =>
         try {
-          // We're expecting SiriusResult.none, so having a value is bad
-          if (future.get.hasValue) {
-            command :: acc
-          } else {
-            acc
-          }
+          SiriusResult.none == futureAndCommand._1.get
         } catch {
           case ex: Exception =>
-            command :: acc
+            println("Future retrieval failed: " + ex)
+            false
         }
-    }.reverse
+    )
+
+    failedFuturesAndCommands.map(_._2)
   }
 
   def fireAndRetryCommands(sirii: List[SiriusImpl], first: Int, last: Int, retries: Int) = {
@@ -168,7 +165,7 @@ class FullSystemITest extends NiceTest with TimedTest {
         failedCommands
       }
     }
-    fireAndRetryCommandsAux(sirii, (first to last).map(_.toString).toList, retries)
+    fireAndRetryCommandsAux(sirii, List.range(first, last + 1).map(_.toString), retries)
   }
 
   describe("a full sirius implementation") {
