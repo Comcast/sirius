@@ -1,11 +1,18 @@
 name := "sirius"
 
-version := "1.0"
+version := "1.0.1-SNAPSHOT"
 
 scalaVersion := "2.9.2"
 
-// Set the artifact name.
-artifactName := { (String, ModuleID, Artifact) => "sirius.jar" }
+// Set the artifact names.
+artifactName := { (scalaVersion: String, module: ModuleID, artifact: Artifact) =>
+  artifact.`type` match {
+    case "jar" => "sirius.jar"
+    case "src" => "sirius-sources.jar"
+    case "doc" => "sirius-javadoc.jar"
+    case _ => Artifact.artifactName(scalaVersion, module, artifact)
+  }
+}
 
 // disable using the Scala version in output paths and artifacts
 crossPaths := false
