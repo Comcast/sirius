@@ -4,9 +4,6 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{Props, Actor, ActorRef}
 import akka.agent.Agent
 import akka.event.Logging
-import java.util.{TreeMap => JTreeMap}
-import scala.util.control.Breaks._
-import scala.collection.JavaConversions._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
