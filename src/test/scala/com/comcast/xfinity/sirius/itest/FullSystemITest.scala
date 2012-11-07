@@ -15,7 +15,6 @@ import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import annotation.tailrec
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
-import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.SeekLeadership
 
 object FullSystemITest {
   /**
@@ -250,10 +249,10 @@ class FullSystemITest extends NiceTest with TimedTest {
       assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
         "Wals were not equivalent")
 
-      // ask sirius1 to assume leadership, then remove sirius2 from the cluster
-      val leader1 = sirius1.actorSystem.actorFor("/user/sirius/paxos/leader")
-      leader1 ! SeekLeadership
-      Thread.sleep(2000)
+      // ok, now let's take 2 out of the cluster...
+      // needs to be 1 or 2, since 3 is (probably) the leader and we don't want to sit here
+      //   and wait for leader election.
+      // XXX "probably" above, arg
 
       path.truncate(0)
       path.append(
