@@ -9,7 +9,7 @@ for j in `ls $sirius_base/lib/*.jar`; do
 done
 
 if [ "x$JAVA_OPTS" == "x" ]; then
-    JAVA_OPTS="-Xms2g -Xmx4g"
+    JAVA_OPTS="-Xms2g -Xmx8g"
 fi
 
 java $JAVA_OPTS -cp $SIRIUS_CLASSPATH com.comcast.xfinity.sirius.tool.WalTool $@
