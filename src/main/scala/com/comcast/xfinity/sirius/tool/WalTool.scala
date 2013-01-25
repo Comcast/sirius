@@ -5,6 +5,8 @@ import java.io.File
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.uberstore.seqindex.ReadOnlySeqIndex
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
+import util.matching.Regex
+import com.comcast.xfinity.sirius.api.impl.{Delete, Put, OrderedEvent}
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -27,6 +29,18 @@ object WalTool {
     Console.err.println("       -f option enables follow mode.  Break follow mode with ^C.")
     Console.err.println("       (follow mode is recommended, since wal needs to be initialized")
     Console.err.println("        with each instantiation, which takes a few seconds")
+    Console.err.println()
+    Console.err.println("   range <begin> <end> <walDir>")
+    Console.err.println("       Show all entries in begin to end range, inclusive")
+    Console.err.println()
+    Console.err.println("   keyFilter <regexp> <inWalDir> <outWalDir>")
+    Console.err.println("       Write all OrderedEvents in UberStore in inWalDir having a key")
+    Console.err.println("       matching regexp to new UberStore in outWalDir")
+    Console.err.println()
+    Console.err.println("   keyFilterNot <regexp> <inWalDir> <outWalDir>")
+    Console.err.println("       Same as keyFilter, except the resulting UberStore contains all")
+    Console.err.println("       OrderedEvents not matching regexp")
+
   }
 
   def main(args: Array[String]) {
@@ -44,6 +58,18 @@ object WalTool {
         tailUber(walDir, number.toInt)
       case Array("tail", "-n", number, "-f", walDir) =>
         tailUber(walDir, number.toInt, follow = true)
+
+      case Array("range", begin, end, walDir) =>
+        printSeq(UberStore(walDir), begin.toLong, end.toLong)
+
+      case Array("keyFilter", regexpStr, inWal, outWal) =>
+        val regexp = regexpStr.r
+        val filterFun: OrderedEvent => Boolean = keyMatch(regexp, _)
+        filter(inWal, outWal, filterFun)
+      case Array("keyFilterNot", regexpStr, inWal, outWal) =>
+        val regexp = regexpStr.r
+        val filterFun: OrderedEvent => Boolean = !keyMatch(regexp, _)
+        filter(inWal, outWal, filterFun)
 
       case _ => printUsage()
     }
@@ -133,4 +159,51 @@ object WalTool {
     )
   }
 
+  /**
+   * Does the key of the OrderedEvent's contains NonCommutativeSiriusRequest match
+   * r?
+   *
+   * @param r Regexp to match
+   * @param evt OrderedEvent to check
+   */
+  private def keyMatch(r: Regex, evt: OrderedEvent): Boolean = evt match {
+    case OrderedEvent(_, _, Put(key, _)) => r.findFirstIn(key) != None
+    case OrderedEvent(_, _, Delete(key)) => r.findFirstIn(key) != None
+    case _ => false
+  }
+
+  /**
+   * Write all entries from UberStore specified by inUberDir satisfying
+   * pred to outUberDir, which should not exist.
+   *
+   * @param inUberDir input UberStore directory
+   * @param outUberDir output UberStore directory
+   * @param pred function taking an OrderedEvent and returning true if
+   *          it should be included, false if not
+   */
+  private def filter(inUberDir: String, outUberDir: String, pred: OrderedEvent => Boolean) {
+    createFreshDir(outUberDir)
+
+    val inWal = UberStore(inUberDir)
+    val outWal = UberStore(outUberDir)
+
+    filter(inWal, outWal, pred)
+  }
+
+  /**
+   * Write all entries in inWal which satisfy pred to outWal
+   *
+   * @param inWal input write ahead log
+   * @param outWal output write ahead log
+   * @param pred function taking an OrderedEvent and returning true if
+   *          it should be included, false if not
+   */
+  private def filter(inWal: SiriusLog, outWal: SiriusLog, pred: OrderedEvent => Boolean) {
+    // XXX: I know this is side effectful, deal with it, a foreach is probably a good
+    //      thing to put back on SiriusLog.
+    inWal.foldLeft(outWal) {
+      case (wal, evt) if pred(evt) => wal.writeEntry(evt); wal
+      case (wal, _) => wal
+    }
+  }
 }
