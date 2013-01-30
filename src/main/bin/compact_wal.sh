@@ -12,6 +12,10 @@ then
   exit 1
 fi
 
+if [ "x$JAVA_OPTS" == "x" ]; then
+    JAVA_OPTS="-Xms8g -Xmx8g"
+fi
+
 UBERSTORE_BASE=$1
 
 WAL_DIR=$UBERSTORE_BASE/uberstore
@@ -28,7 +32,7 @@ echo "Copying $WAL_DIR to $BACKUP_WAL_DIR"
 cp -r $WAL_DIR $BACKUP_WAL_DIR || die "Error backing up log."
 
 echo "Compacting $WAL_DIR into $COMPACTED_WAL_DIR"
-$UBERSTORE_BASE/sirius-standalone/bin/waltool compact two-pass $WAL_DIR $COMPACTED_WAL_DIR || die "Error compacting log."
+JAVA_OPTS="$JAVA_OPTS" $UBERSTORE_BASE/sirius-standalone/bin/waltool compact two-pass $WAL_DIR $COMPACTED_WAL_DIR || die "Error compacting log."
 
 echo "Copying $COMPACTED_WAL_DIR to $WAL_DIR"
 for f in `ls -1 $COMPACTED_WAL_DIR`
