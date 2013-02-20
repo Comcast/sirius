@@ -50,6 +50,14 @@ object NodeTool {
         val ref = getNodeRef(nodeId)
         println(getNodeStatus(ref))
 
+      // XXX: the following is a short term fix, if we want to be able to force election
+      //      we should talk about putting the SeekLeadership message elsewhere
+      case Array("force-seek-leadership", nodeId) =>
+        val leaderAddr = getNodeAddressString(nodeId) + "/paxos/leader"
+        val leaderRef = ActorSystemHelper.getActorSystem().actorFor(leaderAddr)
+        // XXX: using the full path here because this is dirty, and that should be known!
+        leaderRef ! com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.SeekLeadership
+
       case _ =>
         printUsage()
         System.exit(1)
@@ -94,14 +102,17 @@ object NodeTool {
     Await.result(statusFuture, timeout.duration)
   }
 
-  private def getNodeRef(nodeAddrStr: String): ActorRef =
-    SiriusShortNameParser.parse(nodeAddrStr) match {
-      case Some(addr) =>
-        ActorSystemHelper.getActorSystem().actorFor(addr)
-      case None =>
-        throw new IllegalArgumentException(nodeAddrStr + " does not appear to be a vaild " +
+  private def getNodeAddressString(shortAddrStr: String): String =
+    SiriusShortNameParser.parse(shortAddrStr) match {
+      case Some(addrStr) => addrStr
+      case None => throw new IllegalArgumentException(shortAddrStr + " does not appear to be a vaild " +
           "Akka address or Sirius node short name")
     }
+
+  private def getNodeRef(shortAddrStr: String): ActorRef = {
+    val fullAddress = getNodeAddressString(shortAddrStr)
+    ActorSystemHelper.getActorSystem().actorFor(fullAddress)
+  }
 
 
   private def printUsage() {
@@ -117,6 +128,10 @@ object NodeTool {
     Console.err.println()
     Console.err.println("   status <nodeId>")
     Console.err.println("       Get general status information for nodeId")
+    Console.err.println()
+    Console.err.println("   force-seek-leadership <nodeId>")
+    Console.err.println("       Force nodeId to seek leadership. This is a hack around ")
+    Console.err.println("       \"phantom ballots from the future\", but it works, for now")
   }
 
 }
