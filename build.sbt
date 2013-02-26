@@ -22,13 +22,14 @@ javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
+// exclude maven central
+externalResolvers := Seq.empty[sbt.Resolver]
+
 // look in local maven repo
-resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
+externalResolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
 
 // look in cim repo
-resolvers += "Cim Nexus Public Mirror" at "http://repo.dev.cim.comcast.net/nexus/content/groups/public"
-
-// TODO: figure out how to exclude maven central
+externalResolvers += "Cim Nexus Public Mirror" at "http://repo.dev.cim.comcast.net/nexus/content/groups/public"
 
 // allows us to pull deps from pom file
 externalPom()
