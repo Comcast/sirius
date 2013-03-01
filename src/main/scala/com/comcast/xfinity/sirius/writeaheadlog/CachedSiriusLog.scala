@@ -3,6 +3,7 @@ package com.comcast.xfinity.sirius.writeaheadlog
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import scala.collection.JavaConversions._
 import java.util.{TreeMap => JTreeMap}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object CachedSiriusLog {
   /**
@@ -11,12 +12,8 @@ object CachedSiriusLog {
    *
    * @param log siriusLog to use as backend
    */
-  def apply(log: SiriusLog): CachedSiriusLog = {
-    // XXX should be passed in via SiriusConfiguration
-    val MAX_CACHE_SIZE = 10000
-
-    new CachedSiriusLog(log, MAX_CACHE_SIZE)
-  }
+  def apply(log: SiriusLog, cacheSize: Int): CachedSiriusLog =
+    new CachedSiriusLog(log, cacheSize)
 }
 
 /**

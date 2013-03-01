@@ -36,7 +36,11 @@ object SiriusFactory {
         throw new IllegalArgumentException(SiriusConfiguration.LOG_LOCATION + " must be set on config")
     }
     val backendLog = UberStore(uberStoreDir)
-    val log = CachedSiriusLog(backendLog)
+
+    // TODO: make cache wiring optional?
+    val cacheSize = siriusConfig.getProp(SiriusConfiguration.LOG_WRITE_CACHE_SIZE, 10000)
+    val log = CachedSiriusLog(backendLog, cacheSize)
+
     createInstance(requestHandler, siriusConfig, log)
   }
 

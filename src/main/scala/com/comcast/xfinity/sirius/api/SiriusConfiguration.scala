@@ -64,6 +64,12 @@ object SiriusConfiguration {
   final val LOG_LOCATION = "sirius.uberstore.dir"
 
   /**
+   * By default Sirius places a write through cache in front of the
+   * log, this property dictates its maximum size (int)
+   */
+  final val LOG_WRITE_CACHE_SIZE = "sirius.log.write-cache-size"
+
+  /**
    * Name of the sirius supervisor, typically we will not change this,
    * but it's here just in case (string)
    */
@@ -133,8 +139,6 @@ object SiriusConfiguration {
  * @see SiriusConfiguration$ constants for information of fields.
  */
 class SiriusConfiguration {
-
-  import SiriusConfiguration._
 
   private var conf = Map[String, Any]()
 

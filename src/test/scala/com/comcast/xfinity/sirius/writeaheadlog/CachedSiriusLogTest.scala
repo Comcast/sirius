@@ -11,7 +11,7 @@ class CachedSiriusLogTest extends NiceTest {
     it("should add writes to in-mem cache") {
       val mockLog = mock[SiriusLog]
 
-      val underTest = CachedSiriusLog(mockLog)
+      val underTest = new CachedSiriusLog(mockLog, 1000)
 
       assert(underTest.writeCache.isEmpty)
 
@@ -22,7 +22,7 @@ class CachedSiriusLogTest extends NiceTest {
       assert(underTest.writeCache.containsKey(1L))
     }
 
-    it("should trim in-mem cache if entries exceeds MAX_CACHE_SIZE") {
+    it("should trim in-mem cache if entries exceeds maxCache") {
       val mockLog = mock[SiriusLog]
 
       val underTest = new CachedSiriusLog(mockLog, 2)
@@ -55,7 +55,7 @@ class CachedSiriusLogTest extends NiceTest {
     it("should return a range from the write cache if possible") {
       val mockLog = mock[SiriusLog]
 
-      val underTest = CachedSiriusLog(mockLog)
+      val underTest = new CachedSiriusLog(mockLog, 1000)
 
       // events in the write cache
       val events = Seq[OrderedEvent](
