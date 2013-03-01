@@ -98,6 +98,8 @@ class Leader(membership: Agent[Set[ActorRef]],
           proposals.put(slotNum, command)
       }
 
+
+    // A majority of the Acceptors have accepted myBallotNum, become leader
     case Adopted(newBallotNum, pvals) if myBallotNum == newBallotNum =>
       logger.debug("Assuming leadership using {}", myBallotNum)
 
@@ -113,6 +115,7 @@ class Leader(membership: Agent[Set[ActorRef]],
       currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(myBallotNum)
 
+
     // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
     case Preempted(newBallot) if newBallot > myBallotNum =>
       logger.debug("Becoming subservient to new leader with ballot {}", newBallot)
@@ -124,6 +127,7 @@ class Leader(membership: Agent[Set[ActorRef]],
       )
       stopLeaderWatcher(currentLeaderWatcher)
       currentLeaderWatcher = Some(createLeaderWatcher(newBallot, self))
+
 
     // try to become the new leader; old leader has gone MIA
     case SeekLeadership =>
@@ -143,13 +147,15 @@ class Leader(membership: Agent[Set[ActorRef]],
 
       startScout()
 
-    // respond to Ping from LeaderPinger with our current leader ballot information
-    case Ping =>
-      sender ! Pong(electedLeaderBallot)
 
-    // if our scout fails to make progress, retry
-    case ScoutTimeout =>
-      if (electedLeaderBallot == None) startScout()
+    // respond to Ping from LeaderPinger with our current leader ballot information
+    case Ping => sender ! Pong(electedLeaderBallot)
+
+
+    // if our scout fails to make progress, and we have not since elected a leader,
+    //  try again
+    case ScoutTimeout if electedLeaderBallot == None => startScout()
+
 
     // if the commander times out we nullify it's slot in our proposals
     //  and let someone else try out
@@ -166,6 +172,7 @@ class Leader(membership: Agent[Set[ActorRef]],
       // some record keeping
       commanderTimeoutCount += 1
       lastTimedOutPValue = Some(pvalue)
+
 
     // the SirusPaxosBridge will notify the Leader of the last decision.  We can then use this to reduce the number
     // of accepted decisions we need from the Acceptor
