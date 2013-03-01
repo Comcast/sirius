@@ -4,9 +4,6 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{Props, Actor, ActorRef}
 import akka.agent.Agent
 import akka.event.Logging
-import java.util.{TreeMap => JTreeMap}
-import scala.util.control.Breaks._
-import scala.collection.JavaConversions._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
@@ -125,8 +122,7 @@ class Leader(membership: Agent[Set[ActorRef]],
       proposals.foreach(
         (slot, command) => electedLeader ! Propose(slot, command)
       )
-      stopLeaderWatcher(currentLeaderWatcher)
-      currentLeaderWatcher = Some(createLeaderWatcher(newBallot, self))
+      startLeaderWatcher(newBallot)
 
 
     // try to become the new leader; old leader has gone MIA
@@ -142,8 +138,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
       electedLeaderBallot = None
 
-      stopLeaderWatcher(currentLeaderWatcher)
-      currentLeaderWatcher = None
+      stopLeaderWatcher()
 
       startScout()
 
@@ -182,18 +177,17 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   }
 
-  /**
-   * kill this leaderWatcher, if it is instantiated and is alive
-   */
-  private[paxos] def stopLeaderWatcher(leaderWatcher: Option[ActorRef]) {
-    leaderWatcher match {
-      case Some(ref) if (!ref.isTerminated) => ref ! Close
-      case _ =>
+  private def stopLeaderWatcher() {
+    currentLeaderWatcher match {
+      case Some(ref) if (!ref.isTerminated) => ref ! LeaderWatcher.Close
+      case _ => // no-op
     }
+    currentLeaderWatcher = None
   }
 
-  private[paxos] def createLeaderWatcher(newBallot: Ballot, replyTo: ActorRef) = {
-    context.actorOf(Props(new LeaderWatcher(newBallot, replyTo)))
+  private def startLeaderWatcher(ballotToWatch: Ballot) {
+    stopLeaderWatcher()
+    currentLeaderWatcher = Some(context.actorOf(Props(new LeaderWatcher(ballotToWatch, self))))
   }
 
   // drops all proposals held locally whos slot is <= latestDecidedSlot
