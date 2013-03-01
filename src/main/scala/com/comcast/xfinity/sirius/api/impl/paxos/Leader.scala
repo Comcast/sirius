@@ -93,7 +93,7 @@ class Leader(membership: Agent[Set[ActorRef]],
         case Some(electedBallot @ Ballot(_, leaderId)) if (myBallotNum != electedBallot) =>
           context.actorFor(leaderId) forward propose
 
-        // the leader is unkown, stash proposals until we know
+        // the leader is unknown, stash proposals until we know
         case None =>
           proposals.put(slotNum, command)
       }
@@ -102,7 +102,10 @@ class Leader(membership: Agent[Set[ActorRef]],
       logger.debug("Assuming leadership using {}", myBallotNum)
 
       // XXX: update actually has side effects, however this assignment
-      //      is necessary for testing :/ removing in a later commit
+      //      is necessary for testing, we use it so that we can mock
+      //      the leaderHelper without needing to use "andAnswer", or whatever.
+      //      Eventually we should consider moving the leaderHelper stuff into
+      //      the leader itself again...
       proposals = leaderHelper.update(proposals, leaderHelper.pmax(pvals))
       proposals.foreach(
         (slot, command) => startCommander(PValue(myBallotNum, slot, command))
