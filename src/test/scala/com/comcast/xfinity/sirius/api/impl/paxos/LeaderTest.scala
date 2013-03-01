@@ -91,12 +91,12 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
           when(mockHelper).update(any(classOf[RichJTreeMap[Long, Command]]),
           any(classOf[RichJTreeMap[Long, Command]]))
 
-        leader ! Adopted(leader.underlyingActor.ballotNum, Set())
+        leader ! Adopted(leader.underlyingActor.myBallotNum, Set())
 
         var expectedPvalsCommandered = Set[PValue]()
         proposals.foreach(
           (slot, cmd) =>
-            expectedPvalsCommandered += PValue(leader.underlyingActor.ballotNum, slot, cmd)
+            expectedPvalsCommandered += PValue(leader.underlyingActor.myBallotNum, slot, cmd)
         )
 
         assert(expectedPvalsCommandered === pvalsCommandered)
@@ -113,9 +113,9 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
           any(classOf[RichJTreeMap[Long, Command]]))
 
 
-        leader ! Adopted(leader.underlyingActor.ballotNum, Set())
+        leader ! Adopted(leader.underlyingActor.myBallotNum, Set())
 
-        assert(Some(leader.underlyingActor.ballotNum) === leader.underlyingActor.electedLeaderBallot)
+        assert(Some(leader.underlyingActor.myBallotNum) === leader.underlyingActor.electedLeaderBallot)
       }
     }
 
@@ -189,7 +189,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
           startCommanderFun = (p, i) => commanderStarted = true
         )
 
-        leader.underlyingActor.electedLeaderBallot = Some(leader.underlyingActor.ballotNum)
+        leader.underlyingActor.electedLeaderBallot = Some(leader.underlyingActor.myBallotNum)
 
         val slotNum = 1L
         val command = Command(null, 1, Delete("2"))
@@ -205,7 +205,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
       it ("must ignore such if the attached Ballot is outdated") {
         val leader = makeMockedUpLeader()
 
-        leader.underlyingActor.ballotNum = Ballot(1, "asdf")
+        leader.underlyingActor.myBallotNum = Ballot(1, "asdf")
 
         intercept[MatchError] {
           leader.underlyingActor.receive(Preempted(Ballot(0, "asdf")))
@@ -279,12 +279,12 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         val leader = makeMockedUpLeader()
         val oldBallot = Ballot(10, "a")
 
-        leader.underlyingActor.ballotNum = oldBallot
+        leader.underlyingActor.myBallotNum = oldBallot
         leader.underlyingActor.electedLeaderBallot = None
 
         leader ! SeekLeadership
 
-        val newBallot = leader.underlyingActor.ballotNum
+        val newBallot = leader.underlyingActor.myBallotNum
         assert(newBallot > oldBallot)
       }
 
@@ -294,12 +294,12 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         val oldBallot = Ballot(10, "a")
         val electedBallot = Ballot(11, "b")
 
-        leader.underlyingActor.ballotNum = oldBallot
+        leader.underlyingActor.myBallotNum = oldBallot
         leader.underlyingActor.electedLeaderBallot = Some(electedBallot)
 
         leader ! SeekLeadership
 
-        val newBallot = leader.underlyingActor.ballotNum
+        val newBallot = leader.underlyingActor.myBallotNum
         assert(newBallot > oldBallot)
         assert(newBallot > electedBallot)
       }
@@ -331,12 +331,12 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         )
         leader.underlyingActor.electedLeaderBallot = None
 
-        val initialBallot = leader.underlyingActor.ballotNum
+        val initialBallot = leader.underlyingActor.myBallotNum
 
         leader ! ScoutTimeout
 
         assert(scoutStarted)
-        assert(initialBallot === leader.underlyingActor.ballotNum)
+        assert(initialBallot === leader.underlyingActor.myBallotNum)
       }
     }
 

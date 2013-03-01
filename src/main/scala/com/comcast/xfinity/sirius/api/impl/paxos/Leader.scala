@@ -37,7 +37,7 @@ object Leader {
       }
 
       def startScout() {
-        context.actorOf(Props(new Scout(self, acceptors(), ballotNum, latestDecidedSlot)))
+        context.actorOf(Props(new Scout(self, acceptors(), myBallotNum, latestDecidedSlot)))
       }
     }
   }
@@ -56,7 +56,7 @@ class Leader(membership: Agent[Set[ActorRef]],
   val replicas = membership
 
   val myLeaderId = AkkaExternalAddressResolver(context.system).externalAddressFor(self)
-  var ballotNum = Ballot(0, myLeaderId)
+  var myBallotNum = Ballot(0, myLeaderId)
   var proposals = new RichJTreeMap[Long, Command]()
 
   var latestDecidedSlot: Long = startingSeqNum - 1
@@ -84,29 +84,34 @@ class Leader(membership: Agent[Set[ActorRef]],
   def receive = {
     case propose @ Propose(slotNum, command) if !proposals.containsKey(slotNum) && slotNum > latestDecidedSlot =>
       electedLeaderBallot match {
-        case Some(electedBallot) if (ballotNum == electedBallot) =>
+        // I'm the leader
+        case Some(electedBallot) if (myBallotNum == electedBallot) =>
           proposals.put(slotNum, command)
-          startCommander(PValue(ballotNum, slotNum, command))
-        case Some(electedBallot @ Ballot(_, leaderId)) if (ballotNum != electedBallot) =>
+          startCommander(PValue(myBallotNum, slotNum, command))
+
+        // someone else is the leader
+        case Some(electedBallot @ Ballot(_, leaderId)) if (myBallotNum != electedBallot) =>
           context.actorFor(leaderId) forward propose
+
+        // the leader is unkown, stash proposals until we know
         case None =>
           proposals.put(slotNum, command)
       }
 
-    case Adopted(newBallotNum, pvals) if ballotNum == newBallotNum =>
-      logger.debug("Assuming leadership using {}", ballotNum)
+    case Adopted(newBallotNum, pvals) if myBallotNum == newBallotNum =>
+      logger.debug("Assuming leadership using {}", myBallotNum)
 
       // XXX: update actually has side effects, however this assignment
       //      is necessary for testing :/ removing in a later commit
       proposals = leaderHelper.update(proposals, leaderHelper.pmax(pvals))
       proposals.foreach(
-        (slot, command) => startCommander(PValue(ballotNum, slot, command))
+        (slot, command) => startCommander(PValue(myBallotNum, slot, command))
       )
       currentLeaderElectedSince = System.currentTimeMillis()
-      electedLeaderBallot = Some(ballotNum)
+      electedLeaderBallot = Some(myBallotNum)
 
     // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
-    case Preempted(newBallot) if newBallot > ballotNum =>
+    case Preempted(newBallot) if newBallot > myBallotNum =>
       logger.debug("Becoming subservient to new leader with ballot {}", newBallot)
       currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(newBallot)
@@ -123,9 +128,9 @@ class Leader(membership: Agent[Set[ActorRef]],
        * ballot.  If there is (or was) an elected leader, increment that
        * ballot number; otherwise increment our own.
        */
-      ballotNum = Ballot(electedLeaderBallot match {
+      myBallotNum = Ballot(electedLeaderBallot match {
         case Some(Ballot(seq, _)) => seq + 1
-        case _ => ballotNum.seq + 1
+        case _ => myBallotNum.seq + 1
       }, myLeaderId)
 
       electedLeaderBallot = None
@@ -211,7 +216,7 @@ class Leader(membership: Agent[Set[ActorRef]],
   }
 
   class LeaderInfo extends LeaderInfoMBean{
-    def getBallotNum = ballotNum.toString
+    def getBallotNum = myBallotNum.toString
     def getLatestDecidedSlot = latestDecidedSlot
     def getProposalCount = proposals.size
     def getElectedLeaderBallot = electedLeaderBallot.toString
