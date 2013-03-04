@@ -34,7 +34,7 @@ object Leader {
       }
 
       def startScout() {
-        context.actorOf(Props(new Scout(self, acceptors(), myBallotNum, latestDecidedSlot)))
+        context.actorOf(Props(new Scout(self, acceptors(), myBallot, latestDecidedSlot)))
       }
     }
   }
@@ -53,7 +53,7 @@ class Leader(membership: Agent[Set[ActorRef]],
   val replicas = membership
 
   val myLeaderId = AkkaExternalAddressResolver(context.system).externalAddressFor(self)
-  var myBallotNum = Ballot(0, myLeaderId)
+  var myBallot = Ballot(0, myLeaderId)
   var proposals = new RichJTreeMap[Long, Command]()
 
   var latestDecidedSlot: Long = startingSeqNum - 1
@@ -82,12 +82,12 @@ class Leader(membership: Agent[Set[ActorRef]],
     case propose @ Propose(slotNum, command) if !proposals.containsKey(slotNum) && slotNum > latestDecidedSlot =>
       electedLeaderBallot match {
         // I'm the leader
-        case Some(electedBallot) if (myBallotNum == electedBallot) =>
+        case Some(electedBallot) if (myBallot == electedBallot) =>
           proposals.put(slotNum, command)
-          startCommander(PValue(myBallotNum, slotNum, command))
+          startCommander(PValue(myBallot, slotNum, command))
 
         // someone else is the leader
-        case Some(electedBallot @ Ballot(_, leaderId)) if (myBallotNum != electedBallot) =>
+        case Some(electedBallot @ Ballot(_, leaderId)) if (myBallot != electedBallot) =>
           context.actorFor(leaderId) forward propose
 
         // the leader is unknown, stash proposals until we know
@@ -96,9 +96,9 @@ class Leader(membership: Agent[Set[ActorRef]],
       }
 
 
-    // A majority of the Acceptors have accepted myBallotNum, become leader
-    case Adopted(newBallotNum, pvals) if myBallotNum == newBallotNum =>
-      logger.debug("Assuming leadership using {}", myBallotNum)
+    // A majority of the Acceptors have accepted myBallot, become leader
+    case Adopted(newBallot, pvals) if myBallot == newBallot =>
+      logger.debug("Assuming leadership using {}", myBallot)
 
       // XXX: update actually has side effects, however this assignment
       //      is necessary for testing, we use it so that we can mock
@@ -107,20 +107,20 @@ class Leader(membership: Agent[Set[ActorRef]],
       //      the leader itself again...
       proposals = leaderHelper.update(proposals, leaderHelper.pmax(pvals))
       proposals.foreach(
-        (slot, command) => startCommander(PValue(myBallotNum, slot, command))
+        (slot, command) => startCommander(PValue(myBallot, slot, command))
       )
       currentLeaderElectedSince = System.currentTimeMillis()
-      electedLeaderBallot = Some(myBallotNum)
+      electedLeaderBallot = Some(myBallot)
 
 
     // phantom ballot from the future- this node was the leader in some previous
     // life and other nodes still believe it, try to become leader again but using
     // a bigger ballot
-    case Preempted(newBallot) if newBallot > myBallotNum && newBallot.leaderId == myLeaderId =>
+    case Preempted(newBallot) if newBallot > myBallot && newBallot.leaderId == myLeaderId =>
       seekLeadership(Some(newBallot))
 
     // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
-    case Preempted(newBallot) if newBallot > myBallotNum =>
+    case Preempted(newBallot) if newBallot > myBallot =>
       logger.debug("Becoming subservient to new leader with ballot {}", newBallot)
       currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(newBallot)
@@ -170,9 +170,9 @@ class Leader(membership: Agent[Set[ActorRef]],
   }
 
   private def seekLeadership(ballotToTrump: Option[Ballot] = None) {
-    myBallotNum = ballotToTrump match {
-      case Some(Ballot(seq, _)) => myBallotNum.copy(seq = seq + 1)
-      case _ => myBallotNum.copy(seq = myBallotNum.seq + 1)
+    myBallot = ballotToTrump match {
+      case Some(Ballot(seq, _)) => myBallot.copy(seq = seq + 1)
+      case _ => myBallot.copy(seq = myBallot.seq + 1)
     }
 
     electedLeaderBallot = None
@@ -211,7 +211,7 @@ class Leader(membership: Agent[Set[ActorRef]],
   // monitoring hooks, to close over the scope of the class, it has to be this way
   //  because of jmx
   trait LeaderInfoMBean {
-    def getBallotNum: String
+    def getBallot: String
     def getLatestDecidedSlot: Long
     def getProposalCount: Int
     def getElectedLeaderBallot: String
@@ -223,7 +223,7 @@ class Leader(membership: Agent[Set[ActorRef]],
   }
 
   class LeaderInfo extends LeaderInfoMBean{
-    def getBallotNum = myBallotNum.toString
+    def getBallot = myBallot.toString
     def getLatestDecidedSlot = latestDecidedSlot
     def getProposalCount = proposals.size
     def getElectedLeaderBallot = electedLeaderBallot.toString
