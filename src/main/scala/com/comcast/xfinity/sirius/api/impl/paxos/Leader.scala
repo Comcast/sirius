@@ -113,6 +113,12 @@ class Leader(membership: Agent[Set[ActorRef]],
       electedLeaderBallot = Some(myBallotNum)
 
 
+    // phantom ballot from the future- this node was the leader in some previous
+    // life and other nodes still believe it, try to become leader again but using
+    // a bigger ballot
+    case Preempted(newBallot) if newBallot > myBallotNum && newBallot.leaderId == myLeaderId =>
+      seekLeadership(Some(newBallot))
+
     // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
     case Preempted(newBallot) if newBallot > myBallotNum =>
       logger.debug("Becoming subservient to new leader with ballot {}", newBallot)
@@ -126,21 +132,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
 
     // try to become the new leader; old leader has gone MIA
-    case SeekLeadership =>
-      /* Get the sequence number that should be used in a new
-       * ballot.  If there is (or was) an elected leader, increment that
-       * ballot number; otherwise increment our own.
-       */
-      myBallotNum = Ballot(electedLeaderBallot match {
-        case Some(Ballot(seq, _)) => seq + 1
-        case _ => myBallotNum.seq + 1
-      }, myLeaderId)
-
-      electedLeaderBallot = None
-
-      stopLeaderWatcher()
-
-      startScout()
+    case SeekLeadership => seekLeadership(electedLeaderBallot)
 
 
     // respond to Ping from LeaderPinger with our current leader ballot information
@@ -175,6 +167,17 @@ class Leader(membership: Agent[Set[ActorRef]],
       latestDecidedSlot = lastSlot
       reapProposals()
 
+  }
+
+  private def seekLeadership(ballotToTrump: Option[Ballot] = None) {
+    myBallotNum = ballotToTrump match {
+      case Some(Ballot(seq, _)) => myBallotNum.copy(seq = seq + 1)
+      case _ => myBallotNum.copy(seq = myBallotNum.seq + 1)
+    }
+
+    electedLeaderBallot = None
+
+    startScout()
   }
 
   private def stopLeaderWatcher() {

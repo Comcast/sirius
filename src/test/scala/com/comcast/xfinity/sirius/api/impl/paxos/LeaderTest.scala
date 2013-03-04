@@ -202,6 +202,34 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
     }
 
     describe("when receiving a Preempted message") {
+      describe("when the Preempted message is from itself, but in the future") {
+        it ("must forget the current leader and seek leadership again using a higher ballot") {
+          var scoutStarted = false;
+          val leader = makeMockedUpLeader(
+            startScoutFun = { scoutStarted = true }
+          )
+
+          // So that we can make sure it gets "None"d out,
+          // though not sure how much this matters- phantom ballots will
+          // typically appear when we're trying to get elected (electedLeaderBallot
+          // should already be none
+          leader.underlyingActor.electedLeaderBallot = Some(Ballot(1, "asdf"))
+
+          // use the current leader ballot, and then some more, to make
+          // phantom ballot
+          val phantomBallot = {
+            val currentBallot = leader.underlyingActor.myBallotNum
+            currentBallot.copy(seq = currentBallot.seq + 100)
+          }
+
+          leader ! Preempted(phantomBallot)
+
+          assert(scoutStarted)
+          assert(leader.underlyingActor.myBallotNum > phantomBallot)
+          assert(None === leader.underlyingActor.electedLeaderBallot)
+        }
+      }
+
       it ("must ignore such if the attached Ballot is outdated") {
         val leader = makeMockedUpLeader()
 
