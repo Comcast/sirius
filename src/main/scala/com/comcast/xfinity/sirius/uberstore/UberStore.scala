@@ -2,8 +2,6 @@ package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import data.UberDataFile
-import seqindex.{PersistedSeqIndex, SeqIndex}
 
 object UberStore {
 
@@ -17,39 +15,7 @@ object UberStore {
    * @return an instantiated UberStore
    */
   def apply(baseDir: String): UberStore = {
-    val baseName = "%s/1".format(baseDir)
-    val dataFile = UberDataFile("%s.data".format(baseName))
-    val index = PersistedSeqIndex("%s.index".format(baseName))
-    repairIndex(index, dataFile)
-    new UberStore(dataFile, index)
-  }
-
-  /**
-   * Recovers missing entries at the end of index from dataFile.
-   *
-   * Assumes that UberDataFile is proper, that is events are there in order,
-   * and there are no dups.
-   *
-   * Has the side effect of updating index.
-   *
-   * @param index the SeqIndex to update
-   * @param dataFile the UberDataFile to update
-   */
-  private[uberstore] def repairIndex(index: SeqIndex, dataFile: UberDataFile) {
-    val lastOffset = index.getMaxSeq match {
-      case None => 0L
-      case Some(seq) => index.getOffsetFor(seq).get // has to exist
-    }
-
-    dataFile.foldLeftRange(lastOffset, Long.MaxValue)(()) (
-      (acc, off, evt) =>
-        if (index.getOffsetFor(evt.sequence) == None) {
-          index.put(evt.sequence, off)
-        } else {
-          // no-op
-        }
-    )
-
+    new UberStore(UberStoreFilePair(baseDir, 1L))
   }
 }
 
@@ -62,61 +28,40 @@ object UberStore {
  * storage.  Stores all data in dataFile, and sequence -> data
  * mappings in index.
  *
- * @param dataFile the UberDataFile to store data in
- * @param index the SeqIndex to use
+ * @param uberpair UberStoreFilePair for delegating uberstore operations
  */
-class UberStore(dataFile: UberDataFile,
-                index: SeqIndex) extends SiriusLog {
+class UberStore(uberpair: UberStoreFilePair) extends SiriusLog {
 
   /**
    * @inheritdoc
    */
   def writeEntry(event: OrderedEvent) {
-    if (isClosed) {
-      throw new IllegalStateException("Attempting to write to closed UberStore")
-    }
-    if (event.sequence < getNextSeq) {
-      throw new IllegalArgumentException("Writing events out of order is bad news bears")
-    }
-    val offset = dataFile.writeEvent(event)
-    index.put(event.sequence, offset)
+    uberpair.writeEntry(event)
   }
 
   /**
    * @inheritdoc
    */
-  def getNextSeq = index.getMaxSeq match {
-    case None => 1L
-    case Some(seq) => seq + 1
-  }
+  def getNextSeq = uberpair.getNextSeq
 
   /**
    * @inheritdoc
    */
   def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T =
-    foldLeftRange(0, Long.MaxValue)(acc0)(foldFun)
+    uberpair.foldLeft(acc0)(foldFun)
 
   /**
    * @inheritdoc
    */
-  def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
-    val (startOffset, endOffset) = index.getOffsetRange(startSeq, endSeq)
-    dataFile.foldLeftRange(startOffset, endOffset)(acc0)(
-      (acc, _, evt) => foldFun(acc, evt)
-    )
-  }
+  def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T =
+    uberpair.foldLeftRange(startSeq, endSeq)(acc0)(foldFun)
 
   /**
    * Close underlying file handles or connections.  This UberStore should not be used after
    * close is called.
    */
   def close() {
-    if (!dataFile.isClosed) {
-      dataFile.close()
-    }
-    if (!index.isClosed) {
-      index.close()
-    }
+    uberpair.close()
   }
 
   /**
@@ -125,8 +70,7 @@ class UberStore(dataFile: UberDataFile,
    *
    * @return whether this is "closed," i.e., unable to be written to
    */
-  def isClosed =
-    dataFile.isClosed || index.isClosed
+  def isClosed = uberpair.isClosed
 
   override def finalize() {
     close()
