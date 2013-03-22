@@ -7,6 +7,7 @@ import com.comcast.xfinity.sirius.uberstore.seqindex.ReadOnlySeqIndex
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
 import util.matching.Regex
 import com.comcast.xfinity.sirius.api.impl.{Delete, Put, OrderedEvent}
+import com.comcast.xfinity.sirius.tool.format.OrderedEventFormatter
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -75,6 +76,7 @@ object WalTool {
     }
     sys.exit(0)
   }
+
 
   /**
    * Compact an UberStore
@@ -155,7 +157,7 @@ object WalTool {
    */
   private def printSeq(wal: UberStore, first: Long, last: Long) {
     wal.foldLeftRange(first, last)(())((_, event) =>
-      println(event)
+      OrderedEventFormatter.printEvent(event)
     )
   }
 
