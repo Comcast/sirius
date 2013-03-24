@@ -34,17 +34,12 @@ class LeaderHelper {
    * @return
    */
   def pmax(pvals: Set[PValue]): RichJTreeMap[Long, Command] = {
-    def updateWithMaxBallot(acc: SortedMap[Long, PValue], pval: PValue) = acc.get(pval.slotNum) match {
-      case None  => acc + (pval.slotNum -> pval)
-      case Some(PValue(otherBallot, _, _)) if pval.ballot >= otherBallot => acc + (pval.slotNum -> pval)
-      case _ => acc
-    }
+    val maxPValBySlot = pvals.groupBy(_.slotNum).mapValues(
+      pvals => pvals.maxBy(_.ballot)
+    )
 
-    val maxBallotMap = pvals.foldLeft(SortedMap[Long, PValue]())(updateWithMaxBallot)
-    maxBallotMap.foldLeft(new RichJTreeMap[Long, Command]()) {
-      case (acc, (slot, pval)) =>
-        acc.put(slot, pval.proposedCommand)
-        acc
-    }
+    val slotsToCommands = maxPValBySlot.mapValues(_.proposedCommand)
+
+    new RichJTreeMap(slotsToCommands)
   }
 }

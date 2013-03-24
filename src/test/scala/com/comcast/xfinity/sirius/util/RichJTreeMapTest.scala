@@ -4,6 +4,24 @@ import com.comcast.xfinity.sirius.NiceTest
 
 class RichJTreeMapTest extends NiceTest {
 
+  describe ("its constructor") {
+    it ("must add all elements provided to the constructor") {
+      val underTest = new RichJTreeMap(1 -> 2, 2 -> 3)
+
+      assert(2 === underTest.size)
+      assert(2 === underTest.get(1))
+      assert(3 === underTest.get(2))
+    }
+
+    it ("must add all elements from a map provided to the constructor") {
+      val underTest = new RichJTreeMap(Map(1 -> 2, 2 -> 3))
+
+      assert(2 === underTest.size)
+      assert(2 === underTest.get(1))
+      assert(3 === underTest.get(2))
+    }
+  }
+
   it ("must properly implement foreach, applying the passed in function to each kv in order") {
     val underTest = new RichJTreeMap[String, String]()
     underTest.put("hello", "world")

@@ -10,8 +10,25 @@ import scala.util.control.Breaks._
  *
  * The JavaConversions stuff doesn't appear to have anything
  * that allows us to mutate the underlying collection
+ *
+ * @param kvs an arbitrary number of KeyValue pairs to initially
+ *          populate the map with
  */
-class RichJTreeMap[K, V] extends JTreeMap[K, V] {
+class RichJTreeMap[K, V](kvs: (K, V)*) extends JTreeMap[K, V] {
+
+  /**
+   * Construct a RichJTreeMap from an existing collection
+   *
+   * XXX/TODO: move this to a companion object and change all
+   *            usages to use companion object
+   *
+   * @param from Map[K, V] to populate this instance from
+   */
+  def this(from: Map[K, V]) = this(from.toSeq: _*)
+
+
+  // populate this jawn
+  kvs.foreach(kv => put(kv._1, kv._2))
 
   /**
    * Apply an operation to each element in order
