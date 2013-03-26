@@ -4,9 +4,9 @@ import com.comcast.xfinity.sirius.NiceTest
 
 class RichJTreeMapTest extends NiceTest {
 
-  describe ("its constructor") {
+  describe ("its companion constructor") {
     it ("must add all elements provided to the constructor") {
-      val underTest = new RichJTreeMap(1 -> 2, 2 -> 3)
+      val underTest = RichJTreeMap(1 -> 2, 2 -> 3)
 
       assert(2 === underTest.size)
       assert(2 === underTest.get(1))
@@ -14,7 +14,7 @@ class RichJTreeMapTest extends NiceTest {
     }
 
     it ("must add all elements from a map provided to the constructor") {
-      val underTest = new RichJTreeMap(Map(1 -> 2, 2 -> 3))
+      val underTest = RichJTreeMap(Map(1 -> 2, 2 -> 3))
 
       assert(2 === underTest.size)
       assert(2 === underTest.get(1))
@@ -23,10 +23,12 @@ class RichJTreeMapTest extends NiceTest {
   }
 
   it ("must properly implement foreach, applying the passed in function to each kv in order") {
-    val underTest = new RichJTreeMap[String, String]()
-    underTest.put("hello", "world")
-    underTest.put("why", "do the dbas spontaneously change ports?")
-    underTest.put("sincerely", "developers")
+    val underTest = RichJTreeMap(
+      "hello" -> "world",
+      "why" -> "do the dbas spontaneously change ports?",
+      "sincerely" -> "developers"
+    )
+
 
     var accum = List[(String, String)]()
     underTest.foreach((k, v) => accum = ((k, v) :: accum))
@@ -41,9 +43,10 @@ class RichJTreeMapTest extends NiceTest {
   }
 
   it ("must properly implement filter, mutating the underlying collection") {
-    val underTest = new RichJTreeMap[String, String]()
-    underTest.put("Well", "I'll tell you why")
-    underTest.put("It's", "To keep us on our toes")
+    val underTest = RichJTreeMap(
+      "Well" -> "I'll tell you why",
+      "It's" -> "To keep us on our toes"
+    )
 
     underTest.filter((k, v) => k == "It's" && v == "To keep us on our toes")
 
@@ -53,10 +56,11 @@ class RichJTreeMapTest extends NiceTest {
 
   it ("must properly implement dropWhile, mutating the underlying collection " +
       "and not doing more work than is necessary") {
-    val underTest = new RichJTreeMap[String, String]()
-    underTest.put("A", "1")
-    underTest.put("B", "2")
-    underTest.put("C", "3")
+    val underTest = RichJTreeMap(
+      "A" -> "1",
+      "B" -> "2",
+      "C" -> "3"
+    )
 
     var lastCheckedKV: Option[(String, String)] = None
 

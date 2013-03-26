@@ -77,8 +77,8 @@ class Replica(localLeader: ActorRef,
              (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
 
   var slotNum = startingSlotNum
-  val outstandingProposals = new RichJTreeMap[Long, Command]()
-  val decisions = new RichJTreeMap[Long, Command]()
+  val outstandingProposals = RichJTreeMap[Long, Command]()
+  val decisions = RichJTreeMap[Long, Command]()
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")

@@ -40,6 +40,6 @@ class LeaderHelper {
 
     val slotsToCommands = maxPValBySlot.mapValues(_.proposedCommand)
 
-    new RichJTreeMap(slotsToCommands)
+    RichJTreeMap(slotsToCommands)
   }
 }

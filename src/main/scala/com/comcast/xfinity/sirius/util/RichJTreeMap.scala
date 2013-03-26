@@ -4,31 +4,38 @@ import collection.JavaConversions.asScalaIterator
 import java.util.{TreeMap => JTreeMap}
 import scala.util.control.Breaks._
 
+object RichJTreeMap {
+
+  /**
+   * Create a RichJTreeMap and populate with provided
+   * elements
+   *
+   * @kvs varargs of key/value pairs, same as you would
+   *        construct standard Scala Maps
+   */
+  def apply[K, V](kvs: (K, V)*): RichJTreeMap[K, V] = {
+    val map = new RichJTreeMap[K, V]
+    kvs.foreach(kv => map.put(kv._1, kv._2))
+    map
+  }
+
+  /**
+   * Create a RichJTreeMap and populate with elements
+   * from an existing Scala Map
+   *
+   * @param from Map to populate instance from
+   */
+  def apply[K, V](from: Map[K, V]): RichJTreeMap[K, V] = apply(from.toSeq: _*)
+}
+
 /**
  * A Java TreeMap with some functional style helpers
  * for mutating the underling collection (contradictory eh?)
  *
  * The JavaConversions stuff doesn't appear to have anything
  * that allows us to mutate the underlying collection
- *
- * @param kvs an arbitrary number of KeyValue pairs to initially
- *          populate the map with
  */
-class RichJTreeMap[K, V](kvs: (K, V)*) extends JTreeMap[K, V] {
-
-  /**
-   * Construct a RichJTreeMap from an existing collection
-   *
-   * XXX/TODO: move this to a companion object and change all
-   *            usages to use companion object
-   *
-   * @param from Map[K, V] to populate this instance from
-   */
-  def this(from: Map[K, V]) = this(from.toSeq: _*)
-
-
-  // populate this jawn
-  kvs.foreach(kv => put(kv._1, kv._2))
+class RichJTreeMap[K, V] private extends JTreeMap[K, V] {
 
   /**
    * Apply an operation to each element in order

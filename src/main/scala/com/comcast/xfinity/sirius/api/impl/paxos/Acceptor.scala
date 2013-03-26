@@ -47,7 +47,7 @@ class Acceptor(startingSeqNum: Long,
   var longestDuration = 0L
 
   // slot -> (ts,PValue)
-  var accepted = new RichJTreeMap[Long, Tuple2[Long, PValue]]()
+  var accepted = RichJTreeMap[Long, Tuple2[Long, PValue]]()
 
   // if we receive a Phase2A for a slot less than this we refuse to
   // handle it since it is out of date by our terms

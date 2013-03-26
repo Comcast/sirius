@@ -8,18 +8,14 @@ import com.comcast.xfinity.sirius.util.RichJTreeMap
 class LeaderHelperTest extends NiceTest {
 
   val leaderHelper = new LeaderHelper()
-  
+
   describe("LeaderHelper") {
 
     describe("update") {
       it ("must return a reference to x, with all of the values from y overlaid on top of it") {
-        val x = new RichJTreeMap[Long, Int]()
-        x.put(1L, 5)
-        x.put(2L, 3)
+        val x = RichJTreeMap(1L -> 5, 2L -> 3)
 
-        val y = new RichJTreeMap[Long, Int]()
-        y.put(1L, 2)
-        y.put(3L, 4)
+        val y = RichJTreeMap(1L -> 2, 3L -> 4)
 
         assert(x === leaderHelper.update(x, y))
         assert(3 === x.size)
@@ -38,9 +34,10 @@ class LeaderHelperTest extends NiceTest {
           PValue(Ballot(1, "a"), 2, Command(null, 123, Delete("3")))
         )
 
-        val expected = new RichJTreeMap[Long, Command]
-        expected.put(1L, Command(null, 12345, Delete("2")))
-        expected.put(2L, Command(null, 123, Delete("3")))
+        val expected = RichJTreeMap(
+          1L -> Command(null, 12345, Delete("2")),
+          2L -> Command(null, 123, Delete("3"))
+        )
 
         assert(expected === leaderHelper.pmax(pvals))
       }

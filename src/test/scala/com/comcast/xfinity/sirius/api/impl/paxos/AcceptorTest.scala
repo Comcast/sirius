@@ -34,8 +34,9 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "is lesser than or equal to its own") {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
-        val accepted = new RichJTreeMap[Long, (Long, PValue)]()
-        accepted.put(1L, (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
+        val accepted = RichJTreeMap(
+          1L -> (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        )
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted.clone.asInstanceOf[RichJTreeMap[Long, (Long, PValue)]]
@@ -57,8 +58,9 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "Ballot is greater than its own") {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
-        val accepted = new RichJTreeMap[Long, (Long, PValue)]()
-        accepted.put(1L, (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
+        val accepted = RichJTreeMap(
+          1L -> (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        )
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted.clone.asInstanceOf[RichJTreeMap[Long, (Long, PValue)]]
@@ -80,11 +82,12 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val slot2sPValue = PValue(ballotNum, 1, Command(null, 1, Delete("2")))
         val slot3sPValue = PValue(ballotNum, 1, Command(null, 1, Delete("3")))
         val slot4sPValue = PValue(ballotNum, 1, Command(null, 1, Delete("something")))
-        val accepted = new RichJTreeMap[Long, (Long, PValue)]();
-        accepted.put(1L, (1L, slot1sPValue))
-        accepted.put(2L, (1L, slot2sPValue))
-        accepted.put(3L, (1L, slot3sPValue))
-        accepted.put(4L, (1L, slot4sPValue))
+        val accepted = RichJTreeMap(
+          1L -> (1L, slot1sPValue),
+          2L -> (1L, slot2sPValue),
+          3L -> (1L, slot3sPValue),
+          4L -> (1L, slot4sPValue)
+        )
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted.clone.asInstanceOf[RichJTreeMap[Long, (Long, PValue)]]
@@ -105,8 +108,9 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       it ("must not update its state if the incoming Ballot is outdated") {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
-        val accepted = new RichJTreeMap[Long, (Long, PValue)]()
-        accepted.put(1L,(1L,PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
+        val accepted = RichJTreeMap(
+          1L -> (1L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        )
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted.clone.asInstanceOf[RichJTreeMap[Long, (Long, PValue)]]
@@ -123,8 +127,9 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
           "if the incoming ballotNum is greater than or equal to its own") {
         val acceptor = TestActorRef(new Acceptor(1))
         val ballotNum = Ballot(1, "a")
-        val accepted = new RichJTreeMap[Long, (Long, PValue)]()
-        accepted.put(1L, (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1")))))
+        val accepted = RichJTreeMap(
+          1L -> (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
+        )
 
         acceptor.underlyingActor.ballotNum = ballotNum
         acceptor.underlyingActor.accepted = accepted
@@ -172,15 +177,17 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
         val now = System.currentTimeMillis()
 
-        val keepers = new RichJTreeMap[Long, (Long, PValue)]()
-        keepers.put(4L, (now - 1000, PValue(Ballot(3, "b"), 4, Command(null, 1L, Delete("3")))))
-        keepers.put(5L, (1L, PValue(Ballot(3, "b"), 5, Command(null, 1L, Delete("Z")))))
-        keepers.put(6L, (now, PValue(Ballot(4, "b"), 6, Command(null, 1L, Delete("R")))))
+        val keepers = RichJTreeMap(
+          4L -> (now - 1000, PValue(Ballot(3, "b"), 4, Command(null, 1L, Delete("3")))),
+          5L -> (1L, PValue(Ballot(3, "b"), 5, Command(null, 1L, Delete("Z")))),
+          6L -> (now, PValue(Ballot(4, "b"), 6, Command(null, 1L, Delete("R"))))
+        )
 
-        val accepted = new RichJTreeMap[Long,Tuple2[Long,PValue]]()
+        val accepted = RichJTreeMap(
+          1L -> (1L, PValue(Ballot(1, "a"), 1, Command(null, (now - reapWindow - 100L), Delete("1")))),
+          2L -> (1L, PValue(Ballot(2, "b"), 2, Command(null, (now - reapWindow - 105L), Delete("2"))))
+        )
         accepted.putAll(keepers)
-        accepted.put(1L, (1L, PValue(Ballot(1, "a"), 1, Command(null, (now - reapWindow - 100L), Delete("1")))))
-        accepted.put(2L, (1L, PValue(Ballot(2, "b"), 2, Command(null, (now - reapWindow - 105L), Delete("2")))))
 
         acceptor.underlyingActor.accepted = accepted
 
@@ -195,7 +202,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
         val acceptor = TestActorRef(new Acceptor(10, 30 * 60 * 1000L))
 
         // empty
-        acceptor.underlyingActor.accepted = new RichJTreeMap[Long, (Long, PValue)]()
+        acceptor.underlyingActor.accepted = RichJTreeMap[Long, (Long, PValue)]()
         acceptor ! Acceptor.Reap
         assert(10 === acceptor.underlyingActor.lowestAcceptableSlotNumber)
 

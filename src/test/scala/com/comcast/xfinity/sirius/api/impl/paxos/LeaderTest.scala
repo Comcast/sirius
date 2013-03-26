@@ -81,11 +81,12 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
           )
         )
 
-        val proposals = new RichJTreeMap[Long, Command]
-        proposals.put(1L, Command(null, 1, Delete("2")))
-        proposals.put(2L, Command(null, 2, Delete("3")))
+        val proposals = RichJTreeMap(
+          1L -> Command(null, 1, Delete("2")),
+          2L -> Command(null, 2, Delete("3"))
+        )
 
-        doReturn(new RichJTreeMap[Long, Command]()).
+        doReturn(RichJTreeMap[Long, Command]()).
           when(mockHelper).pmax(any(classOf[Set[PValue]]))
         doReturn(proposals).
           when(mockHelper).update(any(classOf[RichJTreeMap[Long, Command]]),
@@ -106,9 +107,9 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         val mockHelper = mock[LeaderHelper]
         val leader = makeMockedUpLeader(helper = mockHelper)
 
-        doReturn(new RichJTreeMap[Long, Command]()).
+        doReturn(RichJTreeMap[Long, Command]()).
           when(mockHelper).pmax(any(classOf[Set[PValue]]))
-        doReturn(new RichJTreeMap[Long, Command]()).
+        doReturn(RichJTreeMap[Long, Command]()).
           when(mockHelper).update(any(classOf[RichJTreeMap[Long, Command]]),
           any(classOf[RichJTreeMap[Long, Command]]))
 
@@ -127,8 +128,9 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
           helper = mockHelper
         )
 
-        val proposals = new RichJTreeMap[Long, Command]
-        proposals.put(1L, Command(null, 2, Delete("3")))
+        val proposals = RichJTreeMap(
+          1L -> Command(null, 2, Delete("3"))
+        )
 
         leader.underlyingActor.proposals = proposals
 
@@ -390,21 +392,23 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
       it ("must clean out all decided proposals") {
         val leader = makeMockedUpLeader(Agent(Set[ActorRef]()))
 
-        val keepers = new RichJTreeMap[Long, Command]
-        keepers.put(4L, Command(null, 2L, Delete("A")))
-        keepers.put(5L, Command(null, 1L, Delete("Z")))
-        keepers.put(6L, Command(null, 3L, Delete("B")))
+        val keepers = RichJTreeMap(
+          4L -> Command(null, 2L, Delete("A")),
+          5L -> Command(null, 1L, Delete("Z")),
+          6L -> Command(null, 3L, Delete("B"))
+        )
 
-        leader.underlyingActor.proposals = new RichJTreeMap[Long, Command]
-        leader.underlyingActor.proposals.put(1L, Command(null, 1, Delete("C")))
-        leader.underlyingActor.proposals.put(3L, Command(null, 1, Delete("D")))
+        leader.underlyingActor.proposals = RichJTreeMap(
+          1L -> Command(null, 1, Delete("C")),
+          3L -> Command(null, 1, Delete("D"))
+        )
         leader.underlyingActor.proposals.putAll(keepers)
 
         leader.underlyingActor.latestDecidedSlot = 0L
 
         leader ! DecisionHint(3L)
 
-        assert(new JTreeMap[Long, Command](keepers) === leader.underlyingActor.proposals)
+        assert(keepers === leader.underlyingActor.proposals)
       }
     }
 

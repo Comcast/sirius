@@ -79,7 +79,7 @@ class PaxosStateBridge(startingSeq: Long,
     context.system.scheduler.schedule(requestGapsFreq seconds, requestGapsFreq seconds, self, RequestGaps)
 
   var nextSeq: Long = startingSeq
-  var eventBuffer = new RichJTreeMap[Long, OrderedEvent]()
+  var eventBuffer = RichJTreeMap[Long, OrderedEvent]()
 
   logger.info("Starting PaxosStateBridge with nextSeq {}, attempting catch up every {}s",
     nextSeq, requestGapsFreq)

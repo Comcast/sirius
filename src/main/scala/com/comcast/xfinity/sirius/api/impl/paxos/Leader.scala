@@ -54,7 +54,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   val myLeaderId = AkkaExternalAddressResolver(context.system).externalAddressFor(self)
   var myBallot = Ballot(0, myLeaderId)
-  var proposals = new RichJTreeMap[Long, Command]()
+  var proposals = RichJTreeMap[Long, Command]()
 
   var latestDecidedSlot: Long = startingSeqNum - 1
 
