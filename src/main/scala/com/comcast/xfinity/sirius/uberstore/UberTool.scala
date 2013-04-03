@@ -57,9 +57,20 @@ object UberTool {
    *               "out of order write" exception)
    */
   def twoPassCompact(inLog: SiriusLog, outLog: SiriusLog) {
+    // Pass 1: get offsets of all keepable events (ie: last delete/put per key)
+    val keepableOffsetIterator = gatherKeepableEventOffsets(inLog).iterator
+
+    // Pass 2: write it out, skip if there's nothing worth keeping, saves time
+    //          and energy- Sirius is a green product
+    if (!keepableOffsetIterator.isEmpty) {
+      writeKeepableEvents(inLog, outLog, keepableOffsetIterator)
+    }
+  }
+
+  private def gatherKeepableEventOffsets(inLog: SiriusLog) = {
     val toKeep = new MutableHashMap[String, Long]
 
-    // generate map of Id -> EntryNum
+    // generate map of Id (Key) -> EntryNum (logical offset)
     var index = 1
     inLog.foldLeft(())(
       (_, evt) => {
@@ -68,12 +79,16 @@ object UberTool {
       }
     )
 
-    // get a list of EntryNums not overwritten in map
-    val toWriteIterator = toKeep.values.toList.sortWith(_ < _).iterator
+    // keys are useless, only need offsets, sorted
+    toKeep.values.toList.sortWith(_ < _)
+  }
+
+  // don't call with an empty iterator- you will have a bad time
+  private def writeKeepableEvents(inLog: SiriusLog, outLog: SiriusLog, toWriteIterator: Iterator[Long]) {
     var nextWrite = toWriteIterator.next()
 
     // write events whose positions appear in toWriteIterator
-    index = 1
+    var index = 1
     inLog.foldLeft(())(
       (_, evt) => {
         if (index == nextWrite) {

@@ -83,6 +83,16 @@ class UberToolTest extends NiceTest {
       )
       assert(expected === outEvents)
     }
+
+    it ("must be ok with compacting an empty log") {
+      val inLog = new DummySiriusLog(Nil)
+      val outLog = new DummySiriusLog(Nil)
+
+      UberTool.compact(inLog, outLog)
+
+      // a size method on SiriusLog would be cool...
+      assert(0 === outLog.foldLeft(0)((a, _) => a + 1))
+    }
   }
 
   describe("twoPassCompact") {
@@ -119,6 +129,16 @@ class UberToolTest extends NiceTest {
         OrderedEvent(12, 5, Delete("F"))
       )
       assert(expected === outEvents)
+    }
+
+    it ("must be ok with compacting an empty log") {
+      val inLog = new DummySiriusLog(Nil)
+      val outLog = new DummySiriusLog(Nil)
+
+      UberTool.twoPassCompact(inLog, outLog)
+
+      // a size method on SiriusLog would be cool...
+      assert(0 === outLog.foldLeft(0)((a, _) => a + 1))
     }
   }
 }
