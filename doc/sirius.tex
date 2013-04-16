@@ -179,7 +179,7 @@ The payload field is an arbitrary array of bytes. This field currently encapsula
 ordered events from Sirius, which are encoded as follows:
 
 \begin{center}
-    [seq: long][timestamp: long][type: int][keyLen: int][bodyLen: long][key: ...][body: ...]
+    [seq: long][timestamp: long][type: int][keyLen: int][bodyLen: int][key: ...][body: ...]
 \end{center}
 
 The {\em type} field is an encoding of the event type, either 1 for {\em Put} or 2 for
