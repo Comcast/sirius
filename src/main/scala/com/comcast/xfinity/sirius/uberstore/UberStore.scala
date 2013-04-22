@@ -30,7 +30,7 @@ object UberStore {
  *
  * @param uberpair UberStoreFilePair for delegating uberstore operations
  */
-class UberStore(uberpair: UberStoreFilePair) extends SiriusLog {
+class UberStore private[uberstore] (uberpair: UberStoreFilePair) extends SiriusLog {
 
   /**
    * @inheritdoc

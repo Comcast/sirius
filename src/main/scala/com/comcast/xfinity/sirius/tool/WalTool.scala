@@ -1,13 +1,16 @@
 package com.comcast.xfinity.sirius.tool
 
-import com.comcast.xfinity.sirius.uberstore.{UberStoreFilePair, UberStore, UberTool}
 import java.io.File
-import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.uberstore.seqindex.ReadOnlySeqIndex
-import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
-import util.matching.Regex
-import com.comcast.xfinity.sirius.api.impl.{Delete, Put, OrderedEvent}
+
+import scala.util.matching.Regex
+
+import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.Put
 import com.comcast.xfinity.sirius.tool.format.OrderedEventFormatter
+import com.comcast.xfinity.sirius.uberstore.UberStore
+import com.comcast.xfinity.sirius.uberstore.UberTool
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -53,12 +56,8 @@ object WalTool {
 
       case Array("tail", walDir) =>
         tailUber(walDir)
-      case Array("tail", "-f", walDir) =>
-        tailUber(walDir, follow = true)
       case Array("tail", "-n", number, walDir) =>
         tailUber(walDir, number.toInt)
-      case Array("tail", "-n", number, "-f", walDir) =>
-        tailUber(walDir, number.toInt, follow = true)
 
       case Array("range", begin, end, walDir) =>
         printSeq(UberStore(walDir), begin.toLong, end.toLong)
@@ -134,18 +133,11 @@ object WalTool {
    * @param follow whether to follow, printing the last n lines every sleepDuration ms
    * @param sleepDuration number of ms between prints in follow mode
    */
-  private def tailUber(inDirName: String, number: Int = 20, follow: Boolean = false, sleepDuration: Int = 1000) {
-    val wal = new UberStore(new UberStoreFilePair(UberDataFile(new File(inDirName, "1.data").getAbsolutePath),
-                              ReadOnlySeqIndex(new File(inDirName, "1.index").getAbsolutePath)))
+  private def tailUber(inDirName: String, number: Int = 20) {
+    val wal = UberStore(inDirName)
     var seq = wal.getNextSeq - 1
 
     printSeq(wal, seq - number, seq)
-    while (follow) {
-      Thread.sleep(sleepDuration)
-      print("\033["+"2J")
-      seq = wal.getNextSeq - 1
-      printSeq(wal, seq - number, seq)
-    }
   }
 
   /**
