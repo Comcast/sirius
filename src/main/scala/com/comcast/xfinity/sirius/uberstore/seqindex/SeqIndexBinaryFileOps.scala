@@ -5,6 +5,7 @@ import java.nio.ByteBuffer
 import java.util.{TreeMap => JTreeMap}
 import com.comcast.xfinity.sirius.uberstore.common.Checksummer
 import com.comcast.xfinity.sirius.uberstore.common.Fnv1aChecksummer
+import scala.annotation.tailrec
 
 object SeqIndexBinaryFileOps {
 
@@ -73,12 +74,15 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
     readIndex(indexFileHandle, byteBuf)
   }
 
+  @tailrec
   private def readIndex(indexFileHandle: RandomAccessFile,
                         byteBuf: ByteBuffer,
                         soFar: JTreeMap[Long, Long] = new JTreeMap[Long, Long]): JTreeMap[Long, Long] = {
     val bytesRead = indexFileHandle.read(byteBuf.array)
     if (bytesRead > 0) {
-      soFar.putAll(decodeChunk(byteBuf, bytesRead))
+      val chunk = decodeChunk(byteBuf, bytesRead)
+      chunk.foreach((seqOff) => soFar.put(seqOff._1, seqOff._2))
+
       if (bytesRead == byteBuf.limit) {
         readIndex(indexFileHandle, byteBuf, soFar)
       } else {
@@ -89,21 +93,24 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
     }
   }
 
-  private def decodeChunk(byteBuf: ByteBuffer, chunkSize: Int): JTreeMap[Long, Long] = {
-    val chunk = new JTreeMap[Long, Long]
+  private def decodeChunk(byteBuf: ByteBuffer, chunkSize: Int): List[(Long, Long)] = {
+    var chunk = List[(Long, Long)]()
     byteBuf.position(0)
 
     val entryBuf = ByteBuffer.allocate(24)
 
     while (byteBuf.position != chunkSize) {
       byteBuf.get(entryBuf.array)
-      updateWithEntry(chunk, entryBuf)
+      val (seq, offset) = readEntry(entryBuf)
+      chunk ::= (seq, offset)
     }
 
     chunk
   }
 
-  private def updateWithEntry(toUpdate: JTreeMap[Long, Long], entryBuf: ByteBuffer) {
+  // reads an entry (destructively) from entryBuf, at entryBuf's current posisition,
+  //  advancing the position past the entry
+  private def readEntry(entryBuf: ByteBuffer): (Long, Long) = {
     val chksum = entryBuf.getLong(0)
     entryBuf.putLong(0, 0L)
     if (chksum != checksummer.checksum(entryBuf.array)) {
@@ -112,6 +119,6 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
 
     val seq = entryBuf.getLong(8)
     val offset = entryBuf.getLong(16)
-    toUpdate.put(seq, offset)
+    (seq, offset)
   }
 }
