@@ -26,15 +26,12 @@ object DiskOnlySeqIndex {
  *
  * Offset lookups are done using an on disk binary search.
  *
- * THIS CLASS IS NOT THREAD SAFE, nothing is synchronized for now, but this may
- * change if it turns out we don't know how to behave.
- *
  * @param handle the RandomAccessFile associated with the index file.
  * @param fileOps the SeqIndexBinaryFileOps to use when accessing the index file,
  *          DiskOnlySeqIndex does all disk access through this helper
  */
-class DiskOnlySeqIndex private(val handle: RandomAccessFile,
-                               val fileOps: SeqIndexBinaryFileOps) extends SeqIndex {
+class DiskOnlySeqIndex private(handle: RandomAccessFile,
+                               fileOps: SeqIndexBinaryFileOps) extends SeqIndex {
 
   // via some scala magic this is also exposed as a method :)
   var isClosed = false
@@ -68,7 +65,7 @@ class DiskOnlySeqIndex private(val handle: RandomAccessFile,
   /**
    * {@inheritdoc}
    */
-  def getMaxSeq(): Option[Long] = {
+  def getMaxSeq(): Option[Long] = synchronized {
     if (handle.length == 0) None
     else {
       handle.seek(handle.length - 24)
@@ -80,7 +77,7 @@ class DiskOnlySeqIndex private(val handle: RandomAccessFile,
   /**
    * {@inheritdoc}
    */
-  def put(seq: Long, offset: Long): Unit = {
+  def put(seq: Long, offset: Long): Unit = synchronized {
     handle.seek(handle.length)
     fileOps.put(handle, seq, offset)
   }
@@ -88,7 +85,7 @@ class DiskOnlySeqIndex private(val handle: RandomAccessFile,
   /**
    * {@inheritdoc}
    */
-  def getOffsetRange(firstSeq: Long, lastSeq: Long): (Long, Long) = {
+  def getOffsetRange(firstSeq: Long, lastSeq: Long): (Long, Long) = synchronized {
     val rangeOpt = for (
         lowerBound <- getLowerBoundOffset(firstSeq);
         upperBound <- getUpperBoundOffset(lastSeq);
@@ -100,7 +97,7 @@ class DiskOnlySeqIndex private(val handle: RandomAccessFile,
   /**
    * {@inheritdoc}
    */
-  def close() {
+  def close(): Unit = synchronized {
     if (!isClosed) {
       handle.close()
       isClosed = true
