@@ -10,8 +10,8 @@ import collection.JavaConversions._
 
 object PersistedSeqIndexTest {
 
-  def newMockFileOps(initialIndex: JTreeMap[Long, Long] = new JTreeMap[Long, Long]()): SeqIndexFileOps = {
-    val mockOps = mock(classOf[SeqIndexFileOps])
+  def newMockFileOps(initialIndex: JTreeMap[Long, Long] = new JTreeMap[Long, Long]()): SeqIndexBinaryFileOps = {
+    val mockOps = mock(classOf[SeqIndexBinaryFileOps])
     doReturn(initialIndex).when(mockOps).loadIndex(any[RandomAccessFile])
     mockOps
   }

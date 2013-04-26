@@ -4,8 +4,22 @@ import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import java.util.{TreeMap => JTreeMap}
 import com.comcast.xfinity.sirius.uberstore.common.Checksummer
+import com.comcast.xfinity.sirius.uberstore.common.Fnv1aChecksummer
 
+object SeqIndexBinaryFileOps {
 
+  /**
+   * Create an instance using bufferSize buffer size for bulk
+   * operations (loadIndex).
+   */
+  def apply() = {
+    // XXX: Buffer sizing is not exposed since at this point since as
+    // the code stands it hasn't permeated above this layer.
+    // Simpler to leave it out of the picture for now.
+    new SeqIndexBinaryFileOps(Fnv1aChecksummer())
+  }
+
+}
 
 /**
  * Class providing low level file operations for a binary
@@ -15,11 +29,21 @@ import com.comcast.xfinity.sirius.uberstore.common.Checksummer
  * @param bufferSize size of the buffer to be used for reading from passed
  *          in handles.  Each read operation will have its own buffer
  */
-class SeqIndexBinaryFileOps(checksummer: Checksummer,
-                            bufferSize: Int = 24 * 1024) extends SeqIndexFileOps {
+class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
+                                              bufferSize: Int = 24 * 1024) {
 
   /**
-   * @inheritdoc
+   * Persist sequence to offset mapping in the index file at the
+   * current position of writeHandle.
+   *
+   * This function has the side effect of advancing writeHandle
+   * to the end of the written data.
+   *
+   * Not thread safe with respect to writeHandle
+   *
+   * @param writeHandle the RandomAccessFile to persist into
+   * @param seq the sequence number to store
+   * @param offset the offset associated with seq
    */
   def put(writeHandle: RandomAccessFile, seq: Long, offset: Long) {
     val byteBuf = ByteBuffer.allocate(24)
@@ -32,7 +56,16 @@ class SeqIndexBinaryFileOps(checksummer: Checksummer,
   }
 
   /**
-   * @inheritdoc
+   * Load all sequence -> offset mappings from the input file handle.
+   *
+   * Has the side effect of advancing the file pointer to the end of
+   * the file.
+   *
+   * Not thread safe with respect to indexFileHandle
+   *
+   * @param indexFileHandle the file handle to read from
+   *
+   * @return the SortedMap[Long, Long] of sequence -> offset mappings
    */
   def loadIndex(indexFileHandle: RandomAccessFile): JTreeMap[Long, Long] = {
     val byteBuf = ByteBuffer.allocate(bufferSize)

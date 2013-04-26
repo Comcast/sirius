@@ -15,7 +15,7 @@ object PersistedSeqIndex {
    * @return a SeqIndex instance backed by seqFileName
    */
   def apply(seqFileName: String) = {
-    val fileOps = new SeqIndexBinaryFileOps(Fnv1aChecksummer())
+    val fileOps = SeqIndexBinaryFileOps()
     val writeHandle = new RandomAccessFile(seqFileName, "rw")
     new PersistedSeqIndex(writeHandle, fileOps)
   }
@@ -38,7 +38,7 @@ object PersistedSeqIndex {
  */
 // TODO: we may be able to just use a standard output stream for this...
 private[uberstore] class PersistedSeqIndex(writeHandle: RandomAccessFile,
-                                               fileOps: SeqIndexFileOps) extends SeqIndex {
+                                               fileOps: SeqIndexBinaryFileOps) extends SeqIndex {
 
   val seqCache: JTreeMap[Long, Long] = fileOps.loadIndex(writeHandle)
   var isClosed = false
