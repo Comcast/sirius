@@ -68,10 +68,31 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
    *
    * @return the SortedMap[Long, Long] of sequence -> offset mappings
    */
+  // XXX: this may better serve as part of PersistedSeqIndex, or something
+  //  else, as it is slightly higher level and can be composed of file ops
+  //  public api, but that's for later
   def loadIndex(indexFileHandle: RandomAccessFile): JTreeMap[Long, Long] = {
     val byteBuf = ByteBuffer.allocate(bufferSize)
 
     readIndex(indexFileHandle, byteBuf)
+  }
+
+  /**
+   * Read an entry off of a handle, with the side effect of advancing
+   * the handle.
+   *
+   * It is the caller's duty to ensure that the handle is properly located,
+   * aligned, and that data is available.
+   *
+   * Not thread safe with respect to indexFileHandle
+   *
+   * @indexFileHandle RandomAccessFile for the index file, it's offset
+   *                    will be advanced 24 bytes (entry length)
+   */
+  def readEntry(indexFileHandle: RandomAccessFile): (Long, Long) = {
+    val byteBuf = ByteBuffer.allocate(24)
+    indexFileHandle.read(byteBuf.array)
+    readEntry(byteBuf)
   }
 
   @tailrec
