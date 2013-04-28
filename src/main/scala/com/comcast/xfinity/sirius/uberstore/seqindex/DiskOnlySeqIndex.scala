@@ -36,6 +36,16 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
   // via some scala magic this is also exposed as a method :)
   var isClosed = false
 
+  var maxSeq = {
+    if (handle.length == 0)
+      None
+    else {
+      handle.seek(handle.length - 24)
+      val (seq, _) = fileOps.readEntry(handle)
+      Some(seq)
+    }
+  }
+
   /**
    * {@inheritdoc}
    */
@@ -65,14 +75,7 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
   /**
    * {@inheritdoc}
    */
-  def getMaxSeq(): Option[Long] = synchronized {
-    if (handle.length == 0) None
-    else {
-      handle.seek(handle.length - 24)
-      val (seq, _) = fileOps.readEntry(handle)
-      Some(seq)
-    }
-  }
+  def getMaxSeq(): Option[Long] = maxSeq
 
   /**
    * {@inheritdoc}
@@ -80,6 +83,7 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
   def put(seq: Long, offset: Long): Unit = synchronized {
     handle.seek(handle.length)
     fileOps.put(handle, seq, offset)
+    maxSeq = Some(seq)
   }
 
   /**
