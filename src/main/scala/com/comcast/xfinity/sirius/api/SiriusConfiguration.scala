@@ -64,6 +64,16 @@ object SiriusConfiguration {
   final val LOG_LOCATION = "sirius.uberstore.dir"
 
   /**
+   * True to use PersistedSeqIndex (write-through java.util.TreeMap fronted
+   * uberstore index file implementation), false to use DiskOnlySeqIndex
+   * (raw disk operation uberstore index file implementation). DiskOnlySeqIndex
+   * drastically reduces memory overhead (even in the order of gigabytes less
+   * consumption) at the expense of potentially less performant lookup
+   * operations (boolean)
+   */
+  final val LOG_USE_MEMORY_INDEX = "sirius.uberstore.use-in-memory-index"
+
+  /**
    * By default Sirius places a write through cache in front of the
    * log, this property dictates its maximum size (int)
    */

@@ -35,7 +35,9 @@ object SiriusFactory {
       case None =>
         throw new IllegalArgumentException(SiriusConfiguration.LOG_LOCATION + " must be set on config")
     }
-    val backendLog = UberStore(uberStoreDir)
+
+    val useMemBackedIndex = siriusConfig.getProp(SiriusConfiguration.LOG_USE_MEMORY_INDEX, true)
+    val backendLog = UberStore(uberStoreDir, useMemBackedIndex = useMemBackedIndex)
 
     // TODO: make cache wiring optional?
     val cacheSize = siriusConfig.getProp(SiriusConfiguration.LOG_WRITE_CACHE_SIZE, 10000)
