@@ -4,6 +4,7 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import data.UberDataFile
 import seqindex.{PersistedSeqIndex, SeqIndex}
+import com.comcast.xfinity.sirius.uberstore.seqindex.DiskOnlySeqIndex
 
 object UberStoreFilePair {
 
@@ -36,18 +37,18 @@ object UberStoreFilePair {
    * @param dataFile the UberDataFile to update
    */
   private[uberstore] def repairIndex(index: SeqIndex, dataFile: UberDataFile) {
-    val lastOffset = index.getMaxSeq match {
-      case None => 0L
-      case Some(seq) => index.getOffsetFor(seq).get // has to exist
+    val (includeFirst, lastOffset) = index.getMaxSeq match {
+      case None => (true, 0L)
+      case Some(seq) => (false, index.getOffsetFor(seq).get) // has to exist
     }
 
-    dataFile.foldLeftRange(lastOffset, Long.MaxValue)(()) (
-      (acc, off, evt) =>
-        if (index.getOffsetFor(evt.sequence) == None) {
+    dataFile.foldLeftRange(lastOffset, Long.MaxValue)(includeFirst) (
+      (shouldInclude, off, evt) => {
+        if (shouldInclude) {
           index.put(evt.sequence, off)
-        } else {
-          // no-op
         }
+        true
+      }
     )
 
   }
