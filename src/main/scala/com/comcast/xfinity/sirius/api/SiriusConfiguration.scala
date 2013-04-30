@@ -74,6 +74,15 @@ object SiriusConfiguration {
   final val LOG_USE_MEMORY_INDEX = "sirius.uberstore.use-in-memory-index"
 
   /**
+   * Whether or not to use the write cache, which will cache the last
+   * LOG_WRITE_CACHE_SIZE entries written to the log since startup.
+   * May alleviate disk pressure and improve catch up speed, but at
+   * the expense of higher memory overhead and (likely) incompatibility
+   * with eventual live compaction (boolean)
+   */
+  final val LOG_USE_WRITE_CACHE = "sirius.log.write-cache-enabled"
+
+  /**
    * By default Sirius places a write through cache in front of the
    * log, this property dictates its maximum size (int)
    */

@@ -40,8 +40,14 @@ object SiriusFactory {
     val backendLog = UberStore(uberStoreDir, useMemBackedIndex = useMemBackedIndex)
 
     // TODO: make cache wiring optional?
-    val cacheSize = siriusConfig.getProp(SiriusConfiguration.LOG_WRITE_CACHE_SIZE, 10000)
-    val log = CachedSiriusLog(backendLog, cacheSize)
+    val log: SiriusLog = {
+      if (siriusConfig.getProp(SiriusConfiguration.LOG_USE_WRITE_CACHE, true)) {
+        val cacheSize = siriusConfig.getProp(SiriusConfiguration.LOG_WRITE_CACHE_SIZE, 10000)
+        CachedSiriusLog(backendLog, cacheSize)
+      } else {
+        backendLog
+      }
+    }
 
     createInstance(requestHandler, siriusConfig, log)
   }
