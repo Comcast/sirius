@@ -60,7 +60,7 @@ object WalTool {
         tailUber(walDir, number.toInt)
 
       case Array("range", begin, end, walDir) =>
-        printSeq(UberStore(walDir), begin.toLong, end.toLong)
+        printSeq(createUberStore(walDir), begin.toLong, end.toLong)
 
       case Array("keyFilter", regexpStr, inWal, outWal) =>
         val regexp = regexpStr.r
@@ -89,8 +89,8 @@ object WalTool {
     // create dir first because UberStore instantiation can take some time
     createFreshDir(outWalDirName)
 
-    val inWal = UberStore(inWalDirName)
-    val outWal = UberStore(outWalDirName)
+    val inWal = createUberStore(inWalDirName)
+    val outWal = createUberStore(outWalDirName)
 
     doCompact(inWal, outWal, twoPass)
   }
@@ -134,7 +134,7 @@ object WalTool {
    * @param sleepDuration number of ms between prints in follow mode
    */
   private def tailUber(inDirName: String, number: Int = 20) {
-    val wal = UberStore(inDirName)
+    val wal = createUberStore(inDirName)
     var seq = wal.getNextSeq - 1
 
     printSeq(wal, seq - number, seq)
@@ -178,8 +178,8 @@ object WalTool {
   private def filter(inUberDir: String, outUberDir: String, pred: OrderedEvent => Boolean) {
     createFreshDir(outUberDir)
 
-    val inWal = UberStore(inUberDir)
-    val outWal = UberStore(outUberDir)
+    val inWal = createUberStore(inUberDir)
+    val outWal = createUberStore(outUberDir)
 
     filter(inWal, outWal, pred)
   }
@@ -200,4 +200,7 @@ object WalTool {
       case (wal, _) => wal
     }
   }
+
+  // single creation place for simplicity as we supply extra params
+  private def createUberStore(dir: String) = UberStore(dir, useMemBackedIndex = false)
 }
