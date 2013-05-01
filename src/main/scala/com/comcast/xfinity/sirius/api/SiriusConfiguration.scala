@@ -53,12 +53,6 @@ object SiriusConfiguration {
   final val PAXOS_MEMBERSHIP_CHECK_INTERVAL = "sirius.supervisor.paxos-check-interval-secs"
 
   /**
-   * Whether or not to use paxos (boolean)
-   */
-  @deprecated("Paxos is always enabled, this option has no effect", "2012-09-24")
-  final val USE_PAXOS = "sirius.paxos.enabled"
-
-  /**
    * Directory to put UberStore in (string)
    */
   final val LOG_LOCATION = "sirius.uberstore.dir"
