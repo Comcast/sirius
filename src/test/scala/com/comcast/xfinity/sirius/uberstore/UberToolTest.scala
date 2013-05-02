@@ -93,6 +93,30 @@ class UberToolTest extends NiceTest {
       // a size method on SiriusLog would be cool...
       assert(0 === outLog.foldLeft(0)((a, _) => a + 1))
     }
+
+    it ("must remove deletes before cutoff timestamp") {
+      val uncompactedEvents = List(
+        OrderedEvent(1, 100, Put("TooOld", "will be fully crushed".getBytes)),
+        OrderedEvent(2, 200, Delete("TooOld")),
+        OrderedEvent(3, 300, Put("Slayer", "Rules".getBytes)),
+        OrderedEvent(4, 400, Put("TooNew", "delete will remain".getBytes)),
+        OrderedEvent(5, 500, Delete("TooNew"))
+      )
+
+      val inLog = new DummySiriusLog(uncompactedEvents)
+      val outLog = new DummySiriusLog(Nil)
+
+      UberTool.compact(inLog, outLog, 400)
+
+      val outEvents = outLog.foldLeft(List[OrderedEvent]())(
+        (acc, evt) => evt :: acc
+      ).reverse
+      val expected = List(
+        OrderedEvent(3, 300, Put("Slayer", "Rules".getBytes)),
+        OrderedEvent(5, 500, Delete("TooNew"))
+      )
+      assert(expected === outEvents)
+    }
   }
 
   describe("twoPassCompact") {
@@ -139,6 +163,30 @@ class UberToolTest extends NiceTest {
 
       // a size method on SiriusLog would be cool...
       assert(0 === outLog.foldLeft(0)((a, _) => a + 1))
+    }
+
+        it ("must remove deletes before cutoff timestamp") {
+      val uncompactedEvents = List(
+        OrderedEvent(1, 100, Put("TooOld", "will be fully crushed".getBytes)),
+        OrderedEvent(2, 200, Delete("TooOld")),
+        OrderedEvent(3, 300, Put("Slayer", "Rules".getBytes)),
+        OrderedEvent(4, 400, Put("TooNew", "delete will remain".getBytes)),
+        OrderedEvent(5, 500, Delete("TooNew"))
+      )
+
+      val inLog = new DummySiriusLog(uncompactedEvents)
+      val outLog = new DummySiriusLog(Nil)
+
+      UberTool.twoPassCompact(inLog, outLog, 400)
+
+      val outEvents = outLog.foldLeft(List[OrderedEvent]())(
+        (acc, evt) => evt :: acc
+      ).reverse
+      val expected = List(
+        OrderedEvent(3, 300, Put("Slayer", "Rules".getBytes)),
+        OrderedEvent(5, 500, Delete("TooNew"))
+      )
+      assert(expected === outEvents)
     }
   }
 }

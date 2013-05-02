@@ -33,15 +33,24 @@ object UberTool {
    * @param inLog the SiriusLog to compact events from
    * @param outLog the SiriusLog to write the compacted
    *          log into
+   * @param deleteCutOff deletes with a timestamp before this
+   *          point are completely removed from the log. defaults
+   *          to 0, meaning any deletes from 12AM Jan 1, 1970 or
+   *          before are completely removed from the log
    */
-  def compact(inLog: SiriusLog, outLog: SiriusLog) {
+  def compact(inLog: SiriusLog, outLog: SiriusLog, deleteCutoff: Long = 0) {
     val toKeep = new MutableHashMap[String, OrderedEvent]
 
-    inLog.foldLeft(())(
-      (_, evt) => {
-        toKeep.put(keyFromEvent(evt), evt)
-      }
-    )
+    inLog.foldLeft(()) {
+      case (_, evt @ OrderedEvent(_, ts, Delete(key))) =>
+        if (ts <= deleteCutoff) {
+          toKeep.remove(key)
+        } else {
+          toKeep.put(key, evt)
+        }
+      case (_, evt @ OrderedEvent(_, _, Put(key, _))) =>
+        toKeep.put(key, evt)
+    }
 
     val toWrite = toKeep.values.toList.sortWith(_.sequence < _.sequence)
 
@@ -55,10 +64,14 @@ object UberTool {
    * @param inLog input log
    * @param outLog output log, needs to be empty (or you're likely to get an
    *               "out of order write" exception)
+   * @param deleteCutOff deletes with a timestamp before this
+   *          point are completely removed from the log. defaults
+   *          to 0, meaning any deletes from 12AM Jan 1, 1970 or
+   *          before are completely removed from the log
    */
-  def twoPassCompact(inLog: SiriusLog, outLog: SiriusLog) {
+  def twoPassCompact(inLog: SiriusLog, outLog: SiriusLog, deleteCutoff: Long = 0) {
     // Pass 1: get offsets of all keepable events (ie: last delete/put per key)
-    val keepableOffsetIterator = gatherKeepableEventOffsets(inLog).iterator
+    val keepableOffsetIterator = gatherKeepableEventOffsets(inLog, deleteCutoff).iterator
 
     // Pass 2: write it out, skip if there's nothing worth keeping, saves time
     //          and energy- Sirius is a green product
@@ -67,17 +80,23 @@ object UberTool {
     }
   }
 
-  private def gatherKeepableEventOffsets(inLog: SiriusLog) = {
+  private def gatherKeepableEventOffsets(inLog: SiriusLog, deleteCutoff: Long) = {
     val toKeep = new MutableHashMap[String, Long]
 
     // generate map of Id (Key) -> EntryNum (logical offset)
     var index = 1
-    inLog.foldLeft(())(
-      (_, evt) => {
-        toKeep.put(keyFromEvent(evt), index)
+    inLog.foldLeft(()) {
+      case (_, OrderedEvent(_, ts, Delete(key))) =>
+        if (ts <= deleteCutoff) {
+          toKeep.remove(key)
+        } else {
+          toKeep.put(key, index)
+        }
         index += 1
-      }
-    )
+      case (_, OrderedEvent(_, _, Put(key, _))) =>
+        toKeep.put(key, index)
+        index += 1
+    }
 
     // keys are useless, only need offsets, sorted
     toKeep.values.toList.sortWith(_ < _)
@@ -102,8 +121,4 @@ object UberTool {
     )
   }
 
-  private def keyFromEvent(evt: OrderedEvent): String = evt.request match {
-    case Put(key, _) => key
-    case Delete(key) => key
-  }
 }
