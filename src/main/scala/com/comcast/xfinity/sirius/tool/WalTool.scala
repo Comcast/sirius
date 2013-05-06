@@ -25,7 +25,8 @@ object WalTool {
     Console.err.println("   compact [two-pass] <inWalDir> <outWalDir>")
     Console.err.println("       Compact UberStore in inWalDir into new UberStore in outWalDir")
     Console.err.println("       If two-pass is provided then the more memory efficient two pass")
-    Console.err.println("       compaction algorithm will be used")
+    Console.err.println("       compaction algorithm will be used.  All deletes older than 1 week")
+    Console.err.println("       are fully removed from the resultant log.")
     Console.err.println()
     Console.err.println("   tail [-n number] [-f] <walDir>")
     Console.err.println("       Show last 20 sequence numbers in wal.")
@@ -101,10 +102,17 @@ object WalTool {
    * Compact inWal into outWal using twoPass algorithm if specified
    */
   private def doCompact(inWal: SiriusLog, outWal: SiriusLog, twoPass: Boolean) {
+    val cutoff = {
+      // unofficial hidden feature, just in case there is some situation we don't
+      // want to not compact away old deletes without recompiling
+      val maxDeleteAge = System.getProperty("maxDeleteAge", "604800000").toLong
+      if (maxDeleteAge <= 0) 0 else (System.currentTimeMillis - maxDeleteAge)
+    }
+
     if (twoPass) {
-      UberTool.twoPassCompact(inWal, outWal)
+      UberTool.twoPassCompact(inWal, outWal, cutoff)
     } else {
-      UberTool.compact(inWal, outWal)
+      UberTool.compact(inWal, outWal, cutoff)
     }
   }
 
