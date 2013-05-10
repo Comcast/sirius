@@ -13,7 +13,7 @@ then
 fi
 
 if [ "x$JAVA_OPTS" == "x" ]; then
-    JAVA_OPTS="-Xms8g -Xmx14g"
+    JAVA_OPTS="-Xms8g -Xmx20g"
 fi
 
 UBERSTORE_BASE=$1
