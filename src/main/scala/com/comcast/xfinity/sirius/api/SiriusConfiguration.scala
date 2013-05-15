@@ -65,6 +65,7 @@ object SiriusConfiguration {
    * consumption) at the expense of potentially less performant lookup
    * operations (boolean)
    */
+  @deprecated("Not honored as of sirius-1.0.4, uses raw disk operations only", "2013-05-15")
   final val LOG_USE_MEMORY_INDEX = "sirius.uberstore.use-in-memory-index"
 
   /**

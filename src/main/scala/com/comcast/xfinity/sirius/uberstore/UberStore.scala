@@ -11,21 +11,11 @@ object UberStore {
    * be created if they do not exist however.
    *
    * @param baseDir directory to base the UberStore in
-   * @param useMemBackedIndex true to use PersistedSeqIndex, false
-   *            to use DiskOnlySeqIndex.  The former offers less
-   *            disk activity at the expense of higher memory
-   *            overhead (roughly 64b per entry), where the latter
-   *            offers lower memory overhead (effectively none)
-   *            at the expense of more disk activity. In theory
-   *            the higher disk activity of DiskOnlySeqIndex should
-   *            be negated by the operating system filesystem cache.
-   *            Default is true (use PersistedSeqIndex).
-   *
    *
    * @return an instantiated UberStore
    */
-  def apply(baseDir: String, useMemBackedIndex: Boolean = true): UberStore = {
-    new UberStore(UberPair(baseDir, 1L, useMemBackedIndex = useMemBackedIndex))
+  def apply(baseDir: String): UberStore = {
+    new UberStore(UberPair(baseDir, 1L))
   }
 }
 

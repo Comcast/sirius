@@ -1,10 +1,11 @@
 package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import data.UberDataFile
-import seqindex.{PersistedSeqIndex, SeqIndex}
 import com.comcast.xfinity.sirius.uberstore.seqindex.DiskOnlySeqIndex
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+
+import data.UberDataFile
+import seqindex.SeqIndex
 
 object UberPair {
 
@@ -14,29 +15,13 @@ object UberPair {
    * be created if they do not exist however.
    *
    * @param baseDir directory to base the UberStoreFilePair in
-   * @param useMemBackedIndex true to use PersistedSeqIndex, false
-   *            to use DiskOnlySeqIndex.  The former offers less
-   *            disk activity at the expense of higher memory
-   *            overhead (roughly 64b per entry), where the latter
-   *            offers lower memory overhead (effectively none)
-   *            at the expense of more disk activity. In theory
-   *            the higher disk activity of DiskOnlySeqIndex should
-   *            be negated by the operating system filesystem cache.
-   *            Default is true (use PersistedSeqIndex).
    *
    * @return an instantiated UberStoreFilePair
    */
-  def apply(baseDir: String, startingSeq: Long, useMemBackedIndex: Boolean = true): UberPair = {
+  def apply(baseDir: String, startingSeq: Long): UberPair = {
     val baseName = "%s/%s".format(baseDir, startingSeq)
     val dataFile = UberDataFile("%s.data".format(baseName))
-    val index = {
-      val indexFileName = "%s.index".format(baseName)
-      if (useMemBackedIndex) {
-        PersistedSeqIndex(indexFileName)
-      } else {
-        DiskOnlySeqIndex(indexFileName)
-      }
-    }
+    val index = DiskOnlySeqIndex("%s.index".format(baseName))
     repairIndex(index, dataFile)
     new UberPair(dataFile, index)
   }
@@ -82,8 +67,7 @@ object UberPair {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class UberPair(dataFile: UberDataFile,
-                index: SeqIndex) extends SiriusLog {
+class UberPair(dataFile: UberDataFile, index: SeqIndex) extends SiriusLog {
 
   /**
    * @inheritdoc

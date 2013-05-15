@@ -1,17 +1,23 @@
 package com.comcast.xfinity.sirius.api.impl
 
-import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
-import com.comcast.xfinity.sirius.uberstore.UberStore
-import com.comcast.xfinity.sirius.writeaheadlog.{SiriusLog, CachedSiriusLog}
+import java.io.File
+import java.lang.management.ManagementFactory
 import java.net.InetAddress
 import java.util.{HashMap => JHashMap}
-import akka.actor.{ActorRef, ActorSystem}
-import management.ManagementFactory
+
+import com.comcast.xfinity.sirius.admin.ObjectNameHelper
+import com.comcast.xfinity.sirius.api.RequestHandler
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.typesafe.config.{ConfigFactory, Config}
-import java.io.File
-import com.comcast.xfinity.sirius.admin.{ObjectNameHelper}
-import javax.management.{ObjectName, MBeanServer}
+import com.comcast.xfinity.sirius.uberstore.UberStore
+import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
+import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+import com.typesafe.config.Config
+import com.typesafe.config.ConfigFactory
+
+import akka.actor.ActorRef
+import akka.actor.ActorSystem
+import javax.management.ObjectName
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -36,8 +42,7 @@ object SiriusFactory {
         throw new IllegalArgumentException(SiriusConfiguration.LOG_LOCATION + " must be set on config")
     }
 
-    val useMemBackedIndex = siriusConfig.getProp(SiriusConfiguration.LOG_USE_MEMORY_INDEX, true)
-    val backendLog = UberStore(uberStoreDir, useMemBackedIndex = useMemBackedIndex)
+    val backendLog = UberStore(uberStoreDir)
 
     // TODO: make cache wiring optional?
     val log: SiriusLog = {
