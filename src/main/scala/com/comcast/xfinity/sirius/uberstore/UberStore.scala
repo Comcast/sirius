@@ -25,7 +25,7 @@ object UberStore {
    * @return an instantiated UberStore
    */
   def apply(baseDir: String, useMemBackedIndex: Boolean = true): UberStore = {
-    new UberStore(UberStoreFilePair(baseDir, 1L, useMemBackedIndex = useMemBackedIndex))
+    new UberStore(UberPair(baseDir, 1L, useMemBackedIndex = useMemBackedIndex))
   }
 }
 
@@ -36,7 +36,7 @@ object UberStore {
  *
  * @param uberpair UberStoreFilePair for delegating uberstore operations
  */
-class UberStore private[uberstore] (uberpair: UberStoreFilePair) extends SiriusLog {
+class UberStore private[uberstore] (uberpair: UberPair) extends SiriusLog {
 
   /**
    * @inheritdoc

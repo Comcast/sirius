@@ -7,19 +7,19 @@ import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => meq, anyLong}
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 
-object UberStoreFilePairTest {
+object UberPairTest {
 
-  def createMockedUpLog: (UberDataFile, SeqIndex, UberStoreFilePair) = {
+  def createMockedUpLog: (UberDataFile, SeqIndex, UberPair) = {
     val mockDataFile = mock(classOf[UberDataFile])
     val mockIndex = mock(classOf[SeqIndex])
-    val underTest = new UberStoreFilePair(mockDataFile, mockIndex)
+    val underTest = new UberPair(mockDataFile, mockIndex)
     (mockDataFile, mockIndex, underTest)
   }
 }
 
-class UberStoreFilePairTest extends NiceTest {
+class UberPairTest extends NiceTest {
 
-  import UberStoreFilePairTest._
+  import UberPairTest._
 
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {

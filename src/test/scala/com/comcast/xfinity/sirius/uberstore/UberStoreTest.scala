@@ -9,12 +9,12 @@ import org.mockito.Mockito._
 @RunWith(classOf[JUnitRunner])
 class UberStoreTest extends NiceTest {
 
-  var mockPair: UberStoreFilePair = _
+  var mockPair: UberPair = _
   var mockOrderedEvent: OrderedEvent = _
   var underTest: UberStore = _
 
   before {
-    mockPair = mock[UberStoreFilePair]
+    mockPair = mock[UberPair]
     mockOrderedEvent = mock[OrderedEvent]
     underTest = new UberStore(mockPair)
   }

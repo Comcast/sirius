@@ -6,7 +6,7 @@ import data.UberDataFile
 import seqindex.{PersistedSeqIndex, SeqIndex}
 import com.comcast.xfinity.sirius.uberstore.seqindex.DiskOnlySeqIndex
 
-object UberStoreFilePair {
+object UberPair {
 
   /**
    * Create an UberStoreFilePair based in baseDir.  baseDir is NOT
@@ -26,7 +26,7 @@ object UberStoreFilePair {
    *
    * @return an instantiated UberStoreFilePair
    */
-  def apply(baseDir: String, startingSeq: Long, useMemBackedIndex: Boolean = true): UberStoreFilePair = {
+  def apply(baseDir: String, startingSeq: Long, useMemBackedIndex: Boolean = true): UberPair = {
     val baseName = "%s/%s".format(baseDir, startingSeq)
     val dataFile = UberDataFile("%s.data".format(baseName))
     val index = {
@@ -38,7 +38,7 @@ object UberStoreFilePair {
       }
     }
     repairIndex(index, dataFile)
-    new UberStoreFilePair(dataFile, index)
+    new UberPair(dataFile, index)
   }
 
   /**
@@ -82,7 +82,7 @@ object UberStoreFilePair {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class UberStoreFilePair(dataFile: UberDataFile,
+class UberPair(dataFile: UberDataFile,
                 index: SeqIndex) extends SiriusLog {
 
   /**
