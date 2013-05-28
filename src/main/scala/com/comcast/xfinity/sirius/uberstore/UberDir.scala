@@ -3,27 +3,37 @@ package com.comcast.xfinity.sirius.uberstore
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.uberstore.seqindex.DiskOnlySeqIndex
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-
 import data.UberDataFile
 import seqindex.SeqIndex
+import java.io.File
 
-object UberPair {
+object UberDir {
 
   /**
-   * Create an UberStoreFilePair based in baseDir.  baseDir is NOT
-   * created, it must exist. The files within baseDir will
-   * be created if they do not exist however.
+   * Create an UberDir based in baseDir starting with startingSeq.
+   * baseDir is not created, it must exist. Data/index will reside
+   * in a directory named "startingSeq" under baseDir and will
+   * be created if necessary
    *
-   * @param baseDir directory to base the UberStoreFilePair in
+   * @param baseDir directory containing the UberDir
+   * @param startingSeq first sequence number that may be found
+   *        in this UberDir (it doesn't necessarily HAVE to exist)
    *
-   * @return an instantiated UberStoreFilePair
+   * @return an UberDir instance, fully repaired and usable
    */
-  def apply(baseDir: String, startingSeq: Long): UberPair = {
-    val baseName = "%s/%s".format(baseDir, startingSeq)
-    val dataFile = UberDataFile("%s.data".format(baseName))
-    val index = DiskOnlySeqIndex("%s.index".format(baseName))
-    repairIndex(index, dataFile)
-    new UberPair(dataFile, index)
+  def apply(baseDir: String, startingSeq: Long): UberDir = {
+    val dir = new File("%s/%s".format(baseDir, startingSeq))
+    if (!dir.exists()) {
+      dir.mkdir()
+    }
+
+    val dataFile = new File(dir, "data")
+    val indexFile = new File(dir, "index")
+
+    val uberDataFile = UberDataFile(dataFile.getAbsolutePath())
+    val index = DiskOnlySeqIndex(indexFile.getAbsolutePath())
+    repairIndex(index, uberDataFile)
+    new UberDir(uberDataFile, index)
   }
 
   /**
@@ -56,25 +66,21 @@ object UberPair {
 }
 
 /**
- * THIS SHOULD NOT BE USED DIRECTLY, use UberStoreFilePair#apply instead,
- * it will do all of the proper wiring.  This very well may be
- * made private in the future!
- *
  * Expectedly high performance sequence number based append only
- * storage.  Stores all data in dataFile, and sequence -> data
+ * storage directory.  Stores all data in dataFile, and sequence -> data
  * mappings in index.
  *
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class UberPair(dataFile: UberDataFile, index: SeqIndex) {
+class UberDir private[uberstore](dataFile: UberDataFile, index: SeqIndex) {
 
   /**
    * @inheritdoc
    */
   def writeEntry(event: OrderedEvent) {
     if (isClosed) {
-      throw new IllegalStateException("Attempting to write to closed UberStoreFilePair")
+      throw new IllegalStateException("Attempting to write to closed UberDir")
     }
     if (event.sequence < getNextSeq) {
       throw new IllegalArgumentException("Writing events out of order is bad news bears")
@@ -108,7 +114,7 @@ class UberPair(dataFile: UberDataFile, index: SeqIndex) {
   }
 
   /**
-   * Close underlying file handles or connections.  This UberStoreFilePair should not be used after
+   * Close underlying file handles or connections.  This UberDir should not be used after
    * close is called.
    */
   def close() {

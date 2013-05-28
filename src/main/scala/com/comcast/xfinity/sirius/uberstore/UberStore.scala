@@ -15,7 +15,7 @@ object UberStore {
    * @return an instantiated UberStore
    */
   def apply(baseDir: String): UberStore = {
-    new UberStore(UberPair(baseDir, 1L))
+    new UberStore(UberDir(baseDir, 1L))
   }
 }
 
@@ -24,34 +24,34 @@ object UberStore {
  * storage.  Stores all data in dataFile, and sequence -> data
  * mappings in index.
  *
- * @param uberpair UberStoreFilePair for delegating uberstore operations
+ * @param uberDir UberDir for delegating uberstore operations
  */
-class UberStore private[uberstore] (uberpair: UberPair) extends SiriusLog {
+class UberStore private[uberstore] (uberDir: UberDir) extends SiriusLog {
 
   /**
    * @inheritdoc
    */
   def writeEntry(event: OrderedEvent) {
-    uberpair.writeEntry(event)
+    uberDir.writeEntry(event)
   }
 
   /**
    * @inheritdoc
    */
-  def getNextSeq = uberpair.getNextSeq
+  def getNextSeq = uberDir.getNextSeq
 
   /**
    * @inheritdoc
    */
   def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T =
-    uberpair.foldLeftRange(startSeq, endSeq)(acc0)(foldFun)
+    uberDir.foldLeftRange(startSeq, endSeq)(acc0)(foldFun)
 
   /**
    * Close underlying file handles or connections.  This UberStore should not be used after
    * close is called.
    */
   def close() {
-    uberpair.close()
+    uberDir.close()
   }
 
   /**
@@ -60,6 +60,6 @@ class UberStore private[uberstore] (uberpair: UberPair) extends SiriusLog {
    *
    * @return whether this is "closed," i.e., unable to be written to
    */
-  def isClosed = uberpair.isClosed
+  def isClosed = uberDir.isClosed
 
 }

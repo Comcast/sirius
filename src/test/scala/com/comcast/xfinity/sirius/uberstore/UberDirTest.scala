@@ -7,19 +7,20 @@ import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => meq, anyLong}
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 
-object UberPairTest {
+object UberDirTest {
 
-  def createMockedUpLog: (UberDataFile, SeqIndex, UberPair) = {
+  def createMockedUpLog: (UberDataFile, SeqIndex, UberDir) = {
     val mockDataFile = mock(classOf[UberDataFile])
     val mockIndex = mock(classOf[SeqIndex])
-    val underTest = new UberPair(mockDataFile, mockIndex)
+    // XXX: non-io tests require us to access private constructor
+    val underTest =  new UberDir(mockDataFile, mockIndex)
     (mockDataFile, mockIndex, underTest)
   }
 }
 
-class UberPairTest extends NiceTest {
+class UberDirTest extends NiceTest {
 
-  import UberPairTest._
+  import UberDirTest._
 
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {

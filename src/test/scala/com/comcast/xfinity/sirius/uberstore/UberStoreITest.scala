@@ -65,10 +65,10 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
     }
 
     it ("must be able to recover from a missing index") {
-      val file = new File(tempDir, "1.index")
-      assert(file.exists(), "Your test is hosed, expecting 1.index to exist")
+      val file = new File(tempDir, "1/index")
+      assert(file.exists(), "Your test is hosed, expecting 1/index to exist")
       file.delete()
-      assert(!file.exists(), "Your test is hosed, expecting 1.index to be bye bye")
+      assert(!file.exists(), "Your test is hosed, expecting 1/index to be bye bye")
 
       assert(events1Through100 ++ events101Through200 === getAllEvents(uberStore))
     }
