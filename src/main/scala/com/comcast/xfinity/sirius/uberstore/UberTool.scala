@@ -3,6 +3,8 @@ package com.comcast.xfinity.sirius.uberstore
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import scala.collection.mutable.{HashMap => MutableHashMap}
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
+import scala.collection.mutable.WrappedArray
+import java.util.Arrays
 
 object UberTool {
 
@@ -39,22 +41,24 @@ object UberTool {
    *          before are completely removed from the log
    */
   def compact(inLog: SiriusLog, outLog: SiriusLog, deleteCutoff: Long = 0) {
-    val toKeep = new MutableHashMap[String, OrderedEvent]
+    val toKeep = new MutableHashMap[WrappedArray[Byte], OrderedEvent]
 
     inLog.foldLeft(()) {
       case (_, evt @ OrderedEvent(_, ts, Delete(key))) =>
         if (ts <= deleteCutoff) {
-          toKeep.remove(key)
+          toKeep.remove(WrappedArray.make(key.getBytes))
         } else {
-          toKeep.put(key, evt)
+          toKeep.put(WrappedArray.make(key.getBytes), evt)
         }
       case (_, evt @ OrderedEvent(_, _, Put(key, _))) =>
-        toKeep.put(key, evt)
+        toKeep.put(WrappedArray.make(key.getBytes), evt)
     }
 
-    val toWrite = toKeep.values.toList.sortWith(_.sequence < _.sequence)
+    val toWrite = new Array[OrderedEvent](toKeep.size)
+    var i = 0
+    toKeep.foreach(kv => { toWrite(i) = kv._2; i += 1 })
 
-    toWrite.foreach(outLog.writeEntry(_))
+    toWrite.sortWith(_.sequence < _.sequence).foreach(outLog.writeEntry(_))
   }
 
   /**
@@ -81,25 +85,29 @@ object UberTool {
   }
 
   private def gatherKeepableEventOffsets(inLog: SiriusLog, deleteCutoff: Long) = {
-    val toKeep = new MutableHashMap[String, Long]
+    val toKeep = new MutableHashMap[WrappedArray[Byte], Long]()
 
     // generate map of Id (Key) -> EntryNum (logical offset)
     var index = 1
     inLog.foldLeft(()) {
       case (_, OrderedEvent(_, ts, Delete(key))) =>
         if (ts <= deleteCutoff) {
-          toKeep.remove(key)
+          toKeep.remove(WrappedArray.make(key.getBytes))
         } else {
-          toKeep.put(key, index)
+          toKeep.put(WrappedArray.make(key.getBytes), index)
         }
         index += 1
       case (_, OrderedEvent(_, _, Put(key, _))) =>
-        toKeep.put(key, index)
+        toKeep.put(WrappedArray.make(key.getBytes), index)
         index += 1
     }
 
     // keys are useless, only need offsets, sorted
-    toKeep.values.toList.sortWith(_ < _)
+    val keepableOffsets = new Array[Long](toKeep.size)
+    var i = 0
+    toKeep.foreach(kv => { keepableOffsets(i) = kv._2; i += 1})
+    Arrays.sort(keepableOffsets)
+    keepableOffsets
   }
 
   // don't call with an empty iterator- you will have a bad time
