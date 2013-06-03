@@ -67,7 +67,7 @@ object UberPair {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class UberPair(dataFile: UberDataFile, index: SeqIndex) extends SiriusLog {
+class UberPair(dataFile: UberDataFile, index: SeqIndex) {
 
   /**
    * @inheritdoc

@@ -11,14 +11,8 @@ object UberToolTest {
       events = events :+ event
     }
 
-    def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T =
-      events.foldLeft(acc0)(foldFun)
-
-    def foldLeftRange[T](start: Long, end: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
-      val startIndex = events.indexWhere((event) => event.sequence == start)
-      val endIndex = events.indexWhere((event) => event.sequence == end)
-      events.slice(startIndex, endIndex).foldLeft(acc0)(foldFun)
-    }
+    def foldLeftRange[T](start: Long, end: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T =
+      events.filter(e => start <= e.sequence && e.sequence <= end).foldLeft(acc0)(foldFun)
 
     def getNextSeq: Long =
       throw new IllegalStateException("not implemented")

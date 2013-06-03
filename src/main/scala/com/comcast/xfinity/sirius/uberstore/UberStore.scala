@@ -43,12 +43,6 @@ class UberStore private[uberstore] (uberpair: UberPair) extends SiriusLog {
   /**
    * @inheritdoc
    */
-  def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T =
-    uberpair.foldLeft(acc0)(foldFun)
-
-  /**
-   * @inheritdoc
-   */
   def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T =
     uberpair.foldLeftRange(startSeq, endSeq)(acc0)(foldFun)
 

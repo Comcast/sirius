@@ -93,12 +93,5 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
     writeCache.subMap(startSeq, true, endSeq, true).values.foldLeft(acc0)(foldFun)
   }
 
-  /**
-   * Fold left across the log entries
-   * @param acc0 initial accumulator value
-   * @param foldFun function to apply to the log entry, the result being the new accumulator
-   */
-  def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T) = log.foldLeft(acc0)(foldFun)
-
   def getNextSeq = log.getNextSeq
 }

@@ -19,7 +19,7 @@ trait SiriusLog {
    * @param acc0 initial accumulator value
    * @param foldFun function to apply to the log entry, the result being the new accumulator
    */
-  def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T
+  def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T = foldLeftRange(0, Long.MaxValue)(acc0)(foldFun)
 
   /**
    * Fold left across a specified range of log entries
