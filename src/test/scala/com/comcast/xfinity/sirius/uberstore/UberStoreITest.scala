@@ -25,46 +25,43 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
   describe("During an interesting series of events...") {
     var uberStore = UberStore(tempDir.getAbsolutePath)
 
-    val getAllEvents: UberStore => List[OrderedEvent] =
-      _.foldLeft(List[OrderedEvent]())((a, e) => e :: a).reverse
-
     it ("must have no events when empty") {
       assert(Nil === getAllEvents(uberStore))
     }
 
-    val event1 = OrderedEvent(2, 3, Delete("yo mamma"))
-    it ("must have one event in a single entry log") {
-      uberStore.writeEntry(event1)
-      assert(List(event1) === getAllEvents(uberStore))
+    it ("must properly report the next sequence number when empty") {
+      assert(1L === uberStore.getNextSeq)
     }
 
-    it ("must not write events out of order") {
+    val events1Through100 = generateEvents(1, 100)
+    it ("must be able to accept and retain a bunch of Delete events") {
+      events1Through100.foreach(uberStore.writeEntry(_))
+      assert(events1Through100 === getAllEvents(uberStore))
+    }
+
+    it ("must not accept an event out of order") {
       intercept[IllegalArgumentException] {
         uberStore.writeEntry(OrderedEvent(1, 5, Delete("is so fat")))
       }
     }
 
-    val event2 = OrderedEvent(3, 5, Delete("the earth circles her"))
-    it ("must also accept some more entries") {
-      uberStore.writeEntry(event2)
-      assert(List(event1, event2) === getAllEvents(uberStore))
+    it ("must properly report the next sequence number when dataful") {
+      assert(101L === uberStore.getNextSeq)
     }
 
-    it ("must properly report the next seq properly") {
-      assert(4L === uberStore.getNextSeq)
-    }
-
-    val event3 = OrderedEvent(5, 678, Delete("that she's fat"))
-    it ("must also be transferable to another handle") {
-      // XXX: One UberStore to rule them all, hide the other one so
+    val events101Through200 = generateEvents(101, 200)
+    it ("must cleanly transfer to a new handle") {
+      // XXX: One UberStore to rule them all, close and hide the other one so
       //      we dont' accidentally use it
+      uberStore.close()
       uberStore = UberStore(tempDir.getAbsolutePath)
 
-      assert(4L === uberStore.getNextSeq)
-      assert(List(event1, event2) === getAllEvents(uberStore))
+      assert(101L === uberStore.getNextSeq)
+      assert(events1Through100 === getAllEvents(uberStore))
 
-      uberStore.writeEntry(event3)
-      assert(List(event1, event2, event3) === getAllEvents(uberStore))
+      events101Through200.foreach(uberStore.writeEntry(_))
+      assert(201L === uberStore.getNextSeq)
+      assert(events1Through100 ++ events101Through200 === getAllEvents(uberStore))
     }
 
     it ("must be able to recover from a missing index") {
@@ -73,9 +70,15 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
       file.delete()
       assert(!file.exists(), "Your test is hosed, expecting 1.index to be bye bye")
 
-      uberStore = UberStore(tempDir.getAbsolutePath)
-      assert(6L === uberStore.getNextSeq)
-      assert(List(event1, event2, event3) === getAllEvents(uberStore))
+      assert(events1Through100 ++ events101Through200 === getAllEvents(uberStore))
     }
+  }
+
+  private def generateEvents(start: Long, end: Long): List[OrderedEvent] =
+    List.range(start, end + 1).map(n => OrderedEvent(n, n + 1000L, Delete(n.toString)))
+
+  private def getAllEvents(uberStore: UberStore): List[OrderedEvent] = {
+    val reversedEvents = uberStore.foldLeft(List[OrderedEvent]())((acc, e) => e :: acc)
+    reversedEvents.reverse
   }
 }
