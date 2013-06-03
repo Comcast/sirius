@@ -62,7 +62,4 @@ class UberStore private[uberstore] (uberpair: UberPair) extends SiriusLog {
    */
   def isClosed = uberpair.isClosed
 
-  override def finalize() {
-    close()
-  }
 }
