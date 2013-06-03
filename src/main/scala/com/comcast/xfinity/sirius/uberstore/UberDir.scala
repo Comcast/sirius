@@ -9,6 +9,24 @@ import java.io.File
 
 object UberDir {
 
+
+  /**
+   * Create an UberDir based in baseDir starting with startingSeq,
+   * also named startingSeq (the first sequence number that may
+   * occur in this file).
+   *
+   * baseDir must already exist, any necessary subdirectories will
+   * be created.
+   *
+   * @param baseDir directory name to base dir
+   * @param startingSeq first sequence number that may be found in
+   *        this UberDir, it doesn't necessarily HAVE to exist
+   *
+   * @return an instantiated UberDir, fully repaired and usable
+   */
+  def apply(baseDir: String, startingSeq: Long): UberDir =
+    create(baseDir, startingSeq, startingSeq.toString)
+
   /**
    * Create an UberDir based in baseDir starting with startingSeq.
    * baseDir is not created, it must exist. Data/index will reside
@@ -21,8 +39,8 @@ object UberDir {
    *
    * @return an UberDir instance, fully repaired and usable
    */
-  def apply(baseDir: String, startingSeq: Long): UberDir = {
-    val dir = new File("%s/%s".format(baseDir, startingSeq))
+  private def create(baseDir: String, startingSeq: Long, name: String): UberDir = {
+    val dir = new File("%s/%s".format(baseDir, name))
     if (!dir.exists()) {
       dir.mkdir()
     }
@@ -33,7 +51,7 @@ object UberDir {
     val uberDataFile = UberDataFile(dataFile.getAbsolutePath())
     val index = DiskOnlySeqIndex(indexFile.getAbsolutePath())
     repairIndex(index, uberDataFile)
-    new UberDir(uberDataFile, index)
+    new UberDir(startingSeq, uberDataFile, index)
   }
 
   /**
@@ -73,10 +91,13 @@ object UberDir {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class UberDir private[uberstore](dataFile: UberDataFile, index: SeqIndex) {
+class UberDir private[uberstore](val startingSeq: Long, dataFile: UberDataFile, index: SeqIndex) {
 
   /**
-   * @inheritdoc
+   * Write OrderedEvent event into this dir. Will fail if closed or sequence
+   * is out of order.
+   *
+   * @param event the {@link OrderedEvent} to write
    */
   def writeEntry(event: OrderedEvent) {
     if (isClosed) {
@@ -90,21 +111,24 @@ class UberDir private[uberstore](dataFile: UberDataFile, index: SeqIndex) {
   }
 
   /**
-   * @inheritdoc
+   * Get the next possible sequence number in this dir.
    */
   def getNextSeq = index.getMaxSeq match {
-    case None => 1L
+    case None => startingSeq
     case Some(seq) => seq + 1
   }
 
   /**
-   * @inheritdoc
+   * Fold left over all entries.
+   *
+   * @param acc0 initial accumulator value
+   * @param foldFun the fold function
    */
   def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T =
     foldLeftRange(0, Long.MaxValue)(acc0)(foldFun)
 
   /**
-   * @inheritdoc
+   * Fold left over a range of entries based on sequence number.
    */
   def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
     val (startOffset, endOffset) = index.getOffsetRange(startSeq, endSeq)
@@ -132,10 +156,6 @@ class UberDir private[uberstore](dataFile: UberDataFile, index: SeqIndex) {
    *
    * @return whether this is "closed," i.e., unable to be written to
    */
-  def isClosed =
-    dataFile.isClosed || index.isClosed
+  def isClosed = dataFile.isClosed || index.isClosed
 
-  override def finalize() {
-    close()
-  }
 }
