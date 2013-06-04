@@ -30,19 +30,24 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
 
   var readOnlyDirs: List[UberDir] = _
   var liveDir: UberDir = _
+  var nextSeq: Long = _
   init()
 
   /**
    * @inheritdoc
    */
   def writeEntry(event: OrderedEvent) {
+    if (event.sequence < nextSeq) {
+      throw new IllegalArgumentException("May not write event out of order, expected sequence " + nextSeq + " but received " + event.sequence)
+    }
     liveDir.writeEntry(event)
+    nextSeq = event.sequence + 1
   }
 
   /**
    * @inheritdoc
    */
-  def getNextSeq = liveDir.getNextSeq
+  def getNextSeq = nextSeq
 
   /**
    * @inheritdoc
@@ -76,16 +81,19 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
   // gross mutable code, but a necessary part of life...
   private def init() {
     val dirs = new File(baseDir).listFiles.toList.collect {
-      case f if f.isDirectory && f.getName.forall(_.isDigit) => f.getName.toLong
-    } sortWith (_ > _)
+      case f if f.isDirectory && f.getName.forall(_.isDigit) => f.getName
+    } sortWith (_.toLong > _.toLong)
 
     val (initLiveDir, initReadOnlyDirs) = dirs match {
-      case Nil => (UberDir(baseDir, 1L), Nil)
+      case Nil => (UberDir(baseDir, "1"), Nil)
       case hd :: tl => (UberDir(baseDir, hd), tl.reverse.map(UberDir(baseDir, _)))
     }
 
     liveDir = initLiveDir
     readOnlyDirs = initReadOnlyDirs
+    // liveDir may be empty, so we need to check the last read only dir,
+    //  checking all and getting max is just more succinct in terms of LOC...
+    nextSeq = (liveDir.getNextSeq :: readOnlyDirs.map(_.getNextSeq)).max
   }
 
 }

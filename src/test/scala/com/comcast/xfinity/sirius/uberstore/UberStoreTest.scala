@@ -36,6 +36,8 @@ class UberStoreTest extends NiceTest {
 
   after {
     tempDir.delete
+    // XXX since the tempDir is based on system time, really fast machines/tests can go spurious on us
+    Thread.sleep(5)
   }
 
   describe("upon initialization") {
@@ -56,8 +58,10 @@ class UberStoreTest extends NiceTest {
       createFakeUberDir(tempDir, "10")
       uberstore = UberStore(tempDir.getAbsolutePath)
       assert(1 === uberstore.readOnlyDirs(0).getNextSeq)
-      assert(5 === uberstore.readOnlyDirs(1).getNextSeq)
-      assert(10 === uberstore.liveDir.getNextSeq)
+      // XXX uberdirs no longer base their nextSeq on the dir name, but rather the contents
+      // we can stage this better once uberstore.split is implemented
+      assert(1 === uberstore.readOnlyDirs(1).getNextSeq)
+      assert(1 === uberstore.liveDir.getNextSeq)
     }
   }
 
@@ -69,16 +73,36 @@ class UberStoreTest extends NiceTest {
       uberstore = UberStore(tempDir.getAbsolutePath)
       uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("1")))
       assert(1 === uberstore.readOnlyDirs(0).getNextSeq)
-      assert(5 === uberstore.readOnlyDirs(1).getNextSeq)
+      // XXX uberdirs no longer base their nextSeq on the dir name, but rather the contents
+      // we can stage this better once uberstore.split is implemented
+      assert(1 === uberstore.readOnlyDirs(1).getNextSeq)
       assert(11 === uberstore.liveDir.getNextSeq)
+    }
+
+    it("should throw an illegalstateexception if we write out of order") {
+      uberstore = UberStore(tempDir.getAbsolutePath)
+      uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("1")))
+
+      intercept[IllegalArgumentException] {
+        uberstore.writeEntry(OrderedEvent(9L, 1L, Delete("1")))
+      }
+    }
+
+    it("should update nextSeq based on the sequence number of the latest event") {
+      uberstore = UberStore(tempDir.getAbsolutePath)
+      assert(1L === uberstore.getNextSeq)
+
+
+      uberstore.writeEntry(OrderedEvent(999L, 1L, Delete("1")))
+      assert(1000L === uberstore.getNextSeq)
     }
   }
 
   describe("getNextSeq") {
     it("should reflect livedir's nextSeq") {
-      UberDir(createFakeUberDir(tempDir, "1").getAbsolutePath, 1)
-      UberDir(createFakeUberDir(tempDir, "5").getAbsolutePath, 5)
-      UberDir(createFakeUberDir(tempDir, "10").getAbsolutePath, 10)
+      createFakeUberDir(tempDir, "1")
+      createFakeUberDir(tempDir, "5")
+      createFakeUberDir(tempDir, "10")
       uberstore = UberStore(tempDir.getAbsolutePath)
       assert(uberstore.liveDir.getNextSeq === uberstore.getNextSeq)
     }

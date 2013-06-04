@@ -9,37 +9,17 @@ import java.io.File
 
 object UberDir {
 
-
   /**
-   * Create an UberDir based in baseDir starting with startingSeq,
-   * also named startingSeq (the first sequence number that may
-   * occur in this file).
-   *
-   * baseDir must already exist, any necessary subdirectories will
-   * be created.
-   *
-   * @param baseDir directory name to base dir
-   * @param startingSeq first sequence number that may be found in
-   *        this UberDir, it doesn't necessarily HAVE to exist
-   *
-   * @return an instantiated UberDir, fully repaired and usable
-   */
-  def apply(baseDir: String, startingSeq: Long): UberDir =
-    create(baseDir, startingSeq, startingSeq.toString)
-
-  /**
-   * Create an UberDir based in baseDir starting with startingSeq.
-   * baseDir is not created, it must exist. Data/index will reside
-   * in a directory named "startingSeq" under baseDir and will
-   * be created if necessary
+   * Create an UberDir based in baseDir named "name".
    *
    * @param baseDir directory containing the UberDir
-   * @param startingSeq first sequence number that may be found
-   *        in this UberDir (it doesn't necessarily HAVE to exist)
+   * @param name the name of this dir
    *
    * @return an UberDir instance, fully repaired and usable
    */
-  private def create(baseDir: String, startingSeq: Long, name: String): UberDir = {
+  // XXX: developer's note: may want to just combine basedir and name,
+  //      so far it looks like we may not need it...
+  def apply(baseDir: String, name: String): UberDir = {
     val dir = new File("%s/%s".format(baseDir, name))
     if (!dir.exists()) {
       dir.mkdir()
@@ -48,10 +28,10 @@ object UberDir {
     val dataFile = new File(dir, "data")
     val indexFile = new File(dir, "index")
 
-    val uberDataFile = UberDataFile(dataFile.getAbsolutePath())
-    val index = DiskOnlySeqIndex(indexFile.getAbsolutePath())
+    val uberDataFile = UberDataFile(dataFile.getAbsolutePath)
+    val index = DiskOnlySeqIndex(indexFile.getAbsolutePath)
     repairIndex(index, uberDataFile)
-    new UberDir(startingSeq, uberDataFile, index)
+    new UberDir(uberDataFile, index)
   }
 
   /**
@@ -91,7 +71,7 @@ object UberDir {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class UberDir private[uberstore](val startingSeq: Long, dataFile: UberDataFile, index: SeqIndex) {
+class UberDir private[uberstore](dataFile: UberDataFile, index: SeqIndex) {
 
   /**
    * Write OrderedEvent event into this dir. Will fail if closed or sequence
@@ -114,7 +94,7 @@ class UberDir private[uberstore](val startingSeq: Long, dataFile: UberDataFile, 
    * Get the next possible sequence number in this dir.
    */
   def getNextSeq = index.getMaxSeq match {
-    case None => startingSeq
+    case None => 1L
     case Some(seq) => seq + 1
   }
 

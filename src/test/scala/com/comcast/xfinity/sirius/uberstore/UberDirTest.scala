@@ -13,7 +13,7 @@ object UberDirTest {
     val mockDataFile = mock(classOf[UberDataFile])
     val mockIndex = mock(classOf[SeqIndex])
     // XXX: non-io tests require us to access private constructor
-    val underTest =  new UberDir(1L, mockDataFile, mockIndex)
+    val underTest =  new UberDir(mockDataFile, mockIndex)
     (mockDataFile, mockIndex, underTest)
   }
 }
