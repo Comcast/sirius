@@ -15,6 +15,13 @@ trait SiriusLog {
   def writeEntry(entry: OrderedEvent)
 
   /**
+   * Apply fun to each entry in the log in order
+   *
+   * @param fun function to apply
+   */
+  def foreach[T](fun: OrderedEvent => T): Unit = foldLeft(())((_, e) => fun(e))
+
+  /**
    * Fold left across the log entries
    * @param acc0 initial accumulator value
    * @param foldFun function to apply to the log entry, the result being the new accumulator

@@ -72,6 +72,16 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
 
       assert(events1Through100 ++ events101Through200 === getAllEvents(uberStore))
     }
+
+    val events201Through300 = generateEvents(201, 300)
+    it ("must behave after a compact") {
+      uberStore.compact()
+      events201Through300.foreach(uberStore.writeEntry(_))
+      assert(events1Through100 ++ events101Through200 ++ events201Through300 === getAllEvents(uberStore))
+      uberStore.close()
+      uberStore = UberStore(tempDir.getAbsolutePath)
+      assert(events1Through100 ++ events101Through200 ++ events201Through300 === getAllEvents(uberStore))
+    }
   }
 
   private def generateEvents(start: Long, end: Long): List[OrderedEvent] =

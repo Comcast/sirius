@@ -17,8 +17,6 @@ object UberDir {
    *
    * @return an UberDir instance, fully repaired and usable
    */
-  // XXX: developer's note: may want to just combine basedir and name,
-  //      so far it looks like we may not need it...
   def apply(baseDir: String, name: String): UberDir = {
     val dir = new File("%s/%s".format(baseDir, name))
     if (!dir.exists()) {
@@ -31,7 +29,7 @@ object UberDir {
     val uberDataFile = UberDataFile(dataFile.getAbsolutePath)
     val index = DiskOnlySeqIndex(indexFile.getAbsolutePath)
     repairIndex(index, uberDataFile)
-    new UberDir(uberDataFile, index)
+    new UberDir(name, uberDataFile, index)
   }
 
   /**
@@ -71,7 +69,7 @@ object UberDir {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class UberDir private[uberstore](dataFile: UberDataFile, index: SeqIndex) {
+class UberDir private[uberstore](val name: String, dataFile: UberDataFile, index: SeqIndex) {
 
   /**
    * Write OrderedEvent event into this dir. Will fail if closed or sequence
@@ -96,6 +94,10 @@ class UberDir private[uberstore](dataFile: UberDataFile, index: SeqIndex) {
   def getNextSeq = index.getMaxSeq match {
     case None => 1L
     case Some(seq) => seq + 1
+  }
+
+  def foreach[T](fun: OrderedEvent => T) {
+    foldLeft(())((_, evt) => fun(evt))
   }
 
   /**
