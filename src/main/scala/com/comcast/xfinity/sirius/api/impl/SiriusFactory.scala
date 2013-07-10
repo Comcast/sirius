@@ -18,6 +18,7 @@ import com.typesafe.config.ConfigFactory
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import javax.management.ObjectName
+import com.comcast.xfinity.sirius.uberstore.legacy.LegacyUberStore
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -42,7 +43,16 @@ object SiriusFactory {
         throw new IllegalArgumentException(SiriusConfiguration.LOG_LOCATION + " must be set on config")
     }
 
-    val backendLog = UberStore(uberStoreDir)
+    val backendLog = {
+      val uberFileLocation = new File(uberStoreDir, "1.data")
+
+      // XXX temporarily: if we find an old-style UberStore (file-based), use the LegacyUberStore.
+      if (uberFileLocation.exists() && uberFileLocation.isFile) {
+        LegacyUberStore(uberStoreDir)
+      } else {
+        UberStore(uberStoreDir)
+      }
+    }
 
     // TODO: make cache wiring optional?
     val log: SiriusLog = {

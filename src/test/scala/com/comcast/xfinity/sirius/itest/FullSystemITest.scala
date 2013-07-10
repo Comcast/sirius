@@ -272,7 +272,6 @@ class FullSystemITest extends NiceTest with TimedTest {
         val failed = fireAndAwait(List(sirius1), List(nextCommand))
         if (!failed.isEmpty) {
           retried += 1
-          println("XXX %s retries so far", retried)
         }
         failed.isEmpty
       }, 30000, 1000), "after removing Sirius3 from the cluster, could not get any commands through the system")
