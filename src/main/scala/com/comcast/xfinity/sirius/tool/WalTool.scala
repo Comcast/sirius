@@ -11,6 +11,7 @@ import com.comcast.xfinity.sirius.tool.format.OrderedEventFormatter
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.uberstore.UberTool
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+import scalax.file.Path
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -45,6 +46,9 @@ object WalTool {
     Console.err.println("   keyFilterNot <regexp> <inWalDir> <outWalDir>")
     Console.err.println("       Same as keyFilter, except the resulting UberStore contains all")
     Console.err.println("       OrderedEvents not matching regexp")
+    Console.err.println()
+    Console.err.println("   convertUberStore <inWalDir> <outWalDir>")
+    Console.err.println("       Convert a Legacy UberStore into a new (dir-based) UberStore")
 
   }
 
@@ -71,6 +75,9 @@ object WalTool {
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = !keyMatch(regexp, _)
         filter(inWal, outWal, filterFun)
+
+      case Array("convertUberStore", inWal, outWal) =>
+        convertUberStore(inWal, outWal)
 
       case _ => printUsage()
     }
@@ -207,5 +214,24 @@ object WalTool {
       case (wal, evt) if pred(evt) => wal.writeEntry(evt); wal
       case (wal, _) => wal
     }
+  }
+
+  private def convertUberStore(inUberStore: String, outUberStore: String) {
+    val inData = Path.fromString(inUberStore + "/1.data")
+    val inIndex = Path.fromString(inUberStore + "/1.index")
+    if (!(inData.exists && inData.isFile)) {
+      throw new Exception("Could not find input data in directory: %s, aborting.".format(inUberStore))
+    }
+
+    val outDir = Path.fromString(outUberStore + "/1")
+    val outData = Path.fromString(outUberStore + "/1/data")
+    val outIndex = Path.fromString(outUberStore + "/1/index")
+    if (outDir.exists) {
+      throw new Exception("Directory that looks like new-style UberDir directory already exists at %s, aborting.".format(outDir))
+    }
+
+    outDir.createDirectory(createParents = true)
+    inData.moveTo(outData)
+    inIndex.moveTo(outIndex)
   }
 }
