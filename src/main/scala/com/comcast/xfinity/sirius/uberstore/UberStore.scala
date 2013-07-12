@@ -34,6 +34,8 @@ object UberStore {
  */
 class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
 
+  // XXX incorporate maxDeleteAge
+  // val maxDeleteAge = System.getProperty("maxDeleteAge", "604800000").toLong
   var readOnlyDirs: List[UberDir] = _
   var liveDir: UberDir = _
   var nextSeq: Long = _
@@ -85,22 +87,81 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
   def isClosed = liveDir.isClosed
 
   /**
+   * Compact the current read-only dirs into a single dir.
+   *
+   * This method has two side-effects:
+   * - it collapses the multiple read-only dirs into one
+   * - it removes entries from the resulting WAL that are overridden by later
+   *   entries in the WAL. For a given key, only the latest event is kept.
+   */
+  def compact() {
+    if (!currentlyCompacting) {
+      // split off a new liveDir so we can compact what's currently live
+      split()
+
+      currentlyCompacting = true
+
+      // we're compacting readOnlyDirs, which is 1 through maxDir
+      val maxDir = readOnlyDirs.map(_.name.toLong).max
+      // actually do the compaction, putting it into a compacted.1-$maxDir directory
+      val compacted = doCompact(readOnlyDirs, "compacted.1-%s".format(maxDir))
+      // replace the current readOnlyDirs with the newly-created compacted.1-$maxDir
+      replace(readOnlyDirs, compacted)
+
+      currentlyCompacting = false
+    }
+  }
+
+  /**
    * Create a new liveDir, based on the current max dirNum + 1. Move current
    * liveDir into read-only mode.
    *
    * Currently do NOT support a split while currently compacting.
-   *
-   * @return new uberdir name
    */
-  def split(): String = {
+  def split() {
     if (!currentlyCompacting) {
       readOnlyDirs :+= liveDir
       val newDirNum = readOnlyDirs.map(_.name.toLong).max + 1
       liveDir = UberDir(baseDir, newDirNum.toString)
     }
-
-    liveDir.name
   }
+
+  private def doCompact(toCompact: List[UberDir], dirName: String): File = {
+    val compactionOffsets = gatherCompactionOffsets()
+
+    val compactInto = UberDir(baseDir, "compacting")
+    writeEventsByOffset(compactionOffsets, compactInto)
+    compactInto.close()
+
+    val compacting = new File(baseDir, "compacting")
+    val compacted = new File(baseDir, dirName)
+
+    compacting.renameTo(compacted)
+
+    compacted
+  }
+
+  /**
+   * HAS SIDE EFFECTS! Changes readOnlyDirs.
+   *
+   * Replace removes the current readOnlyDirs, and replaces them with a newly-compacted UberDir
+   *
+   * The old dirs are DELETED.
+   *
+   * @param toReplace uberdirs to replace
+   * @param replaceWith filehandle of the replacement
+   */
+  private def replace(toReplace: List[UberDir], replaceWith: File) {
+    readOnlyDirs = Nil
+    for (dir <- toReplace) {
+      dir.close()
+      Path.fromString(baseDir + "/" + dir.name).deleteRecursively()
+    }
+
+    replaceWith.renameTo(new File(baseDir, "1"))
+    readOnlyDirs = List(UberDir(baseDir, "1"))
+  }
+
 
   private def gatherCompactionOffsets(): Array[Long] = {
     val toKeep = MutableHashMap[WrappedArray[Byte], Long]()
@@ -108,7 +169,7 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
     // developer's note- it may be nice to not fully deserialize all of these...
     // we could use a decoder that just returns WrappedArrays of keys instead of full OrderedEvents...
     readOnlyDirs.foreach(d => d.foreach {
-      case OrderedEvent(_, _, Delete(key)) =>
+      case OrderedEvent(_, ts, Delete(key)) =>
         toKeep.put(WrappedArray.make(key.getBytes), offset)
         offset += 1
       case OrderedEvent(_, _, Put(key, _)) =>
@@ -141,47 +202,6 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
         }
       ))
     }
-  }
-
-  def compact() {
-    val seq = split()
-
-    currentlyCompacting = true
-    val compactionOffsets = gatherCompactionOffsets()
-
-    val compactInto = UberDir(baseDir, "compacting")
-    writeEventsByOffset(compactionOffsets, compactInto)
-    compactInto.close()
-
-    val compacting = new File(baseDir, "compacting")
-    val compacted = new File(baseDir, "compacted.pre-%s".format(seq))
-
-    compacting.renameTo(compacted)
-
-    // XXX cannot just set new UberDir and then rename underneath it,
-    // UberDir hangs onto the path String instead of a filehandle. Actually, even
-    // if it had a real filehandle, it doesn't follow a rename. Balls.
-
-    // It'd be really nice just to lock everything down and do the rest of this
-    // as a single atomic action, being interrupted in this next bit is bad-scary.
-    // In any case, we're just unlinking a few files, and moving another one. It should be lightning quick.
-
-    // This will work, and if it dies in the middle, it will be manually-recoverable.
-    // We could make it automatically recoverable, though that gets a little hairy.
-
-    // Currently setting no RO directories while we do the swap, so nobody can be in the middle of
-    // reading while they delete. Unless they already were reading, in which case Bad Things will
-    // probably happen (their operation will be borked and they'll have to restart it).
-    val oldReadOnlyDirs = readOnlyDirs
-    readOnlyDirs = Nil
-    for (dir <- oldReadOnlyDirs) {
-      dir.close()
-      Path.fromString(baseDir + "/" + dir.name).deleteRecursively()
-    }
-
-    compacted.renameTo(new File(baseDir, "1"))
-    readOnlyDirs = List(UberDir(baseDir, "1"))
-    currentlyCompacting = false
   }
 
   // gross mutable code, but a necessary part of life...
