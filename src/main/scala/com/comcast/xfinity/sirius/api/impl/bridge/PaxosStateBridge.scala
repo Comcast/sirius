@@ -1,5 +1,4 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
-
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
@@ -81,6 +80,10 @@ class PaxosStateBridge(startingSeq: Long,
   var nextSeq: Long = startingSeq
   var eventBuffer = RichJTreeMap[Long, OrderedEvent]()
 
+  // monitor stats, for original catchup duration
+  var startupCatchupDuration: Option[Long] = None
+  val startupTimestamp = System.currentTimeMillis()
+
   logger.info("Starting PaxosStateBridge with nextSeq {}, attempting catch up every {}s",
     nextSeq, requestGapsFreq)
 
@@ -120,8 +123,11 @@ class PaxosStateBridge(startingSeq: Long,
       if (oldNextSeq != nextSeq)
         siriusSupActor ! DecisionHint(nextSeq - 1)
 
-      if (chunkSize == (rangeEnd - rangeStart) + 1)
+      if (chunkSize == (rangeEnd - rangeStart) + 1) {
         requestNextChunk()
+      } else if (startupCatchupDuration == None) {
+        startupCatchupDuration = Some(System.currentTimeMillis() - startupTimestamp)
+      }
 
     case RequestGaps =>
       runGapFetcher()
@@ -235,10 +241,12 @@ class PaxosStateBridge(startingSeq: Long,
   trait PaxosStateBridgeInfoMBean {
     def getNextSeq: Long
     def getEventBufferSize: Int
+    def getStartupCatchupDuration: Option[Long]
   }
 
   class PaxosStateBridgeInfo extends PaxosStateBridgeInfoMBean {
     def getNextSeq = nextSeq
     def getEventBufferSize = eventBuffer.size
+    def getStartupCatchupDuration = startupCatchupDuration
   }
 }
