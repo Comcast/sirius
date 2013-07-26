@@ -10,6 +10,10 @@ import org.mockito.Matchers._
 import akka.actor.{Props, Actor, ActorSystem, ActorRef}
 import akka.testkit.{TestProbe, TestActorRef}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor._
+import javax.management.{ObjectName, MBeanServer}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import org.mockito.ArgumentCaptor
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{PingMembership, MembershipInfoMBean}
 
 class MembershipActorTest extends NiceTest {
 
@@ -21,13 +25,20 @@ class MembershipActorTest extends NiceTest {
   var clusterConfigPath: Path = _
   var membershipAgent: Agent[Set[ActorRef]] = _
 
+  var mbeanServer: MBeanServer = _
+
   before {
     actorSystem = ActorSystem("testsystem")
+
+    mbeanServer = mock[MBeanServer]
     membershipAgent = mock[Agent[Set[ActorRef]]]
     clusterConfigPath = mock[Path]
 
     when(clusterConfigPath.lines(NewLine, false)).thenReturn(LongTraversable("dummyhost:8080"))
 
+    implicit val config = new SiriusConfiguration
+    config.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
+    config.setProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 120)
     underTestActor = TestActorRef(
       new MembershipActor(membershipAgent, clusterConfigPath)
     )(actorSystem)
@@ -80,5 +91,48 @@ class MembershipActorTest extends NiceTest {
       assert(membership.contains(actor2), actor2 + " missing from " + membership)
     }
 
+    it("should reply properly to a Ping") {
+      val senderProbe = TestProbe()(actorSystem)
+
+      senderProbe.send(underTestActor, Ping(30L))
+      senderProbe.expectMsg(Pong(30L))
+    }
+    it("should properly update roundtrip maps on a Pong") {
+      val senderProbe = TestProbe()(actorSystem)
+      val senderPath = senderProbe.testActor.path.toString
+
+      val senderProbe2 = TestProbe()(actorSystem)
+      val senderPath2 = senderProbe2.testActor.path.toString
+
+      val mbeanCaptor = ArgumentCaptor.forClass(classOf[Any])
+      verify(mbeanServer).registerMBean(mbeanCaptor.capture(), any[ObjectName])
+      val membershipInfo = mbeanCaptor.getValue.asInstanceOf[MembershipInfoMBean]
+
+      senderProbe.send(underTestActor, Pong(System.currentTimeMillis() - 100L))
+
+      assert(membershipInfo.getLastPingUpdate.keySet.size == 1)
+      assert(membershipInfo.getLastPingUpdate(senderPath) >= 100L)
+      assert(membershipInfo.getMembershipRoundTrip(senderPath) >= 0)
+
+      senderProbe2.send(underTestActor, Pong(System.currentTimeMillis() - 200L))
+
+      assert(membershipInfo.getLastPingUpdate.keySet.size == 2)
+      assert(membershipInfo.getLastPingUpdate(senderPath2) >= 200L)
+      assert(membershipInfo.getMembershipRoundTrip(senderPath2) >= 0)
+
+    }
+    it("should Ping all known members on a PingMembership") {
+      val senderProbe = TestProbe()(actorSystem)
+      val senderProbe2 = TestProbe()(actorSystem)
+      val senderProbe3 = TestProbe()(actorSystem)
+
+      when(membershipAgent.get()).thenReturn(Set(senderProbe.testActor, senderProbe2.testActor, senderProbe3.testActor))
+
+      senderProbe.send(underTestActor, PingMembership)
+
+      senderProbe.expectMsgClass(classOf[Ping])
+      senderProbe2.expectMsgClass(classOf[Ping])
+      senderProbe3.expectMsgClass(classOf[Ping])
+    }
   }
 }

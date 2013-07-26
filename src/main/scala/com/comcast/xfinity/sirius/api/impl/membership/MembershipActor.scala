@@ -9,6 +9,8 @@ import akka.actor.{ActorRef, actorRef2Scala, Actor}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import akka.util.duration._
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+import scala.collection.immutable.HashMap
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{MembershipInfoMBean, PingMembership}
 
 object MembershipActor {
 
@@ -22,6 +24,8 @@ object MembershipActor {
 
   private[membership] trait MembershipInfoMBean {
     def getMembership: String
+    def getMembershipRoundTrip: Map[String, Long]
+    def getLastPingUpdate: Map[String, Long]
   }
 
   /**
@@ -75,6 +79,9 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
 
   val configCheckSchedule = context.system.scheduler.schedule(checkInterval, checkInterval, self, CheckClusterConfig)
 
+  var membershipRoundTripMap = HashMap[String, Long]()
+  var lastPingUpdateMap = HashMap[String, Long]()
+
   override def preStart() {
     logger.info("Initializing MembershipActor to check {} every {}", clusterConfigPath, checkInterval)
 
@@ -94,6 +101,18 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
       updateMembership()
 
     case GetMembershipData => sender ! membershipAgent()
+
+    case Ping(sent) => sender ! Pong(sent)
+    case Pong(pingSent) =>
+      val currentTime = System.currentTimeMillis
+      val senderPath = sender.path.toString
+      membershipRoundTripMap += senderPath -> (currentTime - pingSent)
+      lastPingUpdateMap += senderPath -> currentTime
+
+    case PingMembership =>
+      val currentTime = System.currentTimeMillis
+      membershipAgent.get().foreach(_ ! Ping(currentTime))
+
   }
 
   private def updateMembership() {
@@ -125,6 +144,8 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
   }
 
   class MembershipInfo extends MembershipInfoMBean {
-    def getMembership: String = membershipAgent().toString
+    def getMembership: String = membershipAgent().toString()
+    def getMembershipRoundTrip: Map[String, Long] = membershipRoundTripMap
+    def getLastPingUpdate: Map[String, Long] = lastPingUpdateMap
   }
 }
