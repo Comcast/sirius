@@ -12,6 +12,18 @@ import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object MembershipActor {
 
+  sealed trait MembershipMessage
+  case object GetMembershipData extends MembershipMessage
+  case object CheckClusterConfig extends MembershipMessage
+  case class Ping(sent: Long) extends MembershipMessage
+  case class Pong(pingSent: Long) extends MembershipMessage
+
+  private[membership] object PingMembership
+
+  private[membership] trait MembershipInfoMBean {
+    def getMembership: String
+  }
+
   /**
    * Create a MembershipActor configured with SiriusConfiguration that will keep membershipAgent
    * updated.
@@ -57,6 +69,7 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
                       checkInterval: Duration = (30 seconds))
                      (implicit config: SiriusConfiguration = new SiriusConfiguration)
     extends Actor with MonitoringHooks{
+  import MembershipActor._
 
   val logger = Logging(context.system, "Sirius")
 
@@ -109,10 +122,6 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
         else
           membership + context.actorFor(actorPath)
     )
-  }
-
-  trait MembershipInfoMBean {
-    def getMembership: String
   }
 
   class MembershipInfo extends MembershipInfoMBean {

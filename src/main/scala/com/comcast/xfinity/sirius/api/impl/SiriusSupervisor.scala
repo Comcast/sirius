@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import bridge.PaxosStateBridge
-import membership._
+import com.comcast.xfinity.sirius.api.impl.membership.{MembershipHelper, MembershipActor}
 import paxos.PaxosMessages.PaxosMessage
 import akka.actor.{Actor, ActorRef, Props}
 import akka.agent.Agent
@@ -16,6 +16,7 @@ import status.StatusWorker
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 import status.StatusWorker.StatusQuery
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.MembershipMessage
 
 object SiriusSupervisor {
 

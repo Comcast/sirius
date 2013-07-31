@@ -9,6 +9,7 @@ import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import org.scalatest.BeforeAndAfterAll
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{GetMembershipData, MembershipMessage}
 
 
 @RunWith(classOf[JUnitRunner])

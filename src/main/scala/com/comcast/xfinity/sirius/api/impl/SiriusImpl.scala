@@ -4,7 +4,7 @@ import compat.AkkaFutureAdapter
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.Sirius
 import akka.pattern.ask
-import membership._
+import membership.MembershipActor._
 import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.actor._
 import java.util.concurrent.Future

@@ -10,7 +10,7 @@ import akka.actor._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import java.util.concurrent.TimeUnit
-import com.comcast.xfinity.sirius.api.impl.membership._
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor._
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import status.NodeStats.FullNodeStatus

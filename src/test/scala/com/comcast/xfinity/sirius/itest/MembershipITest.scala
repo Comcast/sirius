@@ -7,10 +7,10 @@ import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import org.scalatest.BeforeAndAfterAll
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.impl.SiriusState
-import com.comcast.xfinity.sirius.api.impl.membership._
-import akka.actor.{Props, Kill, ActorSystem, ActorRef}
+import akka.actor.{Props, ActorSystem, ActorRef}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 
 @RunWith(classOf[JUnitRunner])
 class MembershipITest extends NiceTest with TimedTest with BeforeAndAfterAll {

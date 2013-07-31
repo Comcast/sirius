@@ -9,6 +9,7 @@ import scalax.io.LongTraversable
 import org.mockito.Matchers._
 import akka.actor.{Props, Actor, ActorSystem, ActorRef}
 import akka.testkit.{TestProbe, TestActorRef}
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor._
 
 class MembershipActorTest extends NiceTest {
 
