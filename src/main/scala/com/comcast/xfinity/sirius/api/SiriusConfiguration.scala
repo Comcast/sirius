@@ -47,6 +47,12 @@ object SiriusConfiguration {
   final val MEMBERSHIP_CHECK_INTERVAL = "sirius.membership.check-interval-secs"
 
   /**
+   * How often to ping the other members of the cluster, recording round-trip.
+   * Useful for determining cluster liveness.
+   */
+  final val MEMBERSHIP_PING_INTERVAL = "sirius.membership.ping-interval-secs"
+
+  /**
    * How often to check the membershipAgent for updates, in seconds (int).
    * Used by the supervisor when determining whether to keep paxos on or off.
    */

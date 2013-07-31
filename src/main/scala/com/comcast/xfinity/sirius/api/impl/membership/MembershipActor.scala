@@ -10,7 +10,6 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import akka.util.duration._
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import scala.collection.immutable.HashMap
-import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{MembershipInfoMBean, PingMembership}
 
 object MembershipActor {
 
@@ -25,7 +24,7 @@ object MembershipActor {
   private[membership] trait MembershipInfoMBean {
     def getMembership: String
     def getMembershipRoundTrip: Map[String, Long]
-    def getLastPingUpdate: Map[String, Long]
+    def getTimeSinceLastPingUpdate: Map[String, Long]
   }
 
   /**
@@ -45,12 +44,14 @@ object MembershipActor {
       case Some(path) => Path.fromString(path)
       case None => throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
     }
-    val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 2)
+    val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 30)
+    val pingIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_PING_INTERVAL, 30)
 
     new MembershipActor(
       membershipAgent,
       clusterConfigPath,
-      checkIntervalSecs seconds
+      checkIntervalSecs seconds,
+      pingIntervalSecs seconds
     )(config)
   }
 }
@@ -70,7 +71,8 @@ object MembershipActor {
  */
 class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
                       clusterConfigPath: Path,
-                      checkInterval: Duration = (30 seconds))
+                      checkInterval: Duration,
+                      pingInterval: Duration)
                      (implicit config: SiriusConfiguration = new SiriusConfiguration)
     extends Actor with MonitoringHooks{
   import MembershipActor._
@@ -78,6 +80,7 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
   val logger = Logging(context.system, "Sirius")
 
   val configCheckSchedule = context.system.scheduler.schedule(checkInterval, checkInterval, self, CheckClusterConfig)
+  val memberPingSchedule = context.system.scheduler.schedule(pingInterval, pingInterval, self, PingMembership)
 
   var membershipRoundTripMap = HashMap[String, Long]()
   var lastPingUpdateMap = HashMap[String, Long]()
@@ -146,6 +149,11 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
   class MembershipInfo extends MembershipInfoMBean {
     def getMembership: String = membershipAgent().toString()
     def getMembershipRoundTrip: Map[String, Long] = membershipRoundTripMap
-    def getLastPingUpdate: Map[String, Long] = lastPingUpdateMap
+    def getTimeSinceLastPingUpdate: Map[String, Long] = {
+      val currentTime = System.currentTimeMillis()
+      lastPingUpdateMap.foldLeft(HashMap[String, Long]()){
+        case (acc, (key, pingTime)) => acc + (key -> (currentTime - pingTime))
+      }
+    }
   }
 }

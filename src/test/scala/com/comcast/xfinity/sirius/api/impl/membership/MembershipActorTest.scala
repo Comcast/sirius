@@ -9,6 +9,7 @@ import scalax.io.LongTraversable
 import org.mockito.Matchers._
 import akka.actor.{Props, Actor, ActorSystem, ActorRef}
 import akka.testkit.{TestProbe, TestActorRef}
+import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor._
 import javax.management.{ObjectName, MBeanServer}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
@@ -38,9 +39,8 @@ class MembershipActorTest extends NiceTest {
 
     implicit val config = new SiriusConfiguration
     config.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
-    config.setProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 120)
     underTestActor = TestActorRef(
-      new MembershipActor(membershipAgent, clusterConfigPath)
+      new MembershipActor(membershipAgent, clusterConfigPath, 120 seconds, 120 seconds)
     )(actorSystem)
 
     expectedSet = Set(underTestActor)
@@ -110,14 +110,14 @@ class MembershipActorTest extends NiceTest {
 
       senderProbe.send(underTestActor, Pong(System.currentTimeMillis() - 100L))
 
-      assert(membershipInfo.getLastPingUpdate.keySet.size == 1)
-      assert(membershipInfo.getLastPingUpdate(senderPath) >= 100L)
+      assert(membershipInfo.getTimeSinceLastPingUpdate.keySet.size == 1)
+      assert(membershipInfo.getTimeSinceLastPingUpdate.get(senderPath) != None)
       assert(membershipInfo.getMembershipRoundTrip(senderPath) >= 0)
 
       senderProbe2.send(underTestActor, Pong(System.currentTimeMillis() - 200L))
 
-      assert(membershipInfo.getLastPingUpdate.keySet.size == 2)
-      assert(membershipInfo.getLastPingUpdate(senderPath2) >= 200L)
+      assert(membershipInfo.getTimeSinceLastPingUpdate.keySet.size == 2)
+      assert(membershipInfo.getTimeSinceLastPingUpdate.get(senderPath2) != None)
       assert(membershipInfo.getMembershipRoundTrip(senderPath2) >= 0)
 
     }
