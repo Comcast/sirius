@@ -1,6 +1,7 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.uberstore.UberStore.CompactionState
 
 /**
  * Defines the Log Writer
@@ -39,4 +40,7 @@ trait SiriusLog {
 
   def getNextSeq: Long
 
+  def compact()
+
+  def getCompactionState: CompactionState
 }

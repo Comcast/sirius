@@ -3,6 +3,7 @@ package com.comcast.xfinity.sirius.uberstore
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
+import com.comcast.xfinity.sirius.uberstore.UberStore.NotCompacting
 
 object UberToolTest {
   class DummySiriusLog(var events: List[OrderedEvent]) extends SiriusLog {
@@ -17,6 +18,9 @@ object UberToolTest {
     def getNextSeq: Long =
       throw new IllegalStateException("not implemented")
 
+    def compact() {}
+
+    def getCompactionState = NotCompacting
   }
 }
 

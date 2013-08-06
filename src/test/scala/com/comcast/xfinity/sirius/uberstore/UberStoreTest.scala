@@ -5,6 +5,7 @@ import java.io.File
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.uberstore.UberStore.{GatheringEvents, Compacting}
 
 class UberStoreTest extends NiceTest {
 
@@ -131,6 +132,16 @@ class UberStoreTest extends NiceTest {
          uberstore => assert(true === uberstore.isClosed)
       )
       assert(true === uberstore.liveDir.isClosed)
+    }
+  }
+
+  describe("getCompactionState") {
+    it("should return the current CompactionState") {
+      uberstore = new UberStore(createFakeUberDir(tempDir, "1").getAbsolutePath) {
+        state = Compacting(GatheringEvents, 100L)
+      }
+
+      assert(Compacting(GatheringEvents, 100L) === uberstore.getCompactionState)
     }
   }
 }

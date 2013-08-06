@@ -3,6 +3,7 @@ package com.comcast.xfinity.sirius.itest
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.uberstore.UberStore.NotCompacting
 
 class DoNothingSiriusLog extends SiriusLog {
   private val logger = LoggerFactory.getLogger(classOf[DoNothingSiriusLog])
@@ -18,4 +19,8 @@ class DoNothingSiriusLog extends SiriusLog {
   }
 
   override def getNextSeq = 1L
+
+  override def compact() {}
+
+  override def getCompactionState = NotCompacting
 }

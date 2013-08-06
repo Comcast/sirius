@@ -1,16 +1,24 @@
 package com.comcast.xfinity.sirius.uberstore
 
-import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import java.io.File
 import scala.collection.mutable.WrappedArray
 import scala.collection.mutable.{HashMap => MutableHashMap}
-import com.comcast.xfinity.sirius.api.impl.Delete
-import com.comcast.xfinity.sirius.api.impl.Put
 import scalax.file.Path
 import java.util
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.api.impl.Put
 
 object UberStore {
+
+  sealed trait CompactionState
+  case object NotCompacting extends CompactionState
+  case class Compacting(stateType: StateType, progress: Long) extends CompactionState
+
+  sealed trait StateType
+  case object GatheringEvents extends StateType
+  case object WritingEvents extends StateType
 
   /**
    * Create an UberStore based in baseDir.  baseDir is NOT
@@ -33,13 +41,16 @@ object UberStore {
  * @param baseDir directory UberStore is based i
  */
 class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
+  import UberStore._
+
+  val eventsBetweenCompactionUpdates = 1000000L
+  var state: CompactionState = NotCompacting
 
   // XXX incorporate maxDeleteAge
   // val maxDeleteAge = System.getProperty("maxDeleteAge", "604800000").toLong
   var readOnlyDirs: List[UberDir] = _
   var liveDir: UberDir = _
   var nextSeq: Long = _
-  var currentlyCompacting = false
   init()
 
   /**
@@ -86,6 +97,8 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
    */
   def isClosed = liveDir.isClosed
 
+  def getCompactionState = state
+
   /**
    * Compact the current read-only dirs into a single dir.
    *
@@ -94,36 +107,30 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
    * - it removes entries from the resulting WAL that are overridden by later
    *   entries in the WAL. For a given key, only the latest event is kept.
    */
-  def compact() {
-    if (!currentlyCompacting) {
-      // split off a new liveDir so we can compact what's currently live
-      split()
+  def compact() = synchronized {
+    // split off a new liveDir so we can compact what's currently live
+    split()
 
-      currentlyCompacting = true
+    // we're compacting readOnlyDirs, which is 1 through maxDir
+    val maxDir = readOnlyDirs.map(_.name.toLong).max
+    // actually do the compaction, putting it into a compacted.1-$maxDir directory
+    val compacted = doCompact(readOnlyDirs, "compacted.1-%s".format(maxDir))
+    // replace the current readOnlyDirs with the newly-created compacted.1-$maxDir
+    replace(readOnlyDirs, compacted)
 
-      // we're compacting readOnlyDirs, which is 1 through maxDir
-      val maxDir = readOnlyDirs.map(_.name.toLong).max
-      // actually do the compaction, putting it into a compacted.1-$maxDir directory
-      val compacted = doCompact(readOnlyDirs, "compacted.1-%s".format(maxDir))
-      // replace the current readOnlyDirs with the newly-created compacted.1-$maxDir
-      replace(readOnlyDirs, compacted)
-
-      currentlyCompacting = false
-    }
+    state = NotCompacting
   }
 
   /**
    * Create a new liveDir, based on the current max dirNum + 1. Move current
    * liveDir into read-only mode.
    *
-   * Currently do NOT support a split while currently compacting.
+   * Currently do NOT support a split while compacting.
    */
-  def split() {
-    if (!currentlyCompacting) {
-      readOnlyDirs :+= liveDir
-      val newDirNum = readOnlyDirs.map(_.name.toLong).max + 1
-      liveDir = UberDir(baseDir, newDirNum.toString)
-    }
+  private def split() {
+    readOnlyDirs :+= liveDir
+    val newDirNum = readOnlyDirs.map(_.name.toLong).max + 1
+    liveDir = UberDir(baseDir, newDirNum.toString)
   }
 
   private def doCompact(toCompact: List[UberDir], dirName: String): File = {
@@ -166,18 +173,28 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
   private def gatherCompactionOffsets(): Array[Long] = {
     val toKeep = MutableHashMap[WrappedArray[Byte], Long]()
     var offset = 0L
+    state = Compacting(GatheringEvents, 0L)
+
     // developer's note- it may be nice to not fully deserialize all of these...
     // we could use a decoder that just returns WrappedArrays of keys instead of full OrderedEvents...
     readOnlyDirs.foreach(d => d.foreach {
       case OrderedEvent(_, ts, Delete(key)) =>
         toKeep.put(WrappedArray.make(key.getBytes), offset)
+
+        if (offset % eventsBetweenCompactionUpdates == 0) {
+          state = Compacting(GatheringEvents, offset)
+        }
         offset += 1
       case OrderedEvent(_, _, Put(key, _)) =>
         toKeep.put(WrappedArray.make(key.getBytes), offset)
+
+        if (offset % eventsBetweenCompactionUpdates == 0) {
+          state = Compacting(GatheringEvents, offset)
+        }
         offset += 1
     })
 
-    // XXX built up this whole map, but only need offset array
+    // built up this whole map, but only need offset array
     val keepableOffsets = toKeep.values.toArray
     util.Arrays.sort(keepableOffsets)
 
@@ -185,6 +202,8 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
   }
 
   private def writeEventsByOffset(offsets: Array[Long], output: UberDir) {
+    state = Compacting(WritingEvents, 0L)
+
     val toWriteIterator = offsets.iterator
     if (!toWriteIterator.isEmpty) {
       var nextWrite = toWriteIterator.next()
@@ -197,6 +216,10 @@ class UberStore private[uberstore] (baseDir: String) extends SiriusLog {
             if (toWriteIterator.hasNext) {
               nextWrite = toWriteIterator.next()
             }
+          }
+
+          if (index % eventsBetweenCompactionUpdates == 0) {
+            state = Compacting(WritingEvents, index)
           }
           index += 1
         }

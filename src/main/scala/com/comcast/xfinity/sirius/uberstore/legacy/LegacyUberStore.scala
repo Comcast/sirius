@@ -2,6 +2,7 @@ package com.comcast.xfinity.sirius.uberstore.legacy
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+import com.comcast.xfinity.sirius.uberstore.UberStore.NotCompacting
 
 object LegacyUberStore {
 
@@ -62,4 +63,7 @@ class LegacyUberStore private[uberstore] (uberpair: LegacyUberPair) extends Siri
    */
   def isClosed = uberpair.isClosed
 
+  def compact() {}
+
+  def getCompactionState = NotCompacting
 }
