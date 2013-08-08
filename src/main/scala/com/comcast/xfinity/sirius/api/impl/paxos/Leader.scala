@@ -82,12 +82,12 @@ class Leader(membership: Agent[Set[ActorRef]],
     case propose @ Propose(slotNum, command) if !proposals.containsKey(slotNum) && slotNum > latestDecidedSlot =>
       electedLeaderBallot match {
         // I'm the leader
-        case Some(electedBallot) if (myBallot == electedBallot) =>
+        case Some(electedBallot) if myBallot == electedBallot =>
           proposals.put(slotNum, command)
           startCommander(PValue(myBallot, slotNum, command))
 
         // someone else is the leader
-        case Some(electedBallot @ Ballot(_, leaderId)) if (myBallot != electedBallot) =>
+        case Some(electedBallot @ Ballot(_, leaderId)) if myBallot != electedBallot =>
           context.actorFor(leaderId) forward propose
 
         // the leader is unknown, stash proposals until we know
@@ -96,7 +96,7 @@ class Leader(membership: Agent[Set[ActorRef]],
       }
 
 
-    // A majority of the Acceptors have accepted myBallot, become leader
+    // A majority of the Acceptors have accepted myBallot, become leader, stop watcher
     case Adopted(newBallot, pvals) if myBallot == newBallot =>
       logger.debug("Assuming leadership using {}", myBallot)
 
@@ -111,6 +111,7 @@ class Leader(membership: Agent[Set[ActorRef]],
       )
       currentLeaderElectedSince = System.currentTimeMillis()
       electedLeaderBallot = Some(myBallot)
+      stopLeaderWatcher()
 
 
     // phantom ballot from the future- this node was the leader in some previous
@@ -171,18 +172,19 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   private def seekLeadership(ballotToTrump: Option[Ballot] = None) {
     myBallot = ballotToTrump match {
-      case Some(Ballot(seq, _)) => myBallot.copy(seq = seq + 1)
+      case Some(Ballot(oldSeq, _)) => myBallot.copy(seq = oldSeq + 1)
       case _ => myBallot.copy(seq = myBallot.seq + 1)
     }
 
     electedLeaderBallot = None
+    stopLeaderWatcher()
 
     startScout()
   }
 
   private def stopLeaderWatcher() {
     currentLeaderWatcher match {
-      case Some(ref) if (!ref.isTerminated) => ref ! LeaderWatcher.Close
+      case Some(ref) if !ref.isTerminated => ref ! Close
       case _ => // no-op
     }
     currentLeaderWatcher = None
@@ -220,9 +222,10 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getLastReapDuration: Long
     def getCommanderTimeoutCount: Long
     def getLastTimedOutPValue: String
+    def getLeaderWatcher: Option[ActorRef]
   }
 
-  class LeaderInfo extends LeaderInfoMBean{
+  class LeaderInfo extends LeaderInfoMBean {
     def getBallot = myBallot.toString
     def getLatestDecidedSlot = latestDecidedSlot
     def getProposalCount = proposals.size
@@ -232,5 +235,6 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getLastReapDuration = lastReapDuration
     def getCommanderTimeoutCount = commanderTimeoutCount
     def getLastTimedOutPValue = lastTimedOutPValue.toString
+    def getLeaderWatcher = currentLeaderWatcher
   }
 }

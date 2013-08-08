@@ -5,22 +5,23 @@ import akka.testkit.{TestActorRef, TestProbe}
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
 import akka.actor.{ReceiveTimeout, ActorRef, Props, ActorSystem}
-import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{LeaderGone, DifferentLeader}
+import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{LeaderPong, LeaderGone, DifferentLeader}
 
 class LeaderPingerTest extends NiceTest {
 
   implicit val actorSystem = ActorSystem("LeaderPingerTest")
 
   def makePinger(ballot: Ballot = Ballot(1, TestProbe().ref.path.toString),
-                 replyTo: ActorRef = TestProbe().ref) = {
-    TestActorRef(new LeaderPinger(ballot, replyTo))
+                 replyTo: ActorRef = TestProbe().ref,
+                 pingReceiveTimeout: Int = 2000) = {
+    TestActorRef(new LeaderPinger(ballot, replyTo, pingReceiveTimeout))
   }
 
 
   describe ("upon instantiation") {
     it ("should send the expectedLeader a Ping message") {
       val leaderProbe = TestProbe()
-      val underTest = makePinger(ballot = Ballot(1, leaderProbe.ref.path.toString))
+      makePinger(ballot = Ballot(1, leaderProbe.ref.path.toString))
 
       leaderProbe.expectMsg(Ping)
     }
@@ -35,7 +36,7 @@ class LeaderPingerTest extends NiceTest {
 
       underTest ! Pong(Some(expectedBallot))
 
-      replyTo.expectNoMsg()
+      replyTo.expectMsgClass(classOf[LeaderPong])
       assert(underTest.isTerminated)
     }
 
@@ -75,6 +76,13 @@ class LeaderPingerTest extends NiceTest {
       underTest ! ReceiveTimeout
 
       replyToProbe.expectMsg(100 milliseconds, LeaderGone)
+    }
+
+    it ("should receive a ReceiveTimeout and act correctly if it waits too long") {
+      val replyToProbe = TestProbe()
+      makePinger(replyTo = replyToProbe.ref, pingReceiveTimeout = 100)
+
+      replyToProbe.expectMsg(200 milliseconds, LeaderGone)
     }
   }
 
