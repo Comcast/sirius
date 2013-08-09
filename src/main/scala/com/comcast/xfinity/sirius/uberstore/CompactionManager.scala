@@ -3,6 +3,7 @@ package com.comcast.xfinity.sirius.uberstore
 import akka.actor.{ActorRef, Props, Actor}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.event.Logging
+import akka.util.duration._
 import com.comcast.xfinity.sirius.uberstore.CompactionActor.CompactionComplete
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
@@ -33,6 +34,13 @@ class CompactionManager(siriusLog: SiriusLog)
       extends Actor with MonitoringHooks {
   import CompactionManager._
 
+  val compactionScheduleHours = config.getProp(SiriusConfiguration.COMPACTION_SCHEDULE_HOURS, 0) // off by default
+  val compactionCancellable = compactionScheduleHours match {
+    case numHours if numHours > 0 =>
+      Some(context.system.scheduler.schedule(compactionScheduleHours hours, compactionScheduleHours hours, self, Compact))
+    case _ => None
+  }
+
   val logger = Logging(context.system, "Sirius")
 
   var lastCompactionStarted: Option[Long] = None
@@ -40,7 +48,7 @@ class CompactionManager(siriusLog: SiriusLog)
   var compactionActor: Option[ActorRef] = None
 
   def createCompactionActor: ActorRef =
-    context.actorOf(Props(new CompactionActor(siriusLog)))
+    context.actorOf(Props(new CompactionActor(siriusLog)), "compaction")
 
   def startCompaction: ActorRef = {
     val actor = createCompactionActor
@@ -50,6 +58,14 @@ class CompactionManager(siriusLog: SiriusLog)
 
   override def preStart() {
     registerMonitor(new CompactionSchedulingActorInfo, config)
+  }
+
+  override def postStop() {
+    unregisterMonitors(config)
+    compactionCancellable match {
+      case Some(cancellable) => cancellable.cancel()
+      case None =>
+    }
   }
 
   def receive = {

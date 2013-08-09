@@ -16,6 +16,8 @@ import status.StatusWorker
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 import status.StatusWorker.StatusQuery
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
+import com.comcast.xfinity.sirius.uberstore.CompactionManager
+import com.comcast.xfinity.sirius.uberstore.CompactionManager.CompactionMessage
 
 object SiriusSupervisor {
 
@@ -34,6 +36,7 @@ object SiriusSupervisor {
     var orderingActor: Option[ActorRef]
     val stateBridge: ActorRef
     val statusSubsystem: ActorRef
+    val compactionManager: ActorRef
 
     def ensureOrderingActorRunning()
     def ensureOrderingActorStopped()
@@ -78,6 +81,11 @@ object SiriusSupervisor {
       val statusSubsystem = context.actorOf(
         Props(StatusWorker(AkkaExternalAddressResolver(context.system).externalAddressFor(self), config)),
         "status"
+      )
+
+      val compactionManager = context.actorOf(Props(
+        new CompactionManager(siriusLog)(config)),
+        "compactionManager"
       )
 
       def ensureOrderingActorStopped() {
@@ -151,6 +159,7 @@ class SiriusSupervisor(implicit config: SiriusConfiguration = new SiriusConfigur
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
     case statusQuery: StatusQuery => statusSubsystem forward statusQuery
+    case compactionMessage: CompactionMessage => compactionManager forward compactionMessage
     case CheckPaxosMembership => {
       if (membershipAgent.get().contains(self)) {
         ensureOrderingActorRunning()

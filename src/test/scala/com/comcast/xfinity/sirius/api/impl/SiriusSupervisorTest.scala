@@ -9,6 +9,7 @@ import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import org.scalatest.BeforeAndAfterAll
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
+import com.comcast.xfinity.sirius.uberstore.CompactionManager.{CompactionMessage, Compact}
 
 
 @RunWith(classOf[JUnitRunner])
@@ -20,6 +21,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
   val persistenceProbe = TestProbe()
   val stateProbe = TestProbe()
   val membershipProbe = TestProbe()
+  val compactionProbe = TestProbe()
   val mockMembershipAgent: Agent[Set[ActorRef]] = mock[Agent[Set[ActorRef]]]
   var startStopProbe: TestProbe = _
 
@@ -41,6 +43,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       val stateBridge: ActorRef = TestProbe().ref
       var orderingActor: Option[ActorRef] = Some(paxosProbe.ref)
       val statusSubsystem: ActorRef = TestProbe().ref
+      val compactionManager: ActorRef = compactionProbe.ref
 
       def ensureOrderingActorRunning() {
         orderingActor = Some(paxosProbe.ref)
@@ -110,13 +113,21 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       paxosProbe.expectMsg(put)
     }
 
+    it("should forward compaction messages to the CompactionManager") {
+      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      initializeSupervisor(supervisor)
+      val compactionMessage: CompactionMessage = Compact
+      supervisor ! compactionMessage
+      compactionProbe.expectMsg(compactionMessage)
+    }
+
     it("should fire off startOrderingActor if it checks membership and it's in there") {
       doReturn(Set(supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
 
       supervisor ! CheckPaxosMembership
 
-      startStopProbe.fishForMessage(hint="Expected 'Start evantually") {
+      startStopProbe.fishForMessage(hint="Expected 'Start eventually") {
         case 'Start => true
         case 'Stop => false
       }

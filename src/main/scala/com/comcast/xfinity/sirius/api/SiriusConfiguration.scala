@@ -84,6 +84,12 @@ object SiriusConfiguration {
   final val LOG_WRITE_CACHE_SIZE = "sirius.log.write-cache-size"
 
   /**
+   * Hours between triggering compaction. First trigger will happen this many hours after
+   * boot.  A value of 0 turns off compaction, and compaction is off by default.
+   */
+  final val COMPACTION_SCHEDULE_HOURS = "sirius.log.compaction-schedule-hours"
+
+  /**
    * Name of the sirius supervisor, typically we will not change this,
    * but it's here just in case (string)
    */
