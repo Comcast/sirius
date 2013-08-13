@@ -12,7 +12,7 @@ import com.comcast.xfinity.sirius.uberstore.CompactionActor.CompactionComplete
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito._
 import org.mockito.Matchers._
-import com.comcast.xfinity.sirius.uberstore.CompactionManager.{GetState, Compact, CompactionSchedulingActorInfoMBean}
+import com.comcast.xfinity.sirius.uberstore.CompactionManager.{CompactionManagerInfoMBean, GetState, Compact}
 import akka.util.Timeout
 import com.comcast.xfinity.sirius.uberstore.UberStore.NotCompacting
 
@@ -22,7 +22,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
   implicit var actorSystem: ActorSystem = ActorSystem("CompactionSchedulingTest")
   var compactionsStarted: Int = _
 
-  def makeMockCompactionSchedulingActor(siriusLog: SiriusLog = mock[SiriusLog],
+  def makeMockCompactionManager(siriusLog: SiriusLog = mock[SiriusLog],
                                         testCompactionActor: ActorRef = TestProbe().ref,
                                         testCurrentCompactionActor: Option[ActorRef] = None,
                                         testLastStarted: Option[Long] = None,
@@ -47,7 +47,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
   def getCompactionInfo(mBeanServer: MBeanServer) = {
     val mBeanCaptor = ArgumentCaptor.forClass(classOf[Any])
     verify(mBeanServer).registerMBean(mBeanCaptor.capture(), any[ObjectName])
-    mBeanCaptor.getValue.asInstanceOf[CompactionSchedulingActorInfoMBean]
+    mBeanCaptor.getValue.asInstanceOf[CompactionManagerInfoMBean]
   }
 
   before {
@@ -58,7 +58,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
     describe ("when receiving CompactionComplete") {
       it ("must set compactionDuration and compactionActor") {
         val mBeanServer = mock[MBeanServer]
-        val underTest = makeMockCompactionSchedulingActor(testMBeanServer = mBeanServer,
+        val underTest = makeMockCompactionManager(testMBeanServer = mBeanServer,
           testCurrentCompactionActor = Some(TestProbe().ref),
           testLastStarted = Some(1L))
 
@@ -76,7 +76,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
     describe ("when receiving Compact") {
       it ("must start compaction and record startTime if there is no current actor") {
         val mBeanServer = mock[MBeanServer]
-        val underTest = makeMockCompactionSchedulingActor(testMBeanServer = mBeanServer)
+        val underTest = makeMockCompactionManager(testMBeanServer = mBeanServer)
         val compactionInfo = getCompactionInfo(mBeanServer)
         val senderProbe = TestProbe()
 
@@ -89,7 +89,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
 
       it ("must start compaction if the current actor is dead") {
         val compactionActor = TestActorRef(new CompactionActor(mock[SiriusLog]))
-        val underTest = makeMockCompactionSchedulingActor(testCurrentCompactionActor = Some(compactionActor))
+        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(compactionActor))
         val senderProbe = TestProbe()
 
         compactionActor ! PoisonPill
@@ -102,7 +102,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
 
       it ("must do nothing if there is a live current actor") {
         val compactionActor = TestActorRef(new CompactionActor(mock[SiriusLog]))
-        val underTest = makeMockCompactionSchedulingActor(testCurrentCompactionActor = Some(compactionActor))
+        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(compactionActor))
         val senderProbe = TestProbe()
 
         senderProbe.send(underTest, Compact)
@@ -115,7 +115,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
     describe ("when receiving GetState") {
       it ("must reply with the SiriusLog's current state") {
         val mockSiriusLog = mock[SiriusLog]
-        val underTest = makeMockCompactionSchedulingActor(siriusLog = mockSiriusLog)
+        val underTest = makeMockCompactionManager(siriusLog = mockSiriusLog)
         doReturn(NotCompacting).when(mockSiriusLog).getCompactionState
 
         val senderProbe = TestProbe()

@@ -14,7 +14,7 @@ object CompactionManager {
   case object Compact extends CompactionMessage
   case object GetState extends CompactionMessage
 
-  trait CompactionSchedulingActorInfoMBean {
+  trait CompactionManagerInfoMBean {
     def getLastCompactionStarted: Option[Long]
     def getLastCompactionDuration: Option[Long]
     def getCompactionState: CompactionState
@@ -57,7 +57,7 @@ class CompactionManager(siriusLog: SiriusLog)
   }
 
   override def preStart() {
-    registerMonitor(new CompactionSchedulingActorInfo, config)
+    registerMonitor(new CompactionManagerInfo, config)
   }
 
   override def postStop() {
@@ -97,7 +97,7 @@ class CompactionManager(siriusLog: SiriusLog)
       sender ! siriusLog.getCompactionState
   }
 
-  class CompactionSchedulingActorInfo extends CompactionSchedulingActorInfoMBean {
+  class CompactionManagerInfo extends CompactionManagerInfoMBean {
     def getLastCompactionStarted = lastCompactionStarted
     def getLastCompactionDuration = lastCompactionDuration
     def getCompactionState = siriusLog.getCompactionState
