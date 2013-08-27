@@ -22,6 +22,29 @@ class DiskOnlySeqIndexTest extends NiceTest with BeforeAndAfterAll {
     tempDir.delete()
   }
 
+  describe("Index size"){
+    it ("must report a size of 0 when the log is empty"){
+      val underTest = DiskOnlySeqIndex(tempDir.getAbsolutePath + "/test-empty.index")
+      assert(0 === underTest.size)
+    }
+
+    it ("must correctly report the size of the log if it's not empty"){
+      val underTest = DiskOnlySeqIndex(tempDir.getAbsolutePath + "/test-notempty.index")
+      underTest.put(1L,0L)
+      underTest.put(2L,100L)
+      underTest.put(3L,200L)
+      underTest.close()
+      val underTest2 = DiskOnlySeqIndex(tempDir.getAbsolutePath + "/test-notempty.index")
+      assert(3 === underTest2.size)
+    }
+    it("must correctly increment the value of size when a new entry is added to the log"){
+      val underTest = DiskOnlySeqIndex(tempDir.getAbsolutePath + "/test-increment.index")
+      underTest.put(1L,0L)
+      assert(1 === underTest.size)
+      underTest.put(2L,100L)
+      assert(2 === underTest.size)
+    }
+  }
   describe("During an interesting series of events...") {
     describe ("for an empty log") {
       val underTest = DiskOnlySeqIndex(tempDir.getAbsolutePath + "/empty.index")
