@@ -104,7 +104,7 @@ class Replica(localLeader: ActorRef,
       } catch {
         // XXX: is this too liberal?
         case t: Throwable =>
-          logger.error("Received exception applying decision {}: {}", decision, t)
+          logger.warning("Received exception applying decision {}: {}", decision, t)
       }
 
     case decisionHint @ DecisionHint(decisionHintSlotNum) =>
