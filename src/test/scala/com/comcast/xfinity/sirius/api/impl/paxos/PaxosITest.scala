@@ -37,7 +37,7 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
 
   val config = ConfigFactory.parseString("""
       akka {
-        loglevel=DEBUG
+        loglevel=ERROR
       }
     """)
 
