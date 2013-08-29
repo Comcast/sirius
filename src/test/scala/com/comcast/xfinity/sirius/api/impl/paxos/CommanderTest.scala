@@ -11,11 +11,15 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
 import akka.actor.{ReceiveTimeout, ActorSystem}
+import akka.event.Logging
+import org.slf4j.LoggerFactory
 
 
 class CommanderTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("CommanderTest")
+
+  val logger = LoggerFactory.getLogger(classOf[CommanderTest])
 
   // XXX: how to test ReceiveTimeout?
 
@@ -24,7 +28,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val leaderProbe = TestProbe()
       val acceptorProbes = Set(TestProbe(), TestProbe(), TestProbe())
       val replicaProbes = Set[TestProbe]()
-      println(acceptorProbes)
+      logger.debug("{}",acceptorProbes)
       val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
@@ -40,7 +44,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val anAcceptorProbe = TestProbe()
       val acceptorProbes = Set(anAcceptorProbe)
       val replicaProbes = Set[TestProbe]()
-      println(acceptorProbes)
+      logger.debug("{}", acceptorProbes)
       val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),

@@ -5,11 +5,15 @@ import org.scalatest.BeforeAndAfterAll
 import com.typesafe.config.ConfigFactory
 import java.util.{HashMap => JHashMap}
 import akka.actor.{Actor, Props, ActorSystem}
+import org.slf4j.LoggerFactory
 
 object AkkaExternalAddressResolverITest {
+
+  val logger = LoggerFactory.getLogger(AkkaExternalAddressResolverITest.getClass)
+
   class SuperSimpleActor extends Actor {
     def receive = {
-      case any => println(any)
+      case any => logger.debug("{}", any)
     }
   }
 }

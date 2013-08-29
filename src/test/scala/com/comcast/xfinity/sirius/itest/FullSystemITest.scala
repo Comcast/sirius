@@ -15,8 +15,11 @@ import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import annotation.tailrec
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
+import org.slf4j.LoggerFactory
 
 object FullSystemITest {
+
+  val logger = LoggerFactory.getLogger(FullSystemITest.getClass)
   /**
    * get a list of (sequence num, request) from the wals for all their data
    * @param wal log to query
@@ -42,7 +45,7 @@ object FullSystemITest {
 
   def verifyWalSize(wal: SiriusLog, expectedSize: Long): Boolean = {
     val walSize = getWalSize(wal)
-    println("Verifying wal size: expected=%s actual=%s".format(expectedSize, walSize))
+    logger.debug("Verifying wal size: expected=%s actual=%s".format(expectedSize, walSize))
     walSize >= expectedSize
   }
 }
@@ -50,6 +53,8 @@ object FullSystemITest {
 class FullSystemITest extends NiceTest with TimedTest {
 
   import FullSystemITest._
+
+  val logger = LoggerFactory.getLogger(classOf[FullSystemITest])
 
   // the system name this sirius created on will be sirius-$port
   // so that we can better get an idea of what's going on in the
@@ -148,7 +153,7 @@ class FullSystemITest extends NiceTest with TimedTest {
           SiriusResult.none == futureAndCommand._1.get
         } catch {
           case ex: Exception =>
-            println("Future retrieval failed: " + ex)
+            logger.debug("Future retrieval failed: " + ex)
             false
         }
     )
@@ -159,7 +164,7 @@ class FullSystemITest extends NiceTest with TimedTest {
   @tailrec
   final def fireAndRetryCommands(sirii: List[SiriusImpl], commands: List[String], retries: Int): List[String] = {
     val failedCommands = fireAndAwait(sirii, commands)
-    println("*** %s retries left, need to retry %s commands".format(retries, failedCommands.size))
+    logger.debug("*** %s retries left, need to retry %s commands".format(retries, failedCommands.size))
     if (retries > 0 && !failedCommands.isEmpty) {
       fireAndRetryCommands(sirii, failedCommands, retries - 1)
     } else {
@@ -181,7 +186,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       waitForMembership(sirii, 3)
 
       val failed = fireAndRetryCommands(sirii, generateCommands(1, numCommands), 4)
-      println("No response for %s out of %s".format(failed.size, numCommands))
+      logger.debug("No response for %s out of %s".format(failed.size, numCommands))
       assert(0 === failed.size, "There were failed commands")
 
       assert(waitForTrue(verifyWalSize(log1, numCommands), 30000, 500),
@@ -203,7 +208,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       waitForMembership(sirii, 3)
 
       val failed = fireAndRetryCommands(sirii, generateCommands(1, numCommands), 4)
-      println("No response for %s out of %s".format(failed.size, numCommands))
+      logger.debug("No response for %s out of %s".format(failed.size, numCommands))
 
       assert(waitForTrue(verifyWalSize(log1, numCommands), 30000, 500),
         "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
@@ -240,7 +245,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       waitForMembership(sirii, 3)
 
       val failed = fireAndRetryCommands(sirii, generateCommands(1, numCommands), 4)
-      println("No response for %s out of %s".format(failed.size, numCommands))
+      logger.debug("No response for %s out of %s".format(failed.size, numCommands))
 
       assert(waitForTrue(verifyWalSize(log1, numCommands), 30000, 500),
         "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
@@ -272,14 +277,14 @@ class FullSystemITest extends NiceTest with TimedTest {
         val failed = fireAndAwait(List(sirius1), List(nextCommand))
         if (!failed.isEmpty) {
           retried += 1
-          println("XXX %s retries so far", retried)
+          logger.debug("XXX %s retries so far", retried)
         }
         failed.isEmpty
       }, 30000, 1000), "after removing Sirius3 from the cluster, could not get any commands through the system")
 
       // then fire off the rest
       val failed2 = fireAndRetryCommands(List(sirius1, sirius2), nextCommandTail, 4)
-      println("No response for %s out of %s".format(failed2.size, numCommands))
+      logger.debug("No response for %s out of %s".format(failed2.size, numCommands))
 
       // nodes of log1 and log2 are running normally
       assert(waitForTrue(verifyWalSize(log1, numCommands * 2), 30000, 500),
