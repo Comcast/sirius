@@ -35,13 +35,7 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
 
   import PaxosITest._
 
-  val config = ConfigFactory.parseString("""
-      akka {
-        loglevel=ERROR
-      }
-    """)
-
-  implicit val as = ActorSystem("PaxosITest", ConfigFactory.load(config))
+  implicit val as = ActorSystem("PaxosITest")
 
   override def afterAll {
     as.shutdown()
