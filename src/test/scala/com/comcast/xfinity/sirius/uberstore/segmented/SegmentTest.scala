@@ -3,10 +3,13 @@ package com.comcast.xfinity.sirius.uberstore.segmented
 import com.comcast.xfinity.sirius.NiceTest
 import org.mockito.Mockito._
 import org.mockito.Matchers.{any, eq => meq, anyLong}
-import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
+import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
 import com.comcast.xfinity.sirius.uberstore.seqindex.SeqIndex
 import com.comcast.xfinity.sirius.uberstore.UberDir
+import java.io.File
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfter}
+import scala.collection.immutable.StringOps
 
 object SegmentTest {
 
@@ -19,10 +22,23 @@ object SegmentTest {
   }
 }
 
-class SegmentTest extends NiceTest {
+class SegmentTest extends NiceTest with BeforeAndAfterAll {
 
   import SegmentTest._
 
+  val tempDir: File = {
+    val tempDirName = "%s/segment-itest-%s".format(
+      System.getProperty("java.io.tmpdir"),
+      System.currentTimeMillis()
+    )
+    val dir = new File(tempDirName)
+    dir.mkdirs()
+    dir
+  }
+
+  override def afterAll {
+    tempDir.delete()
+  }
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {
       val (mockDataFile, mockIndex, underTest) = createMockedUpLog
@@ -112,6 +128,46 @@ class SegmentTest extends NiceTest {
       doReturn (2L).when(mockIndex).size
       assert(2 === underTest.size)
 
+    }
+  }
+  describe ("keys"){
+
+    it ("Should return an empty set if the set of keys are empty"){
+      val underTest = Segment(tempDir.getAbsolutePath,"0keys")
+      assert(underTest.keys.isEmpty)
+    }
+
+    it ("Should return the correct number of keys if the set of keys is not empty. With Deletes only"){
+      val underTest = Segment(tempDir.getAbsolutePath,"hasKeys-Delete")
+      underTest.writeEntry(OrderedEvent(1, 678, Delete("yarr")))
+      underTest.writeEntry(OrderedEvent(2, 1200, Delete("secondYarr")))
+      assert(2 === underTest.keys.size)
+    }
+    it ("Should return the correct number of keys if the set of keys is not empty. With Puts only"){
+      val underTest = Segment(tempDir.getAbsolutePath,"hasKeys-Put")
+      val newByteArray = new StringOps("data").getBytes
+      underTest.writeEntry(OrderedEvent(1, 678, Put("yarr",newByteArray)))
+      underTest.writeEntry(OrderedEvent(2, 1000, Put("secondYarr",newByteArray)))
+      assert(Set("yarr","secondYarr") === underTest.keys)
+    }
+    it ("Should return the correct number of keys if the set of keys is not empty. With Puts & Deletes"){
+      val underTest = Segment(tempDir.getAbsolutePath,"hasKeys-All")
+      val newByteArray = new StringOps("data").getBytes
+      underTest.writeEntry(OrderedEvent(1, 678, Put("yarr",newByteArray)))
+      underTest.writeEntry(OrderedEvent(2, 1000, Put("secondYarr",newByteArray)))
+      underTest.writeEntry(OrderedEvent(3, 1100, Delete("thirdYarr")))
+      underTest.writeEntry(OrderedEvent(4, 1200, Delete("fourthYarr")))
+      assert(Set("yarr","secondYarr","thirdYarr","fourthYarr") === underTest.keys)
+    }
+    it ("should return a unique number of keys if the set of keys is not empty and has duplicates"){
+      val underTest = Segment(tempDir.getAbsolutePath,"hasUniqueKeys")
+      val newByteArray = new StringOps("data").getBytes
+      underTest.writeEntry(OrderedEvent(1, 678, Delete("yarr")))
+      underTest.writeEntry(OrderedEvent(2, 1200, Delete("secondYarr")))
+      underTest.writeEntry(OrderedEvent(3, 1300, Delete("secondYarr")))
+      underTest.writeEntry(OrderedEvent(4, 1400, Put("thirdYarr",newByteArray)))
+      underTest.writeEntry(OrderedEvent(5, 1500, Put("thirdYarr",newByteArray)))
+      assert(Set("yarr", "secondYarr","thirdYarr") === underTest.keys)
     }
   }
   describe("close") {

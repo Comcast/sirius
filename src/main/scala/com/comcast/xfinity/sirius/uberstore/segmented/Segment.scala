@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
-import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
 import com.comcast.xfinity.sirius.uberstore.seqindex.{SeqIndex, DiskOnlySeqIndex}
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
 import java.io.File
@@ -85,6 +85,22 @@ class Segment private[uberstore](val name: String, dataFile: UberDataFile, index
     }
     val offset = dataFile.writeEvent(event)
     index.put(event.sequence, offset)
+  }
+
+  /**
+   * Key function returns all the keys in the segment
+   * @return
+   */
+  def keys : Set[String] = {
+     val acc0 = Set[String]()
+     val foldFun = (acc: Set[String], event:OrderedEvent) =>{
+       val key = event.request match {
+         case Delete(key) => key
+         case Put(key,_)  => key
+       }
+       acc + key
+     }
+    foldLeft(acc0)(foldFun)
   }
 
   /**
