@@ -36,7 +36,7 @@ class SiriusStateActor(requestHandler: RequestHandler) extends Actor {
       }
     } catch {
       case e: RuntimeException =>
-        logger.error("Unhandled exception in handling {}: {}", req, e)
+        logger.warning("Unhandled exception in handling {}: {}", req, e)
         SiriusResult.error(e)
     }
   }
