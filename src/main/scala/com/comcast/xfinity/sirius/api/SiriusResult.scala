@@ -63,4 +63,8 @@ case class SiriusResult(private val value: Either[RuntimeException, Option[Objec
     case Right(None) => throw new IllegalStateException("Result has no value")
   }
 
+  /**
+   * @return true if this instance wraps an exception
+   */
+  def isError: Boolean = value.isLeft
 }

@@ -53,5 +53,25 @@ class SiriusResultTest extends NiceTest {
         }
       }      
     }
+
+    describe(".isError") {
+      it("should return false when it has a value") {
+        expect(false) {
+          SiriusResult.some("value").isError
+        }
+      }
+
+      it("should return false when it has no value") {
+        expect(false) {
+          SiriusResult.none().isError
+        }
+      }
+
+      it("should return true when there is a wrapped exception") {
+        expect(true) {
+          SiriusResult.error(new RuntimeException()).isError
+        }
+      }
+    }
   }
 }
