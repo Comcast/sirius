@@ -2,7 +2,9 @@ package com.comcast.xfinity.sirius.api.impl
 
 import java.util.Arrays
 
-sealed trait SiriusRequest
+sealed trait SiriusRequest {
+  def key: String
+}
 
 case class Get(key: String) extends SiriusRequest
 
