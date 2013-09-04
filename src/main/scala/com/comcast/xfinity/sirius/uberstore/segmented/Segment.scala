@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
-import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
+import com.comcast.xfinity.sirius.api.impl.{Delete, Put, OrderedEvent}
 import com.comcast.xfinity.sirius.uberstore.seqindex.{SeqIndex, DiskOnlySeqIndex}
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
 import java.io.File
@@ -16,18 +16,19 @@ object Segment {
    * @return an Segment instance, fully repaired and usable
    */
   def apply(baseDir: String, name: String): Segment = {
-    val dir = new File("%s/%s".format(baseDir, name))
-    if (!dir.exists()) {
-      dir.mkdir()
-    }
+    val location = new File(baseDir, name)
+    location.mkdirs()
 
-    val dataFile = new File(dir, "data")
-    val indexFile = new File(dir, "index")
+    val dataFile = new File(location, "data")
+    val indexFile = new File(location, "index")
+    val compactionFlagFile = new File(location, "keys-collected")
 
-    val uberDataFile = UberDataFile(dataFile.getAbsolutePath)
+    val data = UberDataFile(dataFile.getAbsolutePath)
     val index = DiskOnlySeqIndex(indexFile.getAbsolutePath)
-    repairIndex(index, uberDataFile)
-    new Segment(name, uberDataFile, index)
+    val compactionFlag = FlagFile(compactionFlagFile.getAbsolutePath)
+
+    repairIndex(index, data)
+    new Segment(location, name, data, index, compactionFlag)
   }
 
   /**
@@ -67,7 +68,12 @@ object Segment {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class Segment private[uberstore](val name: String, dataFile: UberDataFile, index: SeqIndex) {
+class Segment private[uberstore](val location: File, val name: String, dataFile: UberDataFile, index: SeqIndex, compactionFlag: FlagFile) {
+
+  /**
+   * Get the number of entries written to the Segment
+   * @return number of entries in the Segment
+   */
   def size = index.size
 
   /**
@@ -154,5 +160,19 @@ class Segment private[uberstore](val name: String, dataFile: UberDataFile, index
    * @return whether this is "closed," i.e., unable to be written to
    */
   def isClosed = dataFile.isClosed || index.isClosed
+
+  /**
+   * Have the keys in this segment been applied via compaction to previous segments?
+   * @return true if the keys have been compacted away from previous segments, false otherwise
+   */
+  def isApplied = compactionFlag.value
+
+  /**
+   * Set the keys-applied flag.
+   * @param applied the value of the flag
+   */
+  def setApplied(applied: Boolean) {
+    compactionFlag.set(value = applied)
+  }
 
 }

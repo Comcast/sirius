@@ -6,19 +6,20 @@ import org.mockito.Matchers.{any, eq => meq, anyLong}
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
 import com.comcast.xfinity.sirius.uberstore.seqindex.SeqIndex
-import com.comcast.xfinity.sirius.uberstore.UberDir
 import java.io.File
-import org.scalatest.{BeforeAndAfterAll, BeforeAndAfter}
+import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.StringOps
 
 object SegmentTest {
 
-  def createMockedUpLog: (UberDataFile, SeqIndex, Segment) = {
+  def createMockedUpLog: (UberDataFile, SeqIndex, FlagFile, Segment) = {
     val mockDataFile = mock(classOf[UberDataFile])
     val mockIndex = mock(classOf[SeqIndex])
+    val mockFile = mock(classOf[File])
+    val mockFlag = mock(classOf[FlagFile])
     // XXX: non-io tests require us to access private constructor
-    val underTest =  new Segment("foo", mockDataFile, mockIndex)
-    (mockDataFile, mockIndex, underTest)
+    val underTest =  new Segment(mockFile, "foo", mockDataFile, mockIndex, mockFlag)
+    (mockDataFile, mockIndex, mockFlag, underTest)
   }
 }
 
@@ -36,12 +37,12 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     dir
   }
 
-  override def afterAll {
+  override def afterAll() {
     tempDir.delete()
   }
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {
-      val (mockDataFile, mockIndex, underTest) = createMockedUpLog
+      val (mockDataFile, mockIndex, _, underTest) = createMockedUpLog
 
       doReturn(None).when(mockIndex).getMaxSeq
       doReturn(1234L).when(mockDataFile).writeEvent(any[OrderedEvent])
@@ -54,7 +55,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it ("must not allow out of order events") {
-      val (_, mockIndex, underTest) = createMockedUpLog
+      val (_, mockIndex, _, underTest) = createMockedUpLog
 
       doReturn(Some(5L)).when(mockIndex).getMaxSeq
 
@@ -66,7 +67,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
 
   describe("getNextSeq") {
     it ("must return 1 if the index is empty") {
-      val (_, mockIndex, underTest) = createMockedUpLog
+      val (_, mockIndex, _, underTest) = createMockedUpLog
 
       doReturn(None).when(mockIndex).getMaxSeq
 
@@ -74,7 +75,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it ("must return 1 greater than the max if the index is populated") {
-      val (_, mockIndex, underTest) = createMockedUpLog
+      val (_, mockIndex, _, underTest) = createMockedUpLog
 
       doReturn(Some(6L)).when(mockIndex).getMaxSeq
 
@@ -84,7 +85,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
 
   describe("foldLeft") {
     it ("must fold over the entire data file, as known by the index") {
-      val (mockDataFile, mockIndex, underTest) = createMockedUpLog
+      val (mockDataFile, mockIndex, _, underTest) = createMockedUpLog
 
       val theFoldFun = (s: Symbol, e: OrderedEvent) => s
 
@@ -100,7 +101,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   }
 
   describe("isClosed") {
-    val (mockDataFile, mockIndex, underTest) = createMockedUpLog
+    val (mockDataFile, mockIndex, _, underTest) = createMockedUpLog
     it ("should return true if only index is closed") {
       doReturn(false).when(mockDataFile).isClosed
       doReturn(true).when(mockIndex).isClosed
@@ -123,7 +124,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     }
   }
   describe("size"){
-    val (_, mockIndex, underTest) = createMockedUpLog
+    val (_, mockIndex, _, underTest) = createMockedUpLog
     it ("Should return the size of the index"){
       doReturn (2L).when(mockIndex).size
       assert(2 === underTest.size)
@@ -172,7 +173,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   }
   describe("close") {
     it ("should close underlying index and data") {
-      val (mockDataFile, mockIndex, underTest) = createMockedUpLog
+      val (mockDataFile, mockIndex, _, underTest) = createMockedUpLog
       doReturn(false).when(mockDataFile).isClosed
       doReturn(false).when(mockIndex).isClosed
 
@@ -180,6 +181,23 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
 
       verify(mockDataFile).close()
       verify(mockIndex).close()
+    }
+  }
+  describe("isApplied") {
+    it ("should call through to the underlying FlagFile") {
+      val (_, _, mockFlag, underTest) = createMockedUpLog
+      doReturn(true).when(mockFlag).value
+
+      assert(true === underTest.isApplied)
+      verify(mockFlag).value
+    }
+  }
+  describe("setApplied") {
+    it ("should call through to the underlying FlagFile") {
+      val (_, _, mockFlag, underTest) = createMockedUpLog
+
+      underTest.setApplied(applied = true)
+      verify(mockFlag).set(value = true)
     }
   }
 }
