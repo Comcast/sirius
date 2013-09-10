@@ -35,6 +35,7 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
 
   // via some scala magic this is also exposed as a method :)
   var isClosed = false
+  var size: Long = handle.length() / 24
 
   var maxSeq = {
     if (handle.length == 0)
@@ -84,6 +85,7 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
     handle.seek(handle.length)
     fileOps.put(handle, seq, offset)
     maxSeq = Some(seq)
+    size += 1
   }
 
   /**

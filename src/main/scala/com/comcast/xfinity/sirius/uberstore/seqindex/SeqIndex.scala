@@ -53,6 +53,12 @@ trait SeqIndex {
   def isClosed: Boolean
 
   /**
+   * Returns the segment size. If the index is empty then the size is 0.
+   * @return the size of the segment as a Long
+   */
+  def size: Long
+
+  /**
    * Close open file handles. This SeqIndex should not be used after
    * close is called.
    */
