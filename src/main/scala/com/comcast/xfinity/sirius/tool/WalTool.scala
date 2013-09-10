@@ -1,16 +1,44 @@
 package com.comcast.xfinity.sirius.tool
 
-import java.io.File
+import java.io._
 
 import scala.util.matching.Regex
 
-import com.comcast.xfinity.sirius.api.impl.Delete
-import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.api.impl.Put
+import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.tool.format.OrderedEventFormatter
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.uberstore.UberTool
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+
+
+import akka.dispatch.{Await, Future}
+import scala.collection.mutable.Map
+import akka.actor.{ActorSystem, Props, Actor}
+import akka.routing.RoundRobinRouter
+import akka.pattern.ask
+import akka.util.duration._
+import com.typesafe.config.ConfigFactory
+
+
+import dispatch._
+
+
+import akka.util.Timeout
+import java.net.{ProtocolException, MalformedURLException, HttpURLConnection, URL}
+import scala._
+import java.lang.String
+
+import org.apache.http.util.EntityUtils
+import org.apache.commons.io.IOUtils
+import com.comcast.xfinity.sirius.api.impl.Put
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.Delete
+import scala.Left
+import com.comcast.xfinity.sirius.api.impl.Put
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import scala.Right
+import scala.Console
+import com.comcast.xfinity.sirius.api.impl.Delete
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -45,6 +73,9 @@ object WalTool {
     Console.err.println("   keyFilterNot <regexp> <inWalDir> <outWalDir>")
     Console.err.println("       Same as keyFilter, except the resulting UberStore contains all")
     Console.err.println("       OrderedEvents not matching regexp")
+    Console.err.println()
+    Console.err.println("   replay <inWalDir> <host> <concurrency>")
+    Console.err.println("       For each OrderedEvent will issue an http request")
 
   }
 
@@ -54,15 +85,12 @@ object WalTool {
         compact(inWalDirName, outWalDirName, false)
       case Array("compact", "two-pass", inWalDirName, outWalDirName) =>
         compact(inWalDirName, outWalDirName, true)
-
       case Array("tail", walDir) =>
         tailUber(walDir)
       case Array("tail", "-n", number, walDir) =>
         tailUber(walDir, number.toInt)
-
       case Array("range", begin, end, walDir) =>
         printSeq(UberStore(walDir), begin.toLong, end.toLong)
-
       case Array("keyFilter", regexpStr, inWal, outWal) =>
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = keyMatch(regexp, _)
@@ -71,7 +99,8 @@ object WalTool {
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = !keyMatch(regexp, _)
         filter(inWal, outWal, filterFun)
-
+      case Array("replayLog", inWal, host, concurrency) =>
+        replay(inWal, host, concurrency.toInt)
       case _ => printUsage()
     }
     sys.exit(0)
@@ -208,4 +237,195 @@ object WalTool {
       case (wal, _) => wal
     }
   }
+
+  /**
+   * Generates PUT/DELETE traffic from a WAL
+   *
+   * @param inWalDir dir for write ahead log
+   * @param host where load should be directed
+   * @param concurrency approximate concurrency desired
+   */
+  private def replay(inWalDir: String, host: String, concurrency: Int) {
+
+
+    Console.err.println("Initializing with " + concurrency + " Actors")
+    val confString = """
+
+
+                akka.actor.default-dispatcher{
+                  type = "PinnedDispatcher"
+                  executor= "thread-pool-executor"
+                  thread-pool-executor{
+                    max-pool-size-max =""" + concurrency + """
+
+                  }
+                }
+
+
+                                                           """
+
+    val customConf = ConfigFactory.parseString(confString)
+
+    implicit val system = ActorSystem("Log-Replay", ConfigFactory.load(customConf))
+    implicit val timeout = Timeout(1000L * 10 * concurrency)
+
+    val inWal = UberStore(inWalDir)
+
+
+    val reapPeriod = concurrency * 10
+    var start = System.currentTimeMillis
+
+
+
+    val httpActor = system.actorOf(Props[HttpDispatchActor].withRouter(RoundRobinRouter(nrOfInstances = concurrency)))
+
+    val walAccumulator = inWal.foldLeft(WalAccumulator(0, List[Future[(Result)]]())) {
+      case (acc: WalAccumulator, evt) => {
+        def printResultsByErrorCode(cntByStatusCodeMap: Map[Int, Int], out: OutputStream) {
+          Console.err.println
+          if (!cntByStatusCodeMap.isEmpty) {
+            Console.err.println("Response Counts by Code")
+            cntByStatusCodeMap.foreach(p => {
+              p._1 match {
+                case 0 => Console.err.println("     Code: Err = " + p._2)
+                case _ => Console.err.println("     Code: " + p._1 + " = " + p._2)
+              }
+            })
+            Console.err.println
+          } else {
+            Console.err.println("No Results")
+          }
+          Console.err.println
+        }
+
+        //summarize every once in a while
+        if (acc.totalEvents % reapPeriod == 0) {
+
+
+          var sumDurations = 0
+          val cntByStatusCodeMap = Map[Int, Int]().withDefaultValue(0)
+          val futureList = Future.sequence(acc.futures)
+          Await.result(futureList, 1000 seconds).foreach(result => result match {
+            case result: Result => {
+              cntByStatusCodeMap(result.statusCode) += 1
+              sumDurations += result.duration
+            }
+            case _ => Console.err.println("Wat") //https://www.destroyallsoftware.com/talks/wat
+          })
+          val elapsedTime = (System.currentTimeMillis() - start).toDouble / 1000
+          start = System.currentTimeMillis
+          Console.err.println("------------------------------------------")
+          Console.err.println("Total Time " + elapsedTime + "s")
+          val rps = (reapPeriod / elapsedTime)
+
+          printResultsByErrorCode(cntByStatusCodeMap, Console.err)
+
+          val avgDuration = sumDurations / reapPeriod
+          val errorRate = (reapPeriod - cntByStatusCodeMap(200)).toDouble / reapPeriod * 100
+          Console.err.println("Avg Duration " + avgDuration + " ms for last " + reapPeriod + " requests")
+          Console.err.println("Error Rate " + "%1.2f".format(errorRate) + "%")
+          Console.err.println("RPS " + "%1.2f".format(rps))
+          Console.err.println("------------------------------------------")
+          Console.err.println
+          Console.err.println
+
+
+
+          WalAccumulator(acc.totalEvents + 1, ask(httpActor, Send(evt, host)).mapTo[Result] :: List[Future[Result]]())
+        } else {
+          WalAccumulator(acc.totalEvents + 1, ask(httpActor, Send(evt, host)).mapTo[Result] :: acc.futures)
+        }
+      }
+    }
+
+    Console.err.println("Processed " + walAccumulator.totalEvents + " OrderedEvents")
+    val futureList = Future.sequence(walAccumulator.futures)
+    Await.result(futureList, 100 seconds)
+  }
+
+
+  class HttpDispatchActor extends Actor {
+
+
+    //val myHttp = Http.threads(1).configure(_.setRequestTimeoutInMs(socketTimeout).setConnectionTimeoutInMs(connTimeout).setWebSocketIdleTimeoutInMs(socketTimeout).setAllowPoolingConnection(false))
+
+    def receive = {
+      case Send(evt: OrderedEvent, host: String) => {
+        Thread.sleep(20)
+        val start = System.currentTimeMillis()
+
+
+        val result = send(evt.request, host) match {
+              case Right(status: Int) => Result((System.currentTimeMillis-start).toInt, status)
+              case Left(e:Exception) => Result((System.currentTimeMillis-start).toInt, 0 )
+            }
+        this.sender ! result
+      }
+      case _ => Console.err.println("WAT WAT WAT!!!!")
+    }
+
+
+    private def send(request: NonCommutativeSiriusRequest, host: String) : Either[Exception,Int] = {
+        val connTimeout = 100
+        val socketTimeout = 800
+        val uri = new URL(host + "/backend/" + request.key)
+        // this does no network IO.
+        val conn  = uri.openConnection().asInstanceOf[HttpURLConnection]
+
+        request match {
+          case Put(_,body) =>{
+            conn.setRequestMethod("PUT")
+            conn.setRequestProperty("Accept", "text/plain")
+            conn.setRequestProperty("Content-Type", "application/x-protobuf")
+            conn.setDoOutput(true)
+            conn.setFixedLengthStreamingMode(body.length)
+            conn.setReadTimeout(socketTimeout)
+            conn.setConnectTimeout(connTimeout)
+            try {
+              conn.getOutputStream.write(body)
+              Right(conn.getResponseCode)
+            }
+            catch{
+              case e: IOException =>  Left(e)
+            }
+
+          }
+          case Delete(_) => {
+            conn.setRequestMethod("DELETE")
+            conn.setReadTimeout(500)
+            conn.setConnectTimeout(100)
+            try {
+              conn.getOutputStream
+              Right(conn.getResponseCode)
+            }
+            catch{
+              case e: IOException =>  Left(e)
+            }
+
+
+
+          }
+        }
+
+
+
+
+
+      }
+  }
+
+
+
+
+
+  case class WalAccumulator(totalEvents: Int, futures: List[Future[Result]])
+
+
+  case class Send(evt: OrderedEvent, host: String)
+
+  case class Result(duration: Int, statusCode: Int)
+
+
+
+
 }
