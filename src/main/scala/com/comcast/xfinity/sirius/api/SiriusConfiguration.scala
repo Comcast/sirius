@@ -64,6 +64,18 @@ object SiriusConfiguration {
   final val LOG_LOCATION = "sirius.uberstore.dir"
 
   /**
+   * Maximum events per Segment in a SegmentedUberStore. Determines how many events will be
+   * written before splitting off a new Segment on disk.
+   */
+  final val LOG_EVENTS_PER_SEGMENT = "sirius.uberstore.max-events-per-segment"
+
+  /**
+   * Which SiriusLog implementation to use. See versionId method on classes that implement
+   * the SiriusLog trait for possible values. Empty defaults to legacy UberStore.
+   */
+  final val LOG_VERSION_ID = "sirius.uberstore.impl-version-id"
+
+  /**
    * True to use PersistedSeqIndex (write-through java.util.TreeMap fronted
    * uberstore index file implementation), false to use DiskOnlySeqIndex
    * (raw disk operation uberstore index file implementation). DiskOnlySeqIndex

@@ -14,9 +14,8 @@ class SegmentedUberStoreTest extends NiceTest {
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
-    val dir = new File(tempDirName)
-    dir.mkdirs()
-    dir
+    SegmentedUberStore.init(tempDirName)
+    new File(tempDirName)
   }
 
   def createFakeSegment(baseDir: File, seq: String): File = {

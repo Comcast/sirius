@@ -9,7 +9,6 @@ import com.comcast.xfinity.sirius.admin.ObjectNameHelper
 import com.comcast.xfinity.sirius.api.RequestHandler
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.typesafe.config.Config
@@ -18,6 +17,8 @@ import com.typesafe.config.ConfigFactory
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import javax.management.ObjectName
+import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
+import com.comcast.xfinity.sirius.uberstore.UberStore
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -42,9 +43,13 @@ object SiriusFactory {
         throw new IllegalArgumentException(SiriusConfiguration.LOG_LOCATION + " must be set on config")
     }
 
-    val backendLog = UberStore(uberStoreDir)
+    val backendLog = {
+      siriusConfig.getProp(SiriusConfiguration.LOG_VERSION_ID, "") match {
+        case version if version == SegmentedUberStore.versionId => SegmentedUberStore(uberStoreDir, siriusConfig)
+        case _ => UberStore(uberStoreDir)
+      }
+    }
 
-    // TODO: make cache wiring optional?
     val log: SiriusLog = {
       if (siriusConfig.getProp(SiriusConfiguration.LOG_USE_WRITE_CACHE, true)) {
         val cacheSize = siriusConfig.getProp(SiriusConfiguration.LOG_WRITE_CACHE_SIZE, 10000)
@@ -146,7 +151,5 @@ object SiriusFactory {
         } else {
           ConfigFactory.parseResources(externConfig)
         }
-
     }
-
 }

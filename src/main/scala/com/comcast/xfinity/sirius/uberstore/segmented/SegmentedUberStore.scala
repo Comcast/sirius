@@ -3,8 +3,18 @@ package com.comcast.xfinity.sirius.uberstore.segmented
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import java.io.File
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object SegmentedUberStore {
+
+  def versionId: String = "SEGMENTED-1.0"
+
+  def init(location: String) {
+    val dir = new File(location)
+    dir.mkdirs()
+
+    new File(dir, SegmentedUberStore.versionId).createNewFile()
+  }
 
   /**
    * Create an SegmentedUberStore based in base.  base is NOT
@@ -15,9 +25,12 @@ object SegmentedUberStore {
    *
    * @return an instantiated SegmentedUberStore
    */
-  def apply(base: String): SegmentedUberStore = {
-    // TODO make configurable
-    val MAX_EVENTS_PER_SEGMENT = 4000000L
+  def apply(base: String, siriusConfig: SiriusConfiguration = new SiriusConfiguration): SegmentedUberStore = {
+    val MAX_EVENTS_PER_SEGMENT = siriusConfig.getProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 1000000L)
+
+    if (!new File(base, versionId).exists) {
+      throw new IllegalStateException("Cannot start. Configured to boot with storage: %s, which is not found in %s".format(versionId, base))
+    }
 
     new SegmentedUberStore(new File(base), MAX_EVENTS_PER_SEGMENT)
   }
@@ -34,7 +47,7 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long)
   val replaceLock = new Object()
   val compactLock = new Object()
 
-  // XXX incorporate maxDeleteAge
+  // XXX incorporate maxDeleteAge, pass it in as a configuration option, not System.getProperty...
   // val maxDeleteAge = System.getProperty("maxDeleteAge", "604800000").toLong
   var readOnlyDirs: List[Segment] = _
   var liveDir: Segment = _
