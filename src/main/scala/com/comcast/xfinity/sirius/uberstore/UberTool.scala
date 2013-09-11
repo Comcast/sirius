@@ -35,7 +35,7 @@ object UberTool {
    * @param inLog the SiriusLog to compact events from
    * @param outLog the SiriusLog to write the compacted
    *          log into
-   * @param deleteCutOff deletes with a timestamp before this
+   * @param deleteCutoff deletes with a timestamp before this
    *          point are completely removed from the log. defaults
    *          to 0, meaning any deletes from 12AM Jan 1, 1970 or
    *          before are completely removed from the log
@@ -68,7 +68,7 @@ object UberTool {
    * @param inLog input log
    * @param outLog output log, needs to be empty (or you're likely to get an
    *               "out of order write" exception)
-   * @param deleteCutOff deletes with a timestamp before this
+   * @param deleteCutoff deletes with a timestamp before this
    *          point are completely removed from the log. defaults
    *          to 0, meaning any deletes from 12AM Jan 1, 1970 or
    *          before are completely removed from the log

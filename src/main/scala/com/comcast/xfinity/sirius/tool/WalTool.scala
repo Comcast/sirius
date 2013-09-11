@@ -1,16 +1,13 @@
 package com.comcast.xfinity.sirius.tool
 
 import java.io._
-
 import scala.util.matching.Regex
-
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.tool.format.OrderedEventFormatter
-import com.comcast.xfinity.sirius.uberstore.UberStore
-import com.comcast.xfinity.sirius.uberstore.UberTool
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-
-
+import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.uberstore.{UberTool, UberStore}
 import akka.dispatch.{Await, Future}
 import scala.collection.mutable.Map
 import akka.actor.{ActorSystem, Props, Actor}
@@ -18,21 +15,10 @@ import akka.routing.RoundRobinRouter
 import akka.pattern.ask
 import akka.util.duration._
 import com.typesafe.config.ConfigFactory
-
-
-import dispatch._
-
-
 import akka.util.Timeout
-import java.net.{ProtocolException, MalformedURLException, HttpURLConnection, URL}
+import java.net.{HttpURLConnection, URL}
 import scala._
 import java.lang.String
-
-import org.apache.http.util.EntityUtils
-import org.apache.commons.io.IOUtils
-import com.comcast.xfinity.sirius.api.impl.Put
-import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.api.impl.Delete
 import scala.Left
 import com.comcast.xfinity.sirius.api.impl.Put
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
@@ -54,29 +40,41 @@ object WalTool {
     Console.err.println("       Compact UberStore in inWalDir into new UberStore in outWalDir")
     Console.err.println("       If two-pass is provided then the more memory efficient two pass")
     Console.err.println("       compaction algorithm will be used.  All deletes older than 1 week")
-    Console.err.println("       are fully removed from the resultant log.")
+    Console.err.println("       are fully removed from the resultant log. Will error if called")
+    Console.err.println("       against a SegmentedUberStore.")
     Console.err.println()
-    Console.err.println("   tail [-n number] [-f] <walDir>")
+    Console.err.println("   compact-segmented <walDir>")
+    Console.err.println("       Compact SegmentedUberStore in walDir. Will error if called against")
+    Console.err.println("       a non-segmented UberStore.")
+    Console.err.println()
+    Console.err.println("   tail [-n number] <walDir>")
     Console.err.println("       Show last 20 sequence numbers in wal.")
     Console.err.println("       -n: number of lines to show (e.g., -n 10, -n 50), defaults to 20")
-    Console.err.println("       -f option enables follow mode.  Break follow mode with ^C.")
-    Console.err.println("       (follow mode is recommended, since wal needs to be initialized")
-    Console.err.println("        with each instantiation, which takes a few seconds")
     Console.err.println()
     Console.err.println("   range <begin> <end> <walDir>")
     Console.err.println("       Show all entries in begin to end range, inclusive")
     Console.err.println()
-    Console.err.println("   keyFilter <regexp> <inWalDir> <outWalDir>")
+    Console.err.println("   key-filter <regexp> <inWalDir> <outWalDir>")
     Console.err.println("       Write all OrderedEvents in UberStore in inWalDir having a key")
     Console.err.println("       matching regexp to new UberStore in outWalDir")
     Console.err.println()
-    Console.err.println("   keyFilterNot <regexp> <inWalDir> <outWalDir>")
-    Console.err.println("       Same as keyFilter, except the resulting UberStore contains all")
+    Console.err.println("   key-filter-not <regexp> <inWalDir> <outWalDir>")
+    Console.err.println("       Same as key-filter, except the resulting UberStore contains all")
     Console.err.println("       OrderedEvents not matching regexp")
     Console.err.println()
     Console.err.println("   replay <inWalDir> <host> <concurrency>")
     Console.err.println("       For each OrderedEvent will issue an http request")
-
+    Console.err.println()
+    Console.err.println("   convert-to-segmented <inWalDir> <outWalDir> <segmentSize>")
+    Console.err.println("       Convert a LegacyUberStore into a SegmentedUberStore.")
+    Console.err.println("       SegmentSize is the number of entries to write per segment, and is required.")
+    Console.err.println()
+    Console.err.println("   convert-to-legacy <inWalDir> <outWalDir>")
+    Console.err.println("       Convert a SegmentedUberStore into a LegacyUberStore")
+    Console.err.println()
+    Console.err.println("   init-segmented <walDir>")
+    Console.err.println("       Initialize a new SegmentedUberStore at walDir. Creates the necessary")
+    Console.err.println("       space and marks it appropriately.")
   }
 
   def main(args: Array[String]) {
@@ -85,27 +83,53 @@ object WalTool {
         compact(inWalDirName, outWalDirName, false)
       case Array("compact", "two-pass", inWalDirName, outWalDirName) =>
         compact(inWalDirName, outWalDirName, true)
+
+      case Array("compact-segmented", walDirName) =>
+        compactSegmented(walDirName)
+
       case Array("tail", walDir) =>
         tailUber(walDir)
       case Array("tail", "-n", number, walDir) =>
         tailUber(walDir, number.toInt)
+
       case Array("range", begin, end, walDir) =>
         printSeq(UberStore(walDir), begin.toLong, end.toLong)
-      case Array("keyFilter", regexpStr, inWal, outWal) =>
+
+      case Array("key-filter", regexpStr, inWal, outWal) =>
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = keyMatch(regexp, _)
         filter(inWal, outWal, filterFun)
-      case Array("keyFilterNot", regexpStr, inWal, outWal) =>
+      case Array("key-filter-not", regexpStr, inWal, outWal) =>
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = !keyMatch(regexp, _)
         filter(inWal, outWal, filterFun)
-      case Array("replayLog", inWal, host, concurrency) =>
+
+      case Array("replay", inWal, host, concurrency) =>
         replay(inWal, host, concurrency.toInt)
+
+      case Array("convert-to-segmented", inWal, outWal, segmentSize) =>
+        convertToSegmented(inWal, outWal, segmentSize.toLong)
+
+      case Array("convert-to-legacy", inWal, outWal) =>
+        convertToLegacy(inWal, outWal)
+
+      case Array("init-segmented", walDir) =>
+        initSegmented(walDir)
+
       case _ => printUsage()
     }
     sys.exit(0)
   }
 
+  /**
+   * Compact SegmentedUberStore
+   *
+   * @param walDirName directory of the segmented uberstore
+   */
+  private def compactSegmented(walDirName: String) {
+    val uberstore = SegmentedUberStore(walDirName)
+    uberstore.compact()
+  }
 
   /**
    * Compact an UberStore
@@ -167,12 +191,10 @@ object WalTool {
    *
    * @param inDirName location of UberStore
    * @param number number of lines to print, default 20
-   * @param follow whether to follow, printing the last n lines every sleepDuration ms
-   * @param sleepDuration number of ms between prints in follow mode
    */
   private def tailUber(inDirName: String, number: Int = 20) {
     val wal = UberStore(inDirName)
-    var seq = wal.getNextSeq - 1
+    val seq = wal.getNextSeq - 1
 
     printSeq(wal, seq - number, seq)
   }
@@ -184,7 +206,7 @@ object WalTool {
    * @param first first seq to print
    * @param last last seq to print
    */
-  private def printSeq(wal: UberStore, first: Long, last: Long) {
+  private def printSeq(wal: SiriusLog, first: Long, last: Long) {
     wal.foldLeftRange(first, last)(())((_, event) =>
       OrderedEventFormatter.printEvent(event)
     )
@@ -230,13 +252,56 @@ object WalTool {
    *          it should be included, false if not
    */
   private def filter(inWal: SiriusLog, outWal: SiriusLog, pred: OrderedEvent => Boolean) {
-    // XXX: I know this is side effectful, deal with it, a foreach is probably a good
-    //      thing to put back on SiriusLog.
-    inWal.foldLeft(outWal) {
-      case (wal, evt) if pred(evt) => wal.writeEntry(evt); wal
-      case (wal, _) => wal
+    inWal.foreach {
+      case evt if pred(evt) => outWal.writeEntry(evt)
+      case _ =>
     }
   }
+
+  /**
+   * Convert a Legacy WAL into a Segmented WAL
+   *
+   * @param inLoc location of input (Legacy) WAL
+   * @param outLoc location of output (Segmented) WAL
+   * @param segmentSize number of entries per WAL segment
+   */
+  private def convertToSegmented(inLoc: String, outLoc: String, segmentSize: Long) {
+    val config = new SiriusConfiguration
+    config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, segmentSize)
+
+    val in = UberStore(inLoc)
+
+    SegmentedUberStore.init(outLoc)
+    val out = SegmentedUberStore(outLoc, config)
+
+    in.foreach(out.writeEntry)
+  }
+
+  /**
+   * Convert a Segmented WAL into a Legacy WAL
+   *
+   * @param inLoc location of input (Segmented) WAL
+   * @param outLoc location of output (Legacy) WAL
+   */
+  private def convertToLegacy(inLoc: String, outLoc: String) {
+    val in = SegmentedUberStore(inLoc)
+    val out = UberStore(outLoc)
+
+    in.foreach(out.writeEntry)
+  }
+
+  /**
+   * Initialize a location for use as a Segmented WAL
+   *
+   * @param walLoc location of new WAL
+   */
+  private def initSegmented(walLoc: String) {
+    SegmentedUberStore.init(walLoc)
+  }
+
+  case class WalAccumulator(totalEvents: Int, futures: List[Future[Result]])
+  case class Send(evt: OrderedEvent, host: String)
+  case class Result(duration: Int, statusCode: Int)
 
   /**
    * Generates PUT/DELETE traffic from a WAL
@@ -245,25 +310,18 @@ object WalTool {
    * @param host where load should be directed
    * @param concurrency approximate concurrency desired
    */
+  // TODO pull parts of this out into UberTool
   private def replay(inWalDir: String, host: String, concurrency: Int) {
-
-
     Console.err.println("Initializing with " + concurrency + " Actors")
     val confString = """
-
-
                 akka.actor.default-dispatcher{
                   type = "PinnedDispatcher"
                   executor= "thread-pool-executor"
                   thread-pool-executor{
                     max-pool-size-max =""" + concurrency + """
-
                   }
                 }
-
-
-                                                           """
-
+                """
     val customConf = ConfigFactory.parseString(confString)
 
     implicit val system = ActorSystem("Log-Replay", ConfigFactory.load(customConf))
@@ -271,11 +329,8 @@ object WalTool {
 
     val inWal = UberStore(inWalDir)
 
-
     val reapPeriod = concurrency * 10
     var start = System.currentTimeMillis
-
-
 
     val httpActor = system.actorOf(Props[HttpDispatchActor].withRouter(RoundRobinRouter(nrOfInstances = concurrency)))
 
@@ -300,8 +355,6 @@ object WalTool {
 
         //summarize every once in a while
         if (acc.totalEvents % reapPeriod == 0) {
-
-
           var sumDurations = 0
           val cntByStatusCodeMap = Map[Int, Int]().withDefaultValue(0)
           val futureList = Future.sequence(acc.futures)
@@ -329,8 +382,6 @@ object WalTool {
           Console.err.println
           Console.err.println
 
-
-
           WalAccumulator(acc.totalEvents + 1, ask(httpActor, Send(evt, host)).mapTo[Result] :: List[Future[Result]]())
         } else {
           WalAccumulator(acc.totalEvents + 1, ask(httpActor, Send(evt, host)).mapTo[Result] :: acc.futures)
@@ -343,10 +394,8 @@ object WalTool {
     Await.result(futureList, 100 seconds)
   }
 
-
+  // TODO move this to its own class
   class HttpDispatchActor extends Actor {
-
-
     //val myHttp = Http.threads(1).configure(_.setRequestTimeoutInMs(socketTimeout).setConnectionTimeoutInMs(connTimeout).setWebSocketIdleTimeoutInMs(socketTimeout).setAllowPoolingConnection(false))
 
     def receive = {
@@ -363,7 +412,6 @@ object WalTool {
       }
       case _ => Console.err.println("WAT WAT WAT!!!!")
     }
-
 
     private def send(request: NonCommutativeSiriusRequest, host: String) : Either[Exception,Int] = {
         val connTimeout = 100
@@ -388,7 +436,6 @@ object WalTool {
             catch{
               case e: IOException =>  Left(e)
             }
-
           }
           case Delete(_) => {
             conn.setRequestMethod("DELETE")
@@ -401,31 +448,8 @@ object WalTool {
             catch{
               case e: IOException =>  Left(e)
             }
-
-
-
           }
         }
-
-
-
-
-
       }
   }
-
-
-
-
-
-  case class WalAccumulator(totalEvents: Int, futures: List[Future[Result]])
-
-
-  case class Send(evt: OrderedEvent, host: String)
-
-  case class Result(duration: Int, statusCode: Int)
-
-
-
-
 }
