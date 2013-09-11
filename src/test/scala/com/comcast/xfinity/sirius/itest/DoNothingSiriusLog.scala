@@ -18,4 +18,6 @@ class DoNothingSiriusLog extends SiriusLog {
   }
 
   override def getNextSeq = 1L
+
+  override def compact() {}
 }

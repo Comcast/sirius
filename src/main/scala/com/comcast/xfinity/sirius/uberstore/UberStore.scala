@@ -62,4 +62,7 @@ class UberStore private[uberstore] (uberpair: UberPair) extends SiriusLog {
    */
   def isClosed = uberpair.isClosed
 
+  def compact() {
+    // do nothing, don't use compact() on legacy uberstore
+  }
 }

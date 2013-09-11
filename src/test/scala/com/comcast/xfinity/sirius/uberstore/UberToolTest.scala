@@ -17,6 +17,7 @@ object UberToolTest {
     def getNextSeq: Long =
       throw new IllegalStateException("not implemented")
 
+    def compact {}
   }
 }
 

@@ -94,4 +94,8 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
   }
 
   def getNextSeq = log.getNextSeq
+
+  def compact() {
+    log.compact()
+  }
 }
