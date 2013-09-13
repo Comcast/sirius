@@ -32,8 +32,8 @@ class LeaderWatcher(expectedBallot: Ballot, replyTo: ActorRef)
     import LeaderWatcher._
 
   // XXX get from config
-  val CHECK_FREQ_SEC = 20
-  val PING_TIMEOUT_MS = 2000
+  val CHECK_FREQ_SEC = config.getProp(SiriusConfiguration.PAXOS_LEADERSHIP_PING_INTERVAL, 20)
+  val PING_TIMEOUT_MS = config.getProp(SiriusConfiguration.PAXOS_LEADERSHIP_PING_TIMEOUT, 2000)
   val checkCancellable =
     context.system.scheduler.schedule(0 seconds, CHECK_FREQ_SEC seconds, self, CheckLeader)
 

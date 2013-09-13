@@ -59,6 +59,16 @@ object SiriusConfiguration {
   final val PAXOS_MEMBERSHIP_CHECK_INTERVAL = "sirius.supervisor.paxos-check-interval-secs"
 
   /**
+   * How often the LeaderWatcher spawns a LeaderPinger to check on the currently elected leader.
+   */
+  final val PAXOS_LEADERSHIP_PING_INTERVAL = "sirius.paxos.leadership-ping-interval"
+
+  /**
+   * How long to wait for a Pong response from the elected leader before declaring it "gone"
+   */
+  final val PAXOS_LEADERSHIP_PING_TIMEOUT = "sirius.paxos.leadership-ping-timeout"
+
+  /**
    * Directory to put UberStore in (string)
    */
   final val LOG_LOCATION = "sirius.uberstore.dir"

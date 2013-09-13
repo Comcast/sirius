@@ -66,6 +66,7 @@ class Leader(membership: Agent[Set[ActorRef]],
   var lastReapDuration = 0L
   var currentLeaderElectedSince = 0L
   var commanderTimeoutCount = 0L
+  var electedLeaderTimeoutCount = 0L
   var lastTimedOutPValue: Option[PValue] = None
 
   startScout()
@@ -133,7 +134,9 @@ class Leader(membership: Agent[Set[ActorRef]],
 
 
     // try to become the new leader; old leader has gone MIA
-    case SeekLeadership => seekLeadership(electedLeaderBallot)
+    case SeekLeadership =>
+      electedLeaderTimeoutCount += 1
+      seekLeadership(electedLeaderBallot)
 
 
     // respond to Ping from LeaderPinger with our current leader ballot information
@@ -195,7 +198,7 @@ class Leader(membership: Agent[Set[ActorRef]],
     currentLeaderWatcher = Some(context.actorOf(Props(new LeaderWatcher(ballotToWatch, self))))
   }
 
-  // drops all proposals held locally whos slot is <= latestDecidedSlot
+  // drops all proposals held locally whose slot is <= latestDecidedSlot
   private def reapProposals() {
     val start = System.currentTimeMillis
     proposals.dropWhile(
@@ -222,7 +225,8 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getLastReapDuration: Long
     def getCommanderTimeoutCount: Long
     def getLastTimedOutPValue: String
-    def getLeaderWatcher: Option[ActorRef]
+    def getLeaderWatcher: String
+    def getElectedLeaderTimeoutCount: Long
   }
 
   class LeaderInfo extends LeaderInfoMBean {
@@ -235,6 +239,7 @@ class Leader(membership: Agent[Set[ActorRef]],
     def getLastReapDuration = lastReapDuration
     def getCommanderTimeoutCount = commanderTimeoutCount
     def getLastTimedOutPValue = lastTimedOutPValue.toString
-    def getLeaderWatcher = currentLeaderWatcher
+    def getLeaderWatcher = currentLeaderWatcher.toString
+    def getElectedLeaderTimeoutCount = electedLeaderTimeoutCount
   }
 }

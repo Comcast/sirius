@@ -95,7 +95,7 @@ class Acceptor(startingSeqNum: Long,
       if (duration > longestDuration)
         longestDuration = duration
 
-      logger.debug("Reaped Old Accpeted in {}ms", System.currentTimeMillis-start)
+      logger.debug("Reaped Old Accepted in {}ms", System.currentTimeMillis-start)
   }
 
   /* Remove 'old' pvals from the system.  A pval is old if we got it farther in the past than our reap limit.
