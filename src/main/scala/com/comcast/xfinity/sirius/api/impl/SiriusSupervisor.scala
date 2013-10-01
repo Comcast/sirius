@@ -3,10 +3,10 @@ package com.comcast.xfinity.sirius.api.impl
 import bridge.PaxosStateBridge
 import com.comcast.xfinity.sirius.api.impl.membership.{MembershipHelper, MembershipActor}
 import paxos.PaxosMessages.PaxosMessage
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{ActorContext, Actor, ActorRef, Props}
 import akka.agent.Agent
 import akka.util.duration._
-import paxos.PaxosSup
+import com.comcast.xfinity.sirius.api.impl.paxos.{Replica, PaxosSup}
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -15,9 +15,9 @@ import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
 import status.StatusWorker
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 import status.StatusWorker.StatusQuery
-import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import com.comcast.xfinity.sirius.uberstore.CompactionManager
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.CompactionMessage
+import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{ChildProvider, CheckPaxosMembership}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.MembershipMessage
 
 object SiriusSupervisor {
@@ -28,19 +28,43 @@ object SiriusSupervisor {
 
   case class IsInitializedResponse(initialized: Boolean)
 
-  trait DependencyProvider {
-    val siriusStateAgent: Agent[SiriusState]
-    val membershipAgent: Agent[Set[ActorRef]]
+  /**
+   * Factory for creating the children actors of SiriusSupervisor.
+   *
+   * @param requestHandler User implemented RequestHandler.
+   * @param siriusLog Interface into the Sirius persistent log.
+   * @param config the SiriusConfiguration for this node
+   */
+  protected[impl] class ChildProvider(requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration) {
 
-    val stateSup: ActorRef
-    val membershipActor: ActorRef
-    var orderingActor: Option[ActorRef]
-    val stateBridge: ActorRef
-    val statusSubsystem: ActorRef
-    val compactionManager: ActorRef
+    def createStateAgent()(implicit context: ActorContext): Agent[SiriusState] =
+      Agent(new SiriusState)(context.system)
 
-    def ensureOrderingActorRunning()
-    def ensureOrderingActorStopped()
+    def createMembershipAgent()(implicit context: ActorContext) =
+      Agent(Set[ActorRef]())(context.system)
+
+    def createStateSupervisor(stateAgent: Agent[SiriusState])(implicit context: ActorContext) =
+      context.actorOf(Props(StateSup(requestHandler, siriusLog, stateAgent, config)), "state")
+
+    def createMembershipActor(membershipAgent: Agent[Set[ActorRef]])(implicit context: ActorContext) =
+      context.actorOf(Props(MembershipActor(membershipAgent, config)), "membership")
+
+    def createStateBridge(stateSupervisor: ActorRef, siriusSupervisor: ActorRef, membershipHelper: MembershipHelper)
+                         (implicit context: ActorContext) =
+      context.actorOf(Props(
+        PaxosStateBridge(siriusLog.getNextSeq, stateSupervisor, siriusSupervisor, membershipHelper, config)),
+        "paxos-state-bridge")
+
+    def createPaxosSupervisor(membershipAgent: Agent[Set[ActorRef]], performFun: Replica.PerformFun)(implicit context: ActorContext) =
+      context.actorOf(Props(PaxosSup(membershipAgent, siriusLog.getNextSeq, performFun, config)), "paxos")
+
+    def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = {
+      val supervisorAddress = AkkaExternalAddressResolver(context.system).externalAddressFor(siriusSupervisor)
+      context.actorOf(Props(StatusWorker(supervisorAddress, config)), "status")
+    }
+
+    def createCompactionManager()(implicit context: ActorContext) =
+      context.actorOf(Props(new CompactionManager(siriusLog)(config)), "compactionManager")
   }
 
   /**
@@ -52,65 +76,7 @@ object SiriusSupervisor {
     requestHandler: RequestHandler,
     siriusLog: SiriusLog,
     config: SiriusConfiguration): SiriusSupervisor = {
-
-    // XXX: the following is quite busy, it needs clean up, but
-    //      im not sure what the best way to do this is. I know it's
-    //      probably not popular, but if we don't test this with unit
-    //      tests it can get much simpler, it's still covered by integration
-    //      tests, so it may be ok...
-    new SiriusSupervisor with DependencyProvider {
-      val siriusStateAgent = Agent(new SiriusState)(context.system)
-      val membershipAgent = Agent(Set[ActorRef]())(context.system)
-
-      val stateSup = context.actorOf(
-        Props(StateSup(requestHandler, siriusLog, siriusStateAgent, config)),
-        "state"
-      )
-
-      val membershipActor = context.actorOf(
-        Props(MembershipActor(membershipAgent, config)),
-        "membership"
-      )
-
-      val stateBridge = context.actorOf(Props(
-        PaxosStateBridge(siriusLog.getNextSeq, stateSup, self, MembershipHelper(membershipAgent, self), config)),
-        "paxos-state-bridge"
-      )
-
-      var orderingActor: Option[ActorRef] = None
-
-      val statusSubsystem = context.actorOf(
-        Props(StatusWorker(AkkaExternalAddressResolver(context.system).externalAddressFor(self), config)),
-        "status"
-      )
-
-      val compactionManager = context.actorOf(Props(
-        new CompactionManager(siriusLog)(config)),
-        "compactionManager"
-      )
-
-      def ensureOrderingActorStopped() {
-        orderingActor match {
-          case Some(actorRef) if !actorRef.isTerminated =>
-            context.stop(actorRef)
-            orderingActor = None
-          case _ =>
-            orderingActor = None
-        }
-      }
-
-      def ensureOrderingActorRunning() {
-        orderingActor match {
-          case Some(actorRef) if !actorRef.isTerminated =>
-            // do nothing, already alive and kicking
-          case _ =>
-            orderingActor = Some(context.actorOf(
-              Props(PaxosSup(membershipAgent, siriusLog.getNextSeq, stateBridge ! _, config)),
-              "paxos"
-            ))
-        }
-      }
-    }
+    new SiriusSupervisor(new ChildProvider(requestHandler, siriusLog, config))
   }
 }
 
@@ -119,8 +85,17 @@ object SiriusSupervisor {
  * 
  * Don't use the constructor to construct this guy, use the companion object's apply.
  */
-class SiriusSupervisor(implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor {
-  this: SiriusSupervisor.DependencyProvider =>
+class SiriusSupervisor(childProvider: ChildProvider)(implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor {
+
+  val siriusStateAgent = childProvider.createStateAgent()
+  val membershipAgent = childProvider.createMembershipAgent()
+  val stateSup = childProvider.createStateSupervisor(siriusStateAgent)
+  val membershipActor = childProvider.createMembershipActor(membershipAgent)
+  val stateBridge = childProvider.createStateBridge(stateSup, self, MembershipHelper(membershipAgent, self))
+  val statusSubsystem = childProvider.createStatusSubsystem(self)
+  var orderingActor: Option[ActorRef] = None
+  val compactionManager = childProvider.createCompactionManager()
+
   private val logger = Logging(context.system, "Sirius")
 
   val initSchedule = context.system.scheduler
@@ -137,6 +112,7 @@ class SiriusSupervisor(implicit config: SiriusConfiguration = new SiriusConfigur
   }
 
   def receive = {
+    // TODO simplify this process a bit
     case SiriusSupervisor.IsInitializedRequest =>
       if (siriusStateAgent().areSubsystemsInitialized) {
         initSchedule.cancel()
@@ -145,9 +121,9 @@ class SiriusSupervisor(implicit config: SiriusConfiguration = new SiriusConfigur
 
         context.become(initialized)
 
-        sender ! new SiriusSupervisor.IsInitializedResponse(true)
+        sender ! SiriusSupervisor.IsInitializedResponse(initialized = true)
       } else {
-        sender ! new SiriusSupervisor.IsInitializedResponse(false)
+        sender ! SiriusSupervisor.IsInitializedResponse(initialized = false)
       }
 
     // Ignore other messages until Initialized.
@@ -179,6 +155,25 @@ class SiriusSupervisor(implicit config: SiriusConfiguration = new SiriusConfigur
         logger.debug("Dropping {} because Paxos is not up (yet?)", orderedReq)
     }
     case unknown: AnyRef => logger.warning("SiriusSupervisor Actor received unrecongnized message {}", unknown)
+  }
+
+  def ensureOrderingActorRunning() {
+    orderingActor match {
+      case Some(actorRef) if !actorRef.isTerminated =>
+        // do nothing, already alive and kicking
+      case _ =>
+        orderingActor = Some(childProvider.createPaxosSupervisor(membershipAgent, stateBridge ! _))
+    }
+  }
+
+  def ensureOrderingActorStopped() {
+    orderingActor match {
+      case Some(actorRef) if !actorRef.isTerminated =>
+        context.stop(actorRef)
+      case _ =>
+        // do nothing, if there's an actor it's already been terminated
+    }
+    orderingActor = None
   }
 
 }

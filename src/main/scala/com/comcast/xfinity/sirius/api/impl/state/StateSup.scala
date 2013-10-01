@@ -12,18 +12,17 @@ import com.comcast.xfinity.sirius.admin.MonitoringHooks
 object StateSup {
 
   /**
-   * Helper class for creating Actors within the StateSup,
-   * externalized so we can mock it out and test.
+   * Factory for creating children of StateSup.
+   *
+   * @param requestHandler the RequestHandler to apply updates to and perform Gets on
+   * @param siriusLog the SiriusLog to persist OrderedEvents to
+   * @param config SiriusConfiguration object for configuring children actors.
    */
-  private[state] class ChildProvider {
-    def makeStateActor(requestHandler: RequestHandler)
-                      (implicit context: ActorContext): ActorRef =
+  private[state] class ChildProvider(requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration) {
+    def createStateActor()(implicit context: ActorContext): ActorRef =
       context.actorOf(Props(new SiriusStateActor(requestHandler)), "state")
 
-    def makePersistenceActor(stateActor: ActorRef,
-                             siriusLog: SiriusLog,
-                             config: SiriusConfiguration)
-                            (implicit context: ActorContext): ActorRef =
+    def createPersistenceActor(stateActor: ActorRef)(implicit context: ActorContext): ActorRef =
       context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog)(config)), "persistence")
   }
 
@@ -42,14 +41,21 @@ object StateSup {
             siriusLog: SiriusLog,
             siriusStateAgent: Agent[SiriusState],
             config: SiriusConfiguration): StateSup = {
-    val childProvider = new ChildProvider
+    val childProvider = new ChildProvider(requestHandler, siriusLog, config)
     new StateSup(requestHandler, siriusLog, siriusStateAgent, childProvider)(config)
   }
 }
 
 /**
- * Actors for supervising state related matters
+ * Actor for supervising state related matters (in memory state and persistent state).
+ *
+ * @param requestHandler the RequestHandler to apply updates to and perform Gets on
+ * @param siriusLog the SiriusLog to persist OrderedEvents to
+ * @param siriusStateAgent agent containing information on the state of the system.
+ * @param childProvider factory for creating children of StateSup
+ * @param config SiriusCOnfiguration object for configuring children actors.
  */
+// TODO rename this StateSupervisor
 class StateSup(requestHandler: RequestHandler,
                siriusLog: SiriusLog,
                siriusStateAgent: Agent[SiriusState],
@@ -59,8 +65,8 @@ class StateSup(requestHandler: RequestHandler,
 
   val logger = Logging(context.system, "Sirius")
 
-  val stateActor = childProvider.makeStateActor(requestHandler)
-  val persistenceActor = childProvider.makePersistenceActor(stateActor, siriusLog, config)
+  val stateActor = childProvider.createStateActor
+  val persistenceActor = childProvider.createPersistenceActor(stateActor)
 
   // monitor stuff
   var eventReplayFailureCount: Long = 0
@@ -89,12 +95,12 @@ class StateSup(requestHandler: RequestHandler,
 
   }
 
+  // TODO perhaps this should be pulled out into a BootstrapActor. The StateSup should really only supervise.
   private def bootstrapState() {
     val start = System.currentTimeMillis
 
     logger.info("Beginning SiriusLog replay at {}", start)
-    // perhaps the foreach abstraction will be nice to have back
-    //  in SiriusLog?
+    // TODO convert this to foreach
     siriusLog.foldLeft(())(
       (_, orderedEvent) =>
         try {

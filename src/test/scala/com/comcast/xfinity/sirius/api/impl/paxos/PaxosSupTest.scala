@@ -2,8 +2,8 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
-import akka.testkit.{TestProbe}
-import akka.actor.{Props, ActorSystem}
+import akka.testkit.TestProbe
+import akka.actor.{ActorRef, ActorContext, Props, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete}
@@ -12,7 +12,19 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("PaxosSupTest")
 
-  override def afterAll {
+  def createPaxosSup(leader: ActorRef = TestProbe().ref,
+                     acceptor: ActorRef = TestProbe().ref,
+                     replica: ActorRef = TestProbe().ref)
+                    (implicit actorSystem: ActorSystem): ActorRef = {
+    val childProvider = new PaxosSup.ChildProvider(null, 0L, null, null) {
+      override def createLeader()(implicit context: ActorContext) = leader
+      override def createAcceptor()(implicit context: ActorContext) = acceptor
+      override def createReplica(leader: ActorRef)(implicit context: ActorContext) = replica
+    }
+    actorSystem.actorOf(Props(new PaxosSup(childProvider)))
+  }
+
+  override def afterAll() {
     actorSystem.shutdown()
   }
 
@@ -22,12 +34,7 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
       val acceptorProbe = TestProbe()
       val replicaProbe = TestProbe()
 
-      val paxosSup = actorSystem.actorOf(Props(
-          new PaxosSup with PaxosSup.ChildProvider {
-            val leader = leaderProbe.ref
-            val acceptor = acceptorProbe.ref
-            val replica = replicaProbe.ref
-          }))
+      val paxosSup = createPaxosSup(leaderProbe.ref, acceptorProbe.ref, replicaProbe.ref)
 
       val senderProbe = TestProbe()
 
@@ -62,12 +69,7 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
         " to a Request and forward it into the system") {
       val replicaProbe = TestProbe()
 
-      val paxosSup = actorSystem.actorOf(Props(
-          new PaxosSup with PaxosSup.ChildProvider {
-            val leader = TestProbe().ref
-            val acceptor = TestProbe().ref
-            val replica = replicaProbe.ref
-          }))
+      val paxosSup = createPaxosSup(replica = replicaProbe.ref)
 
       val senderProbe = TestProbe()
 

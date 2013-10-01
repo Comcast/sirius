@@ -16,14 +16,9 @@ object StateSupTest {
   def makeMockedUpChildProvider(implicit actorSystem: ActorSystem): (TestProbe, TestProbe, StateSup.ChildProvider) = {
     val stateProbe = TestProbe()
     val persistenceProbe = TestProbe()
-    val provider = new StateSup.ChildProvider {
-      override def makeStateActor(requestHandler: RequestHandler)
-                                 (implicit context: ActorContext): ActorRef = stateProbe.ref
-
-      override def makePersistenceActor(stateActor: ActorRef,
-                                        siriusLog: SiriusLog,
-                                        config: SiriusConfiguration)
-                                       (implicit context: ActorContext): ActorRef = persistenceProbe.ref
+    val provider = new StateSup.ChildProvider(null, null, null) {
+      override def createStateActor()(implicit context: ActorContext): ActorRef = stateProbe.ref
+      override def createPersistenceActor(stateActor: ActorRef)(implicit context: ActorContext): ActorRef = persistenceProbe.ref
     }
     (stateProbe, persistenceProbe, provider)
   }
