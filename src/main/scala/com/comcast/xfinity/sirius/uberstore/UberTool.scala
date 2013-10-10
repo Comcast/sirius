@@ -5,8 +5,16 @@ import scala.collection.mutable.{HashMap => MutableHashMap}
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
 import scala.collection.mutable.WrappedArray
 import java.util.Arrays
+import java.io.File
+import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 
 object UberTool {
+
+  def isLegacy(walDirName: String): Boolean =
+    new File(walDirName, "1.data").exists()
+
+  def isSegmented(walDirName: String): Boolean =
+    new File(walDirName, SegmentedUberStore.versionId).exists()
 
   /**
    * Copies data from inFile to outFile.  outFile is appended to.

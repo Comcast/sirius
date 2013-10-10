@@ -72,6 +72,12 @@ object WalTool {
     Console.err.println("   convert-to-legacy <inWalDir> <outWalDir>")
     Console.err.println("       Convert a SegmentedUberStore into a LegacyUberStore")
     Console.err.println()
+    Console.err.println("   is-segmented <walDir>")
+    Console.err.println("       Returns 0 if the specified walDir is a segmented UberStore, 1 otherwise")
+    Console.err.println()
+    Console.err.println("   is-legacy <walDir>")
+    Console.err.println("       Returns 0 if the specified walDir is a legacy UberStore, 1 otherwise")
+    Console.err.println()
     Console.err.println("   init-segmented <walDir>")
     Console.err.println("       Initialize a new SegmentedUberStore at walDir. Creates the necessary")
     Console.err.println("       space and marks it appropriately.")
@@ -112,6 +118,16 @@ object WalTool {
 
       case Array("convert-to-legacy", inWal, outWal) =>
         convertToLegacy(inWal, outWal)
+
+      case Array("is-segmented", wal) =>
+        if (!UberTool.isSegmented(wal)) {
+          sys.exit(1)
+        }
+
+      case Array("is-legacy", wal) =>
+        if (!UberTool.isLegacy(wal)) {
+          sys.exit(1)
+        }
 
       case Array("init-segmented", walDir) =>
         initSegmented(walDir)

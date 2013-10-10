@@ -3,6 +3,9 @@ package com.comcast.xfinity.sirius.uberstore
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
+import java.io.File
+import scalax.file.Path
+import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 
 object UberToolTest {
   class DummySiriusLog(var events: List[OrderedEvent]) extends SiriusLog {
@@ -19,10 +22,64 @@ object UberToolTest {
 
     def compact {}
   }
+
+  def createTempDir = {
+    val tempDirName = "%s/ubertool-test-%s".format(
+      System.getProperty("java.io.tmpdir"),
+      System.currentTimeMillis()
+    )
+    val file = new File(tempDirName)
+    file.mkdirs()
+    file
+  }
 }
 
 class UberToolTest extends NiceTest {
   import UberToolTest._
+
+  describe("isLegacy") {
+    it ("must return true for a legacy uberstore") {
+      val location = createTempDir.getAbsolutePath
+      val uberstore = UberStore(location)
+      uberstore.writeEntry(OrderedEvent(1L, 1L, Delete("1")))
+
+      assert(true === UberTool.isLegacy(location))
+
+      Path.fromString(location).deleteRecursively(force = true)
+    }
+    it ("must return false for a segmented uberstore") {
+      val location = createTempDir.getAbsolutePath
+      SegmentedUberStore.init(location)
+      val uberstore = SegmentedUberStore(location)
+      uberstore.writeEntry(OrderedEvent(1L, 1L, Delete("1")))
+
+      assert(false === UberTool.isLegacy(location))
+
+      Path.fromString(location).deleteRecursively(force = true)
+    }
+  }
+
+  describe("isSegmented") {
+    it ("must return true for a segmented uberstore") {
+      val location = createTempDir.getAbsolutePath
+      SegmentedUberStore.init(location)
+      val uberstore = SegmentedUberStore(location)
+      uberstore.writeEntry(OrderedEvent(1L, 1L, Delete("1")))
+
+      assert(true === UberTool.isSegmented(location))
+
+      Path.fromString(location).deleteRecursively(force = true)
+    }
+    it ("must return false for a legacy uberstore") {
+      val location = createTempDir.getAbsolutePath
+      val uberstore = UberStore(location)
+      uberstore.writeEntry(OrderedEvent(1L, 1L, Delete("1")))
+
+      assert(false === UberTool.isSegmented(location))
+
+      Path.fromString(location).deleteRecursively(force = true)
+    }
+  }
 
   describe("copy") {
     it ("must copy the contents of the input to the output") {
