@@ -4,6 +4,7 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import java.io.File
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import annotation.tailrec
 
 object SegmentedUberStore {
 
@@ -140,17 +141,55 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long)
     }
 
   /**
-   * For each unapplied Segment, compact previous segments according to its keys.
-   *
-   * Continues as long as there are unapplied segments.
+   * For each unapplied Segment, compact previous segments according to its keys,
+   * continuing as long as there are unapplied segments. When Segments have been
+   * applied, merge any adjacent undersized segments.
    */
   def compact() = compactLock.synchronized {
+    compactAll()
+    merge()
+  }
+
+  /**
+   * Compact readOnlyDirs until they can be compacted no longer.
+   */
+  private[segmented] def compactAll() {
     for (toCompact <- SegmentedCompactor.findCompactableSegments(readOnlyDirs)) {
       val compactionMap = SegmentedCompactor.compactAgainst(toCompact, readOnlyDirs)
       replaceSegments(compactionMap) // mutates readOnlyDirs
       toCompact.setApplied(applied = true)
     }
   }
+
+  /**
+   * Decide whether two segments may be merged.
+   *
+   * Segments must both have been applied in compaction, and must combined have
+   * fewer than or equal to eventsPerSegment events.
+   */
+  private[segmented] val isMergeable =
+    (left: Segment, right: Segment) =>
+     left.size + right.size <= eventsPerSegment && left.isApplied && right.isApplied
+
+  /**
+   * Merge readOnlyDirs until they can be merged no longer.
+   */
+  @tailrec
+  private[segmented] final def merge() {
+    SegmentedCompactor.findNextMergeableSegments(readOnlyDirs, isMergeable) match {
+      case Some((left, right)) =>
+        val merged = new File(base, "%s-%s.merged".format(left.name, right.name))
+
+        SegmentedCompactor.mergeSegments(left, right, merged)
+        replaceLock synchronized {
+          replaceSegment(left, merged.getAbsolutePath)
+          removeSegment(right)
+        }
+        merge()
+
+      case None => // Nothing to merge
+    }
+ }
 
   /**
    * Create a new liveDir, based on the current max dirNum + 1. Move current
@@ -173,9 +212,18 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long)
    */
   private def replaceSegments(replacementMap: Map[Segment, String]) = replaceLock.synchronized {
     for (segment <- replacementMap.keys) {
-      val newSegment = SegmentedCompactor.replace(segment, replacementMap(segment))
-      readOnlyDirs = replaceElement(readOnlyDirs, segment, newSegment)
+      replaceSegment(segment, replacementMap(segment))
     }
+  }
+
+  private def replaceSegment(original: Segment, replacement: String) = replaceLock.synchronized {
+    val newSegment = SegmentedCompactor.replace(original, replacement)
+    readOnlyDirs = replaceElement(readOnlyDirs, original, newSegment)
+  }
+
+  private def removeSegment(segment: Segment) = replaceLock.synchronized {
+    readOnlyDirs = readOnlyDirs.filterNot(_ == segment)
+    SegmentedCompactor.delete(segment)
   }
 
   /**

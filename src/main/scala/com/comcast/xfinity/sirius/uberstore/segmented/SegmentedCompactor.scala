@@ -1,6 +1,8 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
 import scalax.file.Path
+import java.io.File
+import annotation.tailrec
 
 object SegmentedCompactor {
 
@@ -83,4 +85,48 @@ object SegmentedCompactor {
       case _ => // this event is overridden by some future event: garbage collect it.
     }
   }
+
+  /**
+   * Find the next two consecutive Segments that may be merged and optionally return them.
+   *
+   * @param segments list of input segments
+   * @param isMergeable predicate to determine mergeability
+   * @return optional tuple2 of mergeable segments
+   */
+  @tailrec
+  def findNextMergeableSegments(segments: List[Segment], isMergeable: (Segment, Segment) => Boolean): Option[(Segment, Segment)] = {
+    segments.take(2) match {
+      case list if list.size < 2 => None
+      case list if isMergeable(list(0), list(1)) => Some(list(0), list(1))
+      case _ => findNextMergeableSegments(segments.tail, isMergeable)
+    }
+  }
+
+  /**
+   * Delete the files that represent this segment on disk.
+   *
+   * Please be careful with this.
+   *
+   * @param segment segment to permanently delete
+   */
+  def delete(segment: Segment) {
+    segment.close()
+    Path.fromString(segment.location.getAbsolutePath).deleteRecursively()
+  }
+
+  /**
+   * Write the events from two Segments into a third, in order.
+   *
+   * @param left first source segment
+   * @param right second source segment
+   * @param targetFile location where to write the files. This probably should not already exist.
+   */
+  def mergeSegments(left: Segment, right: Segment, targetFile: File) {
+    val target = Segment(targetFile)
+    left.foreach(target.writeEntry)
+    right.foreach(target.writeEntry)
+    target.setApplied(applied = left.isApplied && right.isApplied)
+    target.close()
+  }
+
 }

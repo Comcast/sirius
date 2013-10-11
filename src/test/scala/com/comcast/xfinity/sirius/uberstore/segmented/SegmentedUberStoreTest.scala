@@ -6,6 +6,7 @@ import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.Delete
 import scalax.file.Path
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class SegmentedUberStoreTest extends NiceTest {
 
@@ -18,13 +19,20 @@ class SegmentedUberStoreTest extends NiceTest {
     new File(tempDirName)
   }
 
-  def createFakeSegment(baseDir: File, seq: String): File = {
+  def createSegment(baseDir: File, seq: String): File = {
     val dir = new File(baseDir, seq)
     dir.mkdir
 
     new File(dir, "index").createNewFile()
     new File(dir, "data").createNewFile()
     dir
+  }
+
+  def createPopulatedSegment(baseDir: File, name: String, events: List[Int], isApplied: Boolean = false) {
+    val segment = Segment(baseDir, name)
+    segment.setApplied(applied = isApplied)
+
+    writeEvents(segment, events.map(_.toLong))
   }
 
   def findSegment(name: String, segments: List[Segment]) =
@@ -65,23 +73,23 @@ class SegmentedUberStoreTest extends NiceTest {
 
   describe("upon initialization") {
     it("should set liveDir and readOnlyDirs properly for empty uberstores") {
-      uberstore = SegmentedUberStore(dir.getAbsolutePath)
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
       assert(1 === uberstore.liveDir.getNextSeq)
       assert("1" === uberstore.liveDir.name)
       assert(Nil === uberstore.readOnlyDirs)
     }
     it("should set liveDir and readOnlyDirs properly for single uberdirs") {
-      createFakeSegment(dir, "1")
-      uberstore = SegmentedUberStore(dir.getAbsolutePath)
+      createSegment(dir, "1")
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
       assert(1 === uberstore.liveDir.getNextSeq)
       assert("1" === uberstore.liveDir.name)
       assert(Nil === uberstore.readOnlyDirs)
     }
     it("should set liveDir and readOnlyDirs properly for multiple uberdirs") {
-      createFakeSegment(dir, "1")
-      createFakeSegment(dir, "5")
-      createFakeSegment(dir, "10")
-      uberstore = SegmentedUberStore(dir.getAbsolutePath)
+      createSegment(dir, "1")
+      createSegment(dir, "5")
+      createSegment(dir, "10")
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
       assert(1 === uberstore.liveDir.getNextSeq)
       assert("10" === uberstore.liveDir.name)
       assert(List("1", "5") === uberstore.readOnlyDirs.map(_.name))
@@ -90,10 +98,10 @@ class SegmentedUberStoreTest extends NiceTest {
 
   describe("writeEvent") {
     it("should write to the live uberstore only") {
-      createFakeSegment(dir, "1")
-      createFakeSegment(dir, "5")
-      createFakeSegment(dir, "10")
-      uberstore = SegmentedUberStore(dir.getAbsolutePath)
+      createSegment(dir, "1")
+      createSegment(dir, "5")
+      createSegment(dir, "10")
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
       uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("1")))
       assert(1 === uberstore.readOnlyDirs(0).getNextSeq)
       // XXX uberdirs no longer base their nextSeq on the dir name, but rather the contents
@@ -103,7 +111,7 @@ class SegmentedUberStoreTest extends NiceTest {
     }
 
     it("should throw an illegalstateexception if we write out of order") {
-      uberstore = SegmentedUberStore(dir.getAbsolutePath)
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
       uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("1")))
 
       intercept[IllegalArgumentException] {
@@ -112,7 +120,7 @@ class SegmentedUberStoreTest extends NiceTest {
     }
 
     it("should update nextSeq based on the sequence number of the latest event") {
-      uberstore = SegmentedUberStore(dir.getAbsolutePath)
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
       assert(1L === uberstore.getNextSeq)
 
 
@@ -132,20 +140,20 @@ class SegmentedUberStoreTest extends NiceTest {
 
   describe("getNextSeq") {
     it("should reflect livedir's nextSeq") {
-      createFakeSegment(dir, "1")
-      createFakeSegment(dir, "5")
-      createFakeSegment(dir, "10")
-      uberstore = SegmentedUberStore(dir.getAbsolutePath)
+      createSegment(dir, "1")
+      createSegment(dir, "5")
+      createSegment(dir, "10")
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
       assert(uberstore.liveDir.getNextSeq === uberstore.getNextSeq)
     }
   }
 
   describe("foldLeftRange") {
     it("should reflect livedir's nextSeq") {
-      createFakeSegment(dir, "1")
-      createFakeSegment(dir, "5")
-      createFakeSegment(dir, "10")
-      uberstore = SegmentedUberStore(dir.getAbsolutePath)
+      createSegment(dir, "1")
+      createSegment(dir, "5")
+      createSegment(dir, "10")
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
       uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("1")))
       uberstore.writeEntry(OrderedEvent(11L, 1L, Delete("2")))
       assert(List(Delete("1"), Delete("2")) ===
@@ -171,7 +179,7 @@ class SegmentedUberStoreTest extends NiceTest {
       val underTest = new SegmentedUberStore(dir, 10L)
 
       writeUberStoreEvents(underTest, Range.inclusive(1, 10).toList)
-      underTest.compact()
+      underTest.compactAll()
 
       val segment = findSegment("1", underTest.readOnlyDirs)
       assert(10 === segment.size)
@@ -186,7 +194,7 @@ class SegmentedUberStoreTest extends NiceTest {
       // to trigger split
       writeUberStoreEvents(underTest, List(16))
 
-      underTest.compact()
+      underTest.compactAll()
 
       assert("1 2 3 4 5" === listEvents(findSegment("1", underTest.readOnlyDirs)))
     }
@@ -203,8 +211,8 @@ class SegmentedUberStoreTest extends NiceTest {
       // all segments have same events
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
-      val underTest = SegmentedUberStore(dir.getAbsolutePath)
-      underTest.compact()
+      val underTest = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
+      underTest.compactAll()
 
       assert("4" === underTest.liveDir.name)
 
@@ -220,7 +228,134 @@ class SegmentedUberStoreTest extends NiceTest {
 
       assert("1 2 3 4" === listEvents(newThird))
       assert(true === newThird.isApplied)
+    }
+  }
 
+  describe("merge") {
+    it("should do nothing if there are no mergeable segments") {
+      createPopulatedSegment(dir, "1", Range.inclusive(1, 3).toList, isApplied = true)
+      createPopulatedSegment(dir, "2", Range.inclusive(4, 6).toList, isApplied = true)
+      createPopulatedSegment(dir, "3", Range.inclusive(7, 9).toList, isApplied = true)
+      createSegment(dir, "4")
+
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 5L)
+
+      val underTest = SegmentedUberStore(dir.getAbsolutePath, config)
+      assert(3 === underTest.readOnlyDirs.size)
+
+      underTest.merge()
+      assert(3 === underTest.readOnlyDirs.size)
+    }
+    it("should merge two segments if they are considered mergeable at the beginning") {
+      createPopulatedSegment(dir, "1", Range.inclusive(1, 3).toList, isApplied = true)
+      createPopulatedSegment(dir, "2", Range.inclusive(4, 6).toList, isApplied = true)
+      createPopulatedSegment(dir, "3", Range.inclusive(7, 9).toList, isApplied = true)
+      createSegment(dir, "4")
+
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 6L)
+
+      val underTest = SegmentedUberStore(dir.getAbsolutePath, config)
+      assert(3 === underTest.readOnlyDirs.size)
+
+      underTest.merge()
+      assert(2 === underTest.readOnlyDirs.size)
+      assert("1" === underTest.readOnlyDirs(0).name)
+      assert("3" === underTest.readOnlyDirs(1).name)
+    }
+    it("should merge two segments if they are considered mergeable at the end") {
+      createPopulatedSegment(dir, "1", Range.inclusive(1, 6).toList, isApplied = true)
+      createPopulatedSegment(dir, "2", Range.inclusive(7, 9).toList, isApplied = true)
+      createPopulatedSegment(dir, "3", Range.inclusive(10, 12).toList, isApplied = true)
+      createSegment(dir, "4")
+
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 6L)
+
+      val underTest = SegmentedUberStore(dir.getAbsolutePath, config)
+      assert(3 === underTest.readOnlyDirs.size)
+
+      underTest.merge()
+      assert(2 === underTest.readOnlyDirs.size)
+      assert("1" === underTest.readOnlyDirs(0).name)
+      assert("2" === underTest.readOnlyDirs(1).name)
+    }
+    it("should merge three consecutive segments that can be merged into one") {
+      createPopulatedSegment(dir, "1", Range.inclusive(1, 3).toList, isApplied = true)
+      createPopulatedSegment(dir, "2", Range.inclusive(4, 6).toList, isApplied = true)
+      createPopulatedSegment(dir, "3", Range.inclusive(7, 9).toList, isApplied = true)
+      createSegment(dir, "4")
+
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 9L)
+
+      val underTest = SegmentedUberStore(dir.getAbsolutePath, config)
+      assert(3 === underTest.readOnlyDirs.size)
+
+      underTest.merge()
+      assert(1 === underTest.readOnlyDirs.size)
+      assert("1" === underTest.readOnlyDirs(0).name)
+    }
+    it("should be able to merge all the segments into one if necessary") {}
+  }
+
+  describe("isMergeable") {
+    it("should return false if the left segment has not been applied") {
+      val left = Segment(dir, "1")
+      val right = Segment(dir, "2")
+      right.setApplied(applied = true)
+
+      assert(false === SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration).isMergeable(left, right))
+    }
+    it("should return false if the right segment has not been applied") {
+      val left = Segment(dir, "1")
+      val right = Segment(dir, "2")
+      left.setApplied(applied = true)
+
+      assert(false === SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration).isMergeable(left, right))
+    }
+    it("should return false if the combined size of the segments > eventsPerSegment") {
+      val left = Segment(dir, "1")
+      val right = Segment(dir, "2")
+      left.setApplied(applied = true)
+      right.setApplied(applied = true)
+
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 5L)
+
+      writeEvents(left, List(1L, 2L, 3L))
+      writeEvents(right, List(4L, 5L, 6L))
+
+      assert(false === SegmentedUberStore(dir.getAbsolutePath, config).isMergeable(left, right))
+    }
+    it("should return true if both are applied and combined size < eventsPerSegment") {
+      val left = Segment(dir, "1")
+      val right = Segment(dir, "2")
+      left.setApplied(applied = true)
+      right.setApplied(applied = true)
+
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 5L)
+
+      writeEvents(left, List(1L, 2L))
+      writeEvents(right, List(4L, 5L))
+
+      assert(true === SegmentedUberStore(dir.getAbsolutePath, config).isMergeable(left, right))
+    }
+    it("should return true if both are applied and combined size == eventsPerSegment") {
+      val left = Segment(dir, "1")
+      val right = Segment(dir, "2")
+      left.setApplied(applied = true)
+      right.setApplied(applied = true)
+
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 5L)
+
+      writeEvents(left, List(1L, 2L, 3L))
+      writeEvents(right, List(4L, 5L))
+
+      assert(true === SegmentedUberStore(dir.getAbsolutePath, config).isMergeable(left, right))
     }
   }
 }

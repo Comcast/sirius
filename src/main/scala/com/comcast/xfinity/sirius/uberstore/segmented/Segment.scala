@@ -16,7 +16,18 @@ object Segment {
    * @return an Segment instance, fully repaired and usable
    */
   def apply(base: File, name: String): Segment = {
-    val location = new File(base, name)
+    apply(new File(base, name))
+  }
+
+  /**
+   * Create an Segment at the specified location.
+   *
+   * @param location location of segment. must be inside a segmented uberstore's base
+   *                 to be meaningful.
+   *
+   * @return an Segment instance, fully repaired and usable
+   */
+  def apply(location: File): Segment = {
     location.mkdirs()
 
     val dataFile = new File(location, "data")
@@ -28,7 +39,7 @@ object Segment {
     val compactionFlag = FlagFile(compactionFlagFile.getAbsolutePath)
 
     repairIndex(index, data)
-    new Segment(location, name, data, index, compactionFlag)
+    new Segment(location, location.getName, data, index, compactionFlag)
   }
 
   /**

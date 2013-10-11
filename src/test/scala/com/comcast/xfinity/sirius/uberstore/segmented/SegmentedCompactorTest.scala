@@ -215,4 +215,86 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       assert("" === listEvents(compacted))
     }
   }
+
+  describe("findNextMergeableSegments") {
+    it("should do nothing if the input is of size 0 or 1") {
+      val isMergeable = (left: Segment, right: Segment) => true
+      assert(None === SegmentedCompactor.findNextMergeableSegments(List(), isMergeable))
+      assert(None === SegmentedCompactor.findNextMergeableSegments(List(Segment(dir, "1")), isMergeable))
+    }
+
+    it("should return the first two elements if the return true for the isMergeable predicate") {
+      val isMergeable = (left: Segment, right: Segment) => true
+      val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
+      val segments = List(one, two, three)
+
+      assert(Some(one, two) === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+    }
+    it("should return None if there are no mergeable elements in the list") {
+      val isMergeable = (left: Segment, right: Segment) => false
+      val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
+      val segments = List(one, two, three)
+
+      assert(None === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+    }
+    it("should return the first mergeable elements in the list if there are any") {
+      val isMergeable = (left: Segment, right: Segment) => left.name == "2" && right.name == "3"
+      val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
+      val segments = List(one, two, three)
+
+      assert(Some(two, three) === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+    }
+  }
+  describe("delete") {
+    it("should close the input segment") {
+      val segment = Segment(dir, "1")
+      SegmentedCompactor.delete(segment)
+      assert(true === segment.isClosed)
+    }
+    it("should remove the location of segment from the filesystem") {
+      val segment = Segment(dir, "1")
+      SegmentedCompactor.delete(segment)
+      assert(false === segment.location.exists())
+    }
+  }
+  describe("mergeSegments") {
+    it("should create a new segment at targetFile") {
+      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
+      val target = new File(dir, "1-2.merged")
+
+      assert(false === target.exists())
+      SegmentedCompactor.mergeSegments(left, right, target)
+      assert(true === target.exists())
+    }
+    it("should write all of the elements from left and right into target, in order") {
+      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
+      writeEvents(left, List(1L, 2L, 3L))
+      writeEvents(right, List(4L, 5L, 6L))
+      val target = new File(dir, "1-2.merged")
+
+      SegmentedCompactor.mergeSegments(left, right, target)
+
+      assert("1 2 3 4 5 6" === listEvents(Segment(target)))
+    }
+    it("should set the new segment's isApplied correctly if both left and right have been applied") {
+      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
+      left.setApplied(applied = true)
+      right.setApplied(applied = true)
+      val target = new File(dir, "1-2.merged")
+
+      SegmentedCompactor.mergeSegments(left, right, target)
+
+      assert(true === Segment(target).isApplied)
+    }
+    it("should set the new segment's isApplied correctly if either left or right have not been applied") {
+      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
+      left.setApplied(applied = false)
+      right.setApplied(applied = true)
+      val target = new File(dir, "1-2.merged")
+
+      SegmentedCompactor.mergeSegments(left, right, target)
+
+      assert(false === Segment(target).isApplied)
+    }
+  }
 }
