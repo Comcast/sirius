@@ -5,6 +5,11 @@ function die() {
   exit 1
 }
 
+function die_happy() {
+  echo "$@" >&2
+  exit 0
+}
+
 if [ $# -ne 1 ]
 then
   echo "Usage: `basename $0` <base_dir>" >&2
@@ -17,6 +22,8 @@ if [ "x$JAVA_OPTS" == "x" ]; then
 fi
 
 UBERSTORE_BASE=$1
+WALTOOL_BASE=$(dirname $0)
+WALTOOL_BASE=$(cd $WALTOOL_BASE && pwd)
 
 WAL_DIR=$UBERSTORE_BASE/uberstore
 BACKUP_WAL_DIR=$UBERSTORE_BASE/uberstore-backup
@@ -31,8 +38,10 @@ rm -rf $BACKUP_WAL_DIR || die "Error removing existing backup log."
 echo "Copying $WAL_DIR to $BACKUP_WAL_DIR"
 cp -r $WAL_DIR $BACKUP_WAL_DIR || die "Error backing up log."
 
+$WALTOOL_BASE/waltool is-legacy $WAL_DIR || die_happy "Will not compact non-legacy WAL, exiting quietly."
+
 echo "Compacting $WAL_DIR into $COMPACTED_WAL_DIR"
-JAVA_OPTS="$JAVA_OPTS" $UBERSTORE_BASE/sirius-standalone/bin/waltool compact two-pass $WAL_DIR $COMPACTED_WAL_DIR || die "Error compacting log."
+JAVA_OPTS="$JAVA_OPTS" $WALTOOL_BASE/waltool compact two-pass $WAL_DIR $COMPACTED_WAL_DIR || die "Error compacting log."
 
 echo "Copying $COMPACTED_WAL_DIR to $WAL_DIR"
 for f in `ls -1 $COMPACTED_WAL_DIR`
