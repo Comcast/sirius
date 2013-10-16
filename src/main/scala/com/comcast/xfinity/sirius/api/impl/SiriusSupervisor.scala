@@ -94,7 +94,8 @@ class SiriusSupervisor(childProvider: ChildProvider)(implicit config: SiriusConf
   val stateBridge = childProvider.createStateBridge(stateSup, self, MembershipHelper(membershipAgent, self))
   val statusSubsystem = childProvider.createStatusSubsystem(self)
   var orderingActor: Option[ActorRef] = None
-  val compactionManager = childProvider.createCompactionManager()
+  var compactionManager : Option[ActorRef] = None
+
 
   private val logger = Logging(context.system, "Sirius")
 
@@ -119,6 +120,7 @@ class SiriusSupervisor(childProvider: ChildProvider)(implicit config: SiriusConf
 
         siriusStateAgent send (_.copy(supervisorInitialized = true))
 
+        compactionManager = Some(childProvider.createCompactionManager())
         context.become(initialized)
 
         sender ! SiriusSupervisor.IsInitializedResponse(initialized = true)
@@ -136,7 +138,11 @@ class SiriusSupervisor(childProvider: ChildProvider)(implicit config: SiriusConf
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
     case statusQuery: StatusQuery => statusSubsystem forward statusQuery
-    case compactionMessage: CompactionMessage => compactionManager forward compactionMessage
+    case compactionMessage: CompactionMessage => compactionManager match {
+      case Some(actor) => actor forward compactionMessage
+      case None =>
+        logger.warning("Dropping {} cause CompactionMessage because CompactionManager is not up", compactionMessage.getClass.getName)
+    }
     case CheckPaxosMembership => {
       if (membershipAgent.get().contains(self)) {
         ensureOrderingActorRunning()
