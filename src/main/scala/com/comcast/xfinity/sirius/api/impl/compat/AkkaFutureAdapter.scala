@@ -35,8 +35,8 @@ class AkkaFutureAdapter[T](akkaFuture: AkkaFuture[T]) extends Future[T] {
    */
   def get: T =
     try {
-      // there is no way in hell this can time out
-      Await.result(akkaFuture, Long.MaxValue milliseconds)
+      // there is still no way in hell this can time out
+      Await.result(akkaFuture, 7 days)
     } catch {
       case e => throw new ExecutionException(e)
     }
