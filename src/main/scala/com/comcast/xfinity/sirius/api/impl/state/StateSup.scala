@@ -20,29 +20,30 @@ object StateSup {
    */
   private[state] class ChildProvider(requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration) {
     def createStateActor()(implicit context: ActorContext): ActorRef =
-      context.actorOf(Props(new SiriusStateActor(requestHandler)), "state")
+      context.actorOf(SiriusStateActor.props(requestHandler), "state")
 
     def createPersistenceActor(stateActor: ActorRef)(implicit context: ActorContext): ActorRef =
-      context.actorOf(Props(new SiriusPersistenceActor(stateActor, siriusLog)(config)), "persistence")
+      context.actorOf(SiriusPersistenceActor.props(stateActor, siriusLog, config), "persistence")
   }
 
   /**
    * Create a StateSup managing the state of requestHandler and persisting data to siriusLog.
-   * As this instantiates an actor, it must be called via the Props factory object using actorOf.
    *
-   * @param requestHandler the RequestHandler to apply updates to and perform Gets on
-   * @param siriusLog the SiriusLog to persist OrderedEvents to
-   * @param siriusStateAgent agent containing information on the state of the system.
-   *            This should eventually go bye bye
-   *
-   * @returns the StateSup managing the state subsystem.
+   * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
+   * @param siriusLog the log to be used for persisting events
+   * @param siriusStateAgent agent containing information on the state of the system
+   * @param config SiriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration for
+   *               more information
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
    */
-  def apply(requestHandler: RequestHandler,
+  def props(requestHandler: RequestHandler,
             siriusLog: SiriusLog,
             siriusStateAgent: Agent[SiriusState],
-            config: SiriusConfiguration): StateSup = {
+            config: SiriusConfiguration): Props = {
     val childProvider = new ChildProvider(requestHandler, siriusLog, config)
-    new StateSup(requestHandler, siriusLog, siriusStateAgent, childProvider)(config)
+    //Props(classOf[StateSup], requestHandler, siriusLog, siriusStateAgent, childProvider, config)
+    Props(new StateSup(requestHandler, siriusLog, siriusStateAgent, childProvider, config))
   }
 }
 
@@ -59,8 +60,8 @@ object StateSup {
 class StateSup(requestHandler: RequestHandler,
                siriusLog: SiriusLog,
                siriusStateAgent: Agent[SiriusState],
-               childProvider: StateSup.ChildProvider)
-              (implicit config: SiriusConfiguration = new SiriusConfiguration)
+               childProvider: StateSup.ChildProvider,
+               config: SiriusConfiguration)
     extends Actor with MonitoringHooks {
 
   val logger = Logging(context.system, "Sirius")

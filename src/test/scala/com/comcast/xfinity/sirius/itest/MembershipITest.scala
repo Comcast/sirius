@@ -44,7 +44,7 @@ class MembershipITest extends NiceTest with TimedTest with BeforeAndAfterAll {
       val membership = Agent(Set[ActorRef]())
       val config = new SiriusConfiguration
       config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigFileName)
-      val membershipSubSystem = actorSystem.actorOf(Props(MembershipActor(membership, config)))
+      val membershipSubSystem = actorSystem.actorOf(MembershipActor.props(membership, config))
 
       // wait for membership to get updated
       assert(waitForTrue(!membership().isEmpty, 2000, 200), "Membership wasn't updated in a timely manor")

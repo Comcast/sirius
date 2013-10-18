@@ -11,6 +11,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Put, Delete}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import org.mockito.Matchers.{any, eq => meq, anyLong}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class SiriusPersistenceActorTest extends NiceTest {
 
@@ -23,7 +24,9 @@ class SiriusPersistenceActorTest extends NiceTest {
     mockSiriusLog = mock[SiriusLog]
     actorSystem = ActorSystem("testsystem")
     testStateWorkerProbe = TestProbe()(actorSystem)
-    underTestActor = TestActorRef(new SiriusPersistenceActor(testStateWorkerProbe.ref, mockSiriusLog))(actorSystem)
+    underTestActor = TestActorRef(
+      new SiriusPersistenceActor(testStateWorkerProbe.ref, mockSiriusLog, new SiriusConfiguration)
+    )(actorSystem)
 
   }
 

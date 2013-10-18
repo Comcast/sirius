@@ -4,11 +4,11 @@ import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
-import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{RequestFromSeq, RequestGaps}
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestFromSeq, RequestGaps}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete}
-import akka.actor.{PoisonPill, ActorRef, ActorSystem}
+import akka.actor.{ActorContext, PoisonPill, ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
@@ -29,11 +29,15 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
                       gapFetcherActor: ActorRef = TestProbe().ref,
                       chunkSize: Option[Int] = None) = {
 
-    if (chunkSize != None)
+    if (chunkSize != None) {
       config.setProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, chunkSize.get)
+    }
 
-    TestActorRef(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper)(config) {
-      override def createGapFetcherActor(seq: Long, target: ActorRef) = gapFetcherActor
+    val childProvider = new ChildProvider(config) {
+      override def createGapFetcher(seq: Long, target: ActorRef, requester: ActorRef)(implicit context: ActorContext) = gapFetcherActor
+    }
+
+    TestActorRef(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper, childProvider, config) {
       override def preStart() {}
       override def postStop() {
         requestGapsCancellable.cancel()

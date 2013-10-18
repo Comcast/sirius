@@ -15,6 +15,7 @@ import akka.testkit.TestProbe
 import scala.collection.JavaConversions._
 import collection.SortedMap
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica.Reap
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
@@ -27,8 +28,9 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
   def makeReplica(localLeader: ActorRef = TestProbe().ref,
                   startingSlot: Long = 1,
                   performFun: Replica.PerformFun = d => (),
-                  reproposalWindowSecs: Int = 5) = {
-    TestActorRef(new Replica(localLeader, startingSlot, performFun, reproposalWindowSecs))
+                  reproposalWindowSecs: Int = 5,
+                  reapFreqSecs: Int = 1) = {
+    TestActorRef(new Replica(localLeader, startingSlot, performFun, reproposalWindowSecs, reapFreqSecs, new SiriusConfiguration))
   }
   
   describe("A Replica") {
@@ -86,7 +88,8 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         // TestActorRef so message handling is dispatched on the same thread
         val replica = TestActorRef(
           new Replica(localLeader.ref, 1,
-            d => throw new RuntimeException("The dishes are done man"), 5
+            d => throw new RuntimeException("The dishes are done man"), 5, 1,
+            new SiriusConfiguration
           ) {
             // this is weird, if the actor terminates, it is restarted
             //  asynchronously, so we need to propogate the failure in

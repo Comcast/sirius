@@ -5,7 +5,7 @@ import scalax.file.Path
 import scalax.io.Line.Terminators.NewLine
 import akka.event.Logging
 import akka.util.Duration
-import akka.actor.{ActorRef, actorRef2Scala, Actor}
+import akka.actor.{Props, ActorRef, actorRef2Scala, Actor}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import akka.util.duration._
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
@@ -28,15 +28,14 @@ object MembershipActor {
   }
 
   /**
-   * Create a MembershipActor configured with SiriusConfiguration that will keep membershipAgent
-   * updated.
+   * Create Props for a MembershipActor.
    *
-   * @param membershipAgent the Agent[Set[ActorRef]]() to keep updated with the cluster membership
-   * @param config SiriusConfiguration object to use to configure this instance- see SiriusConfiguraiton
-   *          for more information
+   * @param membershipAgent the Agent[Set[ActorRef\]\]() to keep updated with the cluster membership
+   * @param config SiriusConfiguration for this node
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
    */
-  def apply(membershipAgent: Agent[Set[ActorRef]],
-            config: SiriusConfiguration): MembershipActor = {
+  def props(membershipAgent: Agent[Set[ActorRef]], config: SiriusConfiguration): Props = {
     // XXX: we should figure out if we're doing config parsing and injecting it, or doing it within the actor
     //      the advantage of pulling out the config here is it makes testing easier, and it makes it obvious what
     //      config is needed
@@ -46,13 +45,8 @@ object MembershipActor {
     }
     val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 30)
     val pingIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_PING_INTERVAL, 30)
-
-    new MembershipActor(
-      membershipAgent,
-      clusterConfigPath,
-      checkIntervalSecs seconds,
-      pingIntervalSecs seconds
-    )(config)
+    //Props(classOf[MembershipActor], membershipAgent, clusterConfigPath, checkIntervalSecs seconds, pingIntervalSecs seconds, config)
+    Props(new MembershipActor(membershipAgent, clusterConfigPath, checkIntervalSecs seconds, pingIntervalSecs seconds, config))
   }
 }
 
@@ -72,8 +66,8 @@ object MembershipActor {
 class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
                       clusterConfigPath: Path,
                       checkInterval: Duration,
-                      pingInterval: Duration)
-                     (implicit config: SiriusConfiguration = new SiriusConfiguration)
+                      pingInterval: Duration,
+                      config: SiriusConfiguration)
     extends Actor with MonitoringHooks{
   import MembershipActor._
 

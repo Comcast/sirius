@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.actor.{Props, Actor, ActorRef}
+import akka.actor.{ActorContext, Props, Actor, ActorRef}
 import akka.agent.Agent
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
@@ -9,48 +9,59 @@ import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{SeekLeadership, Close}
 import com.comcast.xfinity.sirius.util.{RichJTreeMap, AkkaExternalAddressResolver}
+import com.comcast.xfinity.sirius.api.impl.paxos.Leader.ChildProvider
 
 object Leader {
-  trait HelperProvider {
-    val leaderHelper: LeaderHelper
-    def startCommander(pval: PValue, ticks: Int = 0): Unit
-    def startScout(): Unit
-  }
 
-  def apply(membership: Agent[Set[ActorRef]],
-            startingSeqNum: Long,
-            config: SiriusConfiguration): Leader = {
+  /**
+   * Factory for creating the children actors of Leader.
+   *
+   * @param config the SiriusConfiguration for this node
+   */
+  private[paxos] class ChildProvider(config: SiriusConfiguration) {
+    def createCommander(leader: ActorRef, acceptors: Set[ActorRef], replicas: Set[ActorRef], pval: PValue, ticks: Int)
+                     (implicit context: ActorContext): ActorRef= {
+      context.actorOf(Commander.props(leader, acceptors, replicas, pval, ticks))
+    }
 
-    //XXX make configurable!
-    val defaultRetries = 2
+    def createScout(leader: ActorRef, acceptors: Set[ActorRef], myBallot: Ballot, latestDecidedSlot: Long)
+                 (implicit context: ActorContext): ActorRef= {
+      context.actorOf(Scout.props(leader, acceptors, myBallot, latestDecidedSlot))
+    }
 
-    new Leader(membership, startingSeqNum)(config) with HelperProvider {
-      val leaderHelper = new LeaderHelper()
-
-      def startCommander(pval: PValue, ticks: Int = defaultRetries) {
-        // XXX: more members may show up between when acceptors() and replicas(),
-        //      we may want to combine the two, and just reference membership
-        context.actorOf(Props(new Commander(self, acceptors(), replicas(), pval, ticks)))
-      }
-
-      def startScout() {
-        context.actorOf(Props(new Scout(self, acceptors(), myBallot, latestDecidedSlot)))
-      }
+    def createLeaderWatcher(ballotToWatch: Ballot, replyTo: ActorRef)(implicit context: ActorContext): ActorRef= {
+       context.actorOf(LeaderWatcher.props(ballotToWatch, replyTo, config))
     }
   }
+
+  /**
+   * Create Props for Leader actor.
+   *
+   * @param membership an {@link akka.agent.Agent} tracking the membership of the cluster
+   * @param startingSeqNum the sequence number at which this node will begin issuing/acknowledging
+   * @param config SiriusConfiguration for this node
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
+   */
+   def props(membership: Agent[Set[ActorRef]],
+             startingSeqNum: Long,
+             config: SiriusConfiguration): Props = {
+     val childProvider = new ChildProvider(config)
+     val leaderHelper = new LeaderHelper
+     //Props(classOf[Leader], membership, startingSeqNum,childProvider,leaderHelper,config)
+     Props(new Leader(membership, startingSeqNum, childProvider, leaderHelper, config))
+   }
 }
 
 class Leader(membership: Agent[Set[ActorRef]],
-             startingSeqNum: Long)
-            (implicit config: SiriusConfiguration = new SiriusConfiguration)
+             startingSeqNum: Long,
+             childProvider: ChildProvider,
+             leaderHelper: LeaderHelper,
+             config: SiriusConfiguration)
       extends Actor with MonitoringHooks {
-    this: Leader.HelperProvider =>
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
-
-  val acceptors = membership
-  val replicas = membership
 
   val myLeaderId = AkkaExternalAddressResolver(context.system).externalAddressFor(self)
   var myBallot = Ballot(0, myLeaderId)
@@ -68,6 +79,9 @@ class Leader(membership: Agent[Set[ActorRef]],
   var commanderTimeoutCount = 0L
   var electedLeaderTimeoutCount = 0L
   var lastTimedOutPValue: Option[PValue] = None
+  //TO-DO make configurable
+  val defaultRetries = 2
+
 
   startScout()
 
@@ -173,6 +187,15 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   }
 
+  private def startScout(){
+    childProvider.createScout(self, getMembershipSet, myBallot, latestDecidedSlot)
+  }
+
+  private def startCommander(pVal: PValue, ticks: Int=defaultRetries){
+    val membershipSet = getMembershipSet
+    childProvider.createCommander(self, membershipSet, membershipSet, pVal, ticks)
+  }
+
   private def seekLeadership(ballotToTrump: Option[Ballot] = None) {
     myBallot = ballotToTrump match {
       case Some(Ballot(oldSeq, _)) => myBallot.copy(seq = oldSeq + 1)
@@ -195,7 +218,7 @@ class Leader(membership: Agent[Set[ActorRef]],
 
   private def startLeaderWatcher(ballotToWatch: Ballot) {
     stopLeaderWatcher()
-    currentLeaderWatcher = Some(context.actorOf(Props(new LeaderWatcher(ballotToWatch, self))))
+    currentLeaderWatcher = Some(childProvider.createLeaderWatcher(ballotToWatch, self))
   }
 
   // drops all proposals held locally whose slot is <= latestDecidedSlot
@@ -212,6 +235,8 @@ class Leader(membership: Agent[Set[ActorRef]],
     if (duration > longestReapDuration)
       longestReapDuration = duration
   }
+
+  private def getMembershipSet: Set[ActorRef] = membership.get().toSet
 
   // monitoring hooks, to close over the scope of the class, it has to be this way
   //  because of jmx

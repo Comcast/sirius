@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
 
-import akka.actor.{ReceiveTimeout, ActorRef, Actor}
+import akka.actor.{Props, ReceiveTimeout, ActorRef, Actor}
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{GetLogSubrange, LogSubrange}
@@ -8,11 +8,22 @@ import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSe
 
 object GapFetcher {
 
-  def apply(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, config: SiriusConfiguration): GapFetcher = {
+  /**
+   * Create Props for GapFetcher actor.
+   *
+   * @param firstGapSeq first sequence number to request; lower bound
+   * @param target actor from whom we should ask for chunks
+   * @param replyTo actor to send OrderedEvents to
+   * @param config SiriusConfiguration for this node
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
+   */
+  def props(firstGapSeq: Long, target: ActorRef, replyTo: ActorRef, config: SiriusConfiguration): Props = {
     val chunkSize = config.getProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, 1000)
     val chunkReceiveTimeout = config.getProp(SiriusConfiguration.LOG_REQUEST_RECEIVE_TIMEOUT_SECS, 5)
 
-    new GapFetcher(firstGapSeq, target, replyTo, chunkSize, chunkReceiveTimeout)
+    //Props(classOf[GapFetcher], firstGapSeq, target, replyTo, chunkSize, chunkReceiveTimeout)
+    Props(new GapFetcher(firstGapSeq, target, replyTo, chunkSize, chunkReceiveTimeout))
   }
 }
 

@@ -3,26 +3,51 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import annotation.tailrec
-import akka.actor.{InvalidActorNameException, Props, Actor, ActorRef}
+import akka.actor.{ActorContext, Props, Actor, ActorRef}
 import akka.util.duration._
 import akka.event.Logging
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import com.comcast.xfinity.sirius.util.RichJTreeMap
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestFromSeq, RequestGaps}
 
 object PaxosStateBridge {
   case object RequestGaps
   case class RequestFromSeq(begin: Long)
 
-  def apply(startingSeq: Long,
+  /**
+   * Factory for creating the children actors of PaxosStateBridge.
+   *
+   * @param config the SiriusConfiguration for this node
+   */
+  class ChildProvider(config: SiriusConfiguration) {
+    def createGapFetcher(seq: Long, target: ActorRef, requester: ActorRef)(implicit context: ActorContext) = {
+      context.actorOf(GapFetcher.props(seq, target, requester, config))
+    }
+  }
+
+  /**
+   * Create Props for a PaxosStateBridge actor.
+   *
+   * @param startingSeq the sequence number to start with
+   * @param stateSupActor reference to the subsystem encapsulating system state.
+   * @param siriusSupActor reference to the Sirius Supervisor Actor for routing
+   *          DecisionHints to the Paxos Subsystem
+   * @param membershipHelper reference to object that knows how to get a random
+   *                         remote cluster member
+   * @param config SiriusConfiguration for this node
+   * @return Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
+   */
+  def props(startingSeq: Long,
             stateSupActor: ActorRef,
             siriusSupActor: ActorRef,
             membershipHelper: MembershipHelper,
-            config: SiriusConfiguration) = {
-
-    // TODO add grabbing request gaps delay from config, pass into constructor?
-    new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper)(config)
+            config: SiriusConfiguration): Props = {
+    val childProvider = new ChildProvider(config)
+    //Props(classOf[PaxosStateBridge], startingSeq, stateSupActor, siriusSupActor, membershipHelper, childProvider, config)
+    Props(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper, childProvider, config))
   }
 }
 
@@ -59,14 +84,12 @@ object PaxosStateBridge {
 class PaxosStateBridge(startingSeq: Long,
                        stateSupActor: ActorRef,
                        siriusSupActor: ActorRef,
-                       membershipHelper: MembershipHelper)
-                      (implicit config: SiriusConfiguration = new SiriusConfiguration)
+                       membershipHelper: MembershipHelper,
+                       childProvider: ChildProvider,
+                       config: SiriusConfiguration)
       extends Actor with MonitoringHooks {
-    import PaxosStateBridge._
 
-  // for gapFetcher instantiation
   val chunkSize = config.getProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, 1000)
-  val chunkReceiveTimeout = config.getProp(SiriusConfiguration.LOG_REQUEST_RECEIVE_TIMEOUT_SECS, 5)
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
@@ -222,17 +245,13 @@ class PaxosStateBridge(startingSeq: Long,
     val randomMember = membershipHelper.getRandomMember
     randomMember match {
       case Some(member) =>
-        Some(createGapFetcherActor(seq, member))
+        traceLogger.debug("Creating gap fetcher to request {} events starting at {} from {}", chunkSize, seq, member)
+        Some(childProvider.createGapFetcher(seq, member, self))
       case None =>
         logger.warning("Failed to create GapFetcher: could not get remote" +
           "member for transfer request.")
         None
     }
-  }
-
-  def createGapFetcherActor(seq: Long, target: ActorRef) = {
-    traceLogger.debug("Creating gap fetcher to request {} events starting at {} from {}", chunkSize, seq, target)
-    context.actorOf(Props(new GapFetcher(seq, target, self, chunkSize, chunkReceiveTimeout)))
   }
 
   /**

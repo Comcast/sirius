@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.status
 
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.SiriusMonitorReader
-import akka.actor.Actor
+import akka.actor.{Props, Actor}
 import com.comcast.xfinity.sirius.api.impl.status.NodeStats._
 
 object StatusWorker {
@@ -20,6 +20,7 @@ object StatusWorker {
   case object GetStatus extends StatusQuery
 
   /**
+   * Create Props for an actor of this type.
    * Create a StatusWorker, which will respond to and status queries
    *
    * @param supAddressString the string that this node identifies by,
@@ -27,8 +28,9 @@ object StatusWorker {
    *          address ;)
    * @param config the node's configuration
    */
-  def apply(supAddressString: String, config: SiriusConfiguration) = {
-    new StatusWorker(supAddressString, config)
+  def props(supAddressString: String, config: SiriusConfiguration): Props = {
+    //Props(classOf[StatusWorker], supAddressString, config, new SiriusMonitorReader)
+    Props(new StatusWorker(supAddressString, config, new SiriusMonitorReader))
   }
 }
 
@@ -45,8 +47,7 @@ object StatusWorker {
  */
 class StatusWorker(supAddressString: String,
                    config: SiriusConfiguration,
-                   monitorReader: SiriusMonitorReader = new SiriusMonitorReader)
-    extends Actor {
+                   monitorReader: SiriusMonitorReader) extends Actor {
 
   import StatusWorker._
 

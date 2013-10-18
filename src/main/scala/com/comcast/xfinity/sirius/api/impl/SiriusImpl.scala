@@ -30,11 +30,9 @@ object SiriusImpl {
             siriusLog: SiriusLog,
             config: SiriusConfiguration)
            (implicit actorSystem: ActorSystem): SiriusImpl = {
-    val supProps = Props(SiriusSupervisor(requestHandler, siriusLog, config))
+    val supProps = SiriusSupervisor.props(requestHandler, siriusLog, config)
     new SiriusImpl(config, supProps)
   }
-
-
 }
 
 /**

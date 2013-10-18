@@ -17,14 +17,14 @@ object PaxosITest {
   class TestNode(membership: Agent[Set[ActorRef]], decisionLatch: TestLatch)(implicit as: ActorSystem) {
     var decisions = Set[Decision]()
 
-    val paxosSup = as.actorOf(Props(
-      PaxosSup(membership, 1, {
+    val paxosSup = as.actorOf(
+      PaxosSup.props(membership, 1, {
         case decision if !decisions.contains(decision) =>
           decisions += decision
           decisionLatch.countDown()
         case decision if decisions.contains(decision) =>
       }, new SiriusConfiguration)
-    ))
+    )
 
     def hasDecisionFor(req: NonCommutativeSiriusRequest): Boolean =
       decisions.exists(req == _.command.op)

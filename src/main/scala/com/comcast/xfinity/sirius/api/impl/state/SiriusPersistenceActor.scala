@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.state
 
-import akka.actor.Actor
-import akka.actor.ActorRef
+import akka.actor.{ActorContext, Props, Actor, ActorRef}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl._
@@ -53,6 +52,21 @@ object SiriusPersistenceActor {
    * the Long value of the next sequence number.
    */
   case object GetNextLogSeq extends LogQuery
+
+  /**
+   * Create Props for a SiriusPersistenceActor.
+   *
+   * @param stateActor ActorRef of state supervisor
+   * @param siriusLog active SiriusLog
+   * @param config SiriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration for
+   *               more information
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
+   */
+  def props(stateActor: ActorRef, siriusLog: SiriusLog, config: SiriusConfiguration): Props = {
+    //Props(classOf[SiriusPersistenceActor], stateActor, siriusLog, config)
+    Props(new SiriusPersistenceActor(stateActor, siriusLog, config))
+  }
 }
 
 /**
@@ -65,8 +79,9 @@ object SiriusPersistenceActor {
  * @param stateActor Actor wrapping in memory state of the system
  * @param siriusLog the log to record events to before sending to memory
  */
-class SiriusPersistenceActor(val stateActor: ActorRef, siriusLog: SiriusLog)
-    (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
+class SiriusPersistenceActor(stateActor: ActorRef,
+                             siriusLog: SiriusLog,
+                             config: SiriusConfiguration) extends Actor with MonitoringHooks {
 
   import SiriusPersistenceActor._
 

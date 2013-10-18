@@ -2,8 +2,8 @@ package com.comcast.xfinity.sirius.uberstore
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.{PoisonPill, ActorRef, ActorSystem}
 import akka.util.duration._
+import akka.actor.{ActorContext, PoisonPill, ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.testkit.{TestProbe, TestActorRef}
 import javax.management.{ObjectName, MBeanServer}
@@ -12,7 +12,7 @@ import com.comcast.xfinity.sirius.uberstore.CompactionActor.CompactionComplete
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito._
 import org.mockito.Matchers._
-import com.comcast.xfinity.sirius.uberstore.CompactionManager.{CompactionManagerInfoMBean, GetState, Compact}
+import com.comcast.xfinity.sirius.uberstore.CompactionManager.{ChildProvider, CompactionManagerInfoMBean, GetState, Compact}
 import akka.util.Timeout
 
 class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
@@ -28,14 +28,16 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
                                         testLastDuration: Option[Long] = None,
                                         testMBeanServer: MBeanServer = mock[MBeanServer]) = {
 
-    implicit val config = new SiriusConfiguration
+    val config = new SiriusConfiguration
     config.setProp(SiriusConfiguration.MBEAN_SERVER, testMBeanServer)
 
-    TestActorRef(new CompactionManager(siriusLog) {
-      override def createCompactionActor = testCompactionActor
+    val childProvider = new ChildProvider(siriusLog: SiriusLog) {
+      override def createCompactionActor()(implicit context: ActorContext) = testCompactionActor
+    }
+    TestActorRef(new CompactionManager(childProvider, config) {
       override def startCompaction = {
         compactionsStarted += 1
-        createCompactionActor
+        childProvider.createCompactionActor
       }
       lastCompactionStarted = testLastStarted
       lastCompactionDuration = testLastDuration

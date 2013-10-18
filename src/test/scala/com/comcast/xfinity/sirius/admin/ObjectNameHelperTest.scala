@@ -11,6 +11,11 @@ object ObjectNameHelperTest {
 
   class DummyMonitor {}
 
+  object EmptyActor {
+    def props: Props= {
+      Props(classOf[EmptyActor])
+    }
+  }
   class EmptyActor extends Actor {
     def receive = {
       case _ =>
@@ -28,7 +33,7 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
       "when the system is configured without remoting") {
     implicit val actorSystem = ActorSystem("test-system")
     try {
-      val actor = actorSystem.actorOf(Props[EmptyActor], "test")
+      val actor = actorSystem.actorOf(EmptyActor.props, "test")
 
       val expectedObjectName = {
         val kvs = new JHashtable[String, String]
@@ -58,7 +63,7 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
     val akkaConfig = configMap.asInstanceOf[java.util.Map[String, _ <: AnyRef]]
     implicit val actorSystem = ActorSystem("test-system", ConfigFactory.parseMap(akkaConfig))
     try {
-      val actor = actorSystem.actorOf(Props[EmptyActor], "test")
+      val actor = actorSystem.actorOf(EmptyActor.props, "test")
 
       val expectedObjectName = {
         val kvs = new JHashtable[String, String]

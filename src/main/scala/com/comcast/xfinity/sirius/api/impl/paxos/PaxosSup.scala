@@ -22,30 +22,33 @@ object PaxosSup {
    */
   protected[paxos] class ChildProvider(membership: Agent[Set[ActorRef]], startingSeq: Long, performFun: Replica.PerformFun, config: SiriusConfiguration) {
     def createLeader()(implicit context: ActorContext) =
-      context.actorOf(Props(Leader(membership, startingSeq, config)), "leader")
+      context.actorOf(Leader.props(membership, startingSeq, config), "leader")
 
     def createAcceptor()(implicit context: ActorContext) =
-      context.actorOf(Props(Acceptor(startingSeq, config)), "acceptor")
+      context.actorOf(Acceptor.props(startingSeq, config), "acceptor")
 
     def createReplica(leader: ActorRef)(implicit context: ActorContext) =
-      context.actorOf(Props(Replica(leader, startingSeq, performFun, config)), "replica")
+      context.actorOf(Replica.props(leader, startingSeq, performFun, config), "replica")
   }
 
   /**
-   * Create a PaxosSup instance.  Note this should be called from within a Props
-   * factory on Actor creation due to the requirements of Akka.
+   * Create Props for a PaxosSupervisor actor.
    *
-   * @param membership an {@link akka.agent.Agent} tracking the membership of the cluster
+   * @param membership an {@see akka.agent.Agent} tracking the membership of the cluster
    * @param startingSeqNum the sequence number at which this node will begin issuing/acknowledging
    * @param performFun function specified by
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
    *          decisions as they arrive
+   * @param config SiriusConfiguration for this node
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
    */
-  def apply(membership: Agent[Set[ActorRef]],
+  def props(membership: Agent[Set[ActorRef]],
             startingSeqNum: Long,
             performFun: Replica.PerformFun,
-            config: SiriusConfiguration): PaxosSup = {
-    new PaxosSup(new ChildProvider(membership, startingSeqNum, performFun, config))
+            config: SiriusConfiguration): Props = {
+    // Props(classOf[PaxosSup], new ChildProvider(membership, startingSeqNum, performFun, config))
+    Props(new PaxosSup(new ChildProvider(membership, startingSeqNum, performFun, config)))
   }
 }
 

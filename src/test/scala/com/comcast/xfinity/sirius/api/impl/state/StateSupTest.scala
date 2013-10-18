@@ -7,8 +7,6 @@ import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Delete, Get}
 import akka.agent.Agent
-import org.mockito.Mockito._
-import org.mockito.Matchers._
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
 
@@ -42,7 +40,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
       val (stateProbe, _, mockChildProvider) = makeMockedUpChildProvider
 
-      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider))
+      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider, new SiriusConfiguration))
 
       val senderProbe = TestProbe()
       senderProbe.send(stateSup, Get("asdf"))
@@ -59,7 +57,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
       val (_, persistenceProbe, mockChildProvider) = makeMockedUpChildProvider
 
-      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider))
+      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider, new SiriusConfiguration))
 
       val orderedEvent = OrderedEvent(1, 1, Delete("asdf"))
       stateSup ! orderedEvent
@@ -76,7 +74,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
       val (_, persistenceProbe, mockChildProvider) = makeMockedUpChildProvider
 
-      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider))
+      val stateSup = TestActorRef(new StateSup(mockRequestHandler, mockLog, mockStateAgent, mockChildProvider, new SiriusConfiguration))
 
       val senderProbe = TestProbe()
       senderProbe.send(stateSup, GetLogSubrange(1, 100))

@@ -16,6 +16,8 @@ import scala.Some
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{Close, SeekLeadership}
 import com.comcast.xfinity.sirius.util.RichJTreeMap
+import com.comcast.xfinity.sirius.api.impl.paxos.Leader.ChildProvider
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   implicit val actorSystem = ActorSystem("LeaderTest")
@@ -26,14 +28,15 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   def makeMockedUpLeader(membership: Agent[Set[ActorRef]] = Agent(Set[ActorRef]()),
                          startingSeqNum: Long = 1,
                          helper: LeaderHelper = mock[LeaderHelper],
-                         startScoutFun: => Unit = {},
-                         startCommanderFun: (PValue, Int) => Unit = (p, i) => {}) = {
+                         startScoutFun: => ActorRef = TestProbe().ref,
+                         startCommanderFun: (PValue, Int) => ActorRef = (p, i) => TestProbe().ref) = {
+    val childProvider = new ChildProvider(new SiriusConfiguration) {
+      override def createCommander(leader: ActorRef, acceptors: Set[ActorRef], replicas: Set[ActorRef],pval: PValue, ticks: Int)(implicit context: ActorContext): ActorRef = startCommanderFun(pval,ticks)
+      override def createScout(leader: ActorRef, acceptors: Set[ActorRef],myBallot: Ballot,latestDecidedSlot: Long)(implicit context: ActorContext): ActorRef = startScoutFun
+      override def createLeaderWatcher(ballotToWatch: Ballot,replyTo: ActorRef)(implicit context: ActorContext) = TestProbe().ref
+    }
     TestActorRef(
-      new Leader(membership, startingSeqNum) with Leader.HelperProvider {
-        val leaderHelper = helper
-        def startCommander(pval: PValue, ticks: Int = 0) { startCommanderFun(pval, ticks) }
-        def startScout() { startScoutFun }
-      }
+      new Leader(membership, startingSeqNum, childProvider, helper, new SiriusConfiguration)
     )
   }
 
@@ -47,7 +50,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         val scoutProbe = TestProbe()
 
         makeMockedUpLeader(
-          startScoutFun = { scoutProbe.ref ! 'hi }
+          startScoutFun = {
+            scoutProbe.ref ! 'hi
+            scoutProbe.ref
+          }
         )
 
         scoutProbe.expectMsg('hi)
@@ -75,10 +81,11 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(
           helper = mockHelper,
-          startCommanderFun = ((pval, retries) =>
+          startCommanderFun = (pval, retries) => {
             // ignore ts, because we don't care
             pvalsCommandered += PValue(pval.ballot, pval.slotNum, pval.proposedCommand)
-          )
+            TestProbe().ref
+          }
         )
 
         val proposals = RichJTreeMap(
@@ -147,7 +154,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(
           helper = mockHelper,
-          startCommanderFun = (p, i) => commanderStarted = true
+          startCommanderFun = (p, i) => {
+            commanderStarted = true
+            TestProbe().ref
+          }
         )
         leader.underlyingActor.electedLeaderBallot = None
 
@@ -168,7 +178,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(
           helper = mockHelper,
-          startCommanderFun = (p, i) => commanderStarted = true
+          startCommanderFun = (p, i) => {
+            commanderStarted = true
+            TestProbe().ref
+          }
         )
         leader.underlyingActor.electedLeaderBallot = Some(Ballot(0, ""))
 
@@ -188,7 +201,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         val leader = makeMockedUpLeader(
           helper = mockHelper,
-          startCommanderFun = (p, i) => commanderStarted = true
+          startCommanderFun = (p, i) => {
+            commanderStarted = true
+            TestProbe().ref
+          }
         )
 
         leader.underlyingActor.electedLeaderBallot = Some(leader.underlyingActor.myBallot)
@@ -208,7 +224,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         it ("must forget the current leader and seek leadership again using a higher ballot") {
           var scoutStarted = false;
           val leader = makeMockedUpLeader(
-            startScoutFun = { scoutStarted = true }
+            startScoutFun = {
+              scoutStarted = true
+              TestProbe().ref
+            }
           )
 
           // So that we can make sure it gets "None"d out,
@@ -296,7 +315,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         var scoutStarted = false
 
         val leader = makeMockedUpLeader(
-          startScoutFun = { scoutStarted = true }
+          startScoutFun = {
+            scoutStarted = true
+            TestProbe().ref
+          }
         )
 
         leader ! SeekLeadership
@@ -340,7 +362,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         var scoutStarted = false
 
         val leader = makeMockedUpLeader(
-          startScoutFun = { scoutStarted = true }
+          startScoutFun = {
+            scoutStarted = true
+            TestProbe().ref
+          }
         )
         leader.underlyingActor.electedLeaderBallot = Some(Ballot(1, "asdf"))
 
@@ -357,7 +382,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         var scoutStarted = false
 
         val leader = makeMockedUpLeader(
-          startScoutFun = { scoutStarted = true }
+          startScoutFun = {
+            scoutStarted = true
+            TestProbe().ref
+          }
         )
         leader.underlyingActor.electedLeaderBallot = None
 
@@ -415,8 +443,10 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
     describe("when receiving a CommanderTimeout") {
       it ("must nullify the commandered slot and update its internal record keeping") {
         var commandersStarted = 0
-        val leader = makeMockedUpLeader(startCommanderFun = (p, i) =>
+        val leader = makeMockedUpLeader(startCommanderFun = (p, i) => {
           commandersStarted = commandersStarted + 1
+          TestProbe().ref
+        }
         )
 
         // stage a proposal
@@ -441,6 +471,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         val leader = makeMockedUpLeader(startCommanderFun = (p, i) => {
           commandersStarted = commandersStarted + 1
           retriesLeft = i
+          TestProbe().ref
         })
         val pval = PValue(Ballot(1, "a"), 1L, Command(null, 12345L, Delete("2")))
 

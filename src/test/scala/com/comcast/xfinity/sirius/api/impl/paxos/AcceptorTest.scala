@@ -12,11 +12,15 @@ import org.scalatest.BeforeAndAfterAll
 import java.util.{TreeMap => JTreeMap}
 import collection.immutable.SortedMap
 import com.comcast.xfinity.sirius.util.RichJTreeMap
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 @RunWith(classOf[JUnitRunner])
 class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("AcceptorTest")
+  val config = new SiriusConfiguration
+  val reapWindow = 10 * 60 * 1000L
+  val reapFreqSecs = 30
 
   override def afterAll {
     actorSystem.shutdown()
@@ -24,7 +28,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
   describe("An Acceptor") {
     it ("must start off with a clean slate") {
-      val acceptor = TestActorRef(new Acceptor(1))
+      val acceptor = TestActorRef(new Acceptor(1, reapWindow, reapFreqSecs, config))
       assert(acceptor.underlyingActor.ballotNum === Ballot.empty)
       assert(acceptor.underlyingActor.accepted === new JTreeMap[Long, PValue]())
     }
@@ -32,7 +36,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
     describe("in response to Phase1A") {
       it ("must retain its ballotNum and respond appropriately if the incoming Ballot " +
           "is lesser than or equal to its own") {
-        val acceptor = TestActorRef(new Acceptor(1))
+        val acceptor = TestActorRef(new Acceptor(1, reapWindow, reapFreqSecs, config))
         val ballotNum = Ballot(1, "a")
         val accepted = RichJTreeMap(
           1L -> (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
@@ -56,7 +60,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
       it ("must update its ballotNum and respond appropriately if the incoming " +
           "Ballot is greater than its own") {
-        val acceptor = TestActorRef(new Acceptor(1))
+        val acceptor = TestActorRef(new Acceptor(1, reapWindow, reapFreqSecs, config))
         val ballotNum = Ballot(1, "a")
         val accepted = RichJTreeMap(
           1L -> (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
@@ -75,7 +79,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it("must trim the set of accepted decisions sent back to the leader based on latest decided slot"){
-        val acceptor = TestActorRef(new Acceptor(1))
+        val acceptor = TestActorRef(new Acceptor(1, reapWindow, reapFreqSecs, config))
         val ballotNum = Ballot(1, "a")
 
         val slot1sPValue = PValue(ballotNum, 1, Command(null, 1, Delete("1")))
@@ -106,7 +110,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
     describe("in response to Phase2A") {
       it ("must not update its state if the incoming Ballot is outdated") {
-        val acceptor = TestActorRef(new Acceptor(1))
+        val acceptor = TestActorRef(new Acceptor(1, reapWindow, reapFreqSecs, config))
         val ballotNum = Ballot(1, "a")
         val accepted = RichJTreeMap(
           1L -> (1L,PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
@@ -125,7 +129,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
 
       it ("must update its ballotNum and accepted PValues, choosing the one with the most recent ballot, " +
           "if the incoming ballotNum is greater than or equal to its own") {
-        val acceptor = TestActorRef(new Acceptor(1))
+        val acceptor = TestActorRef(new Acceptor(1, reapWindow, reapFreqSecs, config))
         val ballotNum = Ballot(1, "a")
         val accepted = RichJTreeMap(
           1L -> (1L, PValue(ballotNum, 1, Command(null, 1, Delete("1"))))
@@ -159,7 +163,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it ("must ignore the message if the slot is below its dignity") {
-        val acceptor = TestActorRef(new Acceptor(5))
+        val acceptor = TestActorRef(new Acceptor(5, reapWindow, reapFreqSecs, config))
         val commanderProbe = TestProbe()
 
         val unnacceptablePval = PValue(Ballot(1, "a"), 4, Command(null, 1, Delete("3")))
@@ -173,7 +177,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
     describe("in response to a Reap message") {
       it ("must truncate the collection of pvalues it contains") {
         val reapWindow = 50 * 60 * 1000L
-        val acceptor = TestActorRef(new Acceptor(1, reapWindow))
+        val acceptor = TestActorRef(new Acceptor(1, reapWindow, reapFreqSecs, config))
 
         val now = System.currentTimeMillis()
 
@@ -199,7 +203,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it ("must not update its lowestAcceptableSlotNumber if nothing is reaped") {
-        val acceptor = TestActorRef(new Acceptor(10, 30 * 60 * 1000L))
+        val acceptor = TestActorRef(new Acceptor(10, reapWindow, reapFreqSecs, config))
 
         // empty
         acceptor.underlyingActor.accepted = RichJTreeMap[Long, (Long, PValue)]()

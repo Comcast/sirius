@@ -2,7 +2,26 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
-import akka.actor.{ReceiveTimeout, Actor, ActorRef}
+import akka.actor.{Props, ReceiveTimeout, Actor, ActorRef}
+
+object Scout{
+
+  /**
+   * Create Props for a Scout actor.
+   *
+   * @param leader actorRef of local leader
+   * @param acceptors set of remote Acceptors
+   * @param ballot ballot to try and get accepted
+   * @param latestDecidedSlot latest locally decided slot
+   *
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
+   */
+  def props(leader: ActorRef, acceptors: Set[ActorRef], ballot: Ballot, latestDecidedSlot: Long): Props = {
+    //Props(classOf[Scout], leader, acceptors, ballot, latestDecidedSlot)
+    Props(new Scout(leader, acceptors, ballot, latestDecidedSlot))
+  }
+}
 
 class Scout(leader: ActorRef, acceptors: Set[ActorRef], ballot: Ballot, latestDecidedSlot: Long) extends Actor {
 

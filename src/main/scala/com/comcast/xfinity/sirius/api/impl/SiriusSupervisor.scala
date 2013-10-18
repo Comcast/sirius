@@ -5,8 +5,9 @@ import com.comcast.xfinity.sirius.api.impl.membership.{MembershipHelper, Members
 import paxos.PaxosMessages.PaxosMessage
 import akka.actor.{ActorContext, Actor, ActorRef, Props}
 import akka.agent.Agent
+import com.comcast.xfinity.sirius.api.impl.paxos.Replica
 import akka.util.duration._
-import com.comcast.xfinity.sirius.api.impl.paxos.{Replica, PaxosSup}
+import paxos.PaxosSup
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -44,58 +45,66 @@ object SiriusSupervisor {
       Agent(Set[ActorRef]())(context.system)
 
     def createStateSupervisor(stateAgent: Agent[SiriusState])(implicit context: ActorContext) =
-      context.actorOf(Props(StateSup(requestHandler, siriusLog, stateAgent, config)), "state")
+      context.actorOf(StateSup.props(requestHandler, siriusLog, stateAgent, config), "state")
 
     def createMembershipActor(membershipAgent: Agent[Set[ActorRef]])(implicit context: ActorContext) =
-      context.actorOf(Props(MembershipActor(membershipAgent, config)), "membership")
+      context.actorOf(MembershipActor.props(membershipAgent, config), "membership")
 
     def createStateBridge(stateSupervisor: ActorRef, siriusSupervisor: ActorRef, membershipHelper: MembershipHelper)
-                         (implicit context: ActorContext) =
-      context.actorOf(Props(
-        PaxosStateBridge(siriusLog.getNextSeq, stateSupervisor, siriusSupervisor, membershipHelper, config)),
+                         (implicit context: ActorContext) = {
+      context.actorOf(PaxosStateBridge
+        .props(siriusLog.getNextSeq, stateSupervisor, siriusSupervisor, membershipHelper, config),
         "paxos-state-bridge")
+    }
 
     def createPaxosSupervisor(membershipAgent: Agent[Set[ActorRef]], performFun: Replica.PerformFun)(implicit context: ActorContext) =
-      context.actorOf(Props(PaxosSup(membershipAgent, siriusLog.getNextSeq, performFun, config)), "paxos")
+      context.actorOf(PaxosSup.props(membershipAgent, siriusLog.getNextSeq, performFun, config), "paxos")
 
     def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = {
       val supervisorAddress = AkkaExternalAddressResolver(context.system).externalAddressFor(siriusSupervisor)
-      context.actorOf(Props(StatusWorker(supervisorAddress, config)), "status")
+      context.actorOf(StatusWorker.props(supervisorAddress, config), "status")
     }
 
     def createCompactionManager()(implicit context: ActorContext) =
-      context.actorOf(Props(new CompactionManager(siriusLog)(config)), "compactionManager")
+      context.actorOf(CompactionManager.props(siriusLog)(config), "compactionManager")
   }
 
   /**
-   * @param requestHandler User implemented RequestHandler.
-   * @param siriusLog Interface into the Sirius persistent log.
-   * @param config the SiriusConfiguration for this node
+   * Create Props for a SiriusSupervisor actor.
+   *
+   * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
+   * @param siriusLog the log to be used for persisting events
+   * @param config SiriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration for
+   *               more information
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
    */
-  def apply(
-    requestHandler: RequestHandler,
-    siriusLog: SiriusLog,
-    config: SiriusConfiguration): SiriusSupervisor = {
-    new SiriusSupervisor(new ChildProvider(requestHandler, siriusLog, config))
+  def props(requestHandler: RequestHandler,
+              siriusLog: SiriusLog,
+              config: SiriusConfiguration): Props = {
+    // Props(classOf[SiriusSupervisor], new ChildProvider(requestHandler, siriusLog, config), config)
+    Props(new SiriusSupervisor(new ChildProvider(requestHandler, siriusLog, config), config))
   }
 }
 
 /**
- * Top level actor for the Sirius system.  
- * 
- * Don't use the constructor to construct this guy, use the companion object's apply.
+ * SiriusSupervisor is responsible for managing the top level of the actor hierarchy. It creates the actors
+ * and manages their lifecycles, handles system initialization, and routes incoming messages. Messages from
+ * remote systems come here first.
+ *
+ * @param childProvider factory for creating children actors
+ * @param config SiriusConfiguration object containing node configuration
  */
-class SiriusSupervisor(childProvider: ChildProvider)(implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor {
+private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: SiriusConfiguration) extends Actor {
 
   val siriusStateAgent = childProvider.createStateAgent()
   val membershipAgent = childProvider.createMembershipAgent()
   val stateSup = childProvider.createStateSupervisor(siriusStateAgent)
   val membershipActor = childProvider.createMembershipActor(membershipAgent)
-  val stateBridge = childProvider.createStateBridge(stateSup, self, MembershipHelper(membershipAgent, self))
-  val statusSubsystem = childProvider.createStatusSubsystem(self)
   var orderingActor: Option[ActorRef] = None
   var compactionManager : Option[ActorRef] = None
-
+  val statusSubsystem = childProvider.createStatusSubsystem(self)
+  val stateBridge = childProvider.createStateBridge(stateSup, context.self, MembershipHelper(membershipAgent, context.self))
 
   private val logger = Logging(context.system, "Sirius")
 

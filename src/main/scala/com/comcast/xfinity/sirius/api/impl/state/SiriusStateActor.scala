@@ -1,11 +1,25 @@
 package com.comcast.xfinity.sirius.api.impl.state
 
-import akka.actor.Actor
+import akka.actor.{Props, Actor}
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.impl.SiriusRequest
 
+object SiriusStateActor {
+
+  /**
+   * Create Props for a SiriusStateActor.
+   *
+   * @param requestHandler the RequestHandler containing the callbacks for manipulating this instance's state
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
+   */
+  def props(requestHandler: RequestHandler): Props = {
+    //Props(classOf[SiriusStateActor], requestHandler)
+    Props(new SiriusStateActor(requestHandler))
+  }
+}
 /**
  * Actor responsible for a applying changes to our in memory state.  It does this by
  * delegating to the passed in {@link RequestHandler}.  The result of calling the

@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import akka.actor.Actor
+import akka.actor.{Props, Actor}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import akka.event.Logging
@@ -12,30 +12,40 @@ object Acceptor {
 
   case object Reap
 
-  def apply(startingSeqNum: Long, config: SiriusConfiguration): Acceptor = {
+  /**
+   * Create Props for an Acceptor actor.
+   *
+   * @param startingSeqNum sequence number at which to start accepting
+   * @param config siriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration for
+   *               more information
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
+   */
+  def props(startingSeqNum: Long, config: SiriusConfiguration): Props = {
     val reapWindow = config.getProp(SiriusConfiguration.ACCEPTOR_WINDOW, 10 * 60 * 1000L)
     val reapFreqSecs = config.getProp(SiriusConfiguration.ACCEPTOR_CLEANUP_FREQ, 30)
-
-    new Acceptor(startingSeqNum, reapWindow)(config) {
-      val reapCancellable =
-        context.system.scheduler.schedule(reapFreqSecs seconds, reapFreqSecs seconds, self, Reap)
-
-      override def preStart() {
-        registerMonitor(new AcceptorInfo, config)
-      }
-      override def postStop() {
-        unregisterMonitors(config)
-        reapCancellable.cancel()
-      }
-    }
+    //Props(classOf[Acceptor], startingSeqNum, reapWindow, reapFreqSecs, config)
+    Props(new Acceptor(startingSeqNum, reapWindow, reapFreqSecs, config))
   }
 }
 
 class Acceptor(startingSeqNum: Long,
-               reapWindow: Long = 10 * 60 * 1000L)
-              (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
+               reapWindow: Long,
+               reapFreqSecs: Int,
+               config: SiriusConfiguration) extends Actor with MonitoringHooks {
 
   import Acceptor._
+
+  val reapCancellable =
+    context.system.scheduler.schedule(reapFreqSecs seconds, reapFreqSecs seconds, self, Reap)
+
+  override def preStart() {
+    registerMonitor(new AcceptorInfo, config)
+  }
+  override def postStop() {
+    unregisterMonitors(config)
+    reapCancellable.cancel()
+  }
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")

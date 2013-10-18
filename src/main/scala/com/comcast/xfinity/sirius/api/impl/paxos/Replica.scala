@@ -1,7 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import akka.actor.Actor
-import akka.actor.ActorRef
+import akka.actor.{Props, Actor, ActorRef}
 import akka.event.Logging
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
@@ -27,7 +26,7 @@ object Replica {
   type PerformFun = Decision => Unit
 
   /**
-   * Create a Replica instance.
+   * Create Props for a Replica actor.
    *
    * The performFun argument must apply the operation, and return true indicating
    * that the operation was successfully performed/acknowledged, or return false
@@ -40,41 +39,44 @@ object Replica {
    * Note this should be called from within a Props factory on Actor creation
    * due to the requirements of Akka.
    *
-   * @param localLeader reference of replica's local {@link Leader}
+   * @param localLeader reference of replica's local {@see Leader}
    * @param performFun function specified by
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
    *          decisions as they arrive
    * @param config SiriusConfiguration to pass in arbitrary config,
    *          @see SiriusConfiguration for more information
+   * @return  Props for creating this actor, which can then be further configured
+   *         (e.g. calling `.withDispatcher()` on it)
    */
-  def apply(localLeader: ActorRef,
+  def props(localLeader: ActorRef,
             startingSlotNum: Long,
             performFun: PerformFun,
-            config: SiriusConfiguration): Replica = {
-
-    val reapFreqSecs = config.getProp(SiriusConfiguration.REPROPOSAL_CLEANUP_FREQ, 1)
+            config: SiriusConfiguration): Props = {
     val reproposalWindowSecs = config.getProp(SiriusConfiguration.REPROPOSAL_WINDOW, 10)
-
-    new Replica(localLeader, startingSlotNum, performFun, reproposalWindowSecs)(config) {
-      val reapCancellable =
-        context.system.scheduler.schedule(reapFreqSecs seconds,
-                                          reapFreqSecs seconds, self, Reap)
-      override def preStart() {
-        registerMonitor(new ReplicaInfo, config)
-      }
-      override def postStop() {
-        unregisterMonitors(config)
-        reapCancellable.cancel()
-      }
-    }
+    val reapFreqSecs = config.getProp(SiriusConfiguration.REPROPOSAL_CLEANUP_FREQ, 1)
+    //Props(classOf[Replica], localLeader, startingSlotNum, performFun, reproposalWindowSecs, reapFreqSecs, config)
+    Props(new Replica(localLeader, startingSlotNum, performFun, reproposalWindowSecs, reapFreqSecs, config))
   }
 }
 
 class Replica(localLeader: ActorRef,
               startingSlotNum: Long,
               performFun: Replica.PerformFun,
-              reproposalWindowSecs: Int)
-             (implicit config: SiriusConfiguration = new SiriusConfiguration) extends Actor with MonitoringHooks {
+              reproposalWindowSecs: Int,
+              reapFreqSecs: Int,
+              config: SiriusConfiguration) extends Actor with MonitoringHooks {
+
+  val reapCancellable =
+    context.system.scheduler.schedule(reapFreqSecs seconds, reapFreqSecs seconds, self, Reap)
+
+  override def preStart() {
+    registerMonitor(new ReplicaInfo, config)
+  }
+
+  override def postStop() {
+    unregisterMonitors(config)
+    reapCancellable.cancel()
+  }
 
   var slotNum = startingSlotNum
   val outstandingProposals = RichJTreeMap[Long, Command]()

@@ -40,7 +40,7 @@ class MembershipActorTest extends NiceTest {
     implicit val config = new SiriusConfiguration
     config.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
     underTestActor = TestActorRef(
-      new MembershipActor(membershipAgent, clusterConfigPath, 120 seconds, 120 seconds)
+      new MembershipActor(membershipAgent, clusterConfigPath, 120 seconds, 120 seconds, config)
     )(actorSystem)
 
     expectedSet = Set(underTestActor)

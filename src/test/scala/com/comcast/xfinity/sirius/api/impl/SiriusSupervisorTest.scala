@@ -12,6 +12,7 @@ import com.comcast.xfinity.sirius.uberstore.CompactionManager.{CompactionMessage
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{GetMembershipData, MembershipMessage}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 @RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTest {
@@ -38,7 +39,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       override def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = statusSubsystem
       override def createCompactionManager()(implicit context: ActorContext) = compactionManager
     }
-    TestActorRef(new SiriusSupervisor(childProvider))
+    TestActorRef(new SiriusSupervisor(childProvider, new SiriusConfiguration))
   }
 
   implicit val actorSystem = ActorSystem("SiriusSupervisorTest")

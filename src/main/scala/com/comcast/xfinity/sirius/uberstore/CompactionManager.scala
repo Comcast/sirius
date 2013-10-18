@@ -1,12 +1,13 @@
 package com.comcast.xfinity.sirius.uberstore
 
-import akka.actor.{ActorRef, Props, Actor}
+import akka.actor.{ActorContext, ActorRef, Props, Actor}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.event.Logging
 import akka.util.duration._
 import com.comcast.xfinity.sirius.uberstore.CompactionActor.CompactionComplete
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.uberstore.CompactionManager.ChildProvider
 
 object CompactionManager {
   sealed trait CompactionMessage
@@ -18,17 +19,32 @@ object CompactionManager {
     def getLastCompactionDuration: Option[Long]
     def getCompactionActor: Option[ActorRef]
   }
+
+  /**
+   * Factory for creating children actors of CompactionManager.
+   *
+   * @param siriusLog active SiriusLog for compaction
+   */
+  class ChildProvider(siriusLog: SiriusLog) {
+    def createCompactionActor()(implicit context: ActorContext): ActorRef =
+      context.actorOf(CompactionActor.props(siriusLog), "compaction")
+  }
+
+  /**
+   * Create Props for CompactionManager, actor responsible for managing compaction processes.
+   * It spins up CompactionActors, handles state requests, and keeps tabs on compaction duration.
+   *
+   * @param siriusLog active SiriusLog for compaction
+   * @param config SiriusConfiguration configuration properties container
+   */
+  def props(siriusLog: SiriusLog)(implicit config: SiriusConfiguration): Props = {
+    //Props(classOf[CompactionManager], new ChildProvider(siriusLog), config)
+    Props(new CompactionManager(new ChildProvider(siriusLog), config))
+  }
 }
 
-/**
- * Actor responsible for managing compaction processes. It spins up CompactionActors, handles
- * state requests, and keeps tabs on compaction duration.
- *
- * @param siriusLog active SiriusLog for compaction
- * @param config SiriusConfiguration configuration properties container
- */
-class CompactionManager(siriusLog: SiriusLog)
-                       (implicit config: SiriusConfiguration = new SiriusConfiguration)
+class CompactionManager(childProvider: ChildProvider,
+                        config: SiriusConfiguration)
       extends Actor with MonitoringHooks {
   import CompactionManager._
 
@@ -45,11 +61,8 @@ class CompactionManager(siriusLog: SiriusLog)
   var lastCompactionDuration: Option[Long] = None
   var compactionActor: Option[ActorRef] = None
 
-  def createCompactionActor: ActorRef =
-    context.actorOf(Props(new CompactionActor(siriusLog)), "compaction")
-
   def startCompaction: ActorRef = {
-    val actor = createCompactionActor
+    val actor = childProvider.createCompactionActor
     actor ! Compact
     actor
   }
@@ -72,7 +85,6 @@ class CompactionManager(siriusLog: SiriusLog)
         case Some(startTime) => Some(System.currentTimeMillis() - startTime)
         case None => None // really shouldn't happen, but y'know
       }
-
       compactionActor = None
 
     case Compact =>
@@ -88,7 +100,6 @@ class CompactionManager(siriusLog: SiriusLog)
 
         case Some(actor) =>
           // do nothing; actor is already compacting.
-
       }
   }
 
