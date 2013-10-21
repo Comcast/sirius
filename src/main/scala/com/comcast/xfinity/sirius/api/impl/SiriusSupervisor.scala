@@ -42,12 +42,12 @@ object SiriusSupervisor {
       Agent(new SiriusState)(context.system)
 
     def createMembershipAgent()(implicit context: ActorContext) =
-      Agent(Set[ActorRef]())(context.system)
+      Agent(Map[String, ActorRef]())(context.system)
 
     def createStateSupervisor(stateAgent: Agent[SiriusState])(implicit context: ActorContext) =
       context.actorOf(StateSup.props(requestHandler, siriusLog, stateAgent, config), "state")
 
-    def createMembershipActor(membershipAgent: Agent[Set[ActorRef]])(implicit context: ActorContext) =
+    def createMembershipActor(membershipAgent: Agent[Map[String, ActorRef]])(implicit context: ActorContext) =
       context.actorOf(MembershipActor.props(membershipAgent, config), "membership")
 
     def createStateBridge(stateSupervisor: ActorRef, siriusSupervisor: ActorRef, membershipHelper: MembershipHelper)
@@ -57,7 +57,7 @@ object SiriusSupervisor {
         "paxos-state-bridge")
     }
 
-    def createPaxosSupervisor(membershipAgent: Agent[Set[ActorRef]], performFun: Replica.PerformFun)(implicit context: ActorContext) =
+    def createPaxosSupervisor(membershipAgent: Agent[Map[String, ActorRef]], performFun: Replica.PerformFun)(implicit context: ActorContext) =
       context.actorOf(PaxosSup.props(membershipAgent, siriusLog.getNextSeq, performFun, config), "paxos")
 
     def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = {
@@ -153,7 +153,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
         logger.warning("Dropping {} cause CompactionMessage because CompactionManager is not up", compactionMessage.getClass.getName)
     }
     case CheckPaxosMembership => {
-      if (membershipAgent.get().contains(self)) {
+      if (membershipAgent.get().values.toSet.contains(self)) {
         ensureOrderingActorRunning()
       } else {
         ensureOrderingActorStopped()

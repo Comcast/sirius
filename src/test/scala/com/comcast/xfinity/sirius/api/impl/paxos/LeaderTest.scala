@@ -19,13 +19,14 @@ import com.comcast.xfinity.sirius.util.RichJTreeMap
 import com.comcast.xfinity.sirius.api.impl.paxos.Leader.{Remote, Local, Unknown, ChildProvider}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
+
 class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   implicit val actorSystem = ActorSystem("LeaderTest")
 
   // XXX this should really be in the companion object, but we need the actorSystem
   //     defined in order to default things like Agents and TestProbes.  Need to figure
   //     out how to move it up without defining an ActorSystem in the companion object.
-  def makeMockedUpLeader(membership: Agent[Set[ActorRef]] = Agent(Set[ActorRef]()),
+  def makeMockedUpLeader(membership: Agent[Map[String, ActorRef]] = Agent(Map[String, ActorRef]()),
                          startingSeqNum: Long = 1,
                          helper: LeaderHelper = mock[LeaderHelper],
                          startScoutFun: => ActorRef = TestProbe().ref,
@@ -427,7 +428,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
       }
 
       it ("must clean out all decided proposals") {
-        val leader = makeMockedUpLeader(Agent(Set[ActorRef]()))
+        val leader = makeMockedUpLeader(Agent(Map[String, ActorRef]()))
 
         val keepers = RichJTreeMap(
           4L -> Command(null, 2L, Delete("A")),

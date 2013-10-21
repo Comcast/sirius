@@ -48,7 +48,7 @@ object Leader {
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-   def props(membership: Agent[Set[ActorRef]],
+   def props(membership: Agent[Map[String, ActorRef]],
              startingSeqNum: Long,
              config: SiriusConfiguration): Props = {
      val childProvider = new ChildProvider(config)
@@ -58,7 +58,7 @@ object Leader {
    }
 }
 
-class Leader(membership: Agent[Set[ActorRef]],
+class Leader(membership: Agent[Map[String, ActorRef]],
              startingSeqNum: Long,
              childProvider: ChildProvider,
              leaderHelper: LeaderHelper,
@@ -243,7 +243,7 @@ class Leader(membership: Agent[Set[ActorRef]],
       longestReapDuration = duration
   }
 
-  private def getMembershipSet: Set[ActorRef] = membership.get().toSet
+  private def getMembershipSet: Set[ActorRef] = membership.get().values.toSet
 
   // monitoring hooks, to close over the scope of the class, it has to be this way
   //  because of jmx

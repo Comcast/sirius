@@ -14,7 +14,7 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 
 object PaxosITest {
-  class TestNode(membership: Agent[Set[ActorRef]], decisionLatch: TestLatch)(implicit as: ActorSystem) {
+  class TestNode(membership: Agent[Map[String, ActorRef]], decisionLatch: TestLatch)(implicit as: ActorSystem) {
     var decisions = Set[Decision]()
 
     val paxosSup = as.actorOf(
@@ -45,7 +45,7 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
   describe("The Paxos subsystem") {
     it ("must arrive at a decision when all requests are sent to a single node, and " +
         "the initiators must be properly notified") {
-      val membership = Agent(Set[ActorRef]())
+      val membership = Agent(Map[String, ActorRef]())
 
       // 3 nodes x 3 requests = 9 applied decisions
       val decisionLatch = TestLatch(9)
@@ -59,9 +59,9 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       val node3 = new TestNode(membership, decisionLatch)
 
       // with the nodes created, establish membership
-      membership send (_ + node1.paxosSup)
-      membership send (_ + node2.paxosSup)
-      membership send (_ + node3.paxosSup)
+      membership send (_ + ("node1" -> node1.paxosSup))
+      membership send (_ + ("node2" -> node2.paxosSup))
+      membership send (_ + ("node3" -> node3.paxosSup))
 
       // stage and send requests
       val req1 = Delete("A")

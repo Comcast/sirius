@@ -41,7 +41,7 @@ class MembershipITest extends NiceTest with TimedTest with BeforeAndAfterAll {
         "/user/actor2\n"
       )
 
-      val membership = Agent(Set[ActorRef]())
+      val membership = Agent(Map[String, ActorRef]())
       val config = new SiriusConfiguration
       config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigFileName)
       val membershipSubSystem = actorSystem.actorOf(MembershipActor.props(membership, config))
@@ -52,8 +52,8 @@ class MembershipITest extends NiceTest with TimedTest with BeforeAndAfterAll {
       // make sure the first two members exist
       val expected1 = actorSystem.actorFor("/user/actor1")
       val expected2 = actorSystem.actorFor("/user/actor2")
-      assert(membership().contains(expected1))
-      assert(membership().contains(expected2))
+      assert(membership().values.toList.contains(expected1))
+      assert(membership().values.toList.contains(expected2))
 
       // add a member to the membership config file
       val actorPath3 = "/user/actor3"
@@ -61,7 +61,7 @@ class MembershipITest extends NiceTest with TimedTest with BeforeAndAfterAll {
       membershipSubSystem ! CheckClusterConfig
 
       val expected3 = actorSystem.actorFor(actorPath3)
-      assert(waitForTrue(membership().contains(expected3), 2000, 200),
+      assert(waitForTrue(membership().values.toList.contains(expected3), 2000, 200),
         "Membership map should contain new entry within a certain amount of time"
       )
     }

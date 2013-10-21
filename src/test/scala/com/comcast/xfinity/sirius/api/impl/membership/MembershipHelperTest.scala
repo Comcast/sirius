@@ -21,7 +21,7 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
       val remoteActorRef = TestProbe().ref
 
       it("should send back a Member != the MembershipActor we asked...3 times in a row") {
-        val membership =  Agent(Set(localActorRef, remoteActorRef))
+        val membership =  Agent(Map("local" -> localActorRef, "remote" -> remoteActorRef))
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember
@@ -35,7 +35,7 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it("should send back a None if the only ActorRef in the MembershipMap is equal to the caller") {
-        val membership = Agent(Set(localActorRef))
+        val membership = Agent(Map("local" -> localActorRef))
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember
@@ -43,7 +43,7 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
       }
 
       it("should send back a None if the membershipMap is empty") {
-        val membership = Agent(Set[ActorRef]())
+        val membership = Agent(Map[String, ActorRef]())
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember

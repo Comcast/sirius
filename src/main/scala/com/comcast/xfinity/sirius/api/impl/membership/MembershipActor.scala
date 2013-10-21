@@ -35,7 +35,7 @@ object MembershipActor {
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(membershipAgent: Agent[Set[ActorRef]], config: SiriusConfiguration): Props = {
+  def props(membershipAgent: Agent[Map[String, ActorRef]], config: SiriusConfiguration): Props = {
     // XXX: we should figure out if we're doing config parsing and injecting it, or doing it within the actor
     //      the advantage of pulling out the config here is it makes testing easier, and it makes it obvious what
     //      config is needed
@@ -63,7 +63,7 @@ object MembershipActor {
  * @param checkInterval how often to check for updates to clusterConfigPath
  * @param config SiriusConfiguration, used to register monitors
  */
-class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
+class MembershipActor(membershipAgent: Agent[Map[String, ActorRef]],
                       clusterConfigPath: Path,
                       checkInterval: Duration,
                       pingInterval: Duration,
@@ -97,7 +97,7 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
     case CheckClusterConfig =>
       updateMembership()
 
-    case GetMembershipData => sender ! membershipAgent()
+    case GetMembershipData => sender ! membershipAgent.get()
 
     case Ping(sent) => sender ! Pong(sent)
     case Pong(pingSent) =>
@@ -108,40 +108,66 @@ class MembershipActor(membershipAgent: Agent[Set[ActorRef]],
 
     case PingMembership =>
       val currentTime = System.currentTimeMillis
-      membershipAgent.get().foreach(_ ! Ping(currentTime))
+      membershipAgent.get().values.foreach(_ ! Ping(currentTime))
 
-  }
-
-  private def updateMembership() {
-    val oldMembership = membershipAgent()
-    val newMembership = createMembership(clusterConfigPath)
-    membershipAgent send newMembership
-
-    if (oldMembership != newMembership) {
-      logger.info("Updated membership. New value: {}", newMembership)
-    }
   }
 
   /**
    * Creates a MembershipMap from the contents of the clusterConfigPath file.
    *
-   * @param clusterConfigPath a Path containing cluster members, one per line, in akka
-   *        actor path format (see http://doc.akka.io/docs/akka/2.0.2/general/addressing.html)
    * @return Set[ActorRef] of all members according to clusterConfigPath
    */
-  private[membership] def createMembership(clusterConfigPath: Path): Set[ActorRef] = {
-    val lines = clusterConfigPath.lines(NewLine, includeTerminator = false)
-    lines.foldLeft(Set[ActorRef]())(
-      (membership: Set[ActorRef], actorPath: String) =>
-        if (actorPath.charAt(0) == '#')
-          membership
-        else
-          membership + context.actorFor(actorPath)
-    )
+  private[membership] def updateMembership() {
+    val actorPaths = clusterConfigPath.lines(NewLine, includeTerminator = false).toList
+
+    removeMissingPaths(actorPaths)
+    updateActorRefs(actorPaths)
+  }
+
+  /**
+   * If we have any references to actor paths that have been removed from the
+   * cluster config, they need to be removed from the agent.
+   *
+   * @param actorPaths paths for local and remote sirius actors in the cluster
+   */
+  def removeMissingPaths(actorPaths: List[String]) {
+    membershipAgent.get().keys.foreach {
+      case key if !actorPaths.contains(key) => membershipAgent send (_ - key)
+      case _ =>
+    }
+  }
+
+  /**
+   * For each non-commented line of the ClusterConfig file, try to resolve a remote actor.
+   * If the actor is resolved into an actorRef, add it to the membership map. Otherwise, remove
+   * any reference to that actor from the map.
+   *
+   * @param actorPaths list of actor paths to attempt to resolve
+   */
+  /*
+  def updateActorRefs(actorPaths: List[String]) {
+    actorPaths
+      .filterNot(_.startsWith("#"))
+      .foreach(path => {
+      context.actorSelection(path).resolveOne(1 seconds) onComplete {
+        case Success(actor) =>
+          membershipAgent send (_ + (path -> actor))
+        case Failure(_) =>
+          membershipAgent send (_ - path)
+      }
+    })
+  }
+  */
+  def updateActorRefs(actorPaths: List[String]) {
+    actorPaths
+      .filterNot(_.startsWith("#"))
+      .foreach(path => {
+        membershipAgent send (_ + (path -> context.actorFor(path)))
+    })
   }
 
   class MembershipInfo extends MembershipInfoMBean {
-    def getMembership: String = membershipAgent().toString()
+    def getMembership: String = membershipAgent.get().toString()
     def getMembershipRoundTrip: Map[String, Long] = membershipRoundTripMap
     def getTimeSinceLastPingUpdate: Map[String, Long] = {
       val currentTime = System.currentTimeMillis()

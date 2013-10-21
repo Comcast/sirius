@@ -5,11 +5,11 @@ import akka.actor.ActorRef
 import akka.agent.Agent
 
 object MembershipHelper {
-  def apply(membership: Agent[Set[ActorRef]], localSiriusRef: ActorRef): MembershipHelper =
+  def apply(membership: Agent[Map[String, ActorRef]], localSiriusRef: ActorRef): MembershipHelper =
     new MembershipHelper(membership, localSiriusRef)
 }
 
-class MembershipHelper(val membershipAgent: Agent[Set[ActorRef]], val localSiriusRef: ActorRef) {
+class MembershipHelper(val membershipAgent: Agent[Map[String, ActorRef]], val localSiriusRef: ActorRef) {
 
   /**
    * Get a random value from a map whose key does not equal localSiriusRef
@@ -17,7 +17,7 @@ class MembershipHelper(val membershipAgent: Agent[Set[ActorRef]], val localSiriu
    */
   def getRandomMember: Option[ActorRef] = {
     val membership = membershipAgent()
-    val viableChoices = membership - localSiriusRef
+    val viableChoices = membership.values.toSet - localSiriusRef
 
     // if there is nothing in the map OR keyToAvoid is the only thing in the map, there is no viable member
     if (viableChoices.isEmpty) {

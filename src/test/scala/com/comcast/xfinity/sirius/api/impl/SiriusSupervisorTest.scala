@@ -18,7 +18,7 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTest {
 
   def createSiriusSupervisor(stateAgent: Agent[SiriusState] = mock[Agent[SiriusState]],
-                             membershipAgent: Agent[Set[ActorRef]] = mock[Agent[Set[ActorRef]]],
+                             membershipAgent: Agent[Map[String, ActorRef]] = mock[Agent[Map[String, ActorRef]]],
                              stateSup: ActorRef = TestProbe().ref,
                              membershipActor: ActorRef = TestProbe().ref,
                              stateBridge: ActorRef = TestProbe().ref,
@@ -30,11 +30,11 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       override def createMembershipAgent()(implicit context: ActorContext) = membershipAgent
       override def createStateSupervisor(stateAgent: Agent[SiriusState])
                                         (implicit context: ActorContext) = stateSup
-      override def createMembershipActor(membershipAgent: Agent[Set[ActorRef]])
+      override def createMembershipActor(membershipAgent: Agent[Map[String, ActorRef]])
                                         (implicit context: ActorContext) = membershipActor
       override def createStateBridge(stateSupervisor: ActorRef, siriusSupervisor: ActorRef, membershipHelper: MembershipHelper)
                                     (implicit context: ActorContext) = stateBridge
-      override def createPaxosSupervisor(membershipAgent: Agent[Set[ActorRef]], performFun: Replica.PerformFun)
+      override def createPaxosSupervisor(membershipAgent: Agent[Map[String, ActorRef]], performFun: Replica.PerformFun)
                                         (implicit context: ActorContext) = paxosSupervisor
       override def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = statusSubsystem
       override def createCompactionManager()(implicit context: ActorContext) = compactionManager
@@ -49,7 +49,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
   val stateProbe = TestProbe()
   val membershipProbe = TestProbe()
   val compactionProbe = TestProbe()
-  var mockMembershipAgent: Agent[Set[ActorRef]] = mock[Agent[Set[ActorRef]]]
+  var mockMembershipAgent: Agent[Map[String, ActorRef]] = mock[Agent[Map[String, ActorRef]]]
   var startStopProbe: TestProbe = _
 
   var supervisor: TestActorRef[SiriusSupervisor] = _
@@ -81,21 +81,21 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
   }
 
   describe("a SiriusSupervisor") {
-    doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+    doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
     it("should start in the uninitialized state") {
       val siriusState = supervisor.underlyingActor.siriusStateAgent()
       assert(false === siriusState.supervisorInitialized)
     }
 
     it("should transition into the initialized state") {
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       val stateAgent = supervisor.underlyingActor.siriusStateAgent
       waitForTrue(stateAgent().supervisorInitialized, 5000, 250)
     }
 
     it("should forward MembershipMessages to the membershipActor") {
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       initializeOrdering(supervisor, Some(paxosProbe.ref))
 
@@ -105,7 +105,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     }
 
     it("should forward GET messages to the stateActor") {
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       initializeOrdering(supervisor, Some(paxosProbe.ref))
 
@@ -115,7 +115,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     }
     
     it("should forward DELETE messages to the paxosActor") {
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       initializeOrdering(supervisor, Some(paxosProbe.ref))
 
@@ -130,7 +130,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     }
 
     it("should forward PUT messages to the paxosActor") {
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       initializeOrdering(supervisor, Some(paxosProbe.ref))
 
@@ -146,7 +146,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     }
 
     it("should forward compaction messages to the CompactionManager") {
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       val compactionMessage: CompactionMessage = Compact
       supervisor ! compactionMessage
@@ -154,7 +154,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     }
 
     it("should start the orderingActor if it checks membership and it's in there") {
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
 
       supervisor ! CheckPaxosMembership
@@ -164,13 +164,13 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
 
     it("should stop the orderingActor if it checks membership and it's not in there") {
       // start up OrderingActor
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       supervisor ! CheckPaxosMembership
       assert(waitForTrue(supervisor.underlyingActor.orderingActor == Some(paxosProbe.ref), 1000, 100))
 
       // so we can shut it down
-      doReturn(Set()).when(mockMembershipAgent).get()
+      doReturn(Map()).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       supervisor ! CheckPaxosMembership
       assert(waitForTrue(supervisor.underlyingActor.orderingActor == None, 1000, 100))

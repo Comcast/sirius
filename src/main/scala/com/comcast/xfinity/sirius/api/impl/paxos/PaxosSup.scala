@@ -20,7 +20,7 @@ object PaxosSup {
    *          decisions as they arrive
    * @param config SiriusConfiguration object for configuring children actors.
    */
-  protected[paxos] class ChildProvider(membership: Agent[Set[ActorRef]], startingSeq: Long, performFun: Replica.PerformFun, config: SiriusConfiguration) {
+  protected[paxos] class ChildProvider(membership: Agent[Map[String, ActorRef]], startingSeq: Long, performFun: Replica.PerformFun, config: SiriusConfiguration) {
     def createLeader()(implicit context: ActorContext) =
       context.actorOf(Leader.props(membership, startingSeq, config), "leader")
 
@@ -43,7 +43,7 @@ object PaxosSup {
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(membership: Agent[Set[ActorRef]],
+  def props(membership: Agent[Map[String, ActorRef]],
             startingSeqNum: Long,
             performFun: Replica.PerformFun,
             config: SiriusConfiguration): Props = {
