@@ -18,9 +18,6 @@ object LeaderWatcher {
   // message received from the Leader
   case object Close
 
-  // messages sent up to Leader
-  case object SeekLeadership
-
   trait LeaderWatcherInfoMBean {
     def getLastPingRTT: Option[Long]
     def getTimeSinceLastPong: Option[Long]
@@ -73,7 +70,7 @@ class LeaderWatcher(expectedBallot: Ballot, replyTo: ActorRef, childProvider: Ch
       childProvider.createPinger(expectedBallot, self)
 
     case LeaderGone =>
-      replyTo ! SeekLeadership
+      replyTo ! LeaderGone
       context.stop(self)
 
     case DifferentLeader(realBallot: Ballot) =>

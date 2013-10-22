@@ -63,7 +63,7 @@ class LeaderWatcherTest extends NiceTest with BeforeAndAfterAll {
 
       watcher ! LeaderGone
 
-      replyTo.expectMsg(SeekLeadership)
+      replyTo.expectMsg(LeaderGone)
       assert(watcher.isTerminated)
     }
   }

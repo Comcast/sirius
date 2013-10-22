@@ -51,12 +51,12 @@ object NodeTool {
         println(getNodeStatus(ref))
 
       // XXX: the following is a short term fix, if we want to be able to force election
-      //      we should talk about putting the SeekLeadership message elsewhere
+      //      we should talk about putting the LeaderGone message elsewhere
       case Array("force-seek-leadership", nodeId) =>
         val leaderAddr = getNodeAddressString(nodeId) + "/paxos/leader"
         val leaderRef = ActorSystemHelper.getActorSystem().actorFor(leaderAddr)
         // XXX: using the full path here because this is dirty, and that should be known!
-        leaderRef ! com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.SeekLeadership
+        leaderRef ! com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.LeaderGone
 
       case _ =>
         printUsage()
