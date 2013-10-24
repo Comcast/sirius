@@ -15,6 +15,4 @@ class SiriusInfo(actorSystem: ActorSystem, supervisorRef: ActorRef) extends Siri
 
   def getNodeAddress: String = externalName
 
-  def getIsNodeTerminated: Boolean = supervisorRef.isTerminated
-
 }

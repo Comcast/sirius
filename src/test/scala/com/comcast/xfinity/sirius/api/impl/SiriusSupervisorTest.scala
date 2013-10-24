@@ -139,7 +139,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       paxosProbe.expectMsg(put)
     }
     it("should not have a CompactionManager until after it is initialized"){
-      doReturn(Set(supervisor)).when(mockMembershipAgent).get()
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
       assert(None === supervisor.underlyingActor.compactionManager)
       initializeSupervisor(supervisor)
       assert(waitForTrue(supervisor.underlyingActor.compactionManager == Some(compactionProbe.ref), 1000, 100))

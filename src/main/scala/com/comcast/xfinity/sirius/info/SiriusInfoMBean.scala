@@ -12,10 +12,4 @@ package com.comcast.xfinity.sirius.info
    */
   def getNodeAddress: String
 
-  /**
-   * Is the node terminated? If this turns false, things
-   * may be real bad...
-   */
-  def getIsNodeTerminated: Boolean
-
 }
