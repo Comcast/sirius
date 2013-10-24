@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.uberstore
 
-import akka.actor.{ActorContext, ActorRef, Props, Actor}
+import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.event.Logging
 import akka.util.duration._
@@ -8,6 +8,7 @@ import com.comcast.xfinity.sirius.uberstore.CompactionActor.CompactionComplete
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.ChildProvider
+import scala.Some
 
 object CompactionManager {
   sealed trait CompactionMessage
@@ -63,6 +64,7 @@ class CompactionManager(childProvider: ChildProvider,
 
   def startCompaction: ActorRef = {
     val actor = childProvider.createCompactionActor
+    context.watch(actor)
     actor ! Compact
     actor
   }
@@ -92,14 +94,13 @@ class CompactionManager(childProvider: ChildProvider,
         case None =>
           compactionActor = Some(startCompaction)
           lastCompactionStarted = Some(System.currentTimeMillis())
+        case _ =>
+      }
 
-        case Some(actor) if actor.isTerminated =>
-          logger.warning("Restarting compaction, found terminated compaction actor: {}", actor)
-          compactionActor = Some(startCompaction)
-          lastCompactionStarted = Some(System.currentTimeMillis())
-
-        case Some(actor) =>
-          // do nothing; actor is already compacting.
+    case Terminated(terminated) =>
+      compactionActor match {
+        case Some(actor) if actor == terminated => compactionActor = None
+        case _ =>
       }
   }
 

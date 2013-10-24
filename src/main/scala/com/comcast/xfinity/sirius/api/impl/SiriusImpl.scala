@@ -53,6 +53,7 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
     (config.getProp(SiriusConfiguration.CLIENT_TIMEOUT_MS, 5000) milliseconds)
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
+  private var isTerminated = false
 
   val supervisor = actorSystem.actorOf(supProps, supName)
 
@@ -66,7 +67,7 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
    *
    * @return true if system is ready, false if not
    */
-  def isOnline: Boolean = !supervisor.isTerminated && askIfInitialized(supervisor)
+  def isOnline: Boolean = !isTerminated && askIfInitialized(supervisor)
 
   def checkClusterConfig() {
     supervisor ! CheckClusterConfig
@@ -119,17 +120,17 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
    * Terminate this instance.  Shuts down all associated Actors.
    */
   def shutdown() {
-    supervisor ! Kill
+    actorSystem.stop(supervisor)
+    isTerminated = true
     onShutdownHook match {
       case Some(shutdownHook) => shutdownHook()
       case None => //do nothing
     }
   }
 
-
   private def askIfInitialized(supRef: ActorRef): Boolean = {
     val isInitializedFuture =
         (supRef ? SiriusSupervisor.IsInitializedRequest).mapTo[SiriusSupervisor.IsInitializedResponse]
-      Await.result(isInitializedFuture, timeout.duration).initialized
+    Await.result(isInitializedFuture, timeout.duration).initialized
   }
 }

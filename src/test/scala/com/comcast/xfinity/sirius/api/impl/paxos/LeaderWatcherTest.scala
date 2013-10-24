@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
-import akka.actor.{ActorContext, ActorSystem, ActorRef}
+import akka.actor.{Terminated, ActorContext, ActorSystem, ActorRef}
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher._
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Preempted
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.DifferentLeader
@@ -58,36 +58,42 @@ class LeaderWatcherTest extends NiceTest with BeforeAndAfterAll {
 
   describe ("upon receiving a LeaderGone message") {
     it ("tells replyTo to seek leadership and stops") {
+      val terminationProbe = TestProbe()
       val replyTo = TestProbe()
       val watcher = makeWatcher(replyTo = replyTo.ref)
+      terminationProbe.watch(watcher) // who watches the watchmen?
 
       watcher ! LeaderGone
 
       replyTo.expectMsg(LeaderGone)
-      assert(watcher.isTerminated)
+      terminationProbe.expectMsg(Terminated(watcher))
     }
   }
 
   describe ("upon receiving a DifferentLeader message") {
     it ("preempts replyTo with the new ballot") {
+      val terminationProbe = TestProbe()
       val replyTo = TestProbe()
       val watcher = makeWatcher(replyTo = replyTo.ref)
       val newBallot = Ballot(1, TestProbe().ref.path.toString)
+      terminationProbe.watch(watcher)
 
       watcher ! DifferentLeader(newBallot)
 
       replyTo.expectMsg(Preempted(newBallot))
-      assert(watcher.isTerminated)
+      terminationProbe.expectMsg(Terminated(watcher))
     }
   }
 
   describe ("upon receiving a Close message") {
     it ("dies quietly") {
+      val terminationProbe = TestProbe()
       val watcher = makeWatcher()
+      terminationProbe.watch(watcher)
 
       watcher ! Close
 
-      assert(watcher.isTerminated)
+      terminationProbe.expectMsg(Terminated(watcher))
     }
   }
 }

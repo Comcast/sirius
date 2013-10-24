@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
 
 import com.comcast.xfinity.sirius.NiceTest
-import akka.actor.{ReceiveTimeout, ActorRef, ActorSystem}
+import akka.actor.{Terminated, ReceiveTimeout, ActorRef, ActorSystem}
 import akka.testkit.{TestActorRef, TestProbe}
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
@@ -68,10 +68,13 @@ class GapFetcherTest extends NiceTest {
   describe ("upon receiving a ReceiveTimeout") {
     it ("should die quietly") {
       val underTest = makeGapFetcher()
+      val terminationProbe = TestProbe()
+
+      terminationProbe.watch(underTest)
 
       underTest ! ReceiveTimeout
 
-      assert(underTest.isTerminated)
+      terminationProbe.expectMsg(Terminated(underTest))
     }
   }
 }

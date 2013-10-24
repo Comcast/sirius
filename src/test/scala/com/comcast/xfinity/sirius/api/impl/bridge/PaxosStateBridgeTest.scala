@@ -1,21 +1,29 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
 
 import org.scalatest.BeforeAndAfterAll
-import com.comcast.xfinity.sirius.NiceTest
+import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestFromSeq, RequestGaps}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete}
-import akka.actor.{ActorContext, PoisonPill, ActorRef, ActorSystem}
+import akka.actor._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import collection.SortedMap
 import collection.JavaConversions._
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
+import scala.Some
+import com.comcast.xfinity.sirius.api.impl.Delete
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
 
-class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
+class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTest {
 
   implicit val actorSystem = ActorSystem("PaxosStateBridgeTest")
 
@@ -142,6 +150,28 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
     }
   }
 
+  describe("when receiving a Terminated message") {
+    it("should set gapFetcher to None if the terminated actor matches the current fetcher") {
+      val gapFetcherActor = TestProbe()
+      val underTest = makeStateBridge(10)
+      underTest.underlyingActor.gapFetcher = Some(gapFetcherActor.ref)
+
+      underTest ! Terminated(gapFetcherActor.ref)
+
+      assert(waitForTrue(None == underTest.underlyingActor.gapFetcher, 1000, 25))
+    }
+    it("should do nothing if the terminated actor does not match the current fetcher") {
+      val gapFetcherActor = TestProbe()
+      val underTest = makeStateBridge(10)
+      underTest.underlyingActor.gapFetcher = Some(gapFetcherActor.ref)
+
+      underTest ! Terminated(TestProbe().ref)
+
+      Thread.sleep(50) // ugh. hard to test that an actor receives a msg and does nothing...
+      assert(Some(gapFetcherActor.ref) === underTest.underlyingActor.gapFetcher)
+    }
+  }
+
   describe("upon receiving a RequestGaps message") {
     it ("must start a new GapFetcher if gapFetcher == None") {
       val gapFetcherActor = TestProbe()
@@ -152,19 +182,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll {
       assert(Some(gapFetcherActor.ref) === stateBridge.underlyingActor.gapFetcher)
     }
 
-    it ("must start a new GapFetcher if gapFetcher has terminated") {
-      val gapFetcherActor = TestProbe()
-      val stateBridge = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)
-
-      val gapFetcherToDie = TestProbe()
-      stateBridge.underlyingActor.gapFetcher = Some(gapFetcherToDie.ref)
-      gapFetcherToDie.ref ! PoisonPill
-
-      stateBridge ! RequestGaps
-      assert(Some(gapFetcherActor.ref) === stateBridge.underlyingActor.gapFetcher)
-    }
-
-    it ("must not start a new GapFetcher if a live one already exists") {
+    it ("must not start a new GapFetcher if one already exists") {
       val gapFetcherActor = TestProbe()
       val gapFetcherActorAlreadyRunning = TestProbe()
       val stateBridge = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)

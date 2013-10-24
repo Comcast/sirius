@@ -5,7 +5,7 @@ import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestProbe, TestActorRef}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import org.mockito.Mockito._
-import akka.actor.ActorSystem
+import akka.actor.{Terminated, ActorSystem}
 import com.comcast.xfinity.sirius.uberstore.CompactionActor.{CompactionFailed, CompactionComplete}
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.Compact
 
@@ -23,17 +23,19 @@ class CompactionActorTest extends NiceTest with BeforeAndAfterAll {
 
   describe ("A compaction actor") {
     it ("should die and notify CompactionFailed if the underlying compaction errors out") {
+      val terminationProbe = TestProbe()
       val mockSiriusLog = mock[SiriusLog]
       val senderProbe = TestProbe()
       val underTest = makeMockCompactionActor(mockSiriusLog)
       val exception = new IllegalStateException("ERROR")
       doThrow(exception).when(mockSiriusLog).compact()
+      terminationProbe.watch(underTest)
 
       senderProbe.send(underTest, Compact)
       verify(mockSiriusLog).compact()
 
       senderProbe.expectMsg(CompactionFailed(exception))
-      assert(true === underTest.isTerminated)
+      terminationProbe.expectMsg(Terminated(underTest))
     }
 
     it ("should call through to the siriusLog's compact method") {
@@ -45,14 +47,16 @@ class CompactionActorTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it ("should report CompactionComplete and stop itself if the compact method returns with no errors") {
+      val terminationProbe = TestProbe()
       val mockSiriusLog = mock[SiriusLog]
       val underTest = makeMockCompactionActor(mockSiriusLog)
       val senderProbe = TestProbe()
+      terminationProbe.watch(underTest)
 
       senderProbe.send(underTest, Compact)
 
       senderProbe.expectMsg(CompactionComplete)
-      assert(true === underTest.isTerminated)
+      terminationProbe.expectMsg(Terminated(underTest))
     }
   }
 }

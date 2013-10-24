@@ -1,7 +1,7 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.actor.{ActorContext, Props, Actor, ActorRef}
+import akka.actor._
 import akka.agent.Agent
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
@@ -10,6 +10,14 @@ import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{LeaderGone, Close}
 import com.comcast.xfinity.sirius.util.{RichJTreeMap, AkkaExternalAddressResolver}
 import com.comcast.xfinity.sirius.api.impl.paxos.Leader.ChildProvider
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Preempted
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.PValue
+import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.Pong
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Propose
+import scala.Some
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Adopted
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
 
 object Leader {
 
@@ -192,13 +200,19 @@ class Leader(membership: Agent[Map[String, ActorRef]],
       latestDecidedSlot = lastSlot
       reapProposals()
 
+    case Terminated(terminated) =>
+      currentLeaderWatcher match {
+        case Some(current) if current == terminated =>
+          currentLeaderWatcher = None
+        case _ =>
+      }
   }
 
   private def startScout(){
     childProvider.createScout(self, getMembershipSet, myBallot, latestDecidedSlot)
   }
 
-  private def startCommander(pVal: PValue, ticks: Int=defaultRetries){
+  private def startCommander(pVal: PValue, ticks: Int = defaultRetries){
     val membershipSet = getMembershipSet
     childProvider.createCommander(self, membershipSet, membershipSet, pVal, ticks)
   }
@@ -213,7 +227,7 @@ class Leader(membership: Agent[Map[String, ActorRef]],
 
   private def stopLeaderWatcher() {
     currentLeaderWatcher match {
-      case Some(ref) if !ref.isTerminated => ref ! Close
+      case Some(ref) => ref ! Close
       case _ => // no-op
     }
     currentLeaderWatcher = None
@@ -223,7 +237,9 @@ class Leader(membership: Agent[Map[String, ActorRef]],
     stopLeaderWatcher()
     electedLeader match {
       case Remote(ref, ballot) =>
-        currentLeaderWatcher = Some(childProvider.createLeaderWatcher(ref, ballot, self))
+        val leaderWatcher = childProvider.createLeaderWatcher(ref, ballot, self)
+        context.watch(leaderWatcher)
+        currentLeaderWatcher = Some(leaderWatcher)
       case _ =>
     }
   }

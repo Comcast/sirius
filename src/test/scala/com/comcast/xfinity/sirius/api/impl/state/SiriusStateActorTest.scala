@@ -48,6 +48,8 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
 
       it ("must forward the message to the handler and reply with a result " +
           "wrapping the exception when such occurs") {
+        val terminationProbe = TestProbe()
+        terminationProbe.watch(testActor)
         val senderProbe = TestProbe()
         val key = "key"
         val body = "value".getBytes
@@ -60,7 +62,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         senderProbe.send(testActor, Put(key, body))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
-        assert(!testActor.isTerminated)
+        terminationProbe.expectNoMsg()
       }
     }
 
@@ -80,8 +82,10 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
 
       it ("must forward the message to the handler and reply with a result " +
           "wrapping the exception when such occurs") {
+        val terminationProbe = TestProbe()
         val senderProbe = TestProbe()
         val key = "key"
+        terminationProbe.watch(testActor)
 
         val theException = new RuntimeException("well this sucks")
 
@@ -91,7 +95,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         senderProbe.send(testActor, Get(key))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
-        assert(!testActor.isTerminated)
+        terminationProbe.expectNoMsg()
       }
     }
 
@@ -113,6 +117,8 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
           "wrapping the exception when such occurs") {
         val senderProbe = TestProbe()
         val key = "key"
+        val terminationProbe = TestProbe()
+        terminationProbe.watch(testActor)
 
         val theException = new RuntimeException("well this sucks")
 
@@ -122,7 +128,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         senderProbe.send(testActor, Delete(key))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
-        assert(!testActor.isTerminated)
+        terminationProbe.expectNoMsg()
       }
     }
 

@@ -1,5 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl
-import akka.actor.{ActorContext, ActorRef, ActorSystem}
+import akka.actor.{Terminated, ActorContext, ActorRef, ActorSystem}
 import akka.testkit.{TestProbe, TestActorRef}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -13,6 +13,7 @@ import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{GetMember
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import org.mockito.Mock
 
 @RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTest {
@@ -44,13 +45,13 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
 
   implicit val actorSystem = ActorSystem("SiriusSupervisorTest")
 
-  val paxosProbe = TestProbe()
-  val persistenceProbe = TestProbe()
-  val stateProbe = TestProbe()
-  val membershipProbe = TestProbe()
-  val compactionProbe = TestProbe()
-  var mockMembershipAgent: Agent[Map[String, ActorRef]] = mock[Agent[Map[String, ActorRef]]]
+  var paxosProbe: TestProbe = _
+  var persistenceProbe: TestProbe = _
+  var stateProbe: TestProbe = _
+  var membershipProbe: TestProbe = _
+  var compactionProbe: TestProbe = _
   var startStopProbe: TestProbe = _
+  var mockMembershipAgent: Agent[Map[String, ActorRef]] = mock[Agent[Map[String, ActorRef]]]
 
   var supervisor: TestActorRef[SiriusSupervisor] = _
 
@@ -59,6 +60,12 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
   }
 
   before {
+
+    paxosProbe = TestProbe()
+    persistenceProbe = TestProbe()
+    stateProbe = TestProbe()
+    membershipProbe = TestProbe()
+    compactionProbe = TestProbe()
     startStopProbe = TestProbe()
 
     supervisor = createSiriusSupervisor(stateAgent = Agent(new SiriusState)(actorSystem),
@@ -71,13 +78,13 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
 
   def initializeSupervisor(supervisor: TestActorRef[SiriusSupervisor]) {
     val siriusStateAgent = supervisor.underlyingActor.siriusStateAgent
-    siriusStateAgent send SiriusState(false, true)
+    siriusStateAgent send SiriusState(supervisorInitialized = false, stateInitialized = true)
     // wait for agent to get updated, just in case
     assert(waitForTrue(siriusStateAgent().areSubsystemsInitialized, 1000, 100))
 
     val senderProbe = TestProbe()
     senderProbe.send(supervisor, SiriusSupervisor.IsInitializedRequest)
-    senderProbe.expectMsg(SiriusSupervisor.IsInitializedResponse(true))
+    senderProbe.expectMsg(SiriusSupervisor.IsInitializedResponse(initialized = true))
   }
 
   describe("a SiriusSupervisor") {
@@ -173,6 +180,17 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       doReturn(Map()).when(mockMembershipAgent).get()
       initializeSupervisor(supervisor)
       supervisor ! CheckPaxosMembership
+      assert(waitForTrue(supervisor.underlyingActor.orderingActor == None, 1000, 100))
+    }
+
+    it("should amend its orderingActor reference if it receives a matching Terminated message") {
+      doReturn(Map("sirius" -> supervisor)).when(mockMembershipAgent).get()
+      initializeSupervisor(supervisor)
+      supervisor ! CheckPaxosMembership
+
+      assert(waitForTrue(supervisor.underlyingActor.orderingActor == Some(paxosProbe.ref), 1000, 100))
+      supervisor ! Terminated(paxosProbe.ref)
+
       assert(waitForTrue(supervisor.underlyingActor.orderingActor == None, 1000, 100))
     }
   }

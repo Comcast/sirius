@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.api.impl
 import bridge.PaxosStateBridge
 import com.comcast.xfinity.sirius.api.impl.membership.{MembershipHelper, MembershipActor}
 import paxos.PaxosMessages.PaxosMessage
-import akka.actor.{ActorContext, Actor, ActorRef, Props}
+import akka.actor._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
 import akka.util.duration._
@@ -20,6 +20,7 @@ import com.comcast.xfinity.sirius.uberstore.CompactionManager
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.CompactionMessage
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{ChildProvider, CheckPaxosMembership}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.MembershipMessage
+import scala.Some
 
 object SiriusSupervisor {
 
@@ -152,13 +153,13 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
       case None =>
         logger.warning("Dropping {} cause CompactionMessage because CompactionManager is not up", compactionMessage.getClass.getName)
     }
-    case CheckPaxosMembership => {
+    case CheckPaxosMembership =>
       if (membershipAgent.get().values.toSet.contains(self)) {
         ensureOrderingActorRunning()
       } else {
         ensureOrderingActorStopped()
       }
-    }
+
     case paxosMessage: PaxosMessage => orderingActor match {
       case Some(actor) => actor forward paxosMessage
       case None =>
@@ -169,21 +170,30 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
       case None =>
         logger.debug("Dropping {} because Paxos is not up (yet?)", orderedReq)
     }
+
+    case Terminated(terminated) =>
+      orderingActor match {
+        case Some(actor) if actor == terminated => orderingActor = None
+        case _ =>
+      }
+
     case unknown: AnyRef => logger.warning("SiriusSupervisor Actor received unrecongnized message {}", unknown)
   }
 
   def ensureOrderingActorRunning() {
     orderingActor match {
-      case Some(actorRef) if !actorRef.isTerminated =>
+      case Some(actorRef) =>
         // do nothing, already alive and kicking
       case _ =>
-        orderingActor = Some(childProvider.createPaxosSupervisor(membershipAgent, stateBridge ! _))
+        val actor = childProvider.createPaxosSupervisor(membershipAgent, stateBridge ! _)
+        context.watch(actor)
+        orderingActor = Some(actor)
     }
   }
 
   def ensureOrderingActorStopped() {
     orderingActor match {
-      case Some(actorRef) if !actorRef.isTerminated =>
+      case Some(actorRef) =>
         context.stop(actorRef)
       case _ =>
         // do nothing, if there's an actor it's already been terminated

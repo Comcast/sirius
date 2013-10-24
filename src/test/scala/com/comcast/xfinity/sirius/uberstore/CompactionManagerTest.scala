@@ -1,9 +1,9 @@
 package com.comcast.xfinity.sirius.uberstore
 
 import org.scalatest.BeforeAndAfterAll
-import com.comcast.xfinity.sirius.NiceTest
+import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import akka.util.duration._
-import akka.actor.{ActorContext, PoisonPill, ActorRef, ActorSystem}
+import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.testkit.{TestProbe, TestActorRef}
 import javax.management.{ObjectName, MBeanServer}
@@ -14,12 +14,12 @@ import org.mockito.Mockito._
 import org.mockito.Matchers._
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.{ChildProvider, CompactionManagerInfoMBean, GetState, Compact}
 import akka.util.Timeout
+import scala.Some
 
-class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
+class CompactionManagerTest extends NiceTest with BeforeAndAfterAll with TimedTest {
 
   implicit val timeout: Timeout = 5.seconds
   implicit var actorSystem: ActorSystem = ActorSystem("CompactionSchedulingTest")
-  var compactionsStarted: Int = _
 
   def makeMockCompactionManager(siriusLog: SiriusLog = mock[SiriusLog],
                                         testCompactionActor: ActorRef = TestProbe().ref,
@@ -35,10 +35,6 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
       override def createCompactionActor()(implicit context: ActorContext) = testCompactionActor
     }
     TestActorRef(new CompactionManager(childProvider, config) {
-      override def startCompaction = {
-        compactionsStarted += 1
-        childProvider.createCompactionActor
-      }
       lastCompactionStarted = testLastStarted
       lastCompactionDuration = testLastDuration
       compactionActor = testCurrentCompactionActor
@@ -49,10 +45,6 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
     val mBeanCaptor = ArgumentCaptor.forClass(classOf[Any])
     verify(mBeanServer).registerMBean(mBeanCaptor.capture(), any[ObjectName])
     mBeanCaptor.getValue.asInstanceOf[CompactionManagerInfoMBean]
-  }
-
-  before {
-    compactionsStarted = 0
   }
 
   describe ("a CompactionManager") {
@@ -67,49 +59,52 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll {
         val senderProbe = TestProbe()
 
         senderProbe.send(underTest, CompactionComplete)
-        senderProbe.expectNoMsg(50.milliseconds)
 
-        assert(None === compactionInfo.getCompactionActor)
+        assert(waitForTrue(None == compactionInfo.getCompactionActor, 200, 10))
         assert(System.currentTimeMillis() > compactionInfo.getLastCompactionDuration.get)
+      }
+    }
+
+    describe ("when receiving Terminated") {
+      it ("must reset its compactionActor to None if the terminated actor matches compactionActor") {
+        val startingCompactionActor = TestProbe()
+        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(startingCompactionActor.ref))
+
+        underTest ! Terminated(startingCompactionActor.ref)
+        assert(waitForTrue(None == underTest.underlyingActor.compactionActor, 1000, 25))
+      }
+      it ("must do nothing if the terminated actor does not match compactionActor") {
+        val startingCompactionActor = TestProbe()
+        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(startingCompactionActor.ref))
+
+        underTest ! Terminated(TestProbe().ref)
+
+        Thread.sleep(50) // ugh. hard to test that an actor receives a msg and does nothing...
+        assert(Some(startingCompactionActor.ref) === underTest.underlyingActor.compactionActor)
       }
     }
 
     describe ("when receiving Compact") {
       it ("must start compaction and record startTime if there is no current actor") {
-        val mBeanServer = mock[MBeanServer]
-        val underTest = makeMockCompactionManager(testMBeanServer = mBeanServer)
-        val compactionInfo = getCompactionInfo(mBeanServer)
+        val underTest = makeMockCompactionManager()
         val senderProbe = TestProbe()
 
         senderProbe.send(underTest, Compact)
-        senderProbe.expectNoMsg(50.milliseconds)
 
-        assert(None != compactionInfo.getCompactionActor)
-        assert(None != compactionInfo.getLastCompactionStarted)
+        assert(waitForTrue(None != underTest.underlyingActor.compactionActor, 200, 10))
+        assert(waitForTrue(None != underTest.underlyingActor.lastCompactionStarted, 200, 10))
       }
 
-      it ("must start compaction if the current actor is dead") {
-        val compactionActor = TestActorRef(new CompactionActor(mock[SiriusLog]))
-        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(compactionActor))
-        val senderProbe = TestProbe()
-
-        compactionActor ! PoisonPill
-
-        senderProbe.send(underTest, Compact)
-        senderProbe.expectNoMsg(50.milliseconds)
-
-        assert(1 === compactionsStarted)
-      }
-
-      it ("must do nothing if there is a live current actor") {
-        val compactionActor = TestActorRef(new CompactionActor(mock[SiriusLog]))
-        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(compactionActor))
+      it ("must do nothing if there is a current CompactionActor") {
+        val newCompactionActor = TestProbe()
+        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(TestProbe().ref),
+                                                  testCompactionActor = newCompactionActor.ref)
         val senderProbe = TestProbe()
 
         senderProbe.send(underTest, Compact)
         senderProbe.expectNoMsg(50.milliseconds)
 
-        assert(0 === compactionsStarted)
+        newCompactionActor.expectNoMsg()
       }
     }
 

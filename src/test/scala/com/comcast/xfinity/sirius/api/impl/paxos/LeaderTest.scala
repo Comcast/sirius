@@ -307,7 +307,29 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         leader ! Preempted(preemptingBallot)
 
         assert(Some(watcherProbe.ref) != leader.underlyingActor.currentLeaderWatcher)
-        assert(!leader.underlyingActor.currentLeaderWatcher.get.isTerminated)
+        assert(None != leader.underlyingActor.currentLeaderWatcher)
+      }
+    }
+
+    describe("when receiving a Terminated message") {
+      it("should set currentLeaderWatcher to None if the terminated actor matches") {
+        val watcherProbe = TestProbe()
+        val underTest = makeMockedUpLeader()
+        underTest.underlyingActor.currentLeaderWatcher = Some(watcherProbe.ref)
+
+        underTest ! Terminated(watcherProbe.ref)
+
+        assert(waitForTrue(None == underTest.underlyingActor.currentLeaderWatcher, 1000, 25))
+      }
+      it("should do nothing if the terminated actor does not match") {
+        val watcherProbe = TestProbe()
+        val underTest = makeMockedUpLeader()
+        underTest.underlyingActor.currentLeaderWatcher = Some(watcherProbe.ref)
+
+        underTest ! Terminated(TestProbe().ref)
+
+        Thread.sleep(50) // ugh. hard to test that an actor receives a msg and does nothing...
+        assert(Some(watcherProbe.ref) === underTest.underlyingActor.currentLeaderWatcher)
       }
     }
 

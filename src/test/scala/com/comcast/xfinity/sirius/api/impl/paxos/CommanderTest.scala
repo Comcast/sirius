@@ -10,7 +10,7 @@ import com.comcast.xfinity.sirius.NiceTest
 
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
-import akka.actor.{ReceiveTimeout, ActorSystem}
+import akka.actor.{Terminated, ReceiveTimeout, ActorSystem}
 import akka.event.Logging
 import org.slf4j.LoggerFactory
 
@@ -40,6 +40,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it ("must notify its leader if it is preempted with a greater ballot and exit") {
+      val terminationProbe = TestProbe()
       val leaderProbe = TestProbe()
       val anAcceptorProbe = TestProbe()
       val acceptorProbes = Set(anAcceptorProbe)
@@ -50,14 +51,16 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
                                    pvalue, 0))
+      terminationProbe.watch(commander)
 
       val biggerBallot = Ballot(2, "b")
       commander ! Phase2B(anAcceptorProbe.ref, biggerBallot)
       leaderProbe.expectMsg(Preempted(biggerBallot))
-      assert(commander.isTerminated)
+      terminationProbe.expectMsg(Terminated(commander))
     }
 
-    it("must notify the replicas once a majority of acceptors have responded and exit") {
+    it ("must notify the replicas once a majority of acceptors have responded and exit") {
+      val terminationProbe = TestProbe()
       val leaderProbe = TestProbe()
       val acceptorProbes = Set(TestProbe(), TestProbe(), TestProbe())
       val replicaProbes = Set(TestProbe(), TestProbe(), TestProbe())
@@ -67,14 +70,16 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
                                    pvalue, 0))
+      terminationProbe.watch(commander)
 
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
 
       replicaProbes.foreach(_.expectMsg(Decision(pvalue.slotNum, pvalue.proposedCommand)))
-      assert(commander.isTerminated)
+      terminationProbe.expectMsg(Terminated(commander))
     }
 
     it ("must be able to make progress as a forever alone") {
+      val terminationProbe = TestProbe()
       val leaderProbe = TestProbe()
       val acceptorProbes = Set(TestProbe())
       val replicaProbes = Set(TestProbe())
@@ -84,14 +89,16 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
                                    pvalue, 0))
+      terminationProbe.watch(commander)
 
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
 
       replicaProbes.foreach(_.expectMsg(Decision(pvalue.slotNum, pvalue.proposedCommand)))
-      assert(commander.isTerminated)
+      terminationProbe.expectMsg(Terminated(commander))
     }
 
     it ("must notify its leader of the PValue and retryCount it timed out negotiating") {
+      val terminationProbe = TestProbe()
       val leaderProbe = TestProbe()
       val acceptorProbes = Set(TestProbe())
       val replicaProbes = Set(TestProbe())
@@ -101,10 +108,11 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
                                    pvalue, 1))
+      terminationProbe.watch(commander)
 
       commander ! ReceiveTimeout
       leaderProbe.expectMsg(Commander.CommanderTimeout(pvalue, 1))
-      assert(commander.isTerminated)
+      terminationProbe.expectMsg(Terminated(commander))
     }
   }
 }

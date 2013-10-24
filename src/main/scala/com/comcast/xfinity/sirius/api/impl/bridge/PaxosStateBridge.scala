@@ -3,7 +3,7 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import annotation.tailrec
-import akka.actor.{ActorContext, Props, Actor, ActorRef}
+import akka.actor._
 import akka.util.duration._
 import akka.event.Logging
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
@@ -11,6 +11,13 @@ import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import com.comcast.xfinity.sirius.util.RichJTreeMap
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestFromSeq, RequestGaps}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
+import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
+import scala.Some
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
 
 object PaxosStateBridge {
   case object RequestGaps
@@ -154,6 +161,14 @@ class PaxosStateBridge(startingSeq: Long,
 
     case RequestGaps =>
       runGapFetcher()
+
+    case Terminated(terminatedActor) =>
+      gapFetcher match {
+        case Some(gapActor) if gapActor == terminatedActor =>
+          gapFetcher = None
+        case _ => // not worried about any other actors, or if old fetchers are reporting dead
+      }
+
   }
 
   def processLogSubrange(logSubrange: LogSubrange) {
@@ -219,7 +234,7 @@ class PaxosStateBridge(startingSeq: Long,
    */
   private[bridge] def requestNextChunk() {
     gapFetcher match {
-      case Some(fetcher) if !fetcher.isTerminated =>
+      case Some(fetcher) =>
         fetcher ! RequestFromSeq(nextSeq)
       case _ =>
       // do nothing for now; only handle the case where the fetcher is alive and well
@@ -234,10 +249,10 @@ class PaxosStateBridge(startingSeq: Long,
    */
   private[bridge] def runGapFetcher() {
     gapFetcher match {
-      case Some(fetcher) if !fetcher.isTerminated =>
-        // do nothing, fetcher is still working
-      case _ =>
+      case None =>
         gapFetcher = createGapFetcher(nextSeq)
+      case _ =>
+        // do nothing, fetcher is still working
     }
   }
 
@@ -246,7 +261,9 @@ class PaxosStateBridge(startingSeq: Long,
     randomMember match {
       case Some(member) =>
         traceLogger.debug("Creating gap fetcher to request {} events starting at {} from {}", chunkSize, seq, member)
-        Some(childProvider.createGapFetcher(seq, member, self))
+        val gapFetcher = childProvider.createGapFetcher(seq, member, self)
+        context.watch(gapFetcher)
+        Some(gapFetcher)
       case None =>
         logger.warning("Failed to create GapFetcher: could not get remote" +
           "member for transfer request.")

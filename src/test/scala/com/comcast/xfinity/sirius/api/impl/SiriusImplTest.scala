@@ -37,7 +37,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
 
   var supervisorActorProbe: TestProbe = _
   var underTest: SiriusImpl = _
-  var actorSystem: ActorSystem = _
+  implicit var actorSystem: ActorSystem = _
   val timeout: Timeout = (5 seconds)
   var membership: Set[ActorRef] = _
 
@@ -154,14 +154,16 @@ class SiriusImplTest extends NiceTest with TimedTest {
     }
 
     describe(".shutdown") {
-      it("must kill off the supervisor, not effecting the ActorSystem") {
+      it("must kill off the supervisor, not affecting the ActorSystem") {
         // XXX: it would be great to test that the agents are shutdown, but we don't have a
         //      good handle on those right now. I think for now it's ok to handwave over,
         //      since SiriusImpl's will generally be long lived and the Agent's shouldn't
         //      have much/any effect if they hang around.  The agent stuff will likely get
         //      pushed down anyway
+        val terminationProbe = TestProbe()
+        terminationProbe.watch(underTest.supervisor)
         underTest.shutdown()
-        assert(waitForTrue(underTest.supervisor.isTerminated, 2000, 200), "Supervisor should be terminated")
+        terminationProbe.expectMsg(Terminated(underTest.supervisor))
         assert(!underTest.actorSystem.isTerminated, "ActorSystem should not be terminated")
         assert(false === underTest.isOnline)
       }
