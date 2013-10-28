@@ -58,6 +58,9 @@ class SegmentedUberStoreTest extends NiceTest {
   def listEvents(segment: Segment) =
     segment.foldLeft(List[String]())((acc, event) => event.request.key :: acc).reverse.mkString(" ")
 
+  def listEvents(uberstore: SegmentedUberStore) =
+    uberstore.foldLeft(List[String]())((acc, event) => event.request.key :: acc).reverse.mkString(" ")
+
   var dir: File = _
 
   before {
@@ -356,6 +359,60 @@ class SegmentedUberStoreTest extends NiceTest {
       writeEvents(right, List(4L, 5L))
 
       assert(true === SegmentedUberStore(dir.getAbsolutePath, config).isMergeable(left, right))
+    }
+  }
+
+  describe("repair") {
+    it("should properly handle the existence of both base and compacted") {
+      val dir = createTempDir
+      createPopulatedSegment(dir, "1", List(1))
+      createPopulatedSegment(dir, "1.compacted", List(2))
+
+      SegmentedUberStore.repair(dir.getAbsolutePath)
+      assert("1" === listEvents(SegmentedUberStore(dir.getAbsolutePath)))
+      assert(dir.listFiles().count(_.isDirectory) == 1)
+    }
+    it("should properly handle the existence of both temp and compacted") {
+      val dir = createTempDir
+      createPopulatedSegment(dir, "1.temp", List(1))
+      createPopulatedSegment(dir, "1.compacted", List(2))
+
+      SegmentedUberStore.repair(dir.getAbsolutePath)
+      assert("2" === listEvents(SegmentedUberStore(dir.getAbsolutePath)))
+      assert(dir.listFiles().count(_.isDirectory) == 1)
+    }
+    it("should properly handle the existence of both base and temp") {
+      val dir = createTempDir
+      createPopulatedSegment(dir, "1", List(1))
+      createPopulatedSegment(dir, "1.temp", List(2))
+
+      SegmentedUberStore.repair(dir.getAbsolutePath)
+      assert("1" === listEvents(SegmentedUberStore(dir.getAbsolutePath)))
+      assert(dir.listFiles().count(_.isDirectory) == 1)
+    }
+    it("should do nothing if the SegmentedUberStore is proper") {
+      val dir = createTempDir
+      createPopulatedSegment(dir, "1", List(1))
+      createPopulatedSegment(dir, "2", List(2))
+
+      SegmentedUberStore.repair(dir.getAbsolutePath)
+      assert("1 2" === listEvents(SegmentedUberStore(dir.getAbsolutePath)))
+      assert(dir.listFiles().count(_.isDirectory) == 2)
+    }
+    it("should do the expected things when all of the error cases appear at once") {
+      val dir = createTempDir
+      createPopulatedSegment(dir, "1", List(1))
+      createPopulatedSegment(dir, "2", List(2))
+      createPopulatedSegment(dir, "2.compacted", List(20))
+      createPopulatedSegment(dir, "3.temp", List(30))
+      createPopulatedSegment(dir, "3.compacted", List(3))
+      createPopulatedSegment(dir, "4", List(4))
+      createPopulatedSegment(dir, "4.temp", List(40))
+      createPopulatedSegment(dir, "5", List(5))
+
+      SegmentedUberStore.repair(dir.getAbsolutePath)
+      assert("1 2 3 4 5" === listEvents(SegmentedUberStore(dir.getAbsolutePath)))
+      assert(dir.listFiles().count(_.isDirectory) == 5)
     }
   }
 }

@@ -5,6 +5,7 @@ import java.io.File
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import annotation.tailrec
+import scalax.file.Path
 
 object SegmentedUberStore {
 
@@ -15,6 +16,38 @@ object SegmentedUberStore {
     dir.mkdirs()
 
     new File(dir, SegmentedUberStore.versionId).createNewFile()
+  }
+
+  /**
+   * Repair a SegmentedUberStore at location. Handles possibles errors due to
+   * incomplete compaction.
+   *
+   * @param location location of SegmentedUberStore
+   */
+  def repair(location: String) {
+    val dir = new File(location)
+
+    val baseNames = dir.listFiles.filter(_.getName.contains(".")).foldLeft(Set[String]())(
+      (acc, file) =>  acc + file.getName.substring(0, file.getName.indexOf('.'))
+    )
+
+    baseNames.foreach(baseName => {
+      val baseFile = new File(dir, baseName)
+      val tempFile = new File(dir, baseName + ".temp")
+      val compactedFile = new File(dir, baseName + ".compacted")
+
+      if (baseFile.exists && compactedFile.exists) {
+        // compacted exists, base exists: incomplete compaction, delete compacted
+        Path(compactedFile).deleteRecursively()
+      } else if (tempFile.exists && compactedFile.exists) {
+        // compacted exists, temp exists: incomplete replace, mv compacted base
+        Path(compactedFile).moveTo(Path(baseFile))
+        Path(tempFile).deleteRecursively()
+      } else if (baseFile.exists && tempFile.exists) {
+        // base exists, temp exists: incomplete replace, rm temp
+        Path(tempFile).deleteRecursively()
+      }
+    })
   }
 
   /**
@@ -32,6 +65,8 @@ object SegmentedUberStore {
     if (!new File(base, versionId).exists) {
       throw new IllegalStateException("Cannot start. Configured to boot with storage: %s, which is not found in %s".format(versionId, base))
     }
+
+    repair(base)
 
     new SegmentedUberStore(new File(base), MAX_EVENTS_PER_SEGMENT)
   }

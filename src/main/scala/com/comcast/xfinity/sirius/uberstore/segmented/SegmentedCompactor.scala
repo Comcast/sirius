@@ -21,9 +21,13 @@ object SegmentedCompactor {
 
     val originalPath = Path.fromString(original.location.getAbsolutePath)
     val replacementPath = Path.fromString(replacement)
+    val tempPath = Path.fromString(
+      new File(original.location.getParent, original.location.getName + ".temp").getAbsolutePath
+    )
 
-    originalPath.deleteRecursively()
+    originalPath.moveTo(tempPath)
     replacementPath.moveTo(originalPath)
+    tempPath.deleteRecursively()
 
     Segment(original.location.getParentFile, original.location.getName)
   }
