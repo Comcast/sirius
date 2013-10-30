@@ -50,5 +50,57 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
         assert(data === None)
       }
     }
+
+    describe("getClusterInfo") {
+      it("should return only members that have ActorRefs associated") {
+        val (probe1, probe2) = (TestProbe(), TestProbe())
+        val membership = Agent(Map[String, ActorRef](
+          "here" -> probe1.ref,
+          "there" -> probe2.ref
+        ))
+        val underTest = MembershipHelper(membership, TestProbe().ref)
+
+        val activeMembers = underTest.getClusterInfo.activeMembers
+        assert(2 === activeMembers.size)
+        assert(activeMembers.contains(probe1.ref))
+        assert(activeMembers.contains(probe2.ref))
+
+      }
+      it("should properly calculate simpleMajority for 0 members") {
+        val membership = Agent(Map[String, ActorRef]())
+        val underTest = MembershipHelper(membership, TestProbe().ref)
+
+        assert(1 === underTest.getClusterInfo.simpleMajority)
+      }
+      it("should properly calculate simpleMajority for 1 members") {
+        val membership = Agent(Map[String, ActorRef](
+          "1" -> TestProbe().ref
+        ))
+        val underTest = MembershipHelper(membership, TestProbe().ref)
+
+        assert(1 === underTest.getClusterInfo.simpleMajority)
+      }
+      it("should properly calculate simpleMajority for 2 members") {
+
+        val membership = Agent(Map[String, ActorRef](
+          "1" -> TestProbe().ref,
+          "2" -> TestProbe().ref
+        ))
+        val underTest = MembershipHelper(membership, TestProbe().ref)
+
+        assert(2 === underTest.getClusterInfo.simpleMajority)
+      }
+      it("should properly calculate simpleMajority for 3 members") {
+
+        val membership = Agent(Map[String, ActorRef](
+          "1" -> TestProbe().ref,
+          "2" -> TestProbe().ref,
+          "3" -> TestProbe().ref
+        ))
+        val underTest = MembershipHelper(membership, TestProbe().ref)
+
+        assert(2 === underTest.getClusterInfo.simpleMajority)
+      }
+    }
   }
 }

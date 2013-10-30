@@ -35,7 +35,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
                                         (implicit context: ActorContext) = membershipActor
       override def createStateBridge(stateSupervisor: ActorRef, siriusSupervisor: ActorRef, membershipHelper: MembershipHelper)
                                     (implicit context: ActorContext) = stateBridge
-      override def createPaxosSupervisor(membershipAgent: Agent[Map[String, ActorRef]], performFun: Replica.PerformFun)
+      override def createPaxosSupervisor(membershpip: MembershipHelper, performFun: Replica.PerformFun)
                                         (implicit context: ActorContext) = paxosSupervisor
       override def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = statusSubsystem
       override def createCompactionManager()(implicit context: ActorContext) = compactionManager

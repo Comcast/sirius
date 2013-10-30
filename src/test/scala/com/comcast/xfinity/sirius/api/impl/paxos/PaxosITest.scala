@@ -11,10 +11,11 @@ import akka.testkit.{TestLatch, TestProbe}
 import akka.dispatch.Await
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Decision}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 
 
 object PaxosITest {
-  class TestNode(membership: Agent[Map[String, ActorRef]], decisionLatch: TestLatch)(implicit as: ActorSystem) {
+  class TestNode(membership: MembershipHelper, decisionLatch: TestLatch)(implicit as: ActorSystem) {
     var decisions = Set[Decision]()
 
     val paxosSup = as.actorOf(
@@ -46,6 +47,7 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
     it ("must arrive at a decision when all requests are sent to a single node, and " +
         "the initiators must be properly notified") {
       val membership = Agent(Map[String, ActorRef]())
+      val membershipHelper = MembershipHelper(membership, TestProbe().ref)
 
       // 3 nodes x 3 requests = 9 applied decisions
       val decisionLatch = TestLatch(9)
@@ -54,9 +56,9 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       // set of performed decisions.  The set of decisions is
       // updated and the decisionLatch is counted down when
       // a new decision arrives
-      val node1 = new TestNode(membership, decisionLatch)
-      val node2 = new TestNode(membership, decisionLatch)
-      val node3 = new TestNode(membership, decisionLatch)
+      val node1 = new TestNode(membershipHelper, decisionLatch)
+      val node2 = new TestNode(membershipHelper, decisionLatch)
+      val node3 = new TestNode(membershipHelper, decisionLatch)
 
       // with the nodes created, establish membership
       membership send (_ + ("node1" -> node1.paxosSup))
