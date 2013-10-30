@@ -3,6 +3,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.util.duration._
 import akka.actor.{Props, ReceiveTimeout, Actor, ActorRef}
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
 
 case object Commander {
 
@@ -15,22 +16,20 @@ case object Commander {
    * Create Props for a Commander actor.
    *
    * @param leader actorRef of local leader
-   * @param acceptors set of remote Acceptors
-   * @param replicas set of remote Replicas
+   * @param clusterInfo current cluster membership information
    * @param pval PValue to try and win acceptance
    * @param retriesLeft number of retries left for getting pval accepted
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(leader: ActorRef, acceptors: Set[ActorRef],
-            replicas: Set[ActorRef], pval: PValue, retriesLeft: Int): Props = {
-    //Props(classOf[Commander], leader, acceptors, replicas, pval, retriesLeft)
-    Props(new Commander(leader, acceptors, replicas, pval, retriesLeft))
+  def props(leader: ActorRef, clusterInfo: ClusterInfo, pval: PValue, retriesLeft: Int): Props = {
+    //Props(classOf[Commander], leader, clusterInfo, pval, majority, retriesLeft)
+    Props(new Commander(leader, clusterInfo.activeMembers, clusterInfo.activeMembers, pval, clusterInfo.simpleMajority, retriesLeft))
   }
 }
 
-class Commander(leader: ActorRef, acceptors: Set[ActorRef],
-                replicas: Set[ActorRef], pval: PValue, retriesLeft: Int) extends Actor {
+class Commander(leader: ActorRef, acceptors: Set[ActorRef], replicas: Set[ActorRef],
+                pval: PValue, simpleMajority: Int, retriesLeft: Int) extends Actor {
 
   var decidedAcceptors = Set[ActorRef]()
 
@@ -45,7 +44,7 @@ class Commander(leader: ActorRef, acceptors: Set[ActorRef],
       if (acceptors.contains(acceptor)) {
         decidedAcceptors += acceptor
       }
-      if (decidedAcceptors.size > acceptors.size / 2) {
+      if (decidedAcceptors.size >= simpleMajority) {
         // We may fail to send a decision message to a replica, and we need to handle
         // that in our catchup algorithm.  The paxos made moderately complex algorithm
         // assumes guaranteed delivery, because its cool like that.

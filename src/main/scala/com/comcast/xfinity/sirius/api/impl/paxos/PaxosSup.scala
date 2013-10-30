@@ -1,12 +1,12 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
-import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor.{ActorContext, Props, ActorRef, Actor}
 import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosSup.ChildProvider
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 
 object PaxosSup {
 
@@ -20,7 +20,7 @@ object PaxosSup {
    *          decisions as they arrive
    * @param config SiriusConfiguration object for configuring children actors.
    */
-  protected[paxos] class ChildProvider(membership: Agent[Map[String, ActorRef]], startingSeq: Long, performFun: Replica.PerformFun, config: SiriusConfiguration) {
+  protected[paxos] class ChildProvider(membership: MembershipHelper, startingSeq: Long, performFun: Replica.PerformFun, config: SiriusConfiguration) {
     def createLeader()(implicit context: ActorContext) =
       context.actorOf(Leader.props(membership, startingSeq, config), "leader")
 
@@ -34,7 +34,7 @@ object PaxosSup {
   /**
    * Create Props for a PaxosSupervisor actor.
    *
-   * @param membership an {@see akka.agent.Agent} tracking the membership of the cluster
+   * @param membership
    * @param startingSeqNum the sequence number at which this node will begin issuing/acknowledging
    * @param performFun function specified by
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
@@ -43,7 +43,7 @@ object PaxosSup {
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(membership: Agent[Map[String, ActorRef]],
+  def props(membership: MembershipHelper,
             startingSeqNum: Long,
             performFun: Replica.PerformFun,
             config: SiriusConfiguration): Props = {

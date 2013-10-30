@@ -58,8 +58,8 @@ object SiriusSupervisor {
         "paxos-state-bridge")
     }
 
-    def createPaxosSupervisor(membershipAgent: Agent[Map[String, ActorRef]], performFun: Replica.PerformFun)(implicit context: ActorContext) =
-      context.actorOf(PaxosSup.props(membershipAgent, siriusLog.getNextSeq, performFun, config), "paxos")
+    def createPaxosSupervisor(membership: MembershipHelper, performFun: Replica.PerformFun)(implicit context: ActorContext) =
+      context.actorOf(PaxosSup.props(membership, siriusLog.getNextSeq, performFun, config), "paxos")
 
     def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = {
       val supervisorAddress = AkkaExternalAddressResolver(context.system).externalAddressFor(siriusSupervisor)
@@ -98,14 +98,16 @@ object SiriusSupervisor {
  */
 private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: SiriusConfiguration) extends Actor {
 
+
   val siriusStateAgent = childProvider.createStateAgent()
   val membershipAgent = childProvider.createMembershipAgent()
+  val membershipHelper = MembershipHelper(membershipAgent, context.self)
   val stateSup = childProvider.createStateSupervisor(siriusStateAgent)
   val membershipActor = childProvider.createMembershipActor(membershipAgent)
   var orderingActor: Option[ActorRef] = None
   var compactionManager : Option[ActorRef] = None
   val statusSubsystem = childProvider.createStatusSubsystem(self)
-  val stateBridge = childProvider.createStateBridge(stateSup, context.self, MembershipHelper(membershipAgent, context.self))
+  val stateBridge = childProvider.createStateBridge(stateSup, context.self, membershipHelper)
 
   private val logger = Logging(context.system, "Sirius")
 
@@ -185,7 +187,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
       case Some(actorRef) =>
         // do nothing, already alive and kicking
       case _ =>
-        val actor = childProvider.createPaxosSupervisor(membershipAgent, stateBridge ! _)
+        val actor = childProvider.createPaxosSupervisor(membershipHelper, stateBridge ! _)
         context.watch(actor)
         orderingActor = Some(actor)
     }
