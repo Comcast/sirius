@@ -114,8 +114,6 @@ class MembershipActor(membershipAgent: Agent[Map[String, ActorRef]],
 
   /**
    * Creates a MembershipMap from the contents of the clusterConfigPath file.
-   *
-   * @return Set[ActorRef] of all members according to clusterConfigPath
    */
   private[membership] def updateMembership() {
     val actorPaths = clusterConfigPath.lines(NewLine, includeTerminator = false).toList
@@ -147,13 +145,15 @@ class MembershipActor(membershipAgent: Agent[Map[String, ActorRef]],
   /*
   def updateActorRefs(actorPaths: List[String]) {
     actorPaths
-      .filterNot(_.startsWith("#"))
+      .filterNot(_.startsWith("#")) // not commented out
+      .filter(membership.get(_) == None) // we don't already have a ref for it
       .foreach(path => {
       context.actorSelection(path).resolveOne(1 seconds) onComplete {
         case Success(actor) =>
-          membershipAgent send (_ + (path -> actor))
+          membershipAgent send (_ + (path -> Some(actor)))
+          // TODO watch the newly created actor, and handle the Terminated message when it comes in
         case Failure(_) =>
-          membershipAgent send (_ - path)
+          membershipAgent send (_ + (path -> None))
       }
     })
   }

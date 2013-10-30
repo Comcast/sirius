@@ -2,7 +2,6 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
-import akka.agent.Agent
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
 import org.mockito.Mockito._
@@ -18,6 +17,8 @@ import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{Close, LeaderGon
 import com.comcast.xfinity.sirius.util.RichJTreeMap
 import com.comcast.xfinity.sirius.api.impl.paxos.Leader.{Remote, Local, Unknown, ChildProvider}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 
 
 class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
@@ -26,18 +27,18 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   // XXX this should really be in the companion object, but we need the actorSystem
   //     defined in order to default things like Agents and TestProbes.  Need to figure
   //     out how to move it up without defining an ActorSystem in the companion object.
-  def makeMockedUpLeader(membership: Agent[Map[String, ActorRef]] = Agent(Map[String, ActorRef]()),
+  def makeMockedUpLeader(membership: MembershipHelper = mock[MembershipHelper],
                          startingSeqNum: Long = 1,
                          helper: LeaderHelper = mock[LeaderHelper],
                          startScoutFun: => ActorRef = TestProbe().ref,
                          startCommanderFun: (PValue, Int) => ActorRef = (p, i) => TestProbe().ref) = {
     val childProvider = new ChildProvider(new SiriusConfiguration) {
       override def createCommander(leader: ActorRef,
-                                   acceptors: Set[ActorRef],
-                                   replicas: Set[ActorRef],
-                                   pval: PValue, ticks: Int)(implicit context: ActorContext): ActorRef = startCommanderFun(pval,ticks)
+                                   clusterInfo: ClusterInfo,
+                                   pval: PValue, ticks: Int)
+                                  (implicit context: ActorContext): ActorRef = startCommanderFun(pval,ticks)
       override def createScout(leader: ActorRef,
-                               acceptors: Set[ActorRef],
+                               clusterInfo: ClusterInfo,
                                myBallot: Ballot,
                                latestDecidedSlot: Long)(implicit context: ActorContext): ActorRef = startScoutFun
       override def createLeaderWatcher(leader: ActorRef,
@@ -450,7 +451,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
       }
 
       it ("must clean out all decided proposals") {
-        val leader = makeMockedUpLeader(Agent(Map[String, ActorRef]()))
+        val leader = makeMockedUpLeader()
 
         val keepers = RichJTreeMap(
           4L -> Command(null, 2L, Delete("A")),

@@ -11,15 +11,10 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
 import akka.actor.{Terminated, ReceiveTimeout, ActorSystem}
-import akka.event.Logging
-import org.slf4j.LoggerFactory
-
 
 class CommanderTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("CommanderTest")
-
-  val logger = LoggerFactory.getLogger(classOf[CommanderTest])
 
   // XXX: how to test ReceiveTimeout?
 
@@ -28,12 +23,11 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val leaderProbe = TestProbe()
       val acceptorProbes = Set(TestProbe(), TestProbe(), TestProbe())
       val replicaProbes = Set[TestProbe]()
-      logger.debug("{}",acceptorProbes)
       val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue, 0))
+                                   pvalue, 2, 0))
       acceptorProbes.foreach(
         probe => probe.expectMsg(Phase2A(commander, pvalue, probe.ref))
       )
@@ -45,12 +39,11 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val anAcceptorProbe = TestProbe()
       val acceptorProbes = Set(anAcceptorProbe)
       val replicaProbes = Set[TestProbe]()
-      logger.debug("{}", acceptorProbes)
       val pvalue = PValue(Ballot(1, "a"), 1, Command(null, 1, Delete("2")))
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue, 0))
+                                   pvalue, 1, 0))
       terminationProbe.watch(commander)
 
       val biggerBallot = Ballot(2, "b")
@@ -69,7 +62,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue, 0))
+                                   pvalue, 2, 0))
       terminationProbe.watch(commander)
 
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
@@ -88,7 +81,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue, 0))
+                                   pvalue, 1, 0))
       terminationProbe.watch(commander)
 
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
@@ -107,7 +100,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val commander = TestActorRef(new Commander(leaderProbe.ref,
                                    acceptorProbes.map(_.ref),
                                    replicaProbes.map(_.ref),
-                                   pvalue, 1))
+                                   pvalue, 1, 1))
       terminationProbe.watch(commander)
 
       commander ! ReceiveTimeout

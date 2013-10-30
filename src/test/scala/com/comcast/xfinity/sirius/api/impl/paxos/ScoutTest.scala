@@ -26,10 +26,10 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
       val ballot = Ballot(1, "a")
       val scout = TestActorRef(new Scout(leaderProbe.ref,
                                          acceptorProbes.map(_.ref),
-                                         ballot,1L))
+                                         ballot, 1L, 2))
 
       acceptorProbes.foreach(
-        probe => probe.expectMsg(Phase1A(scout, ballot, probe.ref,1L))
+        probe => probe.expectMsg(Phase1A(scout, ballot, probe.ref, 1L))
       )
     }
 
@@ -40,7 +40,7 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
       val ballot = Ballot(1, "a")
       val scout = TestActorRef(new Scout(leaderProbe.ref,
                                          Set(acceptorProbe.ref),
-                                         ballot,1L))
+                                         ballot, 1L, 1))
       terminationProbe.watch(scout)
 
       val biggerBallot = Ballot(2, "b")
@@ -63,7 +63,7 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
       val ballot = Ballot(1, "a")
       val scout = TestActorRef(new Scout(leaderProbe.ref,
                                          acceptorProbes.map(_.ref),
-                                         ballot,1L))
+                                         ballot, 1L, 3))
       terminationProbe.watch(scout)
 
       assert(Set[PValue]() === scout.underlyingActor.pvalues)
@@ -87,7 +87,7 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
       val leaderProbe = TestProbe()
       val acceptorProbe = TestProbe()
       val ballot = Ballot(1, "a")
-      val scout = TestActorRef(new Scout(leaderProbe.ref, Set(acceptorProbe.ref), ballot,1L))
+      val scout = TestActorRef(new Scout(leaderProbe.ref, Set(acceptorProbe.ref), ballot, 1L, 1))
       terminationProbe.watch(scout)
 
       assert(Set[PValue]() === scout.underlyingActor.pvalues)

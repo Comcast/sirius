@@ -2,22 +2,21 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.actor._
-import akka.agent.Agent
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
-import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
+import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Ping, Pong}
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{LeaderGone, Close}
 import com.comcast.xfinity.sirius.util.{RichJTreeMap, AkkaExternalAddressResolver}
 import com.comcast.xfinity.sirius.api.impl.paxos.Leader.ChildProvider
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Preempted
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.PValue
-import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.Pong
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Propose
-import scala.Some
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Adopted
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 
 object Leader {
 
@@ -32,14 +31,14 @@ object Leader {
    * @param config the SiriusConfiguration for this node
    */
   private[paxos] class ChildProvider(config: SiriusConfiguration) {
-    def createCommander(leader: ActorRef, acceptors: Set[ActorRef], replicas: Set[ActorRef], pval: PValue, ticks: Int)
-                     (implicit context: ActorContext): ActorRef = {
-      context.actorOf(Commander.props(leader, acceptors, replicas, pval, ticks))
+    def createCommander(leader: ActorRef, clusterInfo: ClusterInfo, pval: PValue, ticks: Int)
+                       (implicit context: ActorContext): ActorRef = {
+      context.actorOf(Commander.props(leader, clusterInfo, pval, ticks))
     }
 
-    def createScout(leader: ActorRef, acceptors: Set[ActorRef], myBallot: Ballot, latestDecidedSlot: Long)
-                 (implicit context: ActorContext): ActorRef = {
-      context.actorOf(Scout.props(leader, acceptors, myBallot, latestDecidedSlot))
+    def createScout(leader: ActorRef, clusterInfo: ClusterInfo, myBallot: Ballot, latestDecidedSlot: Long)
+                   (implicit context: ActorContext): ActorRef = {
+      context.actorOf(Scout.props(leader, clusterInfo, myBallot, latestDecidedSlot))
     }
 
     def createLeaderWatcher(leader: ActorRef, ballotToWatch: Ballot, replyTo: ActorRef)(implicit context: ActorContext): ActorRef = {
@@ -50,13 +49,13 @@ object Leader {
   /**
    * Create Props for Leader actor.
    *
-   * @param membership an {@see akka.agent.Agent} tracking the membership of the cluster
+   * @param membership
    * @param startingSeqNum the sequence number at which this node will begin issuing/acknowledging
    * @param config SiriusConfiguration for this node
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-   def props(membership: Agent[Map[String, ActorRef]],
+   def props(membership: MembershipHelper,
              startingSeqNum: Long,
              config: SiriusConfiguration): Props = {
      val childProvider = new ChildProvider(config)
@@ -66,7 +65,7 @@ object Leader {
    }
 }
 
-class Leader(membership: Agent[Map[String, ActorRef]],
+class Leader(membership: MembershipHelper,
              startingSeqNum: Long,
              childProvider: ChildProvider,
              leaderHelper: LeaderHelper,
@@ -208,13 +207,12 @@ class Leader(membership: Agent[Map[String, ActorRef]],
       }
   }
 
-  private def startScout(){
-    childProvider.createScout(self, getMembershipSet, myBallot, latestDecidedSlot)
+  private def startScout() {
+    childProvider.createScout(self, membership.getClusterInfo, myBallot, latestDecidedSlot)
   }
 
-  private def startCommander(pVal: PValue, ticks: Int = defaultRetries){
-    val membershipSet = getMembershipSet
-    childProvider.createCommander(self, membershipSet, membershipSet, pVal, ticks)
+  private def startCommander(pVal: PValue, ticks: Int = defaultRetries) {
+    childProvider.createCommander(self, membership.getClusterInfo, pVal, ticks)
   }
 
   private def seekLeadership(ballotToTrump: Ballot) {
@@ -258,8 +256,6 @@ class Leader(membership: Agent[Map[String, ActorRef]],
     if (duration > longestReapDuration)
       longestReapDuration = duration
   }
-
-  private def getMembershipSet: Set[ActorRef] = membership.get().values.toSet
 
   // monitoring hooks, to close over the scope of the class, it has to be this way
   //  because of jmx
