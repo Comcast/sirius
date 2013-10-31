@@ -29,8 +29,8 @@ object MembershipActorTest {
 class MembershipActorTest extends NiceTest with TimedTest {
 
   def makeMembershipActor(clusterConfigContents: List[String] = List(),
-                          membershipAgent: Agent[Map[String, ActorRef]] = Agent[Map[String, ActorRef]](Map())(actorSystem),
-                          mbeanServer: MBeanServer = mock[MBeanServer]): (TestActorRef[MembershipActor], Agent[Map[String, ActorRef]]) = {
+                          membershipAgent: Agent[Map[String, Option[ActorRef]]] = Agent[Map[String, Option[ActorRef]]](Map())(actorSystem),
+                          mbeanServer: MBeanServer = mock[MBeanServer]): (TestActorRef[MembershipActor], Agent[Map[String, Option[ActorRef]]]) = {
 
     val clusterConfigPath = new File(tempDir, "sirius.cluster.config").getAbsolutePath
     Path.fromString(clusterConfigPath)
@@ -75,7 +75,7 @@ class MembershipActorTest extends NiceTest with TimedTest {
       val (underTest, _) = makeMembershipActor()
 
       senderProbe.send(underTest, GetMembershipData)
-      senderProbe.expectMsgClass(classOf[Map[String, ActorRef]])
+      senderProbe.expectMsgClass(classOf[Map[String, Option[ActorRef]]])
     }
 
     it("should add actors to membership when CheckClusterConfig is received") {
@@ -91,8 +91,8 @@ class MembershipActorTest extends NiceTest with TimedTest {
       underTest ! CheckClusterConfig
 
       assert(waitForTrue(membershipAgent.get().size == 2, 2000, 100), "Did not reach correct membership size.")
-      assert(probeOne.ref === membershipAgent.get()(probeOnePath))
-      assert(probeTwo.ref === membershipAgent.get()(probeTwoPath))
+      assert(Some(probeOne.ref) === membershipAgent.get()(probeOnePath))
+      assert(Some(probeTwo.ref) === membershipAgent.get()(probeTwoPath))
     }
 
     /**
@@ -139,7 +139,7 @@ class MembershipActorTest extends NiceTest with TimedTest {
       underTest ! CheckClusterConfig
 
       assert(waitForTrue(membershipAgent.get().size == 1, 2000, 100), "Did not remove missing actorPath from membership.")
-      assert(probeOne.ref === membershipAgent.get()(probeOnePath))
+      assert(Some(probeOne.ref) === membershipAgent.get()(probeOnePath))
       assert(None === membershipAgent.get().get(probeTwoPath))
     }
 
@@ -186,7 +186,9 @@ class MembershipActorTest extends NiceTest with TimedTest {
 
       val (underTest, membershipAgent) = makeMembershipActor()
 
-      membershipAgent send Map("1" -> senderProbe1.ref, "2" -> senderProbe2.ref, "3" -> senderProbe3.ref)
+      membershipAgent send Map("1" -> Some(senderProbe1.ref),
+                               "2" -> Some(senderProbe2.ref),
+                               "3" -> Some(senderProbe3.ref))
       waitForTrue(membershipAgent.get().size == 3, 200, 10)
 
       senderProbe1.send(underTest, PingMembership)
