@@ -58,7 +58,7 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
   val supervisor = actorSystem.actorOf(supProps, supName)
 
   def getMembership = {
-    val akkaFuture = (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[Set[ActorRef]]]
+    val akkaFuture = (supervisor ? GetMembershipData).asInstanceOf[AkkaFuture[Map[String, Option[ActorRef]]]]
     new AkkaFutureAdapter(akkaFuture)
   }
 

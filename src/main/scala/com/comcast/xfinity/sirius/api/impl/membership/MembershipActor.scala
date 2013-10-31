@@ -30,12 +30,12 @@ object MembershipActor {
   /**
    * Create Props for a MembershipActor.
    *
-   * @param membershipAgent the Agent[Set[ActorRef\]\]() to keep updated with the cluster membership
+   * @param membershipAgent the Agent[Map[String, Option[ActorRef\]\]\]() to keep updated with the cluster membership
    * @param config SiriusConfiguration for this node
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(membershipAgent: Agent[Map[String, ActorRef]], config: SiriusConfiguration): Props = {
+  def props(membershipAgent: Agent[Map[String, Option[ActorRef]]], config: SiriusConfiguration): Props = {
     // XXX: we should figure out if we're doing config parsing and injecting it, or doing it within the actor
     //      the advantage of pulling out the config here is it makes testing easier, and it makes it obvious what
     //      config is needed
@@ -56,14 +56,14 @@ object MembershipActor {
  * For production code you should use MembershipActor#apply instead, this will take care
  * of more proper construction and DI.
  *
- * @param membershipAgent An Agent[Set[ActorRef]] that this actor will keep populated
+ * @param membershipAgent An Agent[Map[String, Option[ActorRef\]\]\] that this actor will keep populated
  *          with the most up to date membership information
  * @param clusterConfigPath A scalax.file.Path containing the membership information
  *          for this cluster
  * @param checkInterval how often to check for updates to clusterConfigPath
  * @param config SiriusConfiguration, used to register monitors
  */
-class MembershipActor(membershipAgent: Agent[Map[String, ActorRef]],
+class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
                       clusterConfigPath: Path,
                       checkInterval: Duration,
                       pingInterval: Duration,
@@ -108,7 +108,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, ActorRef]],
 
     case PingMembership =>
       val currentTime = System.currentTimeMillis
-      membershipAgent.get().values.foreach(_ ! Ping(currentTime))
+      membershipAgent.get().values.flatten.foreach(_ ! Ping(currentTime))
 
   }
 
@@ -162,7 +162,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, ActorRef]],
     actorPaths
       .filterNot(_.startsWith("#"))
       .foreach(path => {
-        membershipAgent send (_ + (path -> context.actorFor(path)))
+        membershipAgent send (_ + (path -> Some(context.actorFor(path))))
     })
   }
 

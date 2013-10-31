@@ -38,8 +38,8 @@ class SiriusImplTest extends NiceTest with TimedTest {
   var supervisorActorProbe: TestProbe = _
   var underTest: SiriusImpl = _
   implicit var actorSystem: ActorSystem = _
-  val timeout: Timeout = (5 seconds)
-  var membership: Set[ActorRef] = _
+  val timeout: Timeout = 5 seconds
+  var membership: Map[String, Option[ActorRef]] = _
 
   val mockNodeStatus = mock[FullNodeStatus]
 
@@ -48,7 +48,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
             akka.event-handlers = ["akka.testkit.TestEventListener"]
     """))
 
-    membership = mock[Set[ActorRef]];
+    membership = mock[Map[String, Option[ActorRef]]]
 
     supervisorActorProbe = TestProbe()(actorSystem)
     supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {

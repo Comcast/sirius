@@ -16,6 +16,7 @@ import annotation.tailrec
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 import org.slf4j.LoggerFactory
+import java.util.concurrent.TimeUnit
 
 object FullSystemITest {
 
@@ -107,7 +108,6 @@ class FullSystemITest extends NiceTest with TimedTest {
   var sirii: List[SiriusImpl] = _
 
   before {
-    // incredibly ghetto, but TemporaryFolder was doing some weird stuff...
     val tempDirName = "%s/sirius-fulltest-%s".format(
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
@@ -128,7 +128,7 @@ class FullSystemITest extends NiceTest with TimedTest {
   after {
     sirii.foreach(_.shutdown())
     sirii = List()
-    tempDir.delete()
+    Path(tempDir).deleteRecursively()
   }
 
   def waitForMembership(sirii: List[SiriusImpl], membersExpected: Int) {
@@ -137,6 +137,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       "Membership did not reach expected size")
     sirii.foreach(_.supervisor ! CheckPaxosMembership)
     Thread.sleep(2000)
+    // TODO assert that each node turns on its Paxos
   }
 
   def fireAndAwait(sirii: List[SiriusImpl], commands: List[String]): List[String] = {
@@ -277,7 +278,7 @@ class FullSystemITest extends NiceTest with TimedTest {
         val failed = fireAndAwait(List(sirius1), List(nextCommand))
         if (!failed.isEmpty) {
           retried += 1
-          logger.debug("XXX %s retries so far", retried)
+          logger.debug("%s retries so far".format(retried))
         }
         failed.isEmpty
       }, 30000, 1000), "after removing Sirius3 from the cluster, could not get any commands through the system")
