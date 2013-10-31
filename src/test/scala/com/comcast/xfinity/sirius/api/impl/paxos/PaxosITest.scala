@@ -46,7 +46,7 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
   describe("The Paxos subsystem") {
     it ("must arrive at a decision when all requests are sent to a single node, and " +
         "the initiators must be properly notified") {
-      val membership = Agent(Map[String, ActorRef]())
+      val membership = Agent(Map[String, Option[ActorRef]]())
       val membershipHelper = MembershipHelper(membership, TestProbe().ref)
 
       // 3 nodes x 3 requests = 9 applied decisions
@@ -61,9 +61,9 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
       val node3 = new TestNode(membershipHelper, decisionLatch)
 
       // with the nodes created, establish membership
-      membership send (_ + ("node1" -> node1.paxosSup))
-      membership send (_ + ("node2" -> node2.paxosSup))
-      membership send (_ + ("node3" -> node3.paxosSup))
+      membership send (_ + ("node1" -> Some(node1.paxosSup)))
+      membership send (_ + ("node2" -> Some(node2.paxosSup)))
+      membership send (_ + ("node3" -> Some(node3.paxosSup)))
 
       // stage and send requests
       val req1 = Delete("A")

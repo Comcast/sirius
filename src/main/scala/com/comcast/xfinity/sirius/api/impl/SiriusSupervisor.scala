@@ -43,12 +43,12 @@ object SiriusSupervisor {
       Agent(new SiriusState)(context.system)
 
     def createMembershipAgent()(implicit context: ActorContext) =
-      Agent(Map[String, ActorRef]())(context.system)
+      Agent(Map[String, Option[ActorRef]]())(context.system)
 
     def createStateSupervisor(stateAgent: Agent[SiriusState])(implicit context: ActorContext) =
       context.actorOf(StateSup.props(requestHandler, siriusLog, stateAgent, config), "state")
 
-    def createMembershipActor(membershipAgent: Agent[Map[String, ActorRef]])(implicit context: ActorContext) =
+    def createMembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]])(implicit context: ActorContext) =
       context.actorOf(MembershipActor.props(membershipAgent, config), "membership")
 
     def createStateBridge(stateSupervisor: ActorRef, siriusSupervisor: ActorRef, membershipHelper: MembershipHelper)
@@ -156,7 +156,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
         logger.warning("Dropping {} cause CompactionMessage because CompactionManager is not up", compactionMessage.getClass.getName)
     }
     case CheckPaxosMembership =>
-      if (membershipAgent.get().values.toSet.contains(self)) {
+      if (membershipAgent.get().values.toSet.contains(Some(self))) {
         ensureOrderingActorRunning()
       } else {
         ensureOrderingActorStopped()
