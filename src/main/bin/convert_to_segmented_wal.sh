@@ -45,6 +45,6 @@ echo "Moving $SEGMENTED_WAL_DIR to $WAL_DIR"
 mv $SEGMENTED_WAL_DIR $WAL_DIR || die "Failed moving $LEGACY_WAL_DIR $WAL_DIR"
 
 echo "Changing ownership of $WAL_DIR to tomcat so that the app can actually read/write wal files."
-/usr/bin/sudo chown -R tomcat $WAL_DIR || die "Failed chown to tomcat of $WAL_DIR."
+/usr/bin/sudo /bin/chown -R tomcat $WAL_DIR || die "Failed chown to tomcat of $WAL_DIR."
 
 echo "Conversion from Legacy WAL to Segmented WAL Complete"
