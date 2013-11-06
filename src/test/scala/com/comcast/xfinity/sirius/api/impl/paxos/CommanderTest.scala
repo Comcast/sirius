@@ -49,7 +49,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       val biggerBallot = Ballot(2, "b")
       commander ! Phase2B(anAcceptorProbe.ref, biggerBallot)
       leaderProbe.expectMsg(Preempted(biggerBallot))
-      terminationProbe.expectMsg(Terminated(commander))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     it ("must notify the replicas once a majority of acceptors have responded and exit") {
@@ -68,7 +68,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
 
       replicaProbes.foreach(_.expectMsg(Decision(pvalue.slotNum, pvalue.proposedCommand)))
-      terminationProbe.expectMsg(Terminated(commander))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     it ("must be able to make progress as a forever alone") {
@@ -87,7 +87,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
       acceptorProbes.foreach(probe => commander ! Phase2B(probe.ref, pvalue.ballot))
 
       replicaProbes.foreach(_.expectMsg(Decision(pvalue.slotNum, pvalue.proposedCommand)))
-      terminationProbe.expectMsg(Terminated(commander))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     it ("must notify its leader of the PValue and retryCount it timed out negotiating") {
@@ -105,7 +105,7 @@ class CommanderTest extends NiceTest with BeforeAndAfterAll {
 
       commander ! ReceiveTimeout
       leaderProbe.expectMsg(Commander.CommanderTimeout(pvalue, 1))
-      terminationProbe.expectMsg(Terminated(commander))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
   }
 }
