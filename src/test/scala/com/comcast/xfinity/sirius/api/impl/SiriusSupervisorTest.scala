@@ -186,7 +186,8 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       supervisor ! CheckPaxosMembership
 
       assert(waitForTrue(supervisor.underlyingActor.orderingActor == Some(paxosProbe.ref), 1000, 100))
-      supervisor ! Terminated(paxosProbe.ref)
+
+      actorSystem.stop(paxosProbe.ref)
 
       assert(waitForTrue(supervisor.underlyingActor.orderingActor == None, 1000, 100))
     }

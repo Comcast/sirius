@@ -74,7 +74,7 @@ class GapFetcherTest extends NiceTest {
 
       underTest ! ReceiveTimeout
 
-      terminationProbe.expectMsg(Terminated(underTest))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
   }
 }

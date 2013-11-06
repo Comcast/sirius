@@ -46,7 +46,7 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
       val biggerBallot = Ballot(2, "b")
       scout ! Phase1B(acceptorProbe.ref, biggerBallot, Set[PValue]())
       leaderProbe.expectMsg(Preempted(biggerBallot))
-      terminationProbe.expectMsg(Terminated(scout))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     // Here it is important to note that we are waiting until there are < n/2 oustanding
@@ -79,7 +79,7 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
 
       scout ! Phase1B(anAcceptorProbe3.ref, ballot, Set[PValue]())
       leaderProbe.expectMsg(Adopted(ballot, acceptor1sPValues ++ acceptor2sPValues))
-      terminationProbe.expectMsg(Terminated(scout))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     it ("must be able to make progress as a forever alone") {
@@ -95,7 +95,7 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
       val acceptorsPValues = Set(PValue(Ballot(0, "a"), 1, Command(null, 1, Delete("2"))))
       scout ! Phase1B(acceptorProbe.ref, ballot, acceptorsPValues)
       leaderProbe.expectMsg(Adopted(ballot, acceptorsPValues))
-      terminationProbe.expectMsg(Terminated(scout))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
   }
 }

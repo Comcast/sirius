@@ -35,7 +35,7 @@ class CompactionActorTest extends NiceTest with BeforeAndAfterAll {
       verify(mockSiriusLog).compact()
 
       senderProbe.expectMsg(CompactionFailed(exception))
-      terminationProbe.expectMsg(Terminated(underTest))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     it ("should call through to the siriusLog's compact method") {
@@ -56,7 +56,7 @@ class CompactionActorTest extends NiceTest with BeforeAndAfterAll {
       senderProbe.send(underTest, Compact)
 
       senderProbe.expectMsg(CompactionComplete)
-      terminationProbe.expectMsg(Terminated(underTest))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
   }
 }

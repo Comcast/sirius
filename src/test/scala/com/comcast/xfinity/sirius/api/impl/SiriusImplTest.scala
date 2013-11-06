@@ -163,7 +163,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
         val terminationProbe = TestProbe()
         terminationProbe.watch(underTest.supervisor)
         underTest.shutdown()
-        terminationProbe.expectMsg(Terminated(underTest.supervisor))
+        terminationProbe.expectMsgClass(classOf[Terminated])
         assert(!underTest.actorSystem.isTerminated, "ActorSystem should not be terminated")
         assert(false === underTest.isOnline)
       }
