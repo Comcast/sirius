@@ -30,6 +30,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   def makeMockedUpLeader(membership: MembershipHelper = mock[MembershipHelper],
                          startingSeqNum: Long = 1,
                          helper: LeaderHelper = mock[LeaderHelper],
+                         leaderWatcher: ActorRef = TestProbe().ref,
                          startScoutFun: => ActorRef = TestProbe().ref,
                          startCommanderFun: (PValue, Int) => ActorRef = (p, i) => TestProbe().ref) = {
     val childProvider = new ChildProvider(new SiriusConfiguration) {
@@ -43,7 +44,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
                                latestDecidedSlot: Long)(implicit context: ActorContext): ActorRef = startScoutFun
       override def createLeaderWatcher(leader: ActorRef,
                                        ballotToWatch: Ballot,
-                                       replyTo: ActorRef)(implicit context: ActorContext) = TestProbe().ref
+                                       replyTo: ActorRef)(implicit context: ActorContext) = leaderWatcher
     }
     TestActorRef(
       new Leader(membership, startingSeqNum, childProvider, helper, new SiriusConfiguration)
@@ -315,22 +316,14 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
     describe("when receiving a Terminated message") {
       it("should set currentLeaderWatcher to None if the terminated actor matches") {
         val watcherProbe = TestProbe()
-        val underTest = makeMockedUpLeader()
-        underTest.underlyingActor.currentLeaderWatcher = Some(watcherProbe.ref)
+        val underTest = makeMockedUpLeader(leaderWatcher = watcherProbe.ref)
 
-        underTest ! Terminated(watcherProbe.ref)
+        underTest ! Preempted(Ballot(underTest.underlyingActor.myBallot.seq + 1, "some-other-leader"))
+        assert(waitForTrue(Some(watcherProbe.ref) == underTest.underlyingActor.currentLeaderWatcher, 1000, 25))
+
+        actorSystem.stop(watcherProbe.ref)
 
         assert(waitForTrue(None == underTest.underlyingActor.currentLeaderWatcher, 1000, 25))
-      }
-      it("should do nothing if the terminated actor does not match") {
-        val watcherProbe = TestProbe()
-        val underTest = makeMockedUpLeader()
-        underTest.underlyingActor.currentLeaderWatcher = Some(watcherProbe.ref)
-
-        underTest ! Terminated(TestProbe().ref)
-
-        Thread.sleep(50) // ugh. hard to test that an actor receives a msg and does nothing...
-        assert(Some(watcherProbe.ref) === underTest.underlyingActor.currentLeaderWatcher)
       }
     }
 

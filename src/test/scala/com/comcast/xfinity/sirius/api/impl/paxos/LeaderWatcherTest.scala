@@ -66,7 +66,7 @@ class LeaderWatcherTest extends NiceTest with BeforeAndAfterAll {
       watcher ! LeaderGone
 
       replyTo.expectMsg(LeaderGone)
-      terminationProbe.expectMsg(Terminated(watcher))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
   }
 
@@ -81,7 +81,7 @@ class LeaderWatcherTest extends NiceTest with BeforeAndAfterAll {
       watcher ! DifferentLeader(newBallot)
 
       replyTo.expectMsg(Preempted(newBallot))
-      terminationProbe.expectMsg(Terminated(watcher))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
   }
 
@@ -93,7 +93,7 @@ class LeaderWatcherTest extends NiceTest with BeforeAndAfterAll {
 
       watcher ! Close
 
-      terminationProbe.expectMsg(Terminated(watcher))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
   }
 }

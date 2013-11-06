@@ -67,20 +67,15 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll with TimedTe
 
     describe ("when receiving Terminated") {
       it ("must reset its compactionActor to None if the terminated actor matches compactionActor") {
-        val startingCompactionActor = TestProbe()
-        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(startingCompactionActor.ref))
+        val compactionActor = TestProbe()
+        val underTest = makeMockCompactionManager(testCompactionActor = compactionActor.ref)
 
-        underTest ! Terminated(startingCompactionActor.ref)
+        underTest ! Compact
+        assert(waitForTrue(Some(compactionActor.ref) == underTest.underlyingActor.compactionActor, 1000, 25))
+
+        actorSystem.stop(compactionActor.ref)
+
         assert(waitForTrue(None == underTest.underlyingActor.compactionActor, 1000, 25))
-      }
-      it ("must do nothing if the terminated actor does not match compactionActor") {
-        val startingCompactionActor = TestProbe()
-        val underTest = makeMockCompactionManager(testCurrentCompactionActor = Some(startingCompactionActor.ref))
-
-        underTest ! Terminated(TestProbe().ref)
-
-        Thread.sleep(50) // ugh. hard to test that an actor receives a msg and does nothing...
-        assert(Some(startingCompactionActor.ref) === underTest.underlyingActor.compactionActor)
       }
     }
 

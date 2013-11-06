@@ -43,7 +43,7 @@ class LeaderPingerTest extends NiceTest {
       underTest ! Pong(Some(expectedBallot))
 
       replyTo.expectMsgClass(classOf[LeaderPong])
-      terminationProbe.expectMsg(Terminated(underTest))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     it ("should inform replyTo that there is a different leader " +
@@ -60,7 +60,7 @@ class LeaderPingerTest extends NiceTest {
       underTest ! Pong(Some(differentBallot))
 
       replyTo.expectMsg(DifferentLeader(differentBallot))
-      terminationProbe.expectMsg(Terminated(underTest))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     it ("should inform replyTo that the leader is gone if a Pong with " +
@@ -76,7 +76,7 @@ class LeaderPingerTest extends NiceTest {
       underTest ! Pong(None)
 
       replyTo.expectMsg(LeaderGone)
-      terminationProbe.expectMsg(Terminated(underTest))
+      terminationProbe.expectMsgClass(classOf[Terminated])
     }
 
     it ("should inform replyTo that the leader is gone if its Ping times out") {

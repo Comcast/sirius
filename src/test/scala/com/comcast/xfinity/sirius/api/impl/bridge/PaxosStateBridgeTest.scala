@@ -153,22 +153,13 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
   describe("when receiving a Terminated message") {
     it("should set gapFetcher to None if the terminated actor matches the current fetcher") {
       val gapFetcherActor = TestProbe()
-      val underTest = makeStateBridge(10)
-      underTest.underlyingActor.gapFetcher = Some(gapFetcherActor.ref)
+      val underTest = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)
+      underTest ! RequestGaps
+      assert(waitForTrue(Some(gapFetcherActor.ref) == underTest.underlyingActor.gapFetcher, 1000, 25))
 
-      underTest ! Terminated(gapFetcherActor.ref)
+      actorSystem.stop(gapFetcherActor.ref)
 
       assert(waitForTrue(None == underTest.underlyingActor.gapFetcher, 1000, 25))
-    }
-    it("should do nothing if the terminated actor does not match the current fetcher") {
-      val gapFetcherActor = TestProbe()
-      val underTest = makeStateBridge(10)
-      underTest.underlyingActor.gapFetcher = Some(gapFetcherActor.ref)
-
-      underTest ! Terminated(TestProbe().ref)
-
-      Thread.sleep(50) // ugh. hard to test that an actor receives a msg and does nothing...
-      assert(Some(gapFetcherActor.ref) === underTest.underlyingActor.gapFetcher)
     }
   }
 
