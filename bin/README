@@ -1,0 +1,91 @@
+README
+------------
+
+Installation
+------------
+
+Installing walt.py requires easy_install, virtualenv, and pip.
+ 
+If you already have easy_install, skip to step 3.
+
+If you need to install easy_install:
+
+1. Download:
+
+$ wget http://pypi.python.org/packages/2.6/s/setuptools/setuptools-0.6c11-py2.6.egg#md5=bfa92100bd772d5a213eedd356d64086
+
+2. Run the installer:
+
+$ sudo sh setuptools-0.6c11-py2.6.egg
+
+3. Install virtualenv (this installs pip).
+
+$ easy_install virtualenv
+
+In order to install walt.py's dependencies into your system's 
+Python environment, and not isolate them using virutalenv, 
+skip to step 6.
+
+4. Create a virtualenv (replace <ve> directory with the 
+directory of your choice - no trailing slash!):
+
+$ virtualenv <ve>
+
+5. Switch to that virtualenv to install libraries and run the script:
+
+$ source <ve>/bin/activate
+
+6. Change directory to the directory you installed this script:
+
+$ cd <sirius-bin>
+
+7. Install pre-requisite Python libraries:
+
+$ pip install -r pip-requires.txt
+
+Now you are ready to run! If you are using a virtualenv, make sure
+to activate it first (step 5 above).
+
+Running walt
+----------------
+
+To run the checksum check against a WAL file:
+
+$ ./walt.py -i <path-to-wal>
+
+To run the checksum check and produce a sqlite db from the WAL file:
+
+$ ./walt.py -i <path-to-wal> -d <path-to-db-file>
+
+To run the checksum check and produce a repaired WAL file:
+
+$ ./walt.py -i <path-to-wal> -o <path-to-output>
+
+To pipe the output of a WAL file and produce its protobuffer output:
+
+tail -n1 <path-to-wal> | ./walt.py -p
+
+tail -n1 ../../_snippets/wal-programs.log | ./walt.py -p | grep seriesId
+
+Maintenance
+
+Example Generating the VodProto_pb2.py file:
+----------------
+
+Until we determine how to package walt, if protocol buffer definitions
+change, python versions of the protocol buffer files must be generated 
+and stored under core_data:
+
+Example creating VodProto.proto (which will be called VodProto.proto_pb2.py):
+
+protoc -I=<xtvapi-core-data-project-directory>/src/main/protobuf/ --python_out=. <xtvapi-core-data-project-directory>/src/main/protobuf/VodProto.proto
+
+
+TODOs
+-----------
+
+1. Package script to make it easier to install and run (scala maybe, most likely, almost certainly).
+
+2. Unit tests
+
+3. Error handling would be nice.

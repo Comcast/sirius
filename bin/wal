@@ -1,0 +1,131 @@
+#!/usr/bin/env python
+
+import base64
+import getopt
+import hashlib
+import sys
+
+def usage(f):
+    print """usage: wal [-?hnmf] [-i <file>] [-o <file>] <command>
+  -?,-h,--help     : get usage message
+  -n,--no-checksum : skip checksum verification
+  -f,--fnv-1a      : use FNV-1a checksum algorithm (default)
+  -m,--md5         : use MD5 checksum algorithm
+  -i,--input-file  : read log from file rather than stdin
+  -o,--output-file : write modified log to file rather than stdout
+  <command>        : one of : check, repair
+
+COMMANDS:
+  check  : read the log and verify its integrity
+  repair : output the longest prefix of the log that is verified good
+
+EXAMPLES:
+  $ wal check < wal.log
+  $ wal repair < corrupted.log > repaired.log"""
+
+def check_entry_skip(n, entry): return True
+
+def check_entry_md5(n, entry):
+    first_pipe = entry.index('|')
+    m = hashlib.md5()
+    m.update(entry[first_pipe:])
+    return entry[:first_pipe] == base64.b64encode(m.digest())
+
+def check_entry_fnv_1a(n, entry):
+    first_pipe = entry.index('|')
+    h = 14695981039346656037
+    for c in entry[first_pipe:]:
+        h ^= ord(c)
+        h *= 1099511628211
+        h &= 0xffffffffffffffff
+    return entry[:first_pipe] == ("%016x" % h)
+
+def main(f, outf, checksum):
+    entries = 0
+    truncated = 0
+    missing_fields = 0
+    corrupted = 0
+    for line in f:
+        ok = True
+        if not line.endswith('\n'):
+            sys.stderr.write("entry %d not terminated by newline\n" % entries)
+            truncated += 1
+            ok = False
+        elif not len(line.split('|')) == 6:
+            sys.stderr.write("entry %d does not have 6 pipe-delimited fields\n" %
+                             entries)
+            missing_fields += 1
+            ok = False
+        elif not checksum(entries, line):
+            sys.stderr.write("entry %d has bad checksum\n" % entries)
+            corrupted += 1
+            ok = False
+        elif outf is not None: outf.write(line)
+
+        if not ok and outf is not None:
+            outf.flush()
+            outf = None
+            
+        entries += 1
+
+    if outf is not None:
+        outf.flush()
+
+    sys.stderr.write("wal: %d total entries\n" % entries)
+    if truncated > 0:
+        sys.stderr.write("wal: %d truncated entries\n" % truncated)
+    if missing_fields > 0:
+        sys.stderr.write("wal: %d entries with missing fields\n" % missing_fields)
+    if corrupted > 0:
+        sys.stderr.write("wal: %d entries with bad checksums\n" % corrupted)
+    sys.stderr.flush()
+
+if __name__ == "__main__":
+    check_checksums = True
+    input_file = sys.stdin
+    output_file = None
+    close_output = False
+    checksum = check_entry_fnv_1a
+    try:
+        longopts = ["help", "no-checksum", "input-file=", "output-file=",
+                    "md5", "fnv-1a"]
+        opts, args = getopt.getopt(sys.argv[1:], "?hmfni:o:", longopts)
+    except getopt.GetoptError as e:
+        sys.stderr.write("%s\n" % e)
+        usage(sys.stderr)
+        sys.exit(1)
+    for option, value in opts:
+        if option in ["-?","-h","--help"]:
+            usage(sys.stdout)
+            sys.exit(0)
+        if option in ["-n","--no-checksum"]:
+            sys.stderr.write("Skipping checksum verification.\n")
+            check_checksums = False
+        if option in ["-f","--fnv-1a"]:
+            checksum = check_entry_fnv_1a
+        if option in ["-m","--md5"]:
+            checksum = check_entry_md5
+        if option in ["-i","--input-file"]:
+            try:
+                input_file = open(value)
+            except:
+                sys.stderr.write("%s\n" % sys.exc_info()[1])
+                sys.exit(1)
+        if option in ["-o","--output-file"] and args[0] == "repair":
+            try:
+                output_file = open(value,"w")
+                close_output = True
+            except:
+                sys.stderr.write("%s\n" % sys.exc_info()[1])
+                sys.exit(1)
+    if len(args) != 1 or args[0] not in ["check","repair"]:
+        usage(sys.stderr)
+        sys.exit(1)
+    elif args[0] == "repair":
+        if output_file is None: output_file = sys.stdout
+            
+    main(input_file, output_file, checksum)
+    if close_output: output_file.close()
+
+
+

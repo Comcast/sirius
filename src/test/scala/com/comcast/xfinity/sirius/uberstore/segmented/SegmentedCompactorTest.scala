@@ -1,0 +1,300 @@
+package com.comcast.xfinity.sirius.uberstore.segmented
+
+import com.comcast.xfinity.sirius.NiceTest
+import java.io.File
+import scalax.file.Path
+import org.scalatest.BeforeAndAfterAll
+import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
+import org.mockito.Mockito._
+
+class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
+
+  def createTempDir: File = {
+    val tempDirName = "%s/compactor-itest-%s".format(
+      System.getProperty("java.io.tmpdir"),
+      System.currentTimeMillis()
+    )
+    val dir = new File(tempDirName)
+    dir.mkdirs()
+    dir
+  }
+
+  def writeEvents(segment: Segment, events: List[Long]) {
+    for (i <- events) {
+      segment.writeEntry(OrderedEvent(i, 0L, Delete(i.toString)))
+    }
+  }
+
+  def makeSegment(fullPath: String): Segment = {
+    val file = new File(fullPath)
+    Segment(file.getParentFile, file.getName)
+  }
+
+  def listEvents(segment: Segment) =
+    segment.foldLeft(List[String]())((acc, event) => event.request.key :: acc).reverse.mkString(" ")
+
+  var dir: File = _
+
+  before {
+    dir = createTempDir
+  }
+
+  after {
+    Path.fromString(dir.getAbsolutePath).deleteRecursively(force = true)
+  }
+
+  describe("replace") {
+    it("should replace the contents of the original segment with those of the replacement") {
+      val original = Segment(dir, "1")
+      val replacement = Segment(dir, "1.compacted")
+      val foldFun = (acc: List[Long], evt: OrderedEvent) => evt.sequence :: acc
+
+      writeEvents(original, List(1L, 2L, 3L, 4L))
+      writeEvents(replacement, List(2L, 3L))
+
+      val expected = replacement.foldLeft(List[Long]())(foldFun)
+
+      val result = SegmentedCompactor.replace(original, replacement.location.getAbsolutePath)
+
+      assert(original.location.getAbsolutePath === result.location.getAbsolutePath)
+      assert(expected === result.foldLeft(List[Long]())(foldFun))
+    }
+
+    it("should handle an empty replacement normally") {
+      val original = Segment(dir, "1")
+      val replacement = Segment(dir, "1.compacted")
+      val foldFun = (acc: List[Long], evt: OrderedEvent) => evt.sequence :: acc
+
+      writeEvents(original, List(1L, 2L, 3L, 4L))
+
+      val expected = List[Long]()
+
+      val result = SegmentedCompactor.replace(original, replacement.location.getAbsolutePath)
+
+      assert(original.location.getAbsolutePath === result.location.getAbsolutePath)
+      assert(expected === result.foldLeft(List[Long]())(foldFun))
+    }
+  }
+
+  describe("findCompactableSegments") {
+    it("should return an empty List if no segments are provided") {
+      val list = List[Segment]()
+      assert(List() === SegmentedCompactor.findCompactableSegments(list))
+    }
+
+    it("should return an empty List if all segments have been applied") {
+      val mockSegment = mock[Segment]
+      val list = List(mockSegment)
+
+      doReturn(true).when(mockSegment).isApplied
+
+      assert(List() === SegmentedCompactor.findCompactableSegments(list))
+    }
+
+    it("should return only the segments that have not been applied if there are some") {
+      val appliedSegment = mock[Segment]
+      val notAppliedSegment = mock[Segment]
+      val list = List(appliedSegment, notAppliedSegment)
+
+      doReturn(true).when(appliedSegment).isApplied
+      doReturn(false).when(notAppliedSegment).isApplied
+
+      assert(List(notAppliedSegment) === SegmentedCompactor.findCompactableSegments(list))
+    }
+  }
+
+  describe("compactAgainst") {
+    it("should preserve a false isApplied flag when a segment is compacted") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val segments = List(first, second)
+      segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+
+      first.setApplied(applied = false)
+      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      assert(false === makeSegment(compactionMap(first)).isApplied)
+    }
+
+    it("should preserve a true isApplied flag when a segment is compacted") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val segments = List(first, second)
+      segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+
+      first.setApplied(applied = true)
+      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      assert(true === makeSegment(compactionMap(first)).isApplied)
+    }
+
+    it("should compact nothing if the supplied segment is the first in sort order") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val third = Segment(dir, "3")
+      val segments = List(first, second, third)
+
+      segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+
+      val compactionMap = SegmentedCompactor.compactAgainst(first, segments)
+
+      assert(None == compactionMap.get(first))
+      assert(None == compactionMap.get(second))
+      assert(None == compactionMap.get(third))
+    }
+
+    it("should only compact Segments with name < supplied segment's name") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val third = Segment(dir, "3")
+      val segments = List(first, second, third)
+
+      segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+
+      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+
+      assert(None != compactionMap.get(first))
+      assert(None == compactionMap.get(second))
+      assert(None == compactionMap.get(third))
+    }
+
+    it("should compact all other segments if the supplied segment is the latest") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val third = Segment(dir, "3")
+      val segments = List(first, second, third)
+
+      segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+
+      val compactionMap = SegmentedCompactor.compactAgainst(third, segments)
+
+      assert(None != compactionMap.get(first))
+      assert(None != compactionMap.get(second))
+      assert(None == compactionMap.get(third))
+    }
+
+    it("should compact all other segments if the supplied segment is the latest, regardless of list order") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val third = Segment(dir, "3")
+      val segments = List(third, second, first)
+
+      segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+
+      val compactionMap = SegmentedCompactor.compactAgainst(third, segments)
+
+      assert(None != compactionMap.get(first))
+      assert(None != compactionMap.get(second))
+      assert(None == compactionMap.get(third))
+    }
+
+    it("should remove all events in appropriate segments that are overridden in the supplied segment when SOME events should be removed") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val segments = List(first, second)
+
+      writeEvents(first, List(1L, 2L, 3L, 4L))
+      writeEvents(second, List(3L, 4L, 5L, 6L))
+
+      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      val compacted = makeSegment(compactionMap(first))
+
+      assert("1 2" === listEvents(compacted))
+    }
+
+    it("should remove all events in appropriate segments that are overridden in the supplied segment when ALL events should be removed") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val segments = List(first, second)
+
+      writeEvents(first, List(1L, 2L, 3L, 4L))
+      writeEvents(second, List(1L, 2L, 3L, 4L))
+
+      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      val compacted = makeSegment(compactionMap(first))
+
+      assert(List(first) === compactionMap.keys.toList)
+      assert("" === listEvents(compacted))
+    }
+  }
+
+  describe("findNextMergeableSegments") {
+    it("should do nothing if the input is of size 0 or 1") {
+      val isMergeable = (left: Segment, right: Segment) => true
+      assert(None === SegmentedCompactor.findNextMergeableSegments(List(), isMergeable))
+      assert(None === SegmentedCompactor.findNextMergeableSegments(List(Segment(dir, "1")), isMergeable))
+    }
+
+    it("should return the first two elements if the return true for the isMergeable predicate") {
+      val isMergeable = (left: Segment, right: Segment) => true
+      val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
+      val segments = List(one, two, three)
+
+      assert(Some(one, two) === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+    }
+    it("should return None if there are no mergeable elements in the list") {
+      val isMergeable = (left: Segment, right: Segment) => false
+      val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
+      val segments = List(one, two, three)
+
+      assert(None === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+    }
+    it("should return the first mergeable elements in the list if there are any") {
+      val isMergeable = (left: Segment, right: Segment) => left.name == "2" && right.name == "3"
+      val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
+      val segments = List(one, two, three)
+
+      assert(Some(two, three) === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+    }
+  }
+  describe("delete") {
+    it("should close the input segment") {
+      val segment = Segment(dir, "1")
+      SegmentedCompactor.delete(segment)
+      assert(true === segment.isClosed)
+    }
+    it("should remove the location of segment from the filesystem") {
+      val segment = Segment(dir, "1")
+      SegmentedCompactor.delete(segment)
+      assert(false === segment.location.exists())
+    }
+  }
+  describe("mergeSegments") {
+    it("should create a new segment at targetFile") {
+      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
+      val target = new File(dir, "1-2.merged")
+
+      assert(false === target.exists())
+      SegmentedCompactor.mergeSegments(left, right, target)
+      assert(true === target.exists())
+    }
+    it("should write all of the elements from left and right into target, in order") {
+      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
+      writeEvents(left, List(1L, 2L, 3L))
+      writeEvents(right, List(4L, 5L, 6L))
+      val target = new File(dir, "1-2.merged")
+
+      SegmentedCompactor.mergeSegments(left, right, target)
+
+      assert("1 2 3 4 5 6" === listEvents(Segment(target)))
+    }
+    it("should set the new segment's isApplied correctly if both left and right have been applied") {
+      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
+      left.setApplied(applied = true)
+      right.setApplied(applied = true)
+      val target = new File(dir, "1-2.merged")
+
+      SegmentedCompactor.mergeSegments(left, right, target)
+
+      assert(true === Segment(target).isApplied)
+    }
+    it("should set the new segment's isApplied correctly if either left or right have not been applied") {
+      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
+      left.setApplied(applied = false)
+      right.setApplied(applied = true)
+      val target = new File(dir, "1-2.merged")
+
+      SegmentedCompactor.mergeSegments(left, right, target)
+
+      assert(false === Segment(target).isApplied)
+    }
+  }
+}
