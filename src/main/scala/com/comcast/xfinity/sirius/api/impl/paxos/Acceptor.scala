@@ -2,11 +2,13 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import akka.actor.{Props, Actor}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.util.duration._
+import scala.concurrent.duration._
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.util.RichJTreeMap
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.language.postfixOps
 
 object Acceptor {
 
@@ -24,8 +26,7 @@ object Acceptor {
   def props(startingSeqNum: Long, config: SiriusConfiguration): Props = {
     val reapWindow = config.getProp(SiriusConfiguration.ACCEPTOR_WINDOW, 10 * 60 * 1000L)
     val reapFreqSecs = config.getProp(SiriusConfiguration.ACCEPTOR_CLEANUP_FREQ, 30)
-    //Props(classOf[Acceptor], startingSeqNum, reapWindow, reapFreqSecs, config)
-    Props(new Acceptor(startingSeqNum, reapWindow, reapFreqSecs, config))
+    Props(classOf[Acceptor], startingSeqNum, reapWindow, reapFreqSecs, config)
   }
 }
 

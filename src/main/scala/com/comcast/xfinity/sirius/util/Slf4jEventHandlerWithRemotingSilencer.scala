@@ -1,6 +1,6 @@
 package com.comcast.xfinity.sirius.util
 
-import akka.event.slf4j.Slf4jEventHandler
+import akka.event.slf4j.{Slf4jLogger, Slf4jEventHandler}
 import akka.event.Logging._
 
 /**
@@ -22,7 +22,7 @@ import akka.event.Logging._
  * for pointing out that this had to be done this way
  *
  */
-class Slf4jEventHandlerWithRemotingSilencer extends Slf4jEventHandler {
+class Slf4jEventHandlerWithRemotingSilencer extends Slf4jLogger {
 
   override def receive = {
     case Error(_, _, _, msg) if messageIsStupid(msg) => // no-op

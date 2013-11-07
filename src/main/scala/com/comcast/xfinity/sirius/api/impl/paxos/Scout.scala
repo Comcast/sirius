@@ -1,9 +1,10 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.util.duration._
+import scala.concurrent.duration._
 import akka.actor.{Props, ReceiveTimeout, Actor, ActorRef}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
+import scala.language.postfixOps
 
 object Scout{
 
@@ -19,8 +20,7 @@ object Scout{
    *         (e.g. calling `.withDispatcher()` on it)
    */
   def props(leader: ActorRef, clusterInfo: ClusterInfo, ballot: Ballot, latestDecidedSlot: Long): Props = {
-    //Props(classOf[Scout], leader, clusterInfo, ballot, latestDecidedSlot)
-    Props(new Scout(leader, clusterInfo.activeMembers, ballot, latestDecidedSlot, clusterInfo.simpleMajority))
+    Props(classOf[Scout], leader, clusterInfo.activeMembers, ballot, latestDecidedSlot, clusterInfo.simpleMajority)
   }
 }
 

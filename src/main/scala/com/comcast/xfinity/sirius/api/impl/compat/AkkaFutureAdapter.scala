@@ -1,14 +1,15 @@
 package com.comcast.xfinity.sirius.api.impl.compat
 
-import akka.dispatch.{Await, Future => AkkaFuture}
-import akka.util.duration._
+import scala.concurrent.{Await, Future => AkkaFuture}
+import scala.concurrent.duration._
 import java.util.concurrent.{TimeoutException, ExecutionException, TimeUnit, Future}
+import scala.language.postfixOps
 
 /**
  * Class encapsulating a {@link akka.dispatch.Future} in a
  * {@link java.util.concurrent.Future}
  *
- * @param akkaFuture the {@link akka.dispatch.Future} to wrap
+ * @param akkaFuture the {@see akka.dispatch.Future} to wrap
  */
 class AkkaFutureAdapter[T](akkaFuture: AkkaFuture[T]) extends Future[T] {
 
@@ -38,7 +39,7 @@ class AkkaFutureAdapter[T](akkaFuture: AkkaFuture[T]) extends Future[T] {
       // there is still no way in hell this can time out
       Await.result(akkaFuture, 7 days)
     } catch {
-      case e => throw new ExecutionException(e)
+      case e: Throwable => throw new ExecutionException(e)
     }
 
   /**
@@ -51,6 +52,6 @@ class AkkaFutureAdapter[T](akkaFuture: AkkaFuture[T]) extends Future[T] {
       Await.result(akkaFuture, timeUnit.toMillis(l) milliseconds)
     } catch {
       case te: TimeoutException => throw te
-      case e => throw new ExecutionException(e)
+      case e: Throwable => throw new ExecutionException(e)
     }
 }

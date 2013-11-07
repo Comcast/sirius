@@ -126,9 +126,9 @@ object SiriusFactory {
   private def createHostPortConfig(siriusConfig: SiriusConfiguration): Config = {
     val configMap = new JHashMap[String, Any]()
 
-    configMap.put("akka.remote.netty.hostname",
+    configMap.put("akka.remote.netty.tcp.hostname",
       siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
-    configMap.put("akka.remote.netty.port",
+    configMap.put("akka.remote.netty.tcp.port",
       siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
 
     // this is just so that the intellij shuts up

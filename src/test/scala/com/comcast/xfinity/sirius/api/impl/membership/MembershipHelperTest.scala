@@ -6,6 +6,7 @@ import akka.actor.{ActorSystem, ActorRef}
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.TestProbe
 import akka.agent.Agent
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
 

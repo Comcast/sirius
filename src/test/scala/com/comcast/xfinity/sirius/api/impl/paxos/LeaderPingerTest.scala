@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Pong, Ping}
 import akka.actor._
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{LeaderPong, LeaderGone, DifferentLeader}
@@ -15,17 +15,18 @@ class LeaderPingerTest extends NiceTest {
 
   implicit val actorSystem = ActorSystem("LeaderPingerTest")
 
-  def makePinger(ballot: Ballot = Ballot(1, TestProbe().ref.path.toString),
+  def makePinger(leaderToWatch: ActorRef = TestProbe().ref,
+                 ballot: Ballot = Ballot(1, TestProbe().ref.path.toString),
                  replyTo: ActorRef = TestProbe().ref,
                  pingReceiveTimeout: Int = 2000) = {
-    TestActorRef(new LeaderPinger(ballot, replyTo, pingReceiveTimeout))
+    TestActorRef(new LeaderPinger(leaderToWatch, ballot, replyTo, pingReceiveTimeout))
   }
 
 
   describe ("upon instantiation") {
     it ("should send the expectedLeader a Ping message") {
       val leaderProbe = TestProbe()
-      makePinger(ballot = Ballot(1, leaderProbe.ref.path.toString))
+      makePinger(leaderToWatch = leaderProbe.ref, ballot = Ballot(1, leaderProbe.ref.path.toString))
 
       leaderProbe.expectMsg(Ping)
     }
@@ -37,7 +38,7 @@ class LeaderPingerTest extends NiceTest {
       val leaderProbe = TestProbe()
       val expectedBallot = Ballot(1, leaderProbe.ref.path.toString)
       val replyTo = TestProbe()
-      val underTest = makePinger(expectedBallot, replyTo.ref)
+      val underTest = makePinger(leaderProbe.ref, expectedBallot, replyTo.ref)
       terminationProbe.watch(underTest)
 
       underTest ! Pong(Some(expectedBallot))
@@ -54,7 +55,7 @@ class LeaderPingerTest extends NiceTest {
       val differentBallot = Ballot(2, leaderProbe.ref.path.toString)
 
       val replyTo = TestProbe()
-      val underTest = makePinger(expectedBallot, replyTo.ref)
+      val underTest = makePinger(leaderProbe.ref, expectedBallot, replyTo.ref)
       terminationProbe.watch(underTest)
 
       underTest ! Pong(Some(differentBallot))
@@ -70,7 +71,7 @@ class LeaderPingerTest extends NiceTest {
       val expectedBallot = Ballot(1, leaderProbe.ref.path.toString)
 
       val replyTo = TestProbe()
-      val underTest = makePinger(expectedBallot, replyTo.ref)
+      val underTest = makePinger(leaderProbe.ref, expectedBallot, replyTo.ref)
       terminationProbe.watch(underTest)
 
       underTest ! Pong(None)

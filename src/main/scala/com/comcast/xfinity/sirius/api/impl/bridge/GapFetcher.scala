@@ -1,10 +1,11 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
 
 import akka.actor.{Props, ReceiveTimeout, ActorRef, Actor}
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{GetLogSubrange, LogSubrange}
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
+import scala.language.postfixOps
 
 object GapFetcher {
 
@@ -22,8 +23,7 @@ object GapFetcher {
     val chunkSize = config.getProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, 1000)
     val chunkReceiveTimeout = config.getProp(SiriusConfiguration.LOG_REQUEST_RECEIVE_TIMEOUT_SECS, 5)
 
-    //Props(classOf[GapFetcher], firstGapSeq, target, replyTo, chunkSize, chunkReceiveTimeout)
-    Props(new GapFetcher(firstGapSeq, target, replyTo, chunkSize, chunkReceiveTimeout))
+    Props(classOf[GapFetcher], firstGapSeq, target, replyTo, chunkSize, chunkReceiveTimeout)
   }
 }
 

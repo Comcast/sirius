@@ -2,16 +2,16 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.NiceTest
 import akka.agent.Agent
-import akka.actor.{Props, ActorRef, ActorSystem}
+import akka.actor.{ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonCommutativeSiriusRequest}
-import akka.util.duration._
-import com.typesafe.config.ConfigFactory
+import scala.concurrent.duration._
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestLatch, TestProbe}
-import akka.dispatch.Await
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.{Decision}
+import scala.concurrent.Await
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
+import scala.concurrent.ExecutionContext.Implicits.global
 
 
 object PaxosITest {

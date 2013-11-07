@@ -2,14 +2,15 @@ package com.comcast.xfinity.sirius.tool
 
 import helper.ActorSystemHelper
 import akka.util.Timeout
-import akka.util.duration._
+import scala.concurrent.duration._
 import akka.pattern.ask
-import akka.dispatch.Await
+import scala.concurrent.Await
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
-import akka.actor.ActorRef
+import akka.actor.{ActorSelection, ActorRef}
 import com.comcast.xfinity.sirius.api.impl.status.StatusWorker._
 import com.comcast.xfinity.sirius.api.impl.status.NodeStats.FullNodeStatus
 import com.comcast.xfinity.sirius.util.SiriusShortNameParser
+import scala.language.postfixOps
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -54,7 +55,7 @@ object NodeTool {
       //      we should talk about putting the LeaderGone message elsewhere
       case Array("force-seek-leadership", nodeId) =>
         val leaderAddr = getNodeAddressString(nodeId) + "/paxos/leader"
-        val leaderRef = ActorSystemHelper.getActorSystem().actorFor(leaderAddr)
+        val leaderRef = ActorSystemHelper.getActorSystem().actorSelection(leaderAddr)
         // XXX: using the full path here because this is dirty, and that should be known!
         leaderRef ! com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.LeaderGone
 
@@ -71,7 +72,7 @@ object NodeTool {
    *
    * @return Long value of the next expected sequence number
    */
-  private def getNextSeq(ref: ActorRef) = {
+  private def getNextSeq(ref: ActorSelection) = {
     val nextSeqFuture = ask(ref, GetNextLogSeq).mapTo[Long]
     Await.result(nextSeqFuture, timeout.duration)
   }
@@ -85,7 +86,7 @@ object NodeTool {
    *
    * @return a LogSubrange containing as many events as were retrievable
    */
-  private def getLogRange(ref: ActorRef, begin: Long, end: Long): LogSubrange = {
+  private def getLogRange(ref: ActorSelection, begin: Long, end: Long): LogSubrange = {
     val rangeFuture = ask(ref, GetLogSubrange(begin, end)).mapTo[LogSubrange]
     Await.result(rangeFuture, timeout.duration)
   }
@@ -97,7 +98,7 @@ object NodeTool {
    *
    * @return FullNodeStatus with lots of metadata about that node
    */
-  private def getNodeStatus(ref: ActorRef): FullNodeStatus = {
+  private def getNodeStatus(ref: ActorSelection): FullNodeStatus = {
     val statusFuture = ask(ref, GetStatus).mapTo[FullNodeStatus]
     Await.result(statusFuture, timeout.duration)
   }
@@ -109,9 +110,9 @@ object NodeTool {
           "Akka address or Sirius node short name")
     }
 
-  private def getNodeRef(shortAddrStr: String): ActorRef = {
+  private def getNodeRef(shortAddrStr: String): ActorSelection = {
     val fullAddress = getNodeAddressString(shortAddrStr)
-    ActorSystemHelper.getActorSystem().actorFor(fullAddress)
+    ActorSystemHelper.getActorSystem().actorSelection(fullAddress)
   }
 
 

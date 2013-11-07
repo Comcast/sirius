@@ -16,8 +16,7 @@ object SiriusStateActor {
    *         (e.g. calling `.withDispatcher()` on it)
    */
   def props(requestHandler: RequestHandler): Props = {
-    //Props(classOf[SiriusStateActor], requestHandler)
-    Props(new SiriusStateActor(requestHandler))
+    Props(classOf[SiriusStateActor], requestHandler)
   }
 }
 /**

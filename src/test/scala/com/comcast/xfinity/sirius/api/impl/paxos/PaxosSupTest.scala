@@ -5,7 +5,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.TestProbe
 import akka.actor.{ActorRef, ActorContext, Props, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete}
 
 class PaxosSupTest extends NiceTest with BeforeAndAfterAll {

@@ -64,8 +64,7 @@ object SiriusPersistenceActor {
    *         (e.g. calling `.withDispatcher()` on it)
    */
   def props(stateActor: ActorRef, siriusLog: SiriusLog, config: SiriusConfiguration): Props = {
-    //Props(classOf[SiriusPersistenceActor], stateActor, siriusLog, config)
-    Props(new SiriusPersistenceActor(stateActor, siriusLog, config))
+    Props(classOf[SiriusPersistenceActor], stateActor, siriusLog, config)
   }
 }
 
@@ -97,8 +96,6 @@ class SiriusPersistenceActor(stateActor: ActorRef,
     unregisterMonitors(config)
   }
 
-
-
   //XXX: this is a rough cummulative linear weighted avg.  Might want to see what else is out there in future
   /*
   Linear Weighted Cumulative Moving Average
@@ -106,21 +103,19 @@ class SiriusPersistenceActor(stateActor: ActorRef,
         L(1) = x(1)
         L(i+1) = (2/(i+2))x(i+1) + (i/(i+2))L(i)
   */
-  def weightedAvg(num: Long, curr:Long, cummulative:Long):Long = num match{
+  def weightedAvg(num: Long, curr: Long, cummulative: Long): Long = num match {
     case (n:Long) if n > 1 =>
       val rhs = (2.0/(n+1))*curr
-      val lhs =   (n.toDouble-1)/(n.toDouble+1)*cummulative
+      val lhs = (n.toDouble-1)/(n.toDouble+1)*cummulative
       (rhs+lhs).toLong
     case _ => curr
    }
-
 
   def receive = {
     case event: OrderedEvent =>
       val now = System.currentTimeMillis()
       siriusLog.writeEntry(event)
       stateActor ! event.request
-
 
       val thisWriteTime = System.currentTimeMillis() - now
       numWrites += 1
@@ -141,7 +136,7 @@ class SiriusPersistenceActor(stateActor: ActorRef,
     case GetNextLogSeq =>
       sender ! siriusLog.getNextSeq
 
-    // SiriusStateActor responds to writes with a SiriusResult, we don't really want this
+    // XXX SiriusStateActor responds to writes with a SiriusResult, we don't really want this
     // anymore, and it should be eliminated in a future commit
     case _: SiriusResult =>
   }

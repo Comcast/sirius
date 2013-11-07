@@ -8,12 +8,12 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.uberstore.{UberTool, UberStore}
-import akka.dispatch.{Await, Future}
+import scala.concurrent.{Await, Future}
 import scala.collection.mutable.Map
 import akka.actor.{ActorSystem, Props, Actor}
 import akka.routing.RoundRobinRouter
 import akka.pattern.ask
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
 import akka.util.Timeout
 import java.net.{HttpURLConnection, URL}
@@ -27,6 +27,8 @@ import scala.Console
 import com.comcast.xfinity.sirius.api.impl.Delete
 import scala.collection.mutable.WrappedArray
 import scala.collection.mutable.Set
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.language.postfixOps
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some

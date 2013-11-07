@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.api.impl.membership
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import org.mockito.Mockito._
 import akka.agent.Agent
-import akka.util.duration._
+import scala.concurrent.duration._
 import org.mockito.Matchers._
 import akka.actor.{ActorSystem, ActorRef}
 import akka.testkit.{TestProbe, TestActorRef}
@@ -16,7 +16,7 @@ import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{PingMembe
 class MembershipActorTest extends NiceTest with TimedTest {
 
   def makeMembershipActor(clusterConfig: Option[ClusterConfig] = None,
-                          membershipAgent: Agent[Map[String, Option[ActorRef]]] = Agent[Map[String, Option[ActorRef]]](Map())(actorSystem),
+                          membershipAgent: Agent[Map[String, Option[ActorRef]]] = Agent[Map[String, Option[ActorRef]]](Map())(actorSystem.dispatcher),
                           mbeanServer: MBeanServer = mock[MBeanServer]):
                          (TestActorRef[MembershipActor], Agent[Map[String, Option[ActorRef]]]) = {
 
@@ -73,13 +73,25 @@ class MembershipActorTest extends NiceTest with TimedTest {
       assert(Some(probeTwo.ref) === membershipAgent.get()(probeTwoPath))
     }
 
-    /**
-     * This test will be added when we move to akka 2.2. ActorRefs must be resolved before use.
-     *
-     * For now, they're instantiated whether or not the actor is running on the remote
-     * system.
-     */
-    ignore("should remove actors from membership that fail to resolve") {
+    it("should not add actors from membership that fail to resolve") {
+      val mockClusterConfig = mock[ClusterConfig]
+
+      val probeOne = TestProbe()
+      val probeOnePath = probeOne.ref.path.toString
+      val probeTwo = TestProbe()
+      val probeTwoPath = probeTwo.ref.path.toString
+      doReturn(List(probeOnePath, probeTwoPath)).when(mockClusterConfig).members
+      actorSystem.stop(probeTwo.ref)
+
+      val (underTest, membershipAgent) = makeMembershipActor(Some(mockClusterConfig))
+
+      underTest ! CheckClusterConfig
+      assert(waitForTrue(membershipAgent.get().size == 2, 2000, 100))
+      assert(Some(probeOne.ref) === membershipAgent.get()(probeOnePath))
+      assert(None === membershipAgent.get()(probeTwoPath))
+    }
+
+    it("should remove actors that seem to die") {
       val mockClusterConfig = mock[ClusterConfig]
       val probeOne = TestProbe()
       val probeOnePath = probeOne.ref.path.toString
@@ -87,16 +99,18 @@ class MembershipActorTest extends NiceTest with TimedTest {
       val probeTwoPath = probeTwo.ref.path.toString
       doReturn(List(probeOnePath, probeTwoPath)).when(mockClusterConfig).members
 
-      val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) = makeMembershipActor(clusterConfig = Some(mockClusterConfig))
+      val (underTest, membershipAgent) = makeMembershipActor(Some(mockClusterConfig))
+
 
       underTest ! CheckClusterConfig
-      assert(waitForTrue(membershipAgent.get().size == 2, 2000, 100), "Did not reach correct membership size.")
+      assert(waitForTrue(membershipAgent.get().size == 2, 2000, 100))
 
       actorSystem.stop(probeTwo.ref)
       underTest ! CheckClusterConfig
-      assert(waitForTrue(membershipAgent.get().size == 1, 2000, 100), "Did not remove stopped actor from membership.")
-      assert(probeOne.ref === membershipAgent.get()(probeOnePath))
-      assert(None === membershipAgent.get().get(probeTwoPath))
+
+      assert(waitForTrue(membershipAgent.get().values.flatten.size == 1, 5000, 100))
+      assert(Some(probeOne.ref) === membershipAgent.get()(probeOnePath))
+      assert(None === membershipAgent.get()(probeTwoPath))
     }
 
     it("should remove actors from membership that were removed from cluster config") {

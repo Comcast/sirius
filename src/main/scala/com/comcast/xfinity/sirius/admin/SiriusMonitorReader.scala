@@ -31,8 +31,9 @@ class SiriusMonitorReader {
    *            the exception is returned for that key.
    */
   def getMonitorStats(config: SiriusConfiguration): Option[Map[String, Map[String, Any]]] = {
-    config.getProp(SiriusConfiguration.MBEAN_SERVER) match {
-      case Some(mBeanServer) => Some(readMonitors(mBeanServer))
+    val mbeanServer: Option[MBeanServer] = config.getProp(SiriusConfiguration.MBEAN_SERVER)
+    mbeanServer match {
+      case Some(server) => Some(readMonitors(server))
       case None => None
     }
   }
@@ -60,7 +61,7 @@ class SiriusMonitorReader {
         }
       )
     } catch {
-      case anyException => Map("error" -> anyException.toString)
+      case anyException: Throwable => Map("error" -> anyException.toString)
     }
 
   // XXX: below we return the exception as a String instead of as an instance for simplicity-
@@ -70,6 +71,6 @@ class SiriusMonitorReader {
     try {
       mBeanServer.getAttribute(objectName, attrName)
     } catch {
-      case anyException => anyException.toString
+      case anyException: Throwable => anyException.toString
     }
 }

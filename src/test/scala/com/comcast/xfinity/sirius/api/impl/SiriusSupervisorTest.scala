@@ -1,5 +1,5 @@
 package com.comcast.xfinity.sirius.api.impl
-import akka.actor.{Terminated, ActorContext, ActorRef, ActorSystem}
+import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import akka.testkit.{TestProbe, TestActorRef}
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -13,7 +13,6 @@ import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{GetMember
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import org.mockito.Mock
 
 @RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTest {
@@ -25,7 +24,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
                              stateBridge: ActorRef = TestProbe().ref,
                              statusSubsystem: ActorRef = TestProbe().ref,
                              paxosSupervisor: ActorRef = TestProbe().ref,
-                             compactionManager: ActorRef = TestProbe().ref) = {
+                             compactionManager: ActorRef = TestProbe().ref)(implicit actorSystem: ActorSystem) = {
     val childProvider = new SiriusSupervisor.ChildProvider(null, null, null) {
       override def createStateAgent()(implicit context: ActorContext) = stateAgent
       override def createMembershipAgent()(implicit context: ActorContext) = membershipAgent
@@ -68,7 +67,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     compactionProbe = TestProbe()
     startStopProbe = TestProbe()
 
-    supervisor = createSiriusSupervisor(stateAgent = Agent(new SiriusState)(actorSystem),
+    supervisor = createSiriusSupervisor(stateAgent = Agent(new SiriusState)(actorSystem.dispatcher),
                                         membershipAgent = mockMembershipAgent,
                                         stateSup = stateProbe.ref,
                                         membershipActor = membershipProbe.ref,

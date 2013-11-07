@@ -1,11 +1,12 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import akka.actor.{ActorContext, ActorRef, Props, Actor}
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Preempted
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.ChildProvider
+import scala.language.postfixOps
 
 object LeaderWatcher {
   // messages used in communication between Pinger and Watcher
@@ -26,36 +27,41 @@ object LeaderWatcher {
   /**
    * Factory for creating the children actors of LeaderWatcher.
    *
+   * @param leaderToWatch ref for currently elected leader to keep an eye on
+   * @param expectedBallot currently elected ballot to watch
    * @param config the SiriusConfiguration for this node
    */
-  class ChildProvider(config: SiriusConfiguration) {
+  class ChildProvider(leaderToWatch: ActorRef, expectedBallot: Ballot, config: SiriusConfiguration) {
     val PING_TIMEOUT_MS = config.getProp(SiriusConfiguration.PAXOS_LEADERSHIP_PING_TIMEOUT, 2000)
 
-    private[paxos] def createPinger(expectedBallot: Ballot, replyTo: ActorRef)
+    private[paxos] def createPinger(replyTo: ActorRef)
                                    (implicit context: ActorContext): ActorRef =
-      context.actorOf(LeaderPinger.props(expectedBallot, replyTo, PING_TIMEOUT_MS))
+      context.actorOf(LeaderPinger.props(leaderToWatch: ActorRef, expectedBallot, replyTo, PING_TIMEOUT_MS))
   }
 
   /**
    * Create Props for a LeaderWatcher actor.
    *
+   * @param leaderToWatch ref for currently elected leader to keep an eye on
    * @param ballotToWatch currently elected ballot to watch
    * @param leader actorRef to the local leader
    * @param config the SiriusConfiguration for this node
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(ballotToWatch: Ballot, leader: ActorRef, config: SiriusConfiguration): Props = {
-    val childProvider = new ChildProvider(config)
-    //Props(classOf[LeaderWatcher], ballotToWatch, leader, childProvider, config)
-    Props(new LeaderWatcher(ballotToWatch, leader, childProvider, config))
+  def props(leaderToWatch: ActorRef, ballotToWatch: Ballot, leader: ActorRef, config: SiriusConfiguration): Props = {
+    val childProvider = new ChildProvider(leaderToWatch, ballotToWatch, config)
+    Props(classOf[LeaderWatcher], leader, childProvider, config)
   }
 }
 
-class LeaderWatcher(expectedBallot: Ballot, replyTo: ActorRef, childProvider: ChildProvider,
+// XXX consider replacing this whole jawn with context.watch(leaderRef), akka does most of this for us
+class LeaderWatcher(replyTo: ActorRef, childProvider: ChildProvider,
                     config: SiriusConfiguration)
       extends Actor with MonitoringHooks {
     import LeaderWatcher._
+
+  implicit val executionContext = context.system.dispatcher
 
   val CHECK_FREQ_SEC = config.getProp(SiriusConfiguration.PAXOS_LEADERSHIP_PING_INTERVAL, 20)
   val checkCancellable =
@@ -67,7 +73,7 @@ class LeaderWatcher(expectedBallot: Ballot, replyTo: ActorRef, childProvider: Ch
 
   def receive = {
     case CheckLeader =>
-      childProvider.createPinger(expectedBallot, self)
+      childProvider.createPinger(self)
 
     case LeaderGone =>
       replyTo ! LeaderGone

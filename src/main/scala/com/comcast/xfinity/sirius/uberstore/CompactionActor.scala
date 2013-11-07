@@ -16,8 +16,7 @@ object CompactionActor {
    * @param siriusLog log to compact
    */
   def props(siriusLog: SiriusLog): Props = {
-    //Props(classOf[CompactionActor], siriusLog)
-    Props(new CompactionActor(siriusLog))
+    Props(classOf[CompactionActor], siriusLog)
   }
 }
 

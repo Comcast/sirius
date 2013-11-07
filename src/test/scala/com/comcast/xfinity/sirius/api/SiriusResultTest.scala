@@ -11,19 +11,19 @@ class SiriusResultTest extends NiceTest {
     
     describe(".hasValue") {
       it("should indicate when it has a value when it does") {
-        expect(true) {
+        assertResult(true) {
           SiriusResult.some("hello").hasValue
         }
       }
 
       it("should indicate that it has a value when it has an exception") {
-        expect(true) {
+        assertResult(true) {
           SiriusResult.error(new RuntimeException()).hasValue
         }
       }
     
       it("should indicate when it has no value") {
-        expect(false) {
+        assertResult(false) {
           SiriusResult.none().hasValue
         }
       }
@@ -32,7 +32,7 @@ class SiriusResultTest extends NiceTest {
     describe(".getValue") {
       it("should return it's value when it has a value") {
         val body = "hello"
-        expect(body) {
+        assertResult(body) {
           SiriusResult.some(body).getValue
         }
       }
@@ -56,19 +56,19 @@ class SiriusResultTest extends NiceTest {
 
     describe(".isError") {
       it("should return false when it has a value") {
-        expect(false) {
+        assertResult(false) {
           SiriusResult.some("value").isError
         }
       }
 
       it("should return false when it has no value") {
-        expect(false) {
+        assertResult(false) {
           SiriusResult.none().isError
         }
       }
 
       it("should return true when there is a wrapped exception") {
-        expect(true) {
+        assertResult(true) {
           SiriusResult.error(new RuntimeException()).isError
         }
       }

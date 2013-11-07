@@ -8,7 +8,7 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import org.mockito.Mockito._
 import akka.testkit.{TestProbe, TestActorRef}
 import com.comcast.xfinity.sirius.api.impl.status.NodeStats.{NodeConfig, MonitorStats, MemoryUsage, FullNodeStatus}
-import akka.util.duration._
+import scala.concurrent.duration._
 
 class StatusWorkerTest extends NiceTest with BeforeAndAfterAll {
 

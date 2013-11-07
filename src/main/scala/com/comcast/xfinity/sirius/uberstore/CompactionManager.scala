@@ -3,12 +3,12 @@ package com.comcast.xfinity.sirius.uberstore
 import akka.actor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.event.Logging
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.uberstore.CompactionActor.CompactionComplete
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.ChildProvider
-import scala.Some
+import scala.language.postfixOps
 
 object CompactionManager {
   sealed trait CompactionMessage
@@ -39,8 +39,7 @@ object CompactionManager {
    * @param config SiriusConfiguration configuration properties container
    */
   def props(siriusLog: SiriusLog)(implicit config: SiriusConfiguration): Props = {
-    //Props(classOf[CompactionManager], new ChildProvider(siriusLog), config)
-    Props(new CompactionManager(new ChildProvider(siriusLog), config))
+    Props(classOf[CompactionManager], new ChildProvider(siriusLog), config)
   }
 }
 
@@ -48,6 +47,8 @@ class CompactionManager(childProvider: ChildProvider,
                         config: SiriusConfiguration)
       extends Actor with MonitoringHooks {
   import CompactionManager._
+
+  implicit val executionContext = context.system.dispatcher
 
   val compactionScheduleMins = config.getProp(SiriusConfiguration.COMPACTION_SCHEDULE_MINS, 0) // off by default
   val compactionCancellable = compactionScheduleMins match {
