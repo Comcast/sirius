@@ -1,8 +1,8 @@
 name := "sirius"
 
-version := "1.1.5-SNAPSHOT"
+version := "1.2.0-SNAPSHOT"
 
-scalaVersion := "2.9.2"
+scalaVersion := "2.10.2"
 
 // Set the artifact names.
 artifactName := { (scalaVersion: String, module: ModuleID, artifact: Artifact) =>

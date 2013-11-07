@@ -10,9 +10,9 @@ import akka.actor._
 import java.util.concurrent.Future
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import akka.dispatch.{Await, Future => AkkaFuture}
+import scala.concurrent.{Await, Future => AkkaFuture}
 import akka.util.Timeout
-import akka.util.duration._
+import scala.concurrent.duration._
 import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
 
@@ -50,7 +50,7 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
 
   val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, "sirius")
   implicit val timeout: Timeout =
-    (config.getProp(SiriusConfiguration.CLIENT_TIMEOUT_MS, 5000) milliseconds)
+    config.getProp(SiriusConfiguration.CLIENT_TIMEOUT_MS, 5000).milliseconds
 
   private[impl] var onShutdownHook: Option[(() => Unit)] = None
   private var isTerminated = false

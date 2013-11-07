@@ -15,21 +15,22 @@ class LeaderWatcherTest extends NiceTest with BeforeAndAfterAll {
 
   case class PingersCreated(num: Int)
 
-  def makeWatcher(ballot: Ballot = Ballot(1, TestProbe().ref.path.toString),
+  def makeWatcher(leaderToWatch: ActorRef = TestProbe().ref,
+                  ballot: Ballot = Ballot(1, TestProbe().ref.path.toString),
                   pinger: ActorRef = TestProbe().ref,
                   replyTo: ActorRef = TestProbe().ref,
                   pingerCreationNotifier: ActorRef = TestProbe().ref) = {
 
-    val childProvider = new ChildProvider(new SiriusConfiguration) {
+    val childProvider = new ChildProvider(leaderToWatch, ballot, new SiriusConfiguration) {
       var pingersCreated = 0
-      override def createPinger(expectedBallot: Ballot, replyTo: ActorRef)
+      override def createPinger(replyTo: ActorRef)
                                (implicit context: ActorContext) = {
         pingersCreated += 1
         pingerCreationNotifier ! PingersCreated(pingersCreated)
         pinger
       }
     }
-    TestActorRef(new LeaderWatcher(ballot, replyTo, childProvider, new SiriusConfiguration))
+    TestActorRef(new LeaderWatcher(replyTo, childProvider, new SiriusConfiguration))
   }
 
   override def afterAll() {

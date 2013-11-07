@@ -26,7 +26,7 @@ class AkkaExternalAddressResolver(system: ExtendedActorSystem) extends Extension
   // the idea here is to discover our external address, by getting our address
   //  relative to an external host, "akka://@nohost:0"
   final val externalAddress =
-    system.provider.getExternalAddressFor(new Address("akka", "", "nohost", 0))
+    system.provider.getExternalAddressFor(new Address("akka.tcp", "", "nohost", 0))
 
   /**
    * Return the String representation of the external path of the passed in ActorRef

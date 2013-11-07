@@ -6,7 +6,7 @@ import paxos.PaxosMessages.PaxosMessage
 import akka.actor._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
-import akka.util.duration._
+import scala.concurrent.duration._
 import paxos.PaxosSup
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
@@ -20,7 +20,7 @@ import com.comcast.xfinity.sirius.uberstore.CompactionManager
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.CompactionMessage
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{ChildProvider, CheckPaxosMembership}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.MembershipMessage
-import scala.Some
+import scala.language.postfixOps
 
 object SiriusSupervisor {
 
@@ -40,10 +40,10 @@ object SiriusSupervisor {
   protected[impl] class ChildProvider(requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration) {
 
     def createStateAgent()(implicit context: ActorContext): Agent[SiriusState] =
-      Agent(new SiriusState)(context.system)
+      Agent(new SiriusState)(context.dispatcher)
 
     def createMembershipAgent()(implicit context: ActorContext) =
-      Agent(Map[String, Option[ActorRef]]())(context.system)
+      Agent(Map[String, Option[ActorRef]]())(context.dispatcher)
 
     def createStateSupervisor(stateAgent: Agent[SiriusState])(implicit context: ActorContext) =
       context.actorOf(StateSup.props(requestHandler, siriusLog, stateAgent, config), "state")
@@ -83,8 +83,7 @@ object SiriusSupervisor {
   def props(requestHandler: RequestHandler,
               siriusLog: SiriusLog,
               config: SiriusConfiguration): Props = {
-    // Props(classOf[SiriusSupervisor], new ChildProvider(requestHandler, siriusLog, config), config)
-    Props(new SiriusSupervisor(new ChildProvider(requestHandler, siriusLog, config), config))
+    Props(classOf[SiriusSupervisor], new ChildProvider(requestHandler, siriusLog, config), config)
   }
 }
 
@@ -98,6 +97,7 @@ object SiriusSupervisor {
  */
 private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: SiriusConfiguration) extends Actor {
 
+  implicit val executionContext = context.system.dispatcher
 
   val siriusStateAgent = childProvider.createStateAgent()
   val membershipAgent = childProvider.createMembershipAgent()
@@ -119,8 +119,6 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
     schedule(0 seconds, checkIntervalSecs seconds, self, CheckPaxosMembership)
 
   override def postStop() {
-    siriusStateAgent.close()
-    membershipAgent.close()
     membershipCheckSchedule.cancel()
   }
 

@@ -2,7 +2,7 @@ package com.comcast.xfinity.sirius.api.impl
 
 import akka.testkit.TestProbe
 import akka.util.Timeout.durationToTimeout
-import akka.util.duration.intToDurationInt
+import scala.concurrent.duration._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
@@ -18,6 +18,11 @@ import status.StatusWorker._
 
 object SiriusImplTestCompanion {
 
+  object ProbeWrapper{
+    def props(testProbe: TestProbe): Props = {
+      Props(classOf[ProbeWrapper], testProbe)
+    }
+  }
   class ProbeWrapper(testProbe: TestProbe) extends Actor {
     def receive = {
       case any => testProbe.ref forward any
@@ -27,7 +32,7 @@ object SiriusImplTestCompanion {
   // Create an extended impl for testing
   def createProbedSiriusImpl(actorSystem: ActorSystem,
                              supProbe: TestProbe): SiriusImpl = {
-    new SiriusImpl(new SiriusConfiguration, Props(new ProbeWrapper(supProbe)))(actorSystem)
+    new SiriusImpl(new SiriusConfiguration, ProbeWrapper.props(supProbe))(actorSystem)
   }
 }
 
@@ -40,6 +45,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
   implicit var actorSystem: ActorSystem = _
   val timeout: Timeout = 5 seconds
   var membership: Map[String, Option[ActorRef]] = _
+  var actorContext: ActorContext = _
 
   val mockNodeStatus = mock[FullNodeStatus]
 
@@ -52,24 +58,24 @@ class SiriusImplTest extends NiceTest with TimedTest {
 
     supervisorActorProbe = TestProbe()(actorSystem)
     supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
-      def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
+      def run(sender: ActorRef, msg: Any): TestActor.AutoPilot = msg match {
         case Get(_) =>
           sender ! SiriusResult.some("Got it")
-          Some(this)
+          this
         case Delete(_) =>
           sender ! SiriusResult.some("Delete it")
-          Some(this)
+          this
         case Put(_, _) =>
           sender ! SiriusResult.some("Put it")
-          Some(this)
+          this
         case GetMembershipData =>
           sender ! membership
-          Some(this)
+          this
         case CheckClusterConfig =>
-          Some(this)
+          this
         case GetStatus =>
           sender ! mockNodeStatus
-          Some(this)
+          this
       }
     })
 
@@ -132,21 +138,22 @@ class SiriusImplTest extends NiceTest with TimedTest {
 
       it ("returns true if the supervisor is up and reports that it is initialized") {
         supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
-          def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
-            case SiriusSupervisor.IsInitializedRequest =>
-              sender ! SiriusSupervisor.IsInitializedResponse(true)
-              None
-          }
+          def run(sender: ActorRef, msg: Any): TestActor.AutoPilot =
+            msg match {
+              case SiriusSupervisor.IsInitializedRequest =>
+                sender ! SiriusSupervisor.IsInitializedResponse(initialized = true)
+                TestActor.NoAutoPilot
+            }
         })
         assert(true === underTest.isOnline)
       }
 
       it ("returns false if the supervisor is up and reports that it is not initialized") {
         supervisorActorProbe.setAutoPilot(new TestActor.AutoPilot {
-          def run(sender: ActorRef, msg: Any): Option[TestActor.AutoPilot] = msg match {
+          def run(sender: ActorRef, msg: Any): TestActor.AutoPilot = msg match {
             case SiriusSupervisor.IsInitializedRequest =>
-              sender ! SiriusSupervisor.IsInitializedResponse(false)
-              None
+              sender ! SiriusSupervisor.IsInitializedResponse(initialized = false)
+              TestActor.NoAutoPilot
           }
         })
         assert(false === underTest.isOnline)

@@ -4,14 +4,11 @@ import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
-import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestFromSeq, RequestGaps}
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.util.duration._
-import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete}
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestGaps}
+import scala.concurrent.duration._
 import akka.actor._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import org.mockito.Mockito._
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import collection.SortedMap
 import collection.JavaConversions._
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange

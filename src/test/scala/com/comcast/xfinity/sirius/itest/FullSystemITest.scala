@@ -119,9 +119,9 @@ class FullSystemITest extends NiceTest with TimedTest {
     val membershipFile = new File(tempDir, "membership")
     membershipPath = membershipFile.getAbsolutePath
     Path.fromString(membershipPath).append(
-      "akka://sirius-42289@localhost:42289/user/sirius\n" +
-      "akka://sirius-42290@localhost:42290/user/sirius\n" +
-      "akka://sirius-42291@localhost:42291/user/sirius\n"
+      "akka.tcp://sirius-42289@localhost:42289/user/sirius\n" +
+      "akka.tcp://sirius-42290@localhost:42290/user/sirius\n" +
+      "akka.tcp://sirius-42291@localhost:42291/user/sirius\n"
     )
   }
 
@@ -132,11 +132,14 @@ class FullSystemITest extends NiceTest with TimedTest {
   }
 
   def waitForMembership(sirii: List[SiriusImpl], membersExpected: Int) {
-    sirii.foreach(_.supervisor ! CheckClusterConfig)
-    assert(waitForTrue(sirii.forall(_.getMembership.get.size == membersExpected), 5000, 500),
-      "Membership did not reach expected size")
+    assert(waitForTrue({
+      sirii.foreach(_.supervisor ! CheckClusterConfig)
+      sirii.forall(_.getMembership.get.values.flatten.size == membersExpected)
+    }, 5000, 1500),
+      "Membership did not reach expected size: expected %s, got %s"
+        .format(membersExpected, sirii.map(_.getMembership.get.values.flatten.size)))
     sirii.foreach(_.supervisor ! CheckPaxosMembership)
-    Thread.sleep(2000)
+    Thread.sleep(1000)
     // TODO assert that each node turns on its Paxos
   }
 
@@ -154,7 +157,7 @@ class FullSystemITest extends NiceTest with TimedTest {
           SiriusResult.none == futureAndCommand._1.get
         } catch {
           case ex: Exception =>
-            logger.debug("Future retrieval failed: " + ex)
+            logger.debug("Future retrieval failed for command %s".format(futureAndCommand._2))
             false
         }
     )
@@ -206,7 +209,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       val (sirius1, _, log1) = makeSirius(42289)
       val (sirius2, _, log2) = makeSirius(42290)
       sirii = List(sirius1, sirius2)
-      waitForMembership(sirii, 3)
+      waitForMembership(sirii, 2)
 
       val failed = fireAndRetryCommands(sirii, generateCommands(1, numCommands), 4)
       logger.debug("No response for %s out of %s".format(failed.size, numCommands))
@@ -233,9 +236,9 @@ class FullSystemITest extends NiceTest with TimedTest {
       val path = Path.fromString(membershipPath)
       path.delete()
       path.append(
-        "akka://sirius-42289@localhost:42289/user/sirius\n" +
-        "akka://sirius-42290@localhost:42290/user/sirius\n" +
-        "akka://sirius-42291@localhost:42291/user/sirius\n"
+        "akka.tcp://sirius-42289@localhost:42289/user/sirius\n" +
+        "akka.tcp://sirius-42290@localhost:42290/user/sirius\n" +
+        "akka.tcp://sirius-42291@localhost:42291/user/sirius\n"
       )
 
       val numCommands = 50
@@ -260,8 +263,8 @@ class FullSystemITest extends NiceTest with TimedTest {
 
       path.truncate(0)
       path.append(
-        "akka://sirius-42289@localhost:42289/user/sirius\n" +
-        "akka://sirius-42290@localhost:42290/user/sirius\n"
+        "akka.tcp://sirius-42289@localhost:42289/user/sirius\n" +
+        "akka.tcp://sirius-42290@localhost:42290/user/sirius\n"
       )
       waitForMembership(sirii, 2)
 
@@ -308,5 +311,18 @@ class FullSystemITest extends NiceTest with TimedTest {
     intercept[IllegalStateException] {
       UberStore(tempDir.getAbsolutePath)
     }
+  }
+
+  it("should keep its membership updated properly when remote nodes go down") {
+    val (sirius1, _, _) = makeSirius(42289)
+    val (sirius2, _, _) = makeSirius(42290)
+    val (sirius3, _, _) = makeSirius(42291)
+    sirii = List(sirius1, sirius2, sirius3)
+    waitForMembership(sirii, 3)
+
+    sirius3.shutdown()
+    sirii = List(sirius1, sirius2)
+
+    waitForMembership(sirii, 2)
   }
 }

@@ -47,8 +47,7 @@ object PaxosSup {
             startingSeqNum: Long,
             performFun: Replica.PerformFun,
             config: SiriusConfiguration): Props = {
-    // Props(classOf[PaxosSup], new ChildProvider(membership, startingSeqNum, performFun, config))
-    Props(new PaxosSup(new ChildProvider(membership, startingSeqNum, performFun, config)))
+     Props(classOf[PaxosSup], new ChildProvider(membership, startingSeqNum, performFun, config))
   }
 }
 

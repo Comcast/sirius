@@ -3,7 +3,7 @@ package com.comcast.xfinity.sirius.api.impl.bridge
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{Terminated, ReceiveTimeout, ActorRef, ActorSystem}
 import akka.testkit.{TestActorRef, TestProbe}
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{LogSubrange, GetLogSubrange}
 import org.mockito.Matchers

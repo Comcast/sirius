@@ -6,7 +6,7 @@ class BallotTest extends NiceTest {
 
   describe("An empty Ballot") {
     it ("must be really small") {
-      expect(Ballot(Int.MinValue, "")) {
+      assertResult(Ballot(Int.MinValue, "")) {
         Ballot.empty
       }
     }
@@ -14,31 +14,31 @@ class BallotTest extends NiceTest {
 
   describe("A Ballot") {
     it ("must compare equal to an equivalent Ballot") {
-      expect(true) {
+      assertResult(true) {
         Ballot(1, "a") == Ballot(1, "a")
       }
     }
 
     it ("must be less than a Ballot with a greater seq, regardless of leaderId") {
-      expect(true) {
+      assertResult(true) {
         Ballot(1, "z") < Ballot(2, "a")
       }
     }
 
     it ("must be greater than a ballot with a lesser seq, regardless of leaderId") {
-      expect(true) {
+      assertResult(true) {
         Ballot(2, "a") > Ballot(1, "z")
       }
     }
 
     it ("must be less than a Ballot with equal seq but greater leaderId") {
-      expect(true) {
+      assertResult(true) {
         Ballot(1, "a") < Ballot(1, "z")
       }
     }
 
     it ("must be greater than a Ballot with equal seq but lesser leaderId") {
-      expect(true) {
+      assertResult(true) {
         Ballot(1, "z") > Ballot(1, "a")
       }
     }

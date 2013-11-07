@@ -2,12 +2,14 @@ package com.comcast.xfinity.sirius.api.impl.membership
 
 import akka.agent.Agent
 import akka.event.Logging
-import akka.util.Duration
-import akka.actor.{Props, ActorRef, actorRef2Scala, Actor}
+import akka.actor._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import scala.collection.immutable.HashMap
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Failure, Success}
+import scala.language.postfixOps
 
 object MembershipActor {
 
@@ -37,12 +39,11 @@ object MembershipActor {
     val clusterConfigLocation = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG).getOrElse(
       throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
     )
-    val clusterConfig = FileBasedClusterConfig(clusterConfigLocation)
+    val clusterConfig = BackwardsCompatibleClusterConfig(FileBasedClusterConfig(clusterConfigLocation))
     val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 30)
     val pingIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_PING_INTERVAL, 30)
 
-    //Props(classOf[MembershipActor], membershipAgent, clusterConfig, checkIntervalSecs seconds, pingIntervalSecs seconds, config)
-    Props(new MembershipActor(membershipAgent, clusterConfig, checkIntervalSecs seconds, pingIntervalSecs seconds, config))
+    Props(classOf[MembershipActor], membershipAgent, clusterConfig, checkIntervalSecs seconds, pingIntervalSecs seconds, config)
   }
 }
 
@@ -61,8 +62,8 @@ object MembershipActor {
  */
 class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
                       clusterConfig: ClusterConfig,
-                      checkInterval: Duration,
-                      pingInterval: Duration,
+                      checkInterval: FiniteDuration,
+                      pingInterval: FiniteDuration,
                       config: SiriusConfiguration)
     extends Actor with MonitoringHooks{
   import MembershipActor._
@@ -103,6 +104,8 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
       val currentTime = System.currentTimeMillis
       membershipAgent.get().values.flatten.foreach(_ ! Ping(currentTime))
 
+    case Terminated(terminated) =>
+      membershipAgent send (_ + (terminated.path.toString -> None))
   }
 
   /**
@@ -135,25 +138,19 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
    *
    * @param actorPaths list of actor paths to attempt to resolve
    */
-  /*
   def updateActorRefs(actorPaths: List[String]) {
+    val membership = membershipAgent.get()
     actorPaths
-      .filter(membership.get(_) == None) // we don't already have a ref for it
+      .filter(path => !membership.isDefinedAt(path) || membership(path) == None) // we don't already have a working reference
       .foreach(path => {
-      context.actorSelection(path).resolveOne(1 seconds) onComplete {
-        case Success(actor) =>
-          membershipAgent send (_ + (path -> Some(actor)))
-          // TODO watch the newly created actor, and handle the Terminated message when it comes in
-        case Failure(_) =>
-          membershipAgent send (_ + (path -> None))
-      }
-    })
-  }
-  */
-  def updateActorRefs(actorPaths: List[String]) {
-    actorPaths.foreach(path => {
-      membershipAgent send (_ + (path -> Some(context.actorFor(path))))
-    })
+        context.actorSelection(path).resolveOne(1 seconds) onComplete {
+          case Success(actor) =>
+            context.watch(actor)
+            membershipAgent send (_ + (path -> Some(actor)))
+          case Failure(_) =>
+            membershipAgent send (_ + (path -> None))
+        }
+      })
   }
 
   class MembershipInfo extends MembershipInfoMBean {

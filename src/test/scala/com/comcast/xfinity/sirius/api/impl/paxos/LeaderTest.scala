@@ -2,8 +2,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
-import akka.testkit.TestActorRef
-import akka.testkit.TestProbe
+import akka.testkit.{TestProbe, TestActorRef}
 import org.mockito.Mockito._
 import org.mockito.Matchers._
 import akka.actor._
@@ -24,15 +23,19 @@ import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   implicit val actorSystem = ActorSystem("LeaderTest")
 
+  var defaultScout: TestProbe = _
+  var defaultCommander: TestProbe = _
+  var defaultWatcher: TestProbe = _
+
   // XXX this should really be in the companion object, but we need the actorSystem
   //     defined in order to default things like Agents and TestProbes.  Need to figure
   //     out how to move it up without defining an ActorSystem in the companion object.
   def makeMockedUpLeader(membership: MembershipHelper = mock[MembershipHelper],
                          startingSeqNum: Long = 1,
                          helper: LeaderHelper = mock[LeaderHelper],
-                         startScoutFun: => ActorRef = TestProbe().ref,
-                         startCommanderFun: (PValue, Int) => ActorRef = (p, i) => TestProbe().ref,
-                         startWatcherFun: => ActorRef = TestProbe().ref) = {
+                         startScoutFun: => ActorRef = defaultScout.ref,
+                         startCommanderFun: (PValue, Int) => ActorRef = (p, i) => defaultCommander.ref,
+                         startWatcherFun: => ActorRef = defaultWatcher.ref) = {
     val childProvider = new ChildProvider(new SiriusConfiguration) {
       override def createCommander(leader: ActorRef,
                                    clusterInfo: ClusterInfo,
@@ -49,6 +52,12 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
     TestActorRef(
       new Leader(membership, startingSeqNum, childProvider, helper, new SiriusConfiguration)
     )
+  }
+
+  before {
+    defaultScout = TestProbe()
+    defaultCommander = TestProbe()
+    defaultWatcher = TestProbe()
   }
 
   override def afterAll {
@@ -237,7 +246,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
           val leader = makeMockedUpLeader(
             startScoutFun = {
               scoutStarted = true
-              TestProbe().ref
+              defaultScout.ref
             }
           )
 
@@ -295,7 +304,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         leader ! Preempted(preemptingBallot)
 
-        assert(Remote(otherLeader, preemptingBallot) === leader.underlyingActor.electedLeader)
+        assert(waitForTrue(Remote(otherLeader, preemptingBallot) == leader.underlyingActor.electedLeader, 2000, 25))
       }
 
       it ("must kill currentLeaderWatcher if it is running") {
@@ -312,19 +321,18 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
       }
 
       it ("must spawn a new currentLeaderWatcher with the current leader ballot") {
-        val watcherProbe = TestProbe()
+        val oldWatcherProbe = TestProbe()
+        val newWatcherProbe = TestProbe()
+        val electedLeaderProbe = TestProbe()
 
-        val leader = makeMockedUpLeader()
-        leader.underlyingActor.currentLeaderWatcher = Some(watcherProbe.ref)
+        val leader = makeMockedUpLeader(startWatcherFun = newWatcherProbe.ref)
+        leader.underlyingActor.currentLeaderWatcher = Some(oldWatcherProbe.ref)
 
-        val preemptingBallot = Ballot(1, "asdf")
-
-        assert(Some(watcherProbe.ref) === leader.underlyingActor.currentLeaderWatcher)
+        val preemptingBallot = Ballot(1, electedLeaderProbe.ref.path.toString)
 
         leader ! Preempted(preemptingBallot)
 
-        assert(Some(watcherProbe.ref) != leader.underlyingActor.currentLeaderWatcher)
-        assert(None != leader.underlyingActor.currentLeaderWatcher)
+        assert(waitForTrue(Some(newWatcherProbe.ref) == leader.underlyingActor.currentLeaderWatcher, 2000, 25))
       }
 
       it ("must forward all current proposals to the new leader") {
@@ -353,8 +361,8 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         val watcherProbe = TestProbe()
         val underTest = makeMockedUpLeader(startWatcherFun = watcherProbe.ref)
 
-        underTest ! Preempted(Ballot(underTest.underlyingActor.myBallot.seq + 1, "some-other-leader"))
-        assert(waitForTrue(Some(watcherProbe.ref) == underTest.underlyingActor.currentLeaderWatcher, 1000, 25))
+        underTest ! Preempted(Ballot(underTest.underlyingActor.myBallot.seq + 1, TestProbe().ref.path.toString))
+        assert(waitForTrue(Some(watcherProbe.ref) == underTest.underlyingActor.currentLeaderWatcher, 2000, 25))
 
         actorSystem.stop(watcherProbe.ref)
 

@@ -17,6 +17,9 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Adopted
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
+import scala.concurrent.duration._
+import scala.util.{Failure, Success}
+import scala.language.postfixOps
 
 object Leader {
 
@@ -42,14 +45,13 @@ object Leader {
     }
 
     def createLeaderWatcher(leader: ActorRef, ballotToWatch: Ballot, replyTo: ActorRef)(implicit context: ActorContext): ActorRef = {
-       context.actorOf(LeaderWatcher.props(ballotToWatch, replyTo, config))
+       context.actorOf(LeaderWatcher.props(leader, ballotToWatch, replyTo, config))
     }
   }
-
   /**
    * Create Props for Leader actor.
    *
-   * @param membership
+   * @param membership membershipHelper for querying about cluster information
    * @param startingSeqNum the sequence number at which this node will begin issuing/acknowledging
    * @param config SiriusConfiguration for this node
    * @return  Props for creating this actor, which can then be further configured
@@ -60,8 +62,8 @@ object Leader {
              config: SiriusConfiguration): Props = {
      val childProvider = new ChildProvider(config)
      val leaderHelper = new LeaderHelper
-     //Props(classOf[Leader], membership, startingSeqNum,childProvider,leaderHelper,config)
-     Props(new Leader(membership, startingSeqNum, childProvider, leaderHelper, config))
+
+     Props(classOf[Leader], membership, startingSeqNum, childProvider, leaderHelper, config)
    }
 }
 
@@ -72,6 +74,8 @@ class Leader(membership: MembershipHelper,
              config: SiriusConfiguration)
       extends Actor with MonitoringHooks {
     import Leader._
+
+  implicit val executionContext = context.dispatcher
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
@@ -208,14 +212,21 @@ class Leader(membership: MembershipHelper,
   }
 
   private def handleLeaderChange(newLeaderBallot: Ballot) {
-    currentLeaderElectedSince = System.currentTimeMillis()
+    stopLeaderWatcher()
 
-    val electedLeaderRef = context.actorFor(newLeaderBallot.leaderId)
-    electedLeader = Remote(electedLeaderRef, newLeaderBallot)
-    proposals.foreach(
-      (slot, command) => electedLeaderRef ! Propose(slot, command)
-    )
-    startLeaderWatcher()
+    context.actorSelection(newLeaderBallot.leaderId).resolveOne(1 seconds) onComplete {
+      case Success(actor) =>
+        currentLeaderElectedSince = System.currentTimeMillis()
+        electedLeader = Remote(actor, newLeaderBallot)
+        proposals.foreach(
+          (slot, command) => actor ! Propose(slot, command)
+        )
+        // XXX consider replacing with context.watch(actor) and dumping LeaderWatcher business...
+        startLeaderWatcher()
+
+      case Failure(_) =>
+      // XXX really hope this doesn't happen, right after we've gotten the Preempted message with a new id in it
+    }
   }
 
   private def startScout() {

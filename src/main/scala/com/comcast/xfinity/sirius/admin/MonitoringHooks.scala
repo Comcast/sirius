@@ -25,7 +25,7 @@ trait MonitoringHooks {
    * @param mbean A call-by-name parameter to get the mbean to register, if
    *          sirisConfiguration is not configured with an MBeanFactory, then
    *          this is not used, and thus not called
-   * @param siriusConfiguration Sirius's configuration, from which it is decided
+   * @param siriusConfig Sirius's configuration, from which it is decided
    *          if mbean should be registered as an MBean
    * @param context the ActorContext this is run from, note it is necessary that this
    *          is run within an Actor for this to be available
@@ -43,7 +43,7 @@ trait MonitoringHooks {
   /**
    * Unregister all MBeans registered by this instance
    *
-   * @param siriusConfiguration Sirius's configuration, from which it is decided
+   * @param siriusConfig Sirius's configuration, from which it is decided
    *          if mbean should be registered as an MBean
    */
   def unregisterMonitors(siriusConfig: SiriusConfiguration) {

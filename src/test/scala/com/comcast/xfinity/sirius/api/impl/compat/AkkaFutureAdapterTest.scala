@@ -2,15 +2,17 @@ package com.comcast.xfinity.sirius.api.impl.compat
 
 import com.comcast.xfinity.sirius.NiceTest
 import org.scalatest.BeforeAndAfterAll
-import akka.dispatch.{ExecutionContext, Future => AkkaFuture}
+import scala.concurrent.{ExecutionContext, Future => AkkaFuture}
+import akka.dispatch.ExecutionContexts._
 import akka.actor.ActorSystem
 import java.io.IOException
 import java.util.concurrent.{ExecutionException, TimeUnit, TimeoutException}
+import akka.dispatch.ExecutionContexts
 
 class AkkaFutureAdapterTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val as = ActorSystem("AkkaFutureAdapterTest")
-  implicit val ec = ExecutionContext.defaultExecutionContext
+  implicit val ec = ExecutionContexts.global()
 
   override def afterAll {
     as.shutdown()
@@ -26,9 +28,9 @@ class AkkaFutureAdapterTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it("must return the value expected on get") {
-      expect("foo") {
+      assertResult("foo") {
         val akkaFuture = AkkaFuture { "foo" }
-        new AkkaFutureAdapter[String](akkaFuture).get()
+        new AkkaFutureAdapter[String](akkaFuture).get(2, TimeUnit.SECONDS)
       }
     }
 

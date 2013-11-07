@@ -21,10 +21,10 @@ class DevTool {
 
   val as = ActorSystem("DevTool", ConfigFactory.load(config))
 
-  val dstr02x = as.actorFor("akka://sirius-system@dstr02x-dxc1.cimops.net:2552/user/sirius")
-  val dstr03x = as.actorFor("akka://sirius-system@dstr03x-dxc1.cimops.net:2552/user/sirius")
-  val dstr04x = as.actorFor("akka://sirius-system@dstr04x-dxc1.cimops.net:2552/user/sirius")
-  val pal04x  = as.actorFor("akka://sirius-system@pal04x-dxc1.cimops.net:2552/user/sirius")
+  val dstr02x = as.actorSelection("akka://sirius-system@dstr02x-dxc1.cimops.net:2552/user/sirius")
+  val dstr03x = as.actorSelection("akka://sirius-system@dstr03x-dxc1.cimops.net:2552/user/sirius")
+  val dstr04x = as.actorSelection("akka://sirius-system@dstr04x-dxc1.cimops.net:2552/user/sirius")
+  val pal04x  = as.actorSelection("akka://sirius-system@pal04x-dxc1.cimops.net:2552/user/sirius")
 
   val nodes = Set(dstr02x, dstr03x, dstr04x, pal04x)
 

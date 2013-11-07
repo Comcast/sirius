@@ -1,9 +1,11 @@
 package com.comcast.xfinity.sirius.uberstore
 
 import org.scalatest.BeforeAndAfterAll
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
-import akka.util.duration._
+import com.comcast.xfinity.sirius.TimedTest
 import akka.actor._
+import com.comcast.xfinity.sirius.NiceTest
+import akka.actor.{ActorContext, ActorRef, ActorSystem}
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.testkit.{TestProbe, TestActorRef}
 import javax.management.{ObjectName, MBeanServer}
@@ -12,7 +14,7 @@ import com.comcast.xfinity.sirius.uberstore.CompactionActor.CompactionComplete
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito._
 import org.mockito.Matchers._
-import com.comcast.xfinity.sirius.uberstore.CompactionManager.{ChildProvider, CompactionManagerInfoMBean, GetState, Compact}
+import com.comcast.xfinity.sirius.uberstore.CompactionManager.{ChildProvider, CompactionManagerInfoMBean, Compact}
 import akka.util.Timeout
 import scala.Some
 

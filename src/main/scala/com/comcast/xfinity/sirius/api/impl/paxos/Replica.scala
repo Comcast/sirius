@@ -2,13 +2,15 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import akka.actor.{Props, Actor, ActorRef}
 import akka.event.Logging
-import akka.util.duration._
+import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import annotation.tailrec
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica.Reap
 import com.comcast.xfinity.sirius.util.RichJTreeMap
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.language.postfixOps
 
 object Replica {
 
@@ -54,8 +56,7 @@ object Replica {
             config: SiriusConfiguration): Props = {
     val reproposalWindowSecs = config.getProp(SiriusConfiguration.REPROPOSAL_WINDOW, 10)
     val reapFreqSecs = config.getProp(SiriusConfiguration.REPROPOSAL_CLEANUP_FREQ, 1)
-    //Props(classOf[Replica], localLeader, startingSlotNum, performFun, reproposalWindowSecs, reapFreqSecs, config)
-    Props(new Replica(localLeader, startingSlotNum, performFun, reproposalWindowSecs, reapFreqSecs, config))
+    Props(classOf[Replica], localLeader, startingSlotNum, performFun, reproposalWindowSecs, reapFreqSecs, config)
   }
 }
 

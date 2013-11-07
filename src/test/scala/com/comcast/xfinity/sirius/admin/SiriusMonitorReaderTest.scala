@@ -49,7 +49,7 @@ class SiriusMonitorReaderTest extends NiceTest {
     config.setProp(SiriusConfiguration.MBEAN_SERVER, mBeanServer)
 
     val expected = Map[String, Map[String, Any]](
-      ("com.comcast.xfinity.sirius:type=GoodJawn" -> Map("Cash" -> "Money"))
+      "com.comcast.xfinity.sirius:type=GoodJawn" -> Map("Cash" -> "Money")
     )
 
     assert(Some(expected) === underTest.getMonitorStats(config))

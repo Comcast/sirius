@@ -42,8 +42,7 @@ object StateSup {
             siriusStateAgent: Agent[SiriusState],
             config: SiriusConfiguration): Props = {
     val childProvider = new ChildProvider(requestHandler, siriusLog, config)
-    //Props(classOf[StateSup], requestHandler, siriusLog, siriusStateAgent, childProvider, config)
-    Props(new StateSup(requestHandler, siriusLog, siriusStateAgent, childProvider, config))
+    Props(classOf[StateSup], requestHandler, siriusLog, siriusStateAgent, childProvider, config)
   }
 }
 

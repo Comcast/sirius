@@ -66,7 +66,7 @@ class MonitoringHooksTest extends NiceTest with TimedTest {
       new MonitoredActor(
         {wasCalled = true; new DummyMonitor},
         new SiriusConfiguration
-      ), "test"
+      ), "MBean Server test"
     )
 
     monitoredActor ! 'register

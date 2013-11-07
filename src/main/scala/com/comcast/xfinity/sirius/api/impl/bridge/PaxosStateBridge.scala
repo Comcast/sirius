@@ -1,23 +1,20 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
-import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import annotation.tailrec
 import akka.actor._
-import akka.util.duration._
+import scala.concurrent.duration._
 import akka.event.Logging
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import com.comcast.xfinity.sirius.util.RichJTreeMap
-import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestFromSeq, RequestGaps}
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestGaps}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
-import scala.Some
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
+import scala.language.postfixOps
 
 object PaxosStateBridge {
   case object RequestGaps
@@ -53,8 +50,7 @@ object PaxosStateBridge {
             membershipHelper: MembershipHelper,
             config: SiriusConfiguration): Props = {
     val childProvider = new ChildProvider(config)
-    //Props(classOf[PaxosStateBridge], startingSeq, stateSupActor, siriusSupActor, membershipHelper, childProvider, config)
-    Props(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper, childProvider, config))
+    Props(classOf[PaxosStateBridge], startingSeq, stateSupActor, siriusSupActor, membershipHelper, childProvider, config)
   }
 }
 
@@ -95,6 +91,8 @@ class PaxosStateBridge(startingSeq: Long,
                        childProvider: ChildProvider,
                        config: SiriusConfiguration)
       extends Actor with MonitoringHooks {
+
+  implicit val executionContext = context.system.dispatcher
 
   val chunkSize = config.getProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, 1000)
 

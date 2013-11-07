@@ -4,13 +4,11 @@ import akka.actor.ActorSystem
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import akka.testkit.{ TestProbe, TestActorRef }
 import com.comcast.xfinity.sirius.api.impl.Delete
-import scala.collection.JavaConverters._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.NiceTest
 import org.scalatest.BeforeAndAfterAll
 import java.util.{TreeMap => JTreeMap}
-import collection.immutable.SortedMap
 import com.comcast.xfinity.sirius.util.RichJTreeMap
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 

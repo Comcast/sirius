@@ -1,9 +1,10 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.util.duration._
+import scala.concurrent.duration._
 import akka.actor.{Props, ReceiveTimeout, Actor, ActorRef}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
+import scala.language.postfixOps
 
 case object Commander {
 
@@ -23,8 +24,7 @@ case object Commander {
    *         (e.g. calling `.withDispatcher()` on it)
    */
   def props(leader: ActorRef, clusterInfo: ClusterInfo, pval: PValue, retriesLeft: Int): Props = {
-    //Props(classOf[Commander], leader, clusterInfo, pval, majority, retriesLeft)
-    Props(new Commander(leader, clusterInfo.activeMembers, clusterInfo.activeMembers, pval, clusterInfo.simpleMajority, retriesLeft))
+    Props(classOf[Commander], leader, clusterInfo.activeMembers, clusterInfo.activeMembers, pval, clusterInfo.simpleMajority, retriesLeft)
   }
 }
 

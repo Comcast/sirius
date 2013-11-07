@@ -29,8 +29,7 @@ object StatusWorker {
    * @param config the node's configuration
    */
   def props(supAddressString: String, config: SiriusConfiguration): Props = {
-    //Props(classOf[StatusWorker], supAddressString, config, new SiriusMonitorReader)
-    Props(new StatusWorker(supAddressString, config, new SiriusMonitorReader))
+    Props(classOf[StatusWorker], supAddressString, config, new SiriusMonitorReader)
   }
 }
 

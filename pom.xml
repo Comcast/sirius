@@ -5,11 +5,12 @@
   <artifactId>sirius</artifactId>
   <name>Sirius</name>
   <packaging>jar</packaging>
-  <version>1.1.5-SNAPSHOT</version>
+  <version>1.2.0-SNAPSHOT</version>
   <properties>
     <java-version>1.6</java-version>
-    <scala-version>2.9.2</scala-version>
-    <akka-version>2.0.2</akka-version>
+    <scala-version-major>2.10</scala-version-major>
+    <scala-version-minor>2.10.2</scala-version-minor>
+    <akka-version>2.2.1</akka-version>
     <org.springframework-version>3.1.0.RELEASE</org.springframework-version>
     <org.aspectj-version>1.6.9</org.aspectj-version>
     <org.slf4j-version>1.7.0</org.slf4j-version>
@@ -20,28 +21,28 @@
     <!--scala-io-->
     <dependency>
       <groupId>com.github.scala-incubator.io</groupId>
-      <artifactId>scala-io-file_${scala-version}</artifactId>
-      <version>0.4.0</version>
+      <artifactId>scala-io-file_${scala-version-minor}</artifactId>
+      <version>0.4.2</version>
     </dependency>
     <!-- Akka -->
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-actor</artifactId>
+      <artifactId>akka-actor_${scala-version-major}</artifactId>
       <version>${akka-version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-remote</artifactId>
+      <artifactId>akka-remote_${scala-version-major}</artifactId>
       <version>${akka-version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-agent</artifactId>
+      <artifactId>akka-agent_${scala-version-major}</artifactId>
       <version>${akka-version}</version>
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-slf4j</artifactId>
+      <artifactId>akka-slf4j_${scala-version-major}</artifactId>
       <version>${akka-version}</version>
     </dependency>
     <!-- Logging -->
@@ -66,14 +67,14 @@
     </dependency>
     <dependency>
       <groupId>com.typesafe.akka</groupId>
-      <artifactId>akka-testkit</artifactId>
+      <artifactId>akka-testkit_${scala-version-major}</artifactId>
       <version>${akka-version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_${scala-version}</artifactId>
-      <version>1.7.1</version>
+      <artifactId>scalatest_${scala-version-major}</artifactId>
+      <version>1.9.2</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -144,6 +145,7 @@
       <plugin>
         <groupId>org.scala-tools</groupId>
         <artifactId>maven-scala-plugin</artifactId>
+        <version>2.15.2</version>
         <executions>
           <execution>
             <goals>
@@ -153,7 +155,7 @@
           </execution>
         </executions>
         <configuration>
-          <scalaVersion>${scala-version}</scalaVersion>
+          <scalaVersion>${scala-version-minor}</scalaVersion>
           <sourceDir>src/main/scala</sourceDir>
           <jvmArgs>
             <jvmArg>-Xms64m</jvmArg>
@@ -189,6 +191,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>cobertura-maven-plugin</artifactId>
+        <version>2.6</version>
         <configuration>
           <formats>
             <format>xml</format>

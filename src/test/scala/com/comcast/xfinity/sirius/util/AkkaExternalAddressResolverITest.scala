@@ -27,8 +27,8 @@ class AkkaExternalAddressResolverITest extends NiceTest with BeforeAndAfterAll {
       val configMap = new JHashMap[String, Any]()
       configMap.put("akka.actor.provider", "akka.remote.RemoteActorRefProvider")
       configMap.put("akka.remote.transport", "akka.remote.netty.NettyRemoteTransport")
-      configMap.put("akka.remote.netty.hostname", "127.0.0.1")
-      configMap.put("akka.remote.netty.port", 2559)
+      configMap.put("akka.remote.netty.tcp.hostname", "127.0.0.1")
+      configMap.put("akka.remote.netty.tcp.port", 2559)
       // this makes intellij not get mad
       val config = configMap.asInstanceOf[java.util.Map[String, _ <: AnyRef]]
 
@@ -37,7 +37,7 @@ class AkkaExternalAddressResolverITest extends NiceTest with BeforeAndAfterAll {
         val myActor = actorSystem.actorOf(Props[SuperSimpleActor], "myRef")
 
         val resolver = AkkaExternalAddressResolver(actorSystem)
-        assert("akka://test-system@127.0.0.1:2559/user/myRef" === resolver.externalAddressFor(myActor))
+        assert("akka.tcp://test-system@127.0.0.1:2559/user/myRef" === resolver.externalAddressFor(myActor))
 
       } finally {
         actorSystem.shutdown()
