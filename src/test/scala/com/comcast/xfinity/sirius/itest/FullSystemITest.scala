@@ -16,7 +16,7 @@ import annotation.tailrec
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 import org.slf4j.LoggerFactory
-import java.util.concurrent.TimeUnit
+import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 
 object FullSystemITest {
 
@@ -105,7 +105,7 @@ class FullSystemITest extends NiceTest with TimedTest {
 
   var tempDir: File = _
   var membershipPath: String = _
-  var sirii: List[SiriusImpl] = _
+  var sirii: List[SiriusImpl] = List()
 
   before {
     val tempDirName = "%s/sirius-fulltest-%s".format(
@@ -178,7 +178,7 @@ class FullSystemITest extends NiceTest with TimedTest {
   }
 
   describe("a full sirius implementation") {
-    it ("must reach a decision for lots of slots") {
+    it("must reach a decision for lots of slots") {
       val numCommands = 50
       val (sirius1, _, log1) = makeSirius(42289)
       val (sirius2, _, log2) = makeSirius(42290)
@@ -201,7 +201,7 @@ class FullSystemITest extends NiceTest with TimedTest {
         "Wals were not equivalent")
     }
 
-    it ("must be able to make progress with a node being down and then catch up") {
+    it("must be able to make progress with a node being down and then catch up") {
       val numCommands = 50
       val (sirius1, _, log1) = makeSirius(42289)
       val (sirius2, _, log2) = makeSirius(42290)
@@ -229,7 +229,7 @@ class FullSystemITest extends NiceTest with TimedTest {
         "Original and caught-up wals were not equivalent")
     }
 
-    it ("must work for master/slave mode") {
+    it("must work for master/slave mode") {
       val path = Path.fromString(membershipPath)
       path.delete()
       path.append(
@@ -302,4 +302,11 @@ class FullSystemITest extends NiceTest with TimedTest {
     }
   }
 
+  it("should fail to start if a segmented WAL is specified but the LOG_VERSION_ID param does not match") {
+    SegmentedUberStore.init(tempDir.getAbsolutePath)
+
+    intercept[IllegalStateException] {
+      UberStore(tempDir.getAbsolutePath)
+    }
+  }
 }
