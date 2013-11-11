@@ -2,6 +2,8 @@ package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
+import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
+import java.io.File
 
 object UberStore {
 
@@ -15,7 +17,22 @@ object UberStore {
    * @return an instantiated UberStore
    */
   def apply(baseDir: String): UberStore = {
+    if (!isValidUberStore(baseDir)) {
+      throw new IllegalStateException("Cannot start. Configured to boot with legacy UberStore, but other UberStore format found.")
+    }
+
     new UberStore(UberPair(baseDir, 1L))
+  }
+
+  /**
+   * There's no explicit marker for Legacy UberStores. All we can do is check that it's not any of
+   * the other known varieties.
+   *
+   * @param baseDir directory UberStore is based in
+   * @return true if baseDir corresponds to a valid legacy UberStore, false otherwise
+   */
+  def isValidUberStore(baseDir: String): Boolean = {
+    !UberTool.isSegmented(baseDir)
   }
 }
 
