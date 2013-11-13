@@ -62,6 +62,12 @@ object WalTool {
     Console.err.println("       Same as key-filter, except the resulting UberStore contains all")
     Console.err.println("       OrderedEvents not matching regexp")
     Console.err.println()
+    Console.err.println("   key-list <inWalDir> <outDir>")
+    Console.err.println("       Write all keys from wal in outDir")
+    Console.err.println()
+    Console.err.println("   key-list-filter <regexp> <inWalDir> <outWalDir>")
+    Console.err.println("       write all keys that match regexp to outWalDir")
+    Console.err.println()
     Console.err.println("   replay <inWalDir> <host> <concurrency>")
     Console.err.println("       For each OrderedEvent will issue an http request")
     Console.err.println()
@@ -99,16 +105,25 @@ object WalTool {
         tailUber(walDir, number.toInt)
 
       case Array("range", begin, end, walDir) =>
-        printSeq(UberStore(walDir), begin.toLong, end.toLong)
+        printSeq(siriusLog(walDir), begin.toLong, end.toLong)
 
       case Array("key-filter", regexpStr, inWal, outWal) =>
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = keyMatch(regexp, _)
         filter(inWal, outWal, filterFun)
+
       case Array("key-filter-not", regexpStr, inWal, outWal) =>
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = !keyMatch(regexp, _)
         filter(inWal, outWal, filterFun)
+
+      case Array("key-list", inWal, outFile) =>
+        keyList(inWal,outFile)
+
+      case Array("key-list-filter", regexpStr, inWal, outFile) =>
+        val regexp = regexpStr.r
+        val filterFun: OrderedEvent => Boolean = keyMatch(regexp, _)
+        keyListFilter(inWal, outFile, filterFun)
 
       case Array("replay", inWal, host, concurrency) =>
         replay(inWal, host, concurrency.toInt)
@@ -209,7 +224,7 @@ object WalTool {
    * @param number number of lines to print, default 20
    */
   private def tailUber(inDirName: String, number: Int = 20) {
-    val wal = UberStore(inDirName)
+    val wal = siriusLog(inDirName)
     val seq = wal.getNextSeq - 1
 
     printSeq(wal, seq - number, seq)
@@ -241,6 +256,49 @@ object WalTool {
     case _ => false
   }
 
+  private def keyList(inWal:String, outFile:String){
+    val wal: SiriusLog = siriusLog(inWal)
+
+    val keySet = scala.collection.mutable.Set[Array[Byte]]()
+    wal.foreach(_.request match {
+      case (put:Put) => keySet += put.key.getBytes
+      case (delete: Delete) =>  keySet -= delete.key.getBytes
+    })
+
+    val out = new PrintWriter( outFile , "UTF-8")
+    try{
+      keySet.foreach((keyBytes: Array[Byte])=>{
+        out.println(new String(keyBytes))
+      })
+    }finally{
+      out.close()
+    }
+
+   }
+
+  private def keyListFilter(inWal:String, outFile:String, pred: OrderedEvent => Boolean){
+    val wal  = siriusLog(inWal)
+    val keySet = scala.collection.mutable.Set[Array[Byte]]()
+    wal.foreach( _ match {
+      case (evt: OrderedEvent) if pred(evt) => System.out.println("Matched");evt.request match {
+        case (put:Put) => keySet += put.key.getBytes
+        case (delete: Delete) => keySet -= delete.key.getBytes
+      }
+      case _ => //ignore filtered
+    })
+
+    val out = new PrintWriter( outFile , "UTF-8")
+    if (keySet.isEmpty)System.out.println("No Keys")
+    try{
+      keySet.foreach((keyBytes: Array[Byte])=>{
+        System.out.println("Writing " + String.valueOf(keyBytes))
+        out.println(new String(keyBytes))
+      })
+    }finally{
+      out.close()
+    }
+  }
+
   /**
    * Write all entries from UberStore specified by inUberDir satisfying
    * pred to outUberDir, which should not exist.
@@ -253,8 +311,13 @@ object WalTool {
   private def filter(inUberDir: String, outUberDir: String, pred: OrderedEvent => Boolean) {
     createFreshDir(outUberDir)
 
-    val inWal = UberStore(inUberDir)
-    val outWal = UberStore(outUberDir)
+    val inWal = siriusLog(inUberDir)
+
+    val outWal = inUberDir match {
+      case (dir : String) if UberTool.isLegacy(dir) => UberStore(outUberDir)
+      case (dir: String) if UberTool.isSegmented(dir) => SegmentedUberStore(outUberDir)
+      case _ => throw new IllegalArgumentException(inUberDir + " does not appear to be a valid Uberstore")
+    }
 
     filter(inWal, outWal, pred)
   }
@@ -343,7 +406,7 @@ object WalTool {
     implicit val system = ActorSystem("Log-Replay", ConfigFactory.load(customConf))
     implicit val timeout = Timeout(1000L * 10 * concurrency)
 
-    val inWal = UberStore(inWalDir)
+    val inWal = siriusLog(inWalDir)
 
     val reapPeriod = concurrency * 10
     var start = System.currentTimeMillis
@@ -409,6 +472,18 @@ object WalTool {
     val futureList = Future.sequence(walAccumulator.futures)
     Await.result(futureList, 100 seconds)
   }
+
+  /**
+   * returns appropriate kind of SiriusLog ie Uberstore or SegmentedUberstore
+   *
+   * @param inDirName location of SiriusLog
+   * @return a SiriusLog of appropriate type
+   */
+  private def siriusLog(inDirName: String):SiriusLog = inDirName match {
+       case (dir: String) if UberTool.isLegacy(dir) => UberStore(dir)
+       case (dir: String) if UberTool.isSegmented(dir) => SegmentedUberStore(dir)
+       case _ => throw new IllegalArgumentException(inDirName + " does not appear to be a valid Uberstore")
+     }
 
   // TODO move this to its own class
   class HttpDispatchActor extends Actor {
