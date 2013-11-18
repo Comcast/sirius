@@ -147,14 +147,13 @@ class Leader(membership: MembershipHelper,
 
     // there's a new leader, update electedLeaderBallot and start a new watcher accordingly
     case Preempted(newBallot) if newBallot > myBallot =>
-      logger.debug("Becoming subservient to new leader with ballot {}", newBallot)
-      currentLeaderElectedSince = System.currentTimeMillis()
-      val electedLeaderRef = context.actorFor(newBallot.leaderId)
-      electedLeader = Remote(electedLeaderRef, newBallot)
-      proposals.foreach(
-        (slot, command) => electedLeaderRef ! Propose(slot, command)
-      )
-      startLeaderWatcher()
+      electedLeader match {
+        case Remote(_, ballot) if ballot == newBallot =>
+          // do nothing; duplicate Preempted message
+        case _ =>
+          handleLeaderChange(newBallot)
+      }
+
 
     // try to become the new leader; old leader has gone MIA
     case LeaderGone =>
@@ -193,7 +192,7 @@ class Leader(membership: MembershipHelper,
       lastTimedOutPValue = Some(pvalue)
 
 
-    // the SirusPaxosBridge will notify the Leader of the last decision.  We can then use this to reduce the number
+    // the PaxosStateBridge will notify the Leader of the last decision.  We can then use this to reduce the number
     // of accepted decisions we need from the Acceptor
     case DecisionHint(lastSlot) =>
       latestDecidedSlot = lastSlot
@@ -205,6 +204,18 @@ class Leader(membership: MembershipHelper,
           currentLeaderWatcher = None
         case _ =>
       }
+
+  }
+
+  private def handleLeaderChange(newLeaderBallot: Ballot) {
+    currentLeaderElectedSince = System.currentTimeMillis()
+
+    val electedLeaderRef = context.actorFor(newLeaderBallot.leaderId)
+    electedLeader = Remote(electedLeaderRef, newLeaderBallot)
+    proposals.foreach(
+      (slot, command) => electedLeaderRef ! Propose(slot, command)
+    )
+    startLeaderWatcher()
   }
 
   private def startScout() {
