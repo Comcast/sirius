@@ -30,9 +30,9 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   def makeMockedUpLeader(membership: MembershipHelper = mock[MembershipHelper],
                          startingSeqNum: Long = 1,
                          helper: LeaderHelper = mock[LeaderHelper],
-                         leaderWatcher: ActorRef = TestProbe().ref,
                          startScoutFun: => ActorRef = TestProbe().ref,
-                         startCommanderFun: (PValue, Int) => ActorRef = (p, i) => TestProbe().ref) = {
+                         startCommanderFun: (PValue, Int) => ActorRef = (p, i) => TestProbe().ref,
+                         startWatcherFun: => ActorRef = TestProbe().ref) = {
     val childProvider = new ChildProvider(new SiriusConfiguration) {
       override def createCommander(leader: ActorRef,
                                    clusterInfo: ClusterInfo,
@@ -44,7 +44,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
                                latestDecidedSlot: Long)(implicit context: ActorContext): ActorRef = startScoutFun
       override def createLeaderWatcher(leader: ActorRef,
                                        ballotToWatch: Ballot,
-                                       replyTo: ActorRef)(implicit context: ActorContext) = leaderWatcher
+                                       replyTo: ActorRef)(implicit context: ActorContext) = startWatcherFun
     }
     TestActorRef(
       new Leader(membership, startingSeqNum, childProvider, helper, new SiriusConfiguration)
@@ -233,7 +233,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
     describe("when receiving a Preempted message") {
       describe("when the Preempted message is from itself, but in the future") {
         it ("must forget the current leader and seek leadership again using a higher ballot") {
-          var scoutStarted = false;
+          var scoutStarted = false
           val leader = makeMockedUpLeader(
             startScoutFun = {
               scoutStarted = true
@@ -260,6 +260,21 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
           assert(leader.underlyingActor.myBallot > phantomBallot)
           assert(Unknown === leader.underlyingActor.electedLeader)
         }
+      }
+
+      it ("must ignore it if the attached ballot is already the elected ballot") {
+        val otherLeader = TestProbe()
+        val underTest = makeMockedUpLeader()
+        val command = Command(TestProbe().ref, 1L, Delete("1"))
+
+        underTest.underlyingActor.proposals = RichJTreeMap(1L -> command)
+
+        val ballot = Ballot(1, otherLeader.ref.path.toString)
+        underTest ! Preempted(ballot)
+        otherLeader.expectMsg(Propose(1, command))
+
+        underTest ! Preempted(ballot)
+        otherLeader.expectNoMsg()
       }
 
       it ("must ignore such if the attached Ballot is outdated") {
@@ -311,12 +326,32 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         assert(Some(watcherProbe.ref) != leader.underlyingActor.currentLeaderWatcher)
         assert(None != leader.underlyingActor.currentLeaderWatcher)
       }
+
+      it ("must forward all current proposals to the new leader") {
+        val electedLeader = TestProbe()
+        val electedBallot = Ballot(1, electedLeader.ref.path.toString)
+        val underTest = makeMockedUpLeader()
+
+        val command = Command(null, 1, Delete("C"))
+        val command2 = Command(null, 1, Delete("D"))
+
+        underTest.underlyingActor.proposals =
+          RichJTreeMap(
+            1L -> command,
+            3L -> command2
+          )
+
+        underTest ! Preempted(electedBallot)
+
+        electedLeader.expectMsg(Propose(1L, command))
+        electedLeader.expectMsg(Propose(3L, command2))
+      }
     }
 
     describe("when receiving a Terminated message") {
       it("should set currentLeaderWatcher to None if the terminated actor matches") {
         val watcherProbe = TestProbe()
-        val underTest = makeMockedUpLeader(leaderWatcher = watcherProbe.ref)
+        val underTest = makeMockedUpLeader(startWatcherFun = watcherProbe.ref)
 
         underTest ! Preempted(Ballot(underTest.underlyingActor.myBallot.seq + 1, "some-other-leader"))
         assert(waitForTrue(Some(watcherProbe.ref) == underTest.underlyingActor.currentLeaderWatcher, 1000, 25))
