@@ -25,6 +25,8 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import scala.Right
 import scala.Console
 import com.comcast.xfinity.sirius.api.impl.Delete
+import scala.collection.mutable.WrappedArray
+import scala.collection.mutable.Set
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -62,11 +64,11 @@ object WalTool {
     Console.err.println("       Same as key-filter, except the resulting UberStore contains all")
     Console.err.println("       OrderedEvents not matching regexp")
     Console.err.println()
-    Console.err.println("   key-list <inWalDir> <outDir>")
-    Console.err.println("       Write all keys from wal in outDir")
+    Console.err.println("   key-list <inWalDir> <outFile>")
+    Console.err.println("       Write all keys from wal in outFile")
     Console.err.println()
-    Console.err.println("   key-list-filter <regexp> <inWalDir> <outWalDir>")
-    Console.err.println("       write all keys that match regexp to outWalDir")
+    Console.err.println("   key-list-filter <regexp> <inWalDir> <outFile>")
+    Console.err.println("       write all keys that match regexp to outFile")
     Console.err.println()
     Console.err.println("   replay <inWalDir> <host> <concurrency>")
     Console.err.println("       For each OrderedEvent will issue an http request")
@@ -258,18 +260,18 @@ object WalTool {
 
   private def keyList(inWal:String, outFile:String){
     val wal: SiriusLog = siriusLog(inWal)
-
-    val keySet = scala.collection.mutable.Set[Array[Byte]]()
+    val keySet = Set[WrappedArray[Byte]]()
     wal.foreach(_.request match {
-      case (put:Put) => keySet += put.key.getBytes
-      case (delete: Delete) =>  keySet -= delete.key.getBytes
+      case (put:Put) => keySet += WrappedArray.make(put.key.getBytes)
+      case (delete: Delete) =>  keySet -= WrappedArray.make(delete.key.getBytes)
     })
 
     val out = new PrintWriter( outFile , "UTF-8")
     try{
-      keySet.foreach((keyBytes: Array[Byte])=>{
-        out.println(new String(keyBytes))
+      keySet.foreach( (key : WrappedArray[Byte]) => {
+        out.println(new String(key.toArray))
       })
+
     }finally{
       out.close()
     }
@@ -278,21 +280,19 @@ object WalTool {
 
   private def keyListFilter(inWal:String, outFile:String, pred: OrderedEvent => Boolean){
     val wal  = siriusLog(inWal)
-    val keySet = scala.collection.mutable.Set[Array[Byte]]()
+    val keySet = scala.collection.mutable.Set[WrappedArray[Byte]]()
     wal.foreach( _ match {
       case (evt: OrderedEvent) if pred(evt) => System.out.println("Matched");evt.request match {
-        case (put:Put) => keySet += put.key.getBytes
-        case (delete: Delete) => keySet -= delete.key.getBytes
+        case (put:Put) => keySet += WrappedArray.make(put.key.getBytes)
+        case (delete: Delete) => keySet -= WrappedArray.make(delete.key.getBytes)
       }
       case _ => //ignore filtered
     })
 
     val out = new PrintWriter( outFile , "UTF-8")
-    if (keySet.isEmpty)System.out.println("No Keys")
     try{
-      keySet.foreach((keyBytes: Array[Byte])=>{
-        System.out.println("Writing " + String.valueOf(keyBytes))
-        out.println(new String(keyBytes))
+      keySet.foreach( (key : WrappedArray[Byte]) => {
+        out.println(new String(key.toArray))
       })
     }finally{
       out.close()
