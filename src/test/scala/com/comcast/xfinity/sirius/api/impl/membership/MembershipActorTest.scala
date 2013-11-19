@@ -3,8 +3,7 @@ package com.comcast.xfinity.sirius.api.impl.membership
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import org.mockito.Mockito._
 import akka.agent.Agent
-import scalax.file.Path
-import scalax.io.Line.Terminators.NewLine
+import akka.util.duration._
 import org.mockito.Matchers._
 import akka.actor.{ActorSystem, ActorRef}
 import akka.testkit.{TestProbe, TestActorRef}
@@ -13,58 +12,37 @@ import javax.management.{ObjectName, MBeanServer}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import org.mockito.ArgumentCaptor
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{PingMembership, MembershipInfoMBean}
-import java.io.File
-
-object MembershipActorTest {
-  def createTempDir = {
-    Thread.sleep(5)
-    val tempDirName = "%s/membership-actor-test-%s".format(
-      System.getProperty("java.io.tmpdir"),
-      System.currentTimeMillis()
-    )
-    new File(tempDirName)
-  }
-}
 
 class MembershipActorTest extends NiceTest with TimedTest {
 
-  def makeMembershipActor(clusterConfigContents: List[String] = List(),
+  def makeMembershipActor(clusterConfig: Option[ClusterConfig] = None,
                           membershipAgent: Agent[Map[String, Option[ActorRef]]] = Agent[Map[String, Option[ActorRef]]](Map())(actorSystem),
-                          mbeanServer: MBeanServer = mock[MBeanServer]): (TestActorRef[MembershipActor], Agent[Map[String, Option[ActorRef]]]) = {
+                          mbeanServer: MBeanServer = mock[MBeanServer]):
+                         (TestActorRef[MembershipActor], Agent[Map[String, Option[ActorRef]]]) = {
 
-    val clusterConfigPath = new File(tempDir, "sirius.cluster.config").getAbsolutePath
-    Path.fromString(clusterConfigPath)
-      .writeStrings(clusterConfigContents, NewLine.sep)
+    val cluster = clusterConfig.getOrElse({
+      val mockClusterConfig = mock[ClusterConfig]
+      doReturn(List[String]()).when(mockClusterConfig).members
+      mockClusterConfig
+    })
 
-    val config = new SiriusConfiguration
-    config.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
-    config.setProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 120)
-    config.setProp(SiriusConfiguration.MEMBERSHIP_PING_INTERVAL, 120)
-    config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath)
+    val siriusConfig = new SiriusConfiguration
+    siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
+
     val underTest = TestActorRef[MembershipActor](
-      MembershipActor.props(membershipAgent, config), "membership-actor-test"
+      new MembershipActor(membershipAgent, cluster, 120.seconds, 120.seconds, siriusConfig), "membership-actor-test"
     )(actorSystem)
 
     (underTest, membershipAgent)
   }
 
-  def writeClusterConfig(dir: File, lines: List[String]) {
-    val clusterConfig = Path.fromString(new File(dir, "sirius.cluster.config").getAbsolutePath)
-    clusterConfig.delete()
-    clusterConfig.writeStrings(lines, NewLine.sep)
-  }
-
-
   implicit var actorSystem: ActorSystem = _
-  var tempDir: File = _
 
   before {
     actorSystem = ActorSystem("testsystem")
-    tempDir = MembershipActorTest.createTempDir
   }
 
   after {
-    Path.fromString(tempDir.getAbsolutePath).deleteRecursively(force = true)
     actorSystem.shutdown()
     waitForTrue(actorSystem.isTerminated, 1000, 50)
   }
@@ -79,14 +57,14 @@ class MembershipActorTest extends NiceTest with TimedTest {
     }
 
     it("should add actors to membership when CheckClusterConfig is received") {
-      val (underTest, membershipAgent) = makeMembershipActor()
-
+      val mockClusterConfig = mock[ClusterConfig]
       val probeOne = TestProbe()
       val probeOnePath = probeOne.ref.path.toString
       val probeTwo = TestProbe()
       val probeTwoPath = probeTwo.ref.path.toString
+      doReturn(List(probeOnePath, probeTwoPath)).when(mockClusterConfig).members
 
-      writeClusterConfig(tempDir, List(probeOnePath, probeTwoPath))
+      val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) = makeMembershipActor(clusterConfig = Some(mockClusterConfig))
 
       underTest ! CheckClusterConfig
 
@@ -102,14 +80,14 @@ class MembershipActorTest extends NiceTest with TimedTest {
      * system.
      */
     ignore("should remove actors from membership that fail to resolve") {
-      val (underTest, membershipAgent) = makeMembershipActor()
-
+      val mockClusterConfig = mock[ClusterConfig]
       val probeOne = TestProbe()
       val probeOnePath = probeOne.ref.path.toString
       val probeTwo = TestProbe()
       val probeTwoPath = probeTwo.ref.path.toString
+      doReturn(List(probeOnePath, probeTwoPath)).when(mockClusterConfig).members
 
-      writeClusterConfig(tempDir, List(probeOnePath, probeTwoPath))
+      val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) = makeMembershipActor(clusterConfig = Some(mockClusterConfig))
 
       underTest ! CheckClusterConfig
       assert(waitForTrue(membershipAgent.get().size == 2, 2000, 100), "Did not reach correct membership size.")
@@ -122,19 +100,19 @@ class MembershipActorTest extends NiceTest with TimedTest {
     }
 
     it("should remove actors from membership that were removed from cluster config") {
-      val (underTest, membershipAgent) = makeMembershipActor()
-
+      val mockClusterConfig = mock[ClusterConfig]
       val probeOne = TestProbe()
       val probeOnePath = probeOne.ref.path.toString
       val probeTwo = TestProbe()
       val probeTwoPath = probeTwo.ref.path.toString
+      doReturn(List(probeOnePath, probeTwoPath)).when(mockClusterConfig).members
 
-      writeClusterConfig(tempDir, List(probeOnePath, probeTwoPath))
+      val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) = makeMembershipActor(clusterConfig = Some(mockClusterConfig))
 
       underTest ! CheckClusterConfig
       assert(waitForTrue(membershipAgent.get().size == 2, 2000, 100), "Did not reach correct membership size.")
 
-      writeClusterConfig(tempDir, List(probeOnePath))
+      doReturn(List(probeOnePath)).when(mockClusterConfig).members
 
       underTest ! CheckClusterConfig
 
