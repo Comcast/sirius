@@ -1,8 +1,6 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import akka.agent.Agent
-import scalax.file.Path
-import scalax.io.Line.Terminators.NewLine
 import akka.event.Logging
 import akka.util.Duration
 import akka.actor.{Props, ActorRef, actorRef2Scala, Actor}
@@ -36,17 +34,15 @@ object MembershipActor {
    *         (e.g. calling `.withDispatcher()` on it)
    */
   def props(membershipAgent: Agent[Map[String, Option[ActorRef]]], config: SiriusConfiguration): Props = {
-    // XXX: we should figure out if we're doing config parsing and injecting it, or doing it within the actor
-    //      the advantage of pulling out the config here is it makes testing easier, and it makes it obvious what
-    //      config is needed
-    val clusterConfigPath = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG) match {
-      case Some(path) => Path.fromString(path)
-      case None => throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
-    }
+    val clusterConfigLocation = config.getProp[String](SiriusConfiguration.CLUSTER_CONFIG).getOrElse(
+      throw new IllegalArgumentException(SiriusConfiguration.CLUSTER_CONFIG + " is not configured")
+    )
+    val clusterConfig = FileBasedClusterConfig(clusterConfigLocation)
     val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 30)
     val pingIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_PING_INTERVAL, 30)
-    //Props(classOf[MembershipActor], membershipAgent, clusterConfigPath, checkIntervalSecs seconds, pingIntervalSecs seconds, config)
-    Props(new MembershipActor(membershipAgent, clusterConfigPath, checkIntervalSecs seconds, pingIntervalSecs seconds, config))
+
+    //Props(classOf[MembershipActor], membershipAgent, clusterConfig, checkIntervalSecs seconds, pingIntervalSecs seconds, config)
+    Props(new MembershipActor(membershipAgent, clusterConfig, checkIntervalSecs seconds, pingIntervalSecs seconds, config))
   }
 }
 
@@ -58,13 +54,13 @@ object MembershipActor {
  *
  * @param membershipAgent An Agent[Map[String, Option[ActorRef\]\]\] that this actor will keep populated
  *          with the most up to date membership information
- * @param clusterConfigPath A scalax.file.Path containing the membership information
+ * @param clusterConfig ClusterConfig object containing the membership information
  *          for this cluster
  * @param checkInterval how often to check for updates to clusterConfigPath
  * @param config SiriusConfiguration, used to register monitors
  */
 class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
-                      clusterConfigPath: Path,
+                      clusterConfig: ClusterConfig,
                       checkInterval: Duration,
                       pingInterval: Duration,
                       config: SiriusConfiguration)
@@ -80,10 +76,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
   var lastPingUpdateMap = HashMap[String, Long]()
 
   override def preStart() {
-    logger.info("Initializing MembershipActor to check {} every {}", clusterConfigPath, checkInterval)
-
     registerMonitor(new MembershipInfo, config)
-
     updateMembership()
   }
 
@@ -116,7 +109,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
    * Creates a MembershipMap from the contents of the clusterConfigPath file.
    */
   private[membership] def updateMembership() {
-    val actorPaths = clusterConfigPath.lines(NewLine, includeTerminator = false).toList
+    val actorPaths = clusterConfig.members
 
     removeMissingPaths(actorPaths)
     updateActorRefs(actorPaths)
@@ -145,7 +138,6 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
   /*
   def updateActorRefs(actorPaths: List[String]) {
     actorPaths
-      .filterNot(_.startsWith("#")) // not commented out
       .filter(membership.get(_) == None) // we don't already have a ref for it
       .foreach(path => {
       context.actorSelection(path).resolveOne(1 seconds) onComplete {
@@ -159,10 +151,8 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
   }
   */
   def updateActorRefs(actorPaths: List[String]) {
-    actorPaths
-      .filterNot(_.startsWith("#"))
-      .foreach(path => {
-        membershipAgent send (_ + (path -> Some(context.actorFor(path))))
+    actorPaths.foreach(path => {
+      membershipAgent send (_ + (path -> Some(context.actorFor(path))))
     })
   }
 
