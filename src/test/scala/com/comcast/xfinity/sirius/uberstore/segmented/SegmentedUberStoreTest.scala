@@ -366,7 +366,7 @@ class SegmentedUberStoreTest extends NiceTest {
     it("should properly handle the existence of both base and compacted") {
       val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
-      createPopulatedSegment(dir, "1.compacted", List(2))
+      createPopulatedSegment(dir, "1" + SegmentedCompactor.COMPACTING_SUFFIX, List(2))
 
       SegmentedUberStore.repair(dir.getAbsolutePath)
       assert("1" === listEvents(SegmentedUberStore(dir.getAbsolutePath)))
@@ -375,7 +375,7 @@ class SegmentedUberStoreTest extends NiceTest {
     it("should properly handle the existence of both temp and compacted") {
       val dir = createTempDir
       createPopulatedSegment(dir, "1.temp", List(1))
-      createPopulatedSegment(dir, "1.compacted", List(2))
+      createPopulatedSegment(dir, "1" + SegmentedCompactor.COMPACTING_SUFFIX, List(2))
 
       SegmentedUberStore.repair(dir.getAbsolutePath)
       assert("2" === listEvents(SegmentedUberStore(dir.getAbsolutePath)))
@@ -384,7 +384,7 @@ class SegmentedUberStoreTest extends NiceTest {
     it("should properly handle the existence of both base and temp") {
       val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
-      createPopulatedSegment(dir, "1.temp", List(2))
+      createPopulatedSegment(dir, "1" + SegmentedCompactor.TEMP_SUFFIX, List(2))
 
       SegmentedUberStore.repair(dir.getAbsolutePath)
       assert("1" === listEvents(SegmentedUberStore(dir.getAbsolutePath)))
@@ -403,11 +403,11 @@ class SegmentedUberStoreTest extends NiceTest {
       val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
       createPopulatedSegment(dir, "2", List(2))
-      createPopulatedSegment(dir, "2.compacted", List(20))
-      createPopulatedSegment(dir, "3.temp", List(30))
-      createPopulatedSegment(dir, "3.compacted", List(3))
+      createPopulatedSegment(dir, "2" + SegmentedCompactor.COMPACTING_SUFFIX, List(20))
+      createPopulatedSegment(dir, "3" + SegmentedCompactor.TEMP_SUFFIX, List(30))
+      createPopulatedSegment(dir, "3" + SegmentedCompactor.COMPACTING_SUFFIX, List(3))
       createPopulatedSegment(dir, "4", List(4))
-      createPopulatedSegment(dir, "4.temp", List(40))
+      createPopulatedSegment(dir, "1" + SegmentedCompactor.TEMP_SUFFIX, List(40))
       createPopulatedSegment(dir, "5", List(5))
 
       SegmentedUberStore.repair(dir.getAbsolutePath)
