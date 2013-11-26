@@ -33,8 +33,8 @@ object SegmentedUberStore {
 
     baseNames.foreach(baseName => {
       val baseFile = new File(dir, baseName)
-      val tempFile = new File(dir, baseName + ".temp")
-      val compactedFile = new File(dir, baseName + ".compacted")
+      val tempFile = new File(dir, baseName + SegmentedCompactor.TEMP_SUFFIX)
+      val compactedFile = new File(dir, baseName + SegmentedCompactor.COMPACTING_SUFFIX)
 
       if (baseFile.exists && compactedFile.exists) {
         // compacted exists, base exists: incomplete compaction, delete compacted

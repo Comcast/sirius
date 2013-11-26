@@ -6,6 +6,9 @@ import annotation.tailrec
 
 object SegmentedCompactor {
 
+  val COMPACTING_SUFFIX = ".compacting"
+  val TEMP_SUFFIX = ".temp"
+
   /**
    * Replaces one Segment file with another, removing the original.
    *
@@ -22,7 +25,7 @@ object SegmentedCompactor {
     val originalPath = Path.fromString(original.location.getAbsolutePath)
     val replacementPath = Path.fromString(replacement)
     val tempPath = Path.fromString(
-      new File(original.location.getParent, original.location.getName + ".temp").getAbsolutePath
+      new File(original.location.getParent, original.location.getName + TEMP_SUFFIX).getAbsolutePath
     )
 
     originalPath.moveTo(tempPath)
@@ -63,7 +66,7 @@ object SegmentedCompactor {
     val keys = toCompact.keys
     segments.foldLeft(Map[Segment, String]())(
       (map, toCompact) => {
-        val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + ".compacting")
+        val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + COMPACTING_SUFFIX)
         compactSegment(keys, toCompact, compactInto)
 
         compactInto.setApplied(toCompact.isApplied)
