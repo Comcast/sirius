@@ -332,7 +332,9 @@ object WalTool {
 
     val outWal = inUberDir match {
       case (dir : String) if UberTool.isLegacy(dir) => UberStore(outUberDir)
-      case (dir: String) if UberTool.isSegmented(dir) => SegmentedUberStore(outUberDir)
+      case (dir: String) if UberTool.isSegmented(dir) =>
+        SegmentedUberStore.init(outUberDir)
+        SegmentedUberStore(outUberDir)
       case _ => throw new IllegalArgumentException(inUberDir + " does not appear to be a valid Uberstore")
     }
 
