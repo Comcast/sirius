@@ -34,7 +34,7 @@ class BackwardsCompatibleClusterConfigTest extends NiceTest {
     it("Must ONLY convert akka:// strings if they are a prefix") {
       val mockBackend = mock[ClusterConfig]
       val underTest = new BackwardsCompatibleClusterConfig(mockBackend)
-      val backendList = List("akka.ssl://one/terrible/actor/path/in/akka://")
+      val backendList = List("akka.tcp://one/terrible/actor/path/in/akka://")
 
       doReturn(backendList).when(mockBackend).members
 

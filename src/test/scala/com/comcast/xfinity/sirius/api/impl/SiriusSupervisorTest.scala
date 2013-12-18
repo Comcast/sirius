@@ -29,6 +29,7 @@ import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{GetMember
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 @RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTest {
@@ -41,7 +42,10 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
                              statusSubsystem: ActorRef = TestProbe().ref,
                              paxosSupervisor: ActorRef = TestProbe().ref,
                              compactionManager: ActorRef = TestProbe().ref)(implicit actorSystem: ActorSystem) = {
-    val childProvider = new SiriusSupervisor.ChildProvider(null, null, null) {
+    val testConfig = new SiriusConfiguration
+    testConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(testConfig))
+
+    val childProvider = new SiriusSupervisor.ChildProvider(null, null, testConfig) {
       override def createStateAgent()(implicit context: ActorContext) = stateAgent
       override def createMembershipAgent()(implicit context: ActorContext) = membershipAgent
       override def createStateSupervisor(stateAgent: Agent[SiriusState])
@@ -55,7 +59,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       override def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = statusSubsystem
       override def createCompactionManager()(implicit context: ActorContext) = compactionManager
     }
-    TestActorRef(new SiriusSupervisor(childProvider, new SiriusConfiguration))
+    TestActorRef(new SiriusSupervisor(childProvider, testConfig))
   }
 
   implicit val actorSystem = ActorSystem("SiriusSupervisorTest")

@@ -48,7 +48,7 @@ object Leader {
    *
    * @param config the SiriusConfiguration for this node
    */
-  private[paxos] class ChildProvider(config: SiriusConfiguration) {
+  private[paxos] class ChildProvider(config: SiriusConfiguration){
     def createCommander(leader: ActorRef, clusterInfo: ClusterInfo, pval: PValue, ticks: Int)
                        (implicit context: ActorContext): ActorRef = {
       context.actorOf(Commander.props(leader, clusterInfo, pval, ticks))
@@ -94,8 +94,9 @@ class Leader(membership: MembershipHelper,
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
-
-  val myLeaderId = AkkaExternalAddressResolver(context.system).externalAddressFor(self)
+  val akkaExternalAddressResolver = config.getProp[AkkaExternalAddressResolver](SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER).
+    getOrElse(throw new IllegalStateException("SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER returned nothing"))
+  val myLeaderId = akkaExternalAddressResolver.externalAddressFor(self)
   var myBallot = Ballot(0, myLeaderId)
   var proposals = RichJTreeMap[Long, Command]()
 
