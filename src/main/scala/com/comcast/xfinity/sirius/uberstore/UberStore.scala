@@ -36,7 +36,7 @@ object UberStore {
       throw new IllegalStateException("Cannot start. Configured to boot with legacy UberStore, but other UberStore format found.")
     }
 
-    new UberStore(UberPair(baseDir, 1L))
+    new UberStore(baseDir, UberPair(baseDir, 1L))
   }
 
   /**
@@ -58,7 +58,7 @@ object UberStore {
  *
  * @param uberpair UberStoreFilePair for delegating uberstore operations
  */
-class UberStore private[uberstore] (uberpair: UberPair) extends SiriusLog {
+class UberStore private[uberstore] (baseDir: String, uberpair: UberPair) extends SiriusLog {
 
   /**
    * @inheritdoc
@@ -96,5 +96,19 @@ class UberStore private[uberstore] (uberpair: UberPair) extends SiriusLog {
 
   def compact() {
     // do nothing, don't use compact() on legacy uberstore
+  }
+
+  /**
+   * sum of size in bytes of all files in uberstore and subdirs
+   * @return a measure of size of the SiriusLog
+   */
+  def size = {
+    def recursiveListFiles(f: File): Array[File] = {
+           val these = f.listFiles
+            these ++ these.filter(_.isDirectory).flatMap(recursiveListFiles)
+    }
+
+    val baseDirFile = new File(baseDir)
+    recursiveListFiles(baseDirFile).filter(_.isFile).map(_.length).sum
   }
 }

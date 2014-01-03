@@ -55,4 +55,10 @@ trait SiriusLog {
   def getNextSeq: Long
 
   def compact()
+
+  /**
+   * Calculates size of the SiriusLog.
+   * @return a measure of size of the SiriusLog
+   */
+  def size: Long
 }

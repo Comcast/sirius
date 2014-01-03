@@ -37,6 +37,8 @@ object UberToolTest {
       throw new IllegalStateException("not implemented")
 
     def compact {}
+
+    def size = 0L
   }
 
   def createTempDir = {

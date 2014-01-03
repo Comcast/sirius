@@ -113,4 +113,8 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
   def compact() {
     log.compact()
   }
+
+  def size() : Long = {
+    log.size
+  }
 }

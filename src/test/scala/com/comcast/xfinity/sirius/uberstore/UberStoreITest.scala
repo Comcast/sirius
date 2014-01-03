@@ -88,6 +88,11 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
 
       assert(events1Through100 ++ events101Through200 === getAllEvents(uberStore))
     }
+
+    it ("must report size correctly"){
+      uberStore.writeEntry(OrderedEvent(uberStore.getNextSeq, 5, Delete("is so fat")))
+      assert(8541L === uberStore.size)
+    }
   }
 
   private def generateEvents(start: Long, end: Long): List[OrderedEvent] =

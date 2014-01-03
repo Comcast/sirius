@@ -200,6 +200,14 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long)
     merge()
   }
 
+  def size():Long = {
+    def recursiveListFiles(f: File): Array[File] = {
+               val these = f.listFiles
+                these ++ these.filter(_.isDirectory).flatMap(recursiveListFiles)
+        }
+    recursiveListFiles(base).filter(_.isFile).map(_.length).sum
+  }
+
   /**
    * Compact readOnlyDirs until they can be compacted no longer.
    */
