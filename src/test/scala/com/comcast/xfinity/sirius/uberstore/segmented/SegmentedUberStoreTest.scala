@@ -431,4 +431,26 @@ class SegmentedUberStoreTest extends NiceTest {
       assert(dir.listFiles().count(_.isDirectory) == 5)
     }
   }
+
+  describe("size"){
+    it ("should report size correctly with 0 segments"){
+      val dir = createTempDir
+      assert(0L === SegmentedUberStore(dir.getAbsolutePath).size)
+    }
+
+    it ("should report size correctly with 1 segments"){
+      val dir = createTempDir
+      createPopulatedSegment(dir, "1", List(1))
+      assert(65L === SegmentedUberStore(dir.getAbsolutePath).size)
+    }
+
+    it ("should report size correctly with multiple segments"){
+      val dir = createTempDir
+      createPopulatedSegment(dir, "1", List(1))
+      createPopulatedSegment(dir, "2", List(2))
+      createPopulatedSegment(dir, "3", List(3))
+      createPopulatedSegment(dir, "4", List(4))
+      assert(260L === SegmentedUberStore(dir.getAbsolutePath).size)
+    }
+  }
 }
