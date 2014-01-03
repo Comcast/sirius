@@ -53,6 +53,14 @@ class SiriusPersistenceActorTest extends NiceTest {
 
     //TODO: Should have tests for calls to mockSiriusLog
 
+    it("should report log size"){
+      when(mockSiriusLog.size).thenReturn(500L);
+
+      val senderProbe = TestProbe()(actorSystem)
+      senderProbe.send(underTestActor, GetLogSize)
+      senderProbe.expectMsg(500L)
+    }
+
     it ("should forward Put's to the state actor") {
       when(mockSiriusLog.getNextSeq).thenReturn(0)
 
