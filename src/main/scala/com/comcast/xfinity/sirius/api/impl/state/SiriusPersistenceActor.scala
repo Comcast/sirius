@@ -30,6 +30,7 @@ object SiriusPersistenceActor {
    */
   sealed trait LogQuery
 
+  case object GetLogSize extends LogQuery
   /**
    * Message for directly requesting a chunk of the log from a node.
    *
@@ -151,6 +152,9 @@ class SiriusPersistenceActor(stateActor: ActorRef,
     case GetNextLogSeq =>
       sender ! siriusLog.getNextSeq
 
+    case GetLogSize =>
+      sender ! siriusLog.size
+
     // XXX SiriusStateActor responds to writes with a SiriusResult, we don't really want this
     // anymore, and it should be eliminated in a future commit
     case _: SiriusResult =>
@@ -161,12 +165,12 @@ class SiriusPersistenceActor(stateActor: ActorRef,
    */
   trait SiriusPersistenceActorInfoMBean {
     def getAveragePersistDuration: Double
+    def getSiriusLogSize: Long
   }
 
   class SiriusPersistenceActorInfo extends SiriusPersistenceActorInfoMBean {
 
-
-
     def getAveragePersistDuration = cummWeightedAvg
+    def getSiriusLogSize = siriusLog.size
   }
 }
