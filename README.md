@@ -1,4 +1,4 @@
-# Sirius [![Build Status](https://travis-ci.org/Comcast/sirius.png)](https://travis-ci.org/Comcast/sirius)
+# Sirius
 
 Sirius is a distributed in memory datastore that uses the Paxos
 protocol set to perform it's distributed messaging and updates.
