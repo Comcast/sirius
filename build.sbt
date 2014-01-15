@@ -15,7 +15,7 @@
 
 name := "sirius"
 
-version := "1.2.0-SNAPSHOT"
+version := "1.1.4"
 
 scalaVersion := "2.10.2"
 
@@ -36,12 +36,6 @@ crossPaths := false
 javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
-
-// exclude maven central
-externalResolvers := Seq(
-    "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository",
-    "Cim Nexus Public Mirror" at "http://repo.dev.cim.comcast.net/nexus/content/groups/public"
-)
 
 // allows us to pull deps from pom file
 externalPom()
