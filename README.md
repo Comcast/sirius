@@ -1,8 +1,7 @@
 # Sirius
 
-Sirius is CIM's (or the organization formerly known as CIM) answer
-to how to keep our data in memory across all of our nodes, and
-consistent at the same time.
+Sirius is a distributed in memory datastore that uses the Paxos
+protocol set to perform it's distributed messaging and updates.
 
 
 ## Structure
