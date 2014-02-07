@@ -15,10 +15,12 @@
  */
 package com.comcast.xfinity.sirius.uberstore.data
 
-import java.io.RandomAccessFile
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import annotation.tailrec
 import com.comcast.xfinity.sirius.uberstore.common.Fnv1aChecksummer
+import scalax.io.SeekableByteChannel
+import scalax.io.nio.SeekableFileChannel
+import java.io.RandomAccessFile
 
 object UberDataFile {
 
@@ -52,24 +54,24 @@ object UberDataFile {
    */
   private[data] class UberFileDesc(dataFileName: String) {
     /**
-     * Construct and return a writable RandomAccessFile
+     * Construct and return a writable SeekableByteChannel
      *
      * Has the side effect of opening a file descriptor, this must be
      * closed by the caller.
      *
-     * @return read/write RandomAccessFile (note write only is not allowed)
+     * @return read/write SeekableByteChannel (note write only is not allowed)
      */
-    def createWriteHandle() = new RandomAccessFile(dataFileName, "rw")
+    def createWriteHandle() : SeekableByteChannel = new SeekableFileChannel(new RandomAccessFile(dataFileName, "rw").getChannel)
 
     /**
-     * Construct a read only RandomAccessFile
+     * Construct a read only SeekableByteChannel
      *
      * Has the side effect of opening a file descriptor, this must be
      * closed by the caller.
      *
-     * @return read only RandomAccessFile
+     * @return read only SeekableByteChannel
      */
-    def createReadHandle() = new RandomAccessFile(dataFileName, "r")
+    def createReadHandle() : SeekableByteChannel = new SeekableFileChannel(new RandomAccessFile(dataFileName, "r").getChannel)
   }
 }
 
@@ -87,7 +89,7 @@ private[uberstore] class UberDataFile(uberFileDesc: UberDataFile.UberFileDesc,
                                       codec: OrderedEventCodec) {
 
   val writeHandle = uberFileDesc.createWriteHandle()
-  writeHandle.seek(writeHandle.length)
+  writeHandle.position(writeHandle.size)
 
   var isClosed = false
 
@@ -132,7 +134,7 @@ private[uberstore] class UberDataFile(uberFileDesc: UberDataFile.UberFileDesc,
   def foldLeftRange[T](baseOff: Long, endOff: Long)(acc0: T)(foldFun: (T, Long, OrderedEvent) => T): T = {
     val readHandle = uberFileDesc.createReadHandle()
     try {
-      readHandle.seek(baseOff)
+      readHandle.position(baseOff)
       foldLeftUntil(readHandle, endOff, acc0, foldFun)
     } finally {
       readHandle.close()
@@ -141,8 +143,8 @@ private[uberstore] class UberDataFile(uberFileDesc: UberDataFile.UberFileDesc,
 
   // private low low low level fold left
   @tailrec
-  private def foldLeftUntil[T](readHandle: RandomAccessFile, maxOffset: Long, acc: T, foldFun: (T, Long, OrderedEvent) => T): T = {
-    val offset = readHandle.getFilePointer
+  private def foldLeftUntil[T](readHandle: SeekableByteChannel, maxOffset: Long, acc: T, foldFun: (T, Long, OrderedEvent) => T): T = {
+    val offset = readHandle.position
     if (offset > maxOffset) {
       acc
     } else {

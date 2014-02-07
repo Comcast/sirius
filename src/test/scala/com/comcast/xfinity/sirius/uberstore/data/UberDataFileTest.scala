@@ -16,31 +16,31 @@
 package com.comcast.xfinity.sirius.uberstore.data
 
 import com.comcast.xfinity.sirius.NiceTest
-import java.io.RandomAccessFile
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Delete}
 import org.mockito.Matchers.{any, same}
+import scalax.io.SeekableByteChannel
 
 class UberDataFileTest extends NiceTest {
 
   it ("must seek to the end of the write file handle on instantiation") {
-    val mockWriteHandle = mock[RandomAccessFile]
+    val mockWriteHandle = mock[SeekableByteChannel]
     val mockDesc = mock[UberDataFile.UberFileDesc]
     doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
 
     val mockFileOps = mock[UberStoreFileOps]
     val mockCodec = mock[OrderedEventCodec]
 
-    doReturn(100L).when(mockWriteHandle).length
+    doReturn(100L).when(mockWriteHandle).size
 
     new UberDataFile(mockDesc, mockFileOps, mockCodec)
 
-    verify(mockWriteHandle).seek(100L)
+    verify(mockWriteHandle).position(100L)
   }
 
   describe("writeEvent") {
     it ("must serialize the event and delegate its persistence to fileOps") {
-      val mockWriteHandle = mock[RandomAccessFile]
+      val mockWriteHandle = mock[SeekableByteChannel]
       val mockDesc = mock[UberDataFile.UberFileDesc]
       doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
 
@@ -53,7 +53,7 @@ class UberDataFileTest extends NiceTest {
       val serialized = "i award you know points, and may god have mercy on your soul".getBytes
       doReturn(serialized).when(mockCodec).serialize(theEvent)
 
-      doReturn(1000L).when(mockFileOps).put(any[RandomAccessFile], any[Array[Byte]])
+      doReturn(1000L).when(mockFileOps).put(any[SeekableByteChannel], any[Array[Byte]])
 
       assert(1000L === underTest.writeEvent(theEvent))
 
@@ -64,8 +64,8 @@ class UberDataFileTest extends NiceTest {
   describe("foldLeft") {
     it ("must fold over the entire content of the file, invoking fileOps.readNext until there are None, " +
         "and closes the read handle on completion") {
-      val mockWriteHandle = mock[RandomAccessFile]
-      val mockReadHandle = mock[RandomAccessFile]
+      val mockWriteHandle = mock[SeekableByteChannel]
+      val mockReadHandle = mock[SeekableByteChannel]
       val mockDesc = mock[UberDataFile.UberFileDesc]
       doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
       doReturn(mockReadHandle).when(mockDesc).createReadHandle()
@@ -78,8 +78,8 @@ class UberDataFileTest extends NiceTest {
       // Need to simulate 3 successful reads from the handle, followed by None indicating we hit the end
       val dummyBytes = "dummy".getBytes
       doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(None).
-        when(mockFileOps).readNext(any[RandomAccessFile])
-      doReturn(0L).doReturn(10L).doReturn(20L).doReturn(30L).when(mockReadHandle).getFilePointer
+        when(mockFileOps).readNext(any[SeekableByteChannel])
+      doReturn(0L).doReturn(10L).doReturn(20L).doReturn(30L).when(mockReadHandle).position
 
       // Need to simulate the conversion of the events from above becoming OrderedEvents
       val event1 = OrderedEvent(1, 2, Delete("a"))
@@ -105,8 +105,8 @@ class UberDataFileTest extends NiceTest {
 
   describe("foldLeftRange") {
     it ("must only iterate over the specified range of offsets, inclusive, and when finished close the handle") {
-      val mockWriteHandle = mock[RandomAccessFile]
-      val mockReadHandle = mock[RandomAccessFile]
+      val mockWriteHandle = mock[SeekableByteChannel]
+      val mockReadHandle = mock[SeekableByteChannel]
       val mockDesc = mock[UberDataFile.UberFileDesc]
       doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
       doReturn(mockReadHandle).when(mockDesc).createReadHandle()
@@ -119,12 +119,12 @@ class UberDataFileTest extends NiceTest {
       // we will pretend we are starting at a later offset, and read a few events until we hit the end
       //  offset
       doReturn(100L).doReturn(110L).doReturn(120L).doReturn(130L).
-        when(mockReadHandle).getFilePointer
+        when(mockReadHandle).position
 
       // Need to simulate 3 successful reads from the handle, corresponding with the offsets above
       val dummyBytes = "dummy".getBytes
       doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).
-        when(mockFileOps).readNext(any[RandomAccessFile])
+        when(mockFileOps).readNext(any[SeekableByteChannel])
 
       // Need to simulate the conversion of the events from above becoming OrderedEvents
       val event1 = OrderedEvent(1, 2, Delete("a"))
@@ -140,7 +140,7 @@ class UberDataFileTest extends NiceTest {
       assert(List((100L, event1), (110L, event2), (120L, event3)) === result)
 
       // verify that we started at the right offset
-      verify(mockReadHandle).seek(100L)
+      verify(mockReadHandle).position(100L)
 
       verify(mockFileOps, times(3)).readNext(same(mockReadHandle))
       verify(mockCodec, times(3)).deserialize(same(dummyBytes))
@@ -152,7 +152,7 @@ class UberDataFileTest extends NiceTest {
 
   describe ("close") {
     it ("should close provided writeHandle") {
-      val mockWriteHandle = mock[RandomAccessFile]
+      val mockWriteHandle = mock[SeekableByteChannel]
       val mockDesc = mock[UberDataFile.UberFileDesc]
       doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
 

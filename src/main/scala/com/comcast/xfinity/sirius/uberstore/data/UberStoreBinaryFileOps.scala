@@ -15,9 +15,9 @@
  */
 package com.comcast.xfinity.sirius.uberstore.data
 
-import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 import com.comcast.xfinity.sirius.uberstore.common.Checksummer
+import scalax.io.SeekableByteChannel
 
 /**
  * Class providing UberStoreFileOps, storing entries in the following format:
@@ -32,8 +32,8 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
   /**
    * @inheritdoc
    */
-  def put(writeHandle: RandomAccessFile, body: Array[Byte]): Long = {
-    val offset = writeHandle.getFilePointer
+  def put(writeHandle: SeekableByteChannel, body: Array[Byte]): Long = {
+    val offset = writeHandle.position
 
     val len: Int = body.length
     val chksum: Long = checksum(body)
@@ -41,8 +41,9 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
     val byteBuf = ByteBuffer.allocate(HEADER_SIZE + len)
 
     byteBuf.putInt(len).putLong(chksum).put(body)
+    byteBuf.flip
 
-    writeHandle.write(byteBuf.array)
+    writeHandle.write(byteBuf)
 
     offset
   }
@@ -50,10 +51,10 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
   /**
    * @inheritdoc
    */
-  def readNext(readHandle: RandomAccessFile): Option[Array[Byte]] = {
-    val offset = readHandle.getFilePointer
+  def readNext(readHandle: SeekableByteChannel): Option[Array[Byte]] = {
+    val offset = readHandle.position
 
-    if (offset == readHandle.length) { // EOF
+    if (offset == readHandle.size) { // EOF
       None
     } else {
       val (entryLen, chksum) = readHeader(readHandle)
@@ -69,16 +70,18 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
 
 
   // Helper jawns
-  private def readHeader(readHandle: RandomAccessFile): (Int,  Long) = {
+  private def readHeader(readHandle: SeekableByteChannel): (Int,  Long) = {
     val entryHeaderBuf = ByteBuffer.allocate(HEADER_SIZE)
-    readHandle.readFully(entryHeaderBuf.array)
+    readHandle.read(entryHeaderBuf)
+    entryHeaderBuf.flip
 
     (entryHeaderBuf.getInt(), entryHeaderBuf.getLong())
   }
 
-  private def readBody(readHandle: RandomAccessFile, bodyLen: Int): Array[Byte] = {
+  private def readBody(readHandle: SeekableByteChannel, bodyLen: Int): Array[Byte] = {
     val entryBuf = ByteBuffer.allocate(bodyLen)
-    readHandle.readFully(entryBuf.array)
+    readHandle.read(entryBuf)
+    entryBuf.flip
 
     entryBuf.array
   }
