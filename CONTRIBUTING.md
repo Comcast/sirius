@@ -4,7 +4,10 @@ Contribution Guidelines
 We love to see contributions to the project and have tried to make it easy to
 do so. If you wish to contribute code, then please keep to the following guidelines to
 ensure consistency within the codebase and that we have happy users.  All commits should be submitted via a pull
-request regardless of the committer's privileges.
+request from a forked project regardless of the committer's privileges.
+
+For more details about contributing to github projects see
+http://gun.io/blog/how-to-github-fork-branch-and-pull-request/
 
 Documentation
 -------------
@@ -20,19 +23,22 @@ Testing
 -------
 
 This project uses [ScalaTest](http://www.scalatest.org/) for its tests. Although
-any tests are better than none, [FunSpec](http://doc.scalatest.org/2.0/index.html#org.scalatest.FunSpec) tests will be looked on
-more favourably than other types (such as FlatSpec or JUnit).  [sirius](/../..) includes
+any tests are better than none, [FunSpec](http://doc.scalatest.org/2.0/index.html#org.scalatest.FunSpec) tests will be
+looked on more favourably than other types (such as FlatSpec or JUnit).  [sirius](/../..) includes
 [NiceTest](/../../blob/master/src/test/scala/com/comcast/xfinity/sirius/NiceTest.scala), a helpful abstract class that
 extends FunSpec, BeforeAndAfter and MockitoSugar.
 
 Pull Requests
 -------------
 
+* should be from a forked project with an appropriate branch name
 * should be narrowly focused with no more than 3 or 4 logical commits
 * when possible, address no more than one issue
 * should be reviewable in the GitHub code review tool
+* should be linked to any issues it relates to (ie issue number after (#) in commit messages or pull request message)
 
 Expect a long review process for any pull requests that add functionality or change the behavior of the application.
+
 
 Commit messages
 ---------------
