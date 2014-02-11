@@ -31,6 +31,7 @@ Pull Requests
 * should be narrowly focused with no more than 3 or 4 logical commits
 * when possible, address no more than one issue
 * should be reviewable in the GitHub code review tool
+* should be linked to any issues it relates to (ie issue number after (#) in commit messages or pull request message)
 
 Expect a long review process for any pull requests that add functionality or change the behavior of the application.
 
