@@ -20,9 +20,9 @@ Testing
 -------
 
 This project uses [ScalaTest](http://www.scalatest.org/) for its tests. Although
-any tests are better than none, [FunSpec](http://doc.scalatest.org/2.0/#org.scalatest.FunSpec) tests will be looked on
-more favourably than other types (such as FlatSpec or JUnit).  [sirius](/) includes
-[NiceTest](/sirius/blob/master/src/test/scala/com/comcast/xfinity/sirius/NiceTest.scala), a helpful abstract class that
+any tests are better than none, [FunSpec](http://doc.scalatest.org/2.0/index.html#org.scalatest.FunSpec) tests will be looked on
+more favourably than other types (such as FlatSpec or JUnit).  [sirius](/../..) includes
+[NiceTest](/../../blob/master/src/test/scala/com/comcast/xfinity/sirius/NiceTest.scala), a helpful abstract class that
 extends FunSpec, BeforeAndAfter and MockitoSugar.
 
 Pull Requests
