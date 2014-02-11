@@ -91,6 +91,10 @@ object SiriusFactory {
   private[sirius] def createInstance(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
                    siriusLog: SiriusLog): SiriusImpl = {
 
+    if (requestHandler == null) {
+      throw new NullPointerException("RequestHandler must be non-null")
+    }
+
     val systemName = siriusConfig.getProp(SiriusConfiguration.AKKA_SYSTEM_NAME, "sirius-system")
 
     implicit val actorSystem = ActorSystem(systemName, createActorSystemConfig(siriusConfig))
