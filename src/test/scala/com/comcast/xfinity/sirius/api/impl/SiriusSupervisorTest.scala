@@ -116,6 +116,32 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       waitForTrue(stateAgent().supervisorInitialized, 5000, 250)
     }
 
+    it("should reply to a registered initHook once initialized") {
+      val probe = TestProbe()
+      probe.send(supervisor, SiriusSupervisor.RegisterInitHook)
+      initializeSupervisor(supervisor)
+      probe.expectMsg(SiriusSupervisor.Initialized)
+    }
+
+    it("should reply to all registered initHooks once initialized") {
+      val probe1 = TestProbe()
+      val probe2 = TestProbe()
+      probe1.send(supervisor, SiriusSupervisor.RegisterInitHook)
+      probe2.send(supervisor, SiriusSupervisor.RegisterInitHook)
+      initializeSupervisor(supervisor)
+      probe1.expectMsg(SiriusSupervisor.Initialized)
+      probe2.expectMsg(SiriusSupervisor.Initialized)
+    }
+
+    it("should reply immediately to an initHook registration once already initialized") {
+      val probe = TestProbe()
+      val stateAgent = supervisor.underlyingActor.siriusStateAgent
+      initializeSupervisor(supervisor)
+      waitForTrue(stateAgent().supervisorInitialized, 5000, 250)
+      probe.send(supervisor, SiriusSupervisor.RegisterInitHook)
+      probe.expectMsg(SiriusSupervisor.Initialized)
+    }
+
     it("should forward MembershipMessages to the membershipActor") {
       initializeSupervisor(supervisor)
       initializeOrdering(supervisor, Some(paxosProbe.ref))

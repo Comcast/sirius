@@ -44,6 +44,8 @@ object SiriusSupervisor {
   case object CheckPaxosMembership extends SupervisorMessage
 
   case class IsInitializedResponse(initialized: Boolean)
+  case object RegisterInitHook
+  case object Initialized
 
   /**
    * Factory for creating the children actors of SiriusSupervisor.
@@ -133,6 +135,8 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
   val membershipCheckSchedule = context.system.scheduler.
     schedule(0 seconds, checkIntervalSecs seconds, self, CheckPaxosMembership)
 
+  var initHookClients : Set[ActorRef] = Set.empty
+
   override def postStop() {
     membershipCheckSchedule.cancel()
   }
@@ -149,9 +153,13 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
         context.become(initialized)
 
         sender ! SiriusSupervisor.IsInitializedResponse(initialized = true)
+
+        initHookClients foreach { _ ! SiriusSupervisor.Initialized }
+        initHookClients = Set.empty
       } else {
         sender ! SiriusSupervisor.IsInitializedResponse(initialized = false)
       }
+    case SiriusSupervisor.RegisterInitHook => initHookClients += sender
 
     // Ignore other messages until Initialized.
     case _ =>
@@ -162,6 +170,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
     case logQuery: LogQuery => stateSup forward logQuery
     case membershipMessage: MembershipMessage => membershipActor forward membershipMessage
     case SiriusSupervisor.IsInitializedRequest => sender ! new SiriusSupervisor.IsInitializedResponse(true)
+    case SiriusSupervisor.RegisterInitHook => sender ! SiriusSupervisor.Initialized
     case statusQuery: StatusQuery => statusSubsystem forward statusQuery
     case compactionMessage: CompactionMessage => compactionManager match {
       case Some(actor) => actor forward compactionMessage

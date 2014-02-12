@@ -30,6 +30,9 @@ import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
+import scala.concurrent.ExecutionContext.Implicits.global
+import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{Initialized, RegisterInitHook}
+import scala.concurrent.{Await, Promise}
 
 object SiriusImplTestCompanion {
 
@@ -91,6 +94,9 @@ class SiriusImplTest extends NiceTest with TimedTest {
         case GetStatus =>
           sender ! mockNodeStatus
           this
+        case RegisterInitHook =>
+          sender ! Initialized
+          this
       }
     })
 
@@ -105,6 +111,17 @@ class SiriusImplTest extends NiceTest with TimedTest {
   }
 
   describe("a SiriusImpl") {
+    it("should send a RegisterInitHook message to the supervisor actor when onInitialized is called") {
+      underTest.onInitialized(new Runnable() { def run() { } })
+      supervisorActorProbe.expectMsg(SiriusSupervisor.RegisterInitHook)
+    }
+
+    it("should call the initHook once the supervisor actor responds with an Initialized message") {
+      val p : Promise[Boolean] = Promise()
+      underTest.onInitialized(new Runnable() { def run() { p.success(true) }})
+      assert(Await.result(p.future, 50 millis))
+    }
+
     it("should send a Get message to the supervisor actor when enqueueGet is called") {
       val key = "hello"
       val getFuture = underTest.enqueueGet(key)
