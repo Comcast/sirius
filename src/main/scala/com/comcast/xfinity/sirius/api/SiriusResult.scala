@@ -41,8 +41,16 @@ object SiriusResult {
    *
    * @return SiriusResult 
    */  
-  def error(t: Throwable): SiriusResult = SiriusResult(Left(t))
-  
+  def error(rte: RuntimeException): SiriusResult = SiriusResult(Left(rte))
+
+  /**
+   * Factory method for creating a SiriusResult with an error.
+   *
+   * @param rte the RuntimeException to wrap
+   *
+   * @return SiriusResult 
+   */  
+  def exception(t: Throwable): SiriusResult = SiriusResult(Left(t))
 }
 
 /**

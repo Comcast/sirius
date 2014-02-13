@@ -61,7 +61,7 @@ class SiriusResultTest extends NiceTest {
       it("should rethrow the exception when it has an error") {
         val theThrowable = new Throwable()
         try {
-          SiriusResult.error(theThrowable).getValue
+          SiriusResult.exception(theThrowable).getValue
           assert(false, "Exception should have been thrown")
         } catch {
           case t: Throwable => assert(theThrowable === t)
