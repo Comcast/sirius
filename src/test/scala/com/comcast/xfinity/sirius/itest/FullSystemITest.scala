@@ -1,5 +1,5 @@
 /*
- *  Copyright 2012-2013 Comcast Cable Communications Management, LLC
+ *  Copyright 2012-2014 Comcast Cable Communications Management, LLC
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@ import java.util.UUID
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import annotation.tailrec
+import com.comcast.xfinity.sirius.SiriusFactory
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 import org.slf4j.LoggerFactory
