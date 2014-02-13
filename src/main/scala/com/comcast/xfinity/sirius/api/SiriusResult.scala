@@ -41,7 +41,7 @@ object SiriusResult {
    *
    * @return SiriusResult 
    */  
-  def error(rte: RuntimeException): SiriusResult = SiriusResult(Left(rte))
+  def error(t: Throwable): SiriusResult = SiriusResult(Left(t))
   
 }
 
@@ -53,7 +53,7 @@ object SiriusResult {
  * methods {@link SiriusResult#some()} and {@link SiriusResult#none()}
  */
 // TODO: hide this within the scope of the companion object?
-case class SiriusResult(private val value: Either[RuntimeException, Option[Object]]) {
+case class SiriusResult(private val value: Either[Throwable, Option[Object]]) {
   
   /**
    * Does this result contain a value?
@@ -73,7 +73,7 @@ case class SiriusResult(private val value: Either[RuntimeException, Option[Objec
    * @throws IllegalStateException if no such value exists
    */
   def getValue: Object = value match {
-    case Left(rte) => throw rte
+    case Left(t) => throw t
     case Right(Some(v)) => v
     case Right(None) => throw new IllegalStateException("Result has no value")
   }
