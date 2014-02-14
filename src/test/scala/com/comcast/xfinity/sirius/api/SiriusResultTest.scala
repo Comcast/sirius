@@ -87,6 +87,19 @@ class SiriusResultTest extends NiceTest {
           SiriusResult.error(new RuntimeException()).isError
         }
       }
+
+      it("should throw an IllegalStateException when it has no exception") {
+        intercept[IllegalStateException] {
+          SiriusResult.none().getException
+        }
+      }
+      
+      it("should return the exception when it has been set") {
+        assertResult(true) {
+          val t = new Throwable()
+          SiriusResult.exception(t).getException == t
+        }
+      }      
     }
   }
 }

@@ -41,12 +41,12 @@ object SiriusResult {
    *
    * @return SiriusResult 
    */  
-  def error(rte: RuntimeException): SiriusResult = SiriusResult(Left(rte))
+  def error(rte: RuntimeException): SiriusResult = exception(rte)
 
   /**
-   * Factory method for creating a SiriusResult with an error.
+   * Factory method for creating a SiriusResult with an exception.
    *
-   * @param rte the RuntimeException to wrap
+   * @param t the Throwable to wrap
    *
    * @return SiriusResult 
    */  
@@ -90,4 +90,17 @@ case class SiriusResult(private val value: Either[Throwable, Option[Object]]) {
    * @return true if this instance wraps an exception
    */
   def isError: Boolean = value.isLeft
+
+  /**
+   * Retrieves the exception associated with this result.  If an exception
+   * has not been set an IllegalStateException is thrown.
+   * 
+   * @return the Throwable wrapped by this instance if it exists
+   * @throws IllegalStateException if no such Throwable exists
+   */
+  def getException: Throwable = value match {
+    case Left(t) => t
+    case _ => throw new IllegalStateException("Result has no exception")
+  }
+
 }
