@@ -11,6 +11,34 @@ privileges.
 For more details about contributing to github projects see
 http://gun.io/blog/how-to-github-fork-branch-and-pull-request/
 
+Licensing
+---------
+
+* All contributions must be compatible with the Apache 2 license.
+
+* All source files must contain the following header at the top of
+the file
+
+```
+
+   Copyright 2012-2013 Comcast Cable Communications Management, LLC
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+   implied. See the License for the specific language governing
+   permissions and limitations under the License.
+```
+
+* Copied work of any kind must be given proper credit in the
+[NOTICE](/../../blob/master/NOTICE) file
+
 Documentation
 -------------
 
@@ -42,6 +70,8 @@ Pull Requests
 * should be reviewable in the GitHub code review tool
 * should be linked to any issues it relates to (ie issue number after
 (#) in commit messages or pull request message)
+* any pull requests that include copied work, libraries or new
+references to libraries should mention that a license review is needed
 
 Expect a long review process for any pull requests that add
 functionality or change the behavior of the application.
