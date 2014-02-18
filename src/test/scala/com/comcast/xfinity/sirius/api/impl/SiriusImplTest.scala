@@ -66,7 +66,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
 
   before {
     actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
-            akka.event-handlers = ["akka.testkit.TestEventListener"]
+            akka.loggers = ["akka.testkit.TestEventListener"]
     """))
 
     membership = mock[Map[String, Option[ActorRef]]]
