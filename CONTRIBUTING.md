@@ -43,9 +43,10 @@ Pull Requests
 * should be linked to any issues it relates to (ie issue number after
 (#) in commit messages or pull request message)
 
-Expect a long review process for any pull requests that add
-functionality or change the behavior of the application.
-
+Expect a thorough review process for any pull requests that add functionality
+or change the behavior of the application. We encourage you to sketch your
+approach in writing on a relevant issue (or creating such an issue if needed)
+before starting to code, in order to save time and frustration all around. 
 
 Commit messages
 ---------------
