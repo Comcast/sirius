@@ -1,44 +1,21 @@
 # Sirius
 
-Sirius is a distributed in memory datastore that uses the Paxos
-protocol set to perform it's distributed messaging and updates.
-
 ![travis-build](https://magnum.travis-ci.com/Comcast/sirius.png?token=zSLLF7swbFqkKtu21hCs)
 
+Sirius is a library for distributing and coordinating data updates amongst a cluster of nodes. It handles building an
+absolute ordering for updates that arrive in the cluster, ensuring that all nodes are in sync, and persisting the
+updates on each node. These updates are generally used to build in-memory data structures on each node, allowing
+applications using Sirius to have direct access to native data structures representing up-to-date data. Sirius does not,
+however, build these data structures itself -- instead, the client application supplies a callback handler, which allows
+developers using Sirius to build whatever structures are most appropriate for their application.
 
-## Structure
+Said another way: Sirius enables a cluster of nodes to keep developer-controlled in-memory data structures in sync and
+up-to-date, allowing I/O-free access to shared information.
 
-The directory structure is rather intuitive, as expected
-"src/main/scala" contains source, "src/test/scala" contains tests,
-and so on. However, the following, not so standard directories for
-CIM projects are worth mentioning:
-
-* src/main/bin- scripts which are dropped into sirius-standalone
-* project/- sbt build stuff
-
-
-## Sirius Standalone
-
-Sirius is a rather complex beast and in turn produces some
-development and operational complexity. Sirius Standalone was created
-to help make the development and operations process around Sirius
-based systems much easier.
-
-The Sirius Standalone tarball is generated from the make-standalone
-sbt step.  It packages Sirius along with all of its dependencies and
-some helper wrapper scripts into a tarball called sirius-standalone.
-
-### sirius-interactive.sh
-
-For development, sirius-standalone provides "sirius-interactive.sh"
-which will spin up a scala shell with Sirius and all of its
-dependencies loaded up. It also defines some helper functions for
-quickly standing up Sirius instances.  The goal of sirius-standalone
-is to provide a simple way to experiment with new features during
-development, with the hope of accelerating development.
-
-### waltool
-
-To assist in the management of UberStores, sirius-standalone provides
-waltool which helps the end user manage their write ahead logs via
-supplying visibility into the logs and log compaction.
+####Next Steps
+* [Sirius Wiki](/Comcast/sirius/wiki)
+* [Getting started with Sirius](/Comcast/sirius/wiki/Getting+started+with+Sirius)
+* [Configuring Sirius](/Comcast/sirius/wiki/Configuring+Sirius)
+* [How to deploy Sirius](/Comcast/sirius/wiki/How+to+deploy+Sirius)
+* [Contributing Guildlines](CONTRIBUTING.md)
+* [License](LICENSE)
