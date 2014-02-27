@@ -22,6 +22,7 @@ import com.typesafe.config.ConfigFactory
 import java.util.{HashMap => JHashMap}
 import akka.actor.{Actor, Props, ActorSystem}
 import org.slf4j.LoggerFactory
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object AkkaExternalAddressResolverITest {
 
@@ -47,12 +48,13 @@ class AkkaExternalAddressResolverITest extends NiceTest with BeforeAndAfterAll {
       configMap.put("akka.remote.netty.tcp.port", 2559)
       // this makes intellij not get mad
       val config = configMap.asInstanceOf[java.util.Map[String, _ <: AnyRef]]
-
+      val siriusConfig = new SiriusConfiguration
       val actorSystem = ActorSystem("test-system", ConfigFactory.parseMap(config))
+      siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(siriusConfig))
       try {
         val myActor = actorSystem.actorOf(Props[SuperSimpleActor], "myRef")
 
-        val resolver = AkkaExternalAddressResolver(actorSystem)
+        val resolver = siriusConfig.getProp[AkkaExternalAddressResolver](SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER).get
         assert("akka.tcp://test-system@127.0.0.1:2559/user/myRef" === resolver.externalAddressFor(myActor))
 
       } finally {
@@ -66,8 +68,9 @@ class AkkaExternalAddressResolverITest extends NiceTest with BeforeAndAfterAll {
       val actorSystem = ActorSystem("test-system")
       try {
         val myActor = actorSystem.actorOf(Props[SuperSimpleActor], "myRef")
-
-        val resolver = AkkaExternalAddressResolver(actorSystem)
+        val siriusConfig = new SiriusConfiguration
+        siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(siriusConfig))
+        val resolver = siriusConfig.getProp[AkkaExternalAddressResolver](SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER).get
         assert("akka://test-system/user/myRef" === resolver.externalAddressFor(myActor))
       } finally {
         actorSystem.shutdown()

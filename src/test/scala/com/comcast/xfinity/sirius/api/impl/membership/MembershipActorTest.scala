@@ -27,6 +27,7 @@ import javax.management.{ObjectName, MBeanServer}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import org.mockito.ArgumentCaptor
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{PingMembership, MembershipInfoMBean}
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 class MembershipActorTest extends NiceTest with TimedTest {
 
@@ -43,7 +44,7 @@ class MembershipActorTest extends NiceTest with TimedTest {
 
     val siriusConfig = new SiriusConfiguration
     siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
-
+    siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(siriusConfig))
     val underTest = TestActorRef[MembershipActor](
       new MembershipActor(membershipAgent, cluster, 120.seconds, 120.seconds, siriusConfig), "membership-actor-test"
     )(actorSystem)

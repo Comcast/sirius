@@ -16,9 +16,13 @@
 package com.comcast.xfinity.sirius.util
 
 import akka.actor._
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
-object AkkaExternalAddressResolver extends ExtensionKey[AkkaExternalAddressResolver]
-
+object AkkaExternalAddressResolver {
+  def apply (system: ActorSystem)(siriusConfig: SiriusConfiguration): AkkaExternalAddressResolver ={
+     new AkkaExternalAddressResolver(system.asInstanceOf[ExtendedActorSystem])(siriusConfig)
+  }
+}
 /**
  * Class for figuring out a local actor refs remote address.  This is weird, and I got
  * the gist of it from the following guys:
@@ -33,15 +37,22 @@ object AkkaExternalAddressResolver extends ExtensionKey[AkkaExternalAddressResol
  *    AkkaExternalAddressResolver(actorSystem).externalAddressFor(actorRef)
  *
  */
-class AkkaExternalAddressResolver(system: ExtendedActorSystem) extends Extension {
+class AkkaExternalAddressResolver(system: ExtendedActorSystem)(siriusConfig: SiriusConfiguration) {
 
   /**
    * The address of this ActorSystem, as seen externally
    */
   // the idea here is to discover our external address, by getting our address
   //  relative to an external host, "akka://@nohost:0"
-  final val externalAddress =
-    system.provider.getExternalAddressFor(new Address("akka.tcp", "", "nohost", 0))
+  final val externalAddress = {
+    val sslEnabled = siriusConfig.getProp(SiriusConfiguration.ENABLE_SSL,false)
+
+    if(sslEnabled) {
+      system.provider.getExternalAddressFor(new Address("akka.ssl.tcp", "", "nohost", 0))
+    } else {
+      system.provider.getExternalAddressFor(new Address("akka.tcp", "", "nohost", 0))
+    }
+  }
 
   /**
    * Return the String representation of the external path of the passed in ActorRef

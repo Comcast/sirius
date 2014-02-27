@@ -17,13 +17,15 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
-import akka.testkit.TestProbe
+import akka.testkit.{TestActorRef, TestProbe}
 import akka.actor.{ActorRef, ActorContext, Props, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
-class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
+class PaxosSupervisorTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("PaxosSupTest")
 
@@ -31,12 +33,14 @@ class PaxosSupTest extends NiceTest with BeforeAndAfterAll {
                      acceptor: ActorRef = TestProbe().ref,
                      replica: ActorRef = TestProbe().ref)
                     (implicit actorSystem: ActorSystem): ActorRef = {
-    val childProvider = new PaxosSup.ChildProvider(null, 0L, null, null) {
+    val testConfig = new SiriusConfiguration
+    testConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER, AkkaExternalAddressResolver(actorSystem)(testConfig))
+    val childProvider = new PaxosSupervisor.ChildProvider(null, 0L, null, testConfig) {
       override def createLeader()(implicit context: ActorContext) = leader
       override def createAcceptor()(implicit context: ActorContext) = acceptor
       override def createReplica(leader: ActorRef)(implicit context: ActorContext) = replica
     }
-    actorSystem.actorOf(Props(new PaxosSup(childProvider)))
+    TestActorRef(new PaxosSupervisor(childProvider))
   }
 
   override def afterAll() {

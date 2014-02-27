@@ -32,6 +32,58 @@ object SiriusConfiguration {
   final val PORT = "sirius.akka.port"
 
   /**
+   * Flag to enable or disable SSL encryption support for akka
+   * If enabled all akka communications will be done over SSL providing
+   * the key store and trust store are configured correctly
+   */
+  final val ENABLE_SSL = "sirius.akka.ssl"
+
+  /**
+   * Implementation of random number generator to use with SSL security. Defaults to
+   * the no-arg constructor of [[java.security.SecureRandom]].
+   *
+   * Possible values include AES128CounterSecureRNG, AES256CounterSecureRNG, AES128CounterInetRNG,
+   * AES256CounterInetRNG, SHA1PRNG, NativePRNG. See [[akka.remote.transport.netty.NettySSLSupport]] for
+   * more details.
+   */
+  final val SSL_RANDOM_NUMBER_GENERATOR = "sirius.akka.ssl.rng"
+
+  /**
+   * Support for akka over SSL
+   * This is the configurable Java key store location and is used by the server connection
+   */
+  final val KEY_STORE_LOCATION = "sirius.akka.ssl.key-store.location"
+
+  /**
+   * Support for akka over SSL
+   * This is the configurable Java key store password used for decrypting the key store
+   */
+  final val KEY_STORE_PASSWORD = "sirius.akka.ssl.key-store.password"
+
+  /**
+   * Support for akka over SSL
+   * This is configurable Java key password used for decrypting the key
+   */
+  final val KEY_PASSWORD = "sirius.akka.ssl.key.password"
+
+  /**
+    * Support for akka over SSL
+    * This is the configurable Java trust store location and is used by the client connection
+    */
+   final val TRUST_STORE_LOCATION = "sirius.akka.ssl.trust-store.location"
+
+  /**
+   * Support for akka over SSL
+   * Configurable Java trust store password used to decrypt the trust store
+   */
+  final val TRUST_STORE_PASSWORD = "sirius.akka.ssl.trust-store.password"
+
+  /**
+   *  AkkaExternalAddressResolver
+   */
+  final val AKKA_EXTERNAL_ADDRESS_RESOLVER = "sirius.akka.external-address-resolver"
+
+  /**
    * External akka ActorSystem configuration. It this location exists
    * on the file system it is loaded, else it is loaded from the
    * classpath. (string)

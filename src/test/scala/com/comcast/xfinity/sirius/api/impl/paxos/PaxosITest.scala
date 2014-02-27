@@ -27,19 +27,21 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import scala.concurrent.ExecutionContext.Implicits.global
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 
 object PaxosITest {
   class TestNode(membership: MembershipHelper, decisionLatch: TestLatch)(implicit as: ActorSystem) {
     var decisions = Set[Decision]()
-
+    val testCofig = new SiriusConfiguration
+    testCofig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(as)(testCofig))
     val paxosSup = as.actorOf(
-      PaxosSup.props(membership, 1, {
+      PaxosSupervisor.props(membership, 1, {
         case decision if !decisions.contains(decision) =>
           decisions += decision
           decisionLatch.countDown()
         case decision if decisions.contains(decision) =>
-      }, new SiriusConfiguration)
+      }, testCofig)
     )
 
     def hasDecisionFor(req: NonCommutativeSiriusRequest): Boolean =

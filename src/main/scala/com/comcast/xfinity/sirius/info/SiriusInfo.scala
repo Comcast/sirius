@@ -17,6 +17,7 @@ package com.comcast.xfinity.sirius.info
 
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 import akka.actor.{ActorSystem, ActorRef}
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 /**
  * Implementation of SiriusInfoMBean
@@ -24,9 +25,9 @@ import akka.actor.{ActorSystem, ActorRef}
  * @param actorSystem used to derive supervisors address
  * @param supervisorRef ActorRef to the node supervisor
  */
-class SiriusInfo(actorSystem: ActorSystem, supervisorRef: ActorRef) extends SiriusInfoMBean {
-
-  val externalName = AkkaExternalAddressResolver(actorSystem).externalAddressFor(supervisorRef)
+class SiriusInfo(actorSystem: ActorSystem, supervisorRef: ActorRef,
+                 akkaExternalAddressResolver: AkkaExternalAddressResolver) extends SiriusInfoMBean {
+  val externalName = akkaExternalAddressResolver.externalAddressFor(supervisorRef)
 
   def getNodeAddress: String = externalName
 

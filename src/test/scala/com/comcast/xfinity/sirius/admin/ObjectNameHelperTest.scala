@@ -21,6 +21,8 @@ import javax.management.ObjectName
 import akka.actor.{Props, Actor, ActorSystem}
 import java.util.{HashMap => JHashMap, Hashtable => JHashtable}
 import com.typesafe.config.ConfigFactory
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 object ObjectNameHelperTest {
 
@@ -47,6 +49,8 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
   it ("should create an ObjectName as expected using the actor and mbean " +
       "when the system is configured without remoting") {
     implicit val actorSystem = ActorSystem("test-system")
+    val siriusConfig = new SiriusConfiguration
+    siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(siriusConfig))
     try {
       val actor = actorSystem.actorOf(EmptyActor.props, "test")
 
@@ -60,7 +64,7 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
         new ObjectName("com.comcast.xfinity.sirius", kvs)
       }
 
-      val actualObjectName = underTest.getObjectName(new DummyMonitor, actor, actorSystem)
+      val actualObjectName = underTest.getObjectName(new DummyMonitor, actor, actorSystem)(siriusConfig)
       assert(expectedObjectName === actualObjectName)
     } finally {
       actorSystem.shutdown()
@@ -77,6 +81,8 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
     // this makes intellij not get mad
     val akkaConfig = configMap.asInstanceOf[java.util.Map[String, _ <: AnyRef]]
     implicit val actorSystem = ActorSystem("test-system", ConfigFactory.parseMap(akkaConfig))
+    val siriusConfig = new SiriusConfiguration
+    siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(siriusConfig))
     try {
       val actor = actorSystem.actorOf(EmptyActor.props, "test")
 
@@ -90,7 +96,7 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
         new ObjectName("com.comcast.xfinity.sirius", kvs)
       }
 
-      val actualObjectName = underTest.getObjectName(new DummyMonitor, actor, actorSystem)
+      val actualObjectName = underTest.getObjectName(new DummyMonitor, actor, actorSystem)(siriusConfig)
       assert(expectedObjectName === actualObjectName)
     } finally {
       actorSystem.shutdown()

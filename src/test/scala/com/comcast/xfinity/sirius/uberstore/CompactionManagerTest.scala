@@ -33,6 +33,7 @@ import org.mockito.Matchers._
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.{ChildProvider, CompactionManagerInfoMBean, Compact}
 import akka.util.Timeout
 import scala.Some
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 class CompactionManagerTest extends NiceTest with BeforeAndAfterAll with TimedTest {
 
@@ -48,7 +49,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll with TimedTe
 
     val config = new SiriusConfiguration
     config.setProp(SiriusConfiguration.MBEAN_SERVER, testMBeanServer)
-
+    config.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(config))
     val childProvider = new ChildProvider(siriusLog: SiriusLog) {
       override def createCompactionActor()(implicit context: ActorContext) = testCompactionActor
     }

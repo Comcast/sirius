@@ -22,7 +22,7 @@ import akka.actor._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
 import scala.concurrent.duration._
-import paxos.PaxosSup
+import paxos.PaxosSupervisor
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -52,7 +52,10 @@ object SiriusSupervisor {
    * @param siriusLog Interface into the Sirius persistent log.
    * @param config the SiriusConfiguration for this node
    */
-  protected[impl] class ChildProvider(requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration) {
+  protected[impl] class ChildProvider(requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration){
+
+    val akkaExternalAddressResolver  = config.getProp[AkkaExternalAddressResolver](SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER).
+      getOrElse(throw new IllegalStateException("SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER returned nothing"))
 
     def createStateAgent()(implicit context: ActorContext): Agent[SiriusState] =
       Agent(new SiriusState)(context.dispatcher)
@@ -74,10 +77,10 @@ object SiriusSupervisor {
     }
 
     def createPaxosSupervisor(membership: MembershipHelper, performFun: Replica.PerformFun)(implicit context: ActorContext) =
-      context.actorOf(PaxosSup.props(membership, siriusLog.getNextSeq, performFun, config), "paxos")
+      context.actorOf(PaxosSupervisor.props(membership, siriusLog.getNextSeq, performFun, config), "paxos")
 
     def createStatusSubsystem(siriusSupervisor: ActorRef)(implicit context: ActorContext) = {
-      val supervisorAddress = AkkaExternalAddressResolver(context.system).externalAddressFor(siriusSupervisor)
+      val supervisorAddress = akkaExternalAddressResolver.externalAddressFor(siriusSupervisor)
       context.actorOf(StatusWorker.props(supervisorAddress, config), "status")
     }
 

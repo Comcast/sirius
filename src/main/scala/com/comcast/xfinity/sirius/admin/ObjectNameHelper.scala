@@ -19,6 +19,7 @@ import akka.actor.{ActorSystem, ActorRef}
 import javax.management.ObjectName
 import java.util.{Hashtable => JHashtable}
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class ObjectNameHelper {
 
@@ -32,11 +33,15 @@ class ObjectNameHelper {
    *
    * @return an ObjectName globally unique with respect to mbean and actor
    */
-  def getObjectName(mbean: Any, actor: ActorRef, actorSystem: ActorSystem): ObjectName = {
+  def getObjectName(mbean: Any, actor: ActorRef, actorSystem: ActorSystem)
+                   (siriusConfig: SiriusConfiguration): ObjectName = {
+
+    val akkaExternalAddressResolver = siriusConfig.getProp[AkkaExternalAddressResolver](SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER).
+        getOrElse(throw new IllegalStateException("SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER returned nothing"))
     val kvs = new JHashtable[String, String]
     kvs.put("path", "/" + actor.path.elements.reduceLeft(_ + "/" + _))
 
-    val (host, port) = getHostPort(actorSystem)
+    val (host, port) = getHostPort(actorSystem)(akkaExternalAddressResolver)
     kvs.put("host", host)
     kvs.put("port", port)
     kvs.put("sysname", actorSystem.name)
@@ -47,8 +52,8 @@ class ObjectNameHelper {
     new ObjectName("com.comcast.xfinity.sirius", kvs)
   }
 
-  private def getHostPort(actorSystem: ActorSystem): (String, String) =
-    AkkaExternalAddressResolver(actorSystem).externalAddress match {
+  private def getHostPort(actorSystem: ActorSystem)(akkaExternalAddressResolver: AkkaExternalAddressResolver): (String, String) =
+    akkaExternalAddressResolver.externalAddress match {
         case None => ("", "")
         case Some(address) =>
           val host = address.host.getOrElse("")
