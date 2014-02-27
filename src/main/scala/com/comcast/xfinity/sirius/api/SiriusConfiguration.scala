@@ -32,7 +32,7 @@ object SiriusConfiguration {
   final val PORT = "sirius.akka.port"
 
   /**
-   * Flag to enable or disable SSL encryption support for akka
+   * Flag (boolean) to enable or disable SSL encryption support for akka
    * If enabled all akka communications will be done over SSL providing
    * the key store and trust store are configured correctly
    */

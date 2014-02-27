@@ -17,12 +17,13 @@ package com.comcast.xfinity.sirius.api.impl.membership
 
 import com.comcast.xfinity.sirius.NiceTest
 import org.mockito.Mockito._
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class BackwardsCompatibleClusterConfigTest extends NiceTest {
   describe("members") {
     it("Must convert the backend members response if there exist any akka:// paths") {
       val mockBackend = mock[ClusterConfig]
-      val underTest = new BackwardsCompatibleClusterConfig(mockBackend)
+      val underTest = new BackwardsCompatibleClusterConfig(mockBackend)(new SiriusConfiguration)
       val backendList = List("akka://one", "akka://two", "akka.tcp://three")
       val expected = List("akka.tcp://one", "akka.tcp://two", "akka.tcp://three")
 
@@ -33,7 +34,7 @@ class BackwardsCompatibleClusterConfigTest extends NiceTest {
 
     it("Must ONLY convert akka:// strings if they are a prefix") {
       val mockBackend = mock[ClusterConfig]
-      val underTest = new BackwardsCompatibleClusterConfig(mockBackend)
+      val underTest = new BackwardsCompatibleClusterConfig(mockBackend)(new SiriusConfiguration)
       val backendList = List("akka.tcp://one/terrible/actor/path/in/akka://")
 
       doReturn(backendList).when(mockBackend).members
@@ -43,12 +44,38 @@ class BackwardsCompatibleClusterConfigTest extends NiceTest {
 
     it("Must change nothing if there do not exist any akka:// paths") {
       val mockBackend = mock[ClusterConfig]
-      val underTest = new BackwardsCompatibleClusterConfig(mockBackend)
+      val underTest = new BackwardsCompatibleClusterConfig(mockBackend)(new SiriusConfiguration)
       val backendList = List("akka.tcp://one", "akka.tcp://two")
 
       doReturn(backendList).when(mockBackend).members
 
       assert(backendList === underTest.members)
+    }
+
+    it("Must obey the ENABLE_SSL flag if it is 'false'") {
+      val mockBackend = mock[ClusterConfig]
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.ENABLE_SSL, false)
+      val underTest = new BackwardsCompatibleClusterConfig(mockBackend)(config)
+      val backendList = List("akka://one", "akka://two", "akka.tcp://three")
+      val expected = List("akka.tcp://one", "akka.tcp://two", "akka.tcp://three")
+
+      doReturn(backendList).when(mockBackend).members
+
+      assert(expected === underTest.members)
+    }
+
+    it("Must obey the ENABLE_SSL flag if it is 'true'") {
+      val mockBackend = mock[ClusterConfig]
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.ENABLE_SSL, true)
+      val underTest = new BackwardsCompatibleClusterConfig(mockBackend)(config)
+      val backendList = List("akka://one", "akka://two")
+      val expected = List("akka.ssl.tcp://one", "akka.ssl.tcp://two")
+
+      doReturn(backendList).when(mockBackend).members
+
+      assert(expected === underTest.members)
     }
   }
 
