@@ -37,5 +37,10 @@ javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
+scalacOptions in (Compile,doc) ++= Seq("-doc-footer",
+  "Copyright 2013-2014 Comcast Cable Communications Management, LLC", "-doc-title", "Sirius")
+
+scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources/overview.txt")
+
 // allows us to pull deps from pom file
 externalPom()
