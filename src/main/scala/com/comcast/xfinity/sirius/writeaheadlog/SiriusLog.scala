@@ -52,6 +52,9 @@ trait SiriusLog {
    */
   def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T
 
+  /**
+   * retrieves the next sequence number to be written
+   */
   def getNextSeq: Long
 
   def compact()

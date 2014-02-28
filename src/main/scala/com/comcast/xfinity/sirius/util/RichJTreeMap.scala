@@ -25,7 +25,7 @@ object RichJTreeMap {
    * Create a RichJTreeMap and populate with provided
    * elements
    *
-   * @kvs varargs of key/value pairs, same as you would
+   * @param kvs varargs of key/value pairs, same as you would
    *        construct standard Scala Maps
    */
   def apply[K, V](kvs: (K, V)*): RichJTreeMap[K, V] = {

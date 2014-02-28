@@ -89,7 +89,7 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
   }
 
   /**
-   * ${@inheritDoc}
+   * @inheritdoc
    */
   def enqueueGet(key: String): Future[SiriusResult] = {
     val akkaFuture = (supervisor ? Get(key)).asInstanceOf[AkkaFuture[SiriusResult]]
@@ -97,7 +97,7 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
   }
 
   /**
-   * ${@inheritDoc}
+   * @inheritdoc
    */
   def enqueuePut(key: String, body: Array[Byte]): Future[SiriusResult] = {
     //XXX: this will always return a Sirius.None as soon as Ordering is complete
@@ -106,7 +106,7 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
   }
 
   /**
-   * ${@inheritDoc}
+   * @inheritdoc
    */
   def enqueueDelete(key: String): Future[SiriusResult] = {
     val akkaFuture = (supervisor ? Delete(key)).asInstanceOf[AkkaFuture[SiriusResult]]
