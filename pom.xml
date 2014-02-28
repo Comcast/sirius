@@ -20,7 +20,7 @@
   <artifactId>sirius</artifactId>
   <name>Sirius</name>
   <packaging>jar</packaging>
-  <version>1.2.0</version>
+  <version>1.2.1-SNAPSHOT</version>
   <properties>
     <java-version>1.6</java-version>
     <scala-version-major>2.10</scala-version-major>
