@@ -27,7 +27,7 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 class SegmentedUberStoreTest extends NiceTest {
 
   def createTempDir = {
-    val tempDirName = "%s/uberstore-itest-%s".format(
+    val tempDirName = "%s/segmented-uberstore-test-%s".format(
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
@@ -84,7 +84,8 @@ class SegmentedUberStoreTest extends NiceTest {
   }
 
   after {
-    Path.fromString(dir.getAbsolutePath).deleteRecursively(force = true)
+    println(dir.getAbsolutePath)
+    Path(dir).deleteRecursively(force = true)
     Thread.sleep(5)
   }
 
@@ -380,7 +381,6 @@ class SegmentedUberStoreTest extends NiceTest {
 
   describe("repair") {
     it("should properly handle the existence of both base and compacted") {
-      val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
       createPopulatedSegment(dir, "1" + SegmentedCompactor.COMPACTING_SUFFIX, List(2))
 
@@ -389,7 +389,6 @@ class SegmentedUberStoreTest extends NiceTest {
       assert(dir.listFiles().count(_.isDirectory) == 1)
     }
     it("should properly handle the existence of both temp and compacted") {
-      val dir = createTempDir
       createPopulatedSegment(dir, "1.temp", List(1))
       createPopulatedSegment(dir, "1" + SegmentedCompactor.COMPACTING_SUFFIX, List(2))
 
@@ -398,7 +397,6 @@ class SegmentedUberStoreTest extends NiceTest {
       assert(dir.listFiles().count(_.isDirectory) == 1)
     }
     it("should properly handle the existence of both base and temp") {
-      val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
       createPopulatedSegment(dir, "1" + SegmentedCompactor.TEMP_SUFFIX, List(2))
 
@@ -407,7 +405,6 @@ class SegmentedUberStoreTest extends NiceTest {
       assert(dir.listFiles().count(_.isDirectory) == 1)
     }
     it("should do nothing if the SegmentedUberStore is proper") {
-      val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
       createPopulatedSegment(dir, "2", List(2))
 
@@ -416,7 +413,6 @@ class SegmentedUberStoreTest extends NiceTest {
       assert(dir.listFiles().count(_.isDirectory) == 2)
     }
     it("should do the expected things when all of the error cases appear at once") {
-      val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
       createPopulatedSegment(dir, "2", List(2))
       createPopulatedSegment(dir, "2" + SegmentedCompactor.COMPACTING_SUFFIX, List(20))
@@ -434,18 +430,15 @@ class SegmentedUberStoreTest extends NiceTest {
 
   describe("size"){
     it ("should report size correctly with 0 segments"){
-      val dir = createTempDir
       assert(0L === SegmentedUberStore(dir.getAbsolutePath).size)
     }
 
     it ("should report size correctly with 1 segments"){
-      val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
       assert(65L === SegmentedUberStore(dir.getAbsolutePath).size)
     }
 
     it ("should report size correctly with multiple segments"){
-      val dir = createTempDir
       createPopulatedSegment(dir, "1", List(1))
       createPopulatedSegment(dir, "2", List(2))
       createPopulatedSegment(dir, "3", List(3))

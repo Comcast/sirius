@@ -19,6 +19,7 @@ package com.comcast.xfinity.sirius.uberstore.seqindex
 import com.comcast.xfinity.sirius.NiceTest
 import java.io.File
 import org.scalatest.BeforeAndAfterAll
+import scalax.file.Path
 
 // here's the deal, this is insane to try to test with mockery,
 //  so do the real deal
@@ -35,7 +36,7 @@ class DiskOnlySeqIndexTest extends NiceTest with BeforeAndAfterAll {
   }
 
   override def afterAll {
-    tempDir.delete()
+    Path(tempDir).deleteRecursively(force = true)
   }
 
   describe("Index size"){

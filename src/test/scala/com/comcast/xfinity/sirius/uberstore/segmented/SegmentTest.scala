@@ -25,6 +25,7 @@ import java.io.File
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.StringOps
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
+import scalax.file.Path
 
 object SegmentTest {
 
@@ -54,7 +55,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   }
 
   override def afterAll() {
-    tempDir.delete()
+    Path(tempDir).deleteRecursively(force = true)
   }
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {
