@@ -36,6 +36,12 @@ import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 
 object FullSystemITest {
 
+  def getProtocol(sslEnabled: Boolean): String =
+    sslEnabled match {
+      case true => "akka.ssl.tcp"
+      case false => "akka.tcp"
+    }
+
   val logger = LoggerFactory.getLogger(FullSystemITest.getClass)
   /**
    * get a list of (sequence num, request) from the wals for all their data
@@ -82,7 +88,9 @@ class FullSystemITest extends NiceTest with TimedTest {
                  wal: Option[SiriusLog] = None,
                  chunkSize: Int = 100,
                  gapRequestFreqSecs: Int = 30,
-                 replicaReproposalWindow: Int = 10):
+                 replicaReproposalWindow: Int = 10,
+                 sslEnabled: Boolean = false,
+                 membershipPath: String = new File(tempDir, "membership").getAbsolutePath):
                 (SiriusImpl, RequestHandler, SiriusLog) = {
 
     val finalHandler = handler match {
@@ -101,12 +109,22 @@ class FullSystemITest extends NiceTest with TimedTest {
     val siriusConfig = new SiriusConfiguration()
     siriusConfig.setProp(SiriusConfiguration.HOST, "localhost")
     siriusConfig.setProp(SiriusConfiguration.PORT, port)
+    siriusConfig.setProp(SiriusConfiguration.ENABLE_SSL, sslEnabled)
     siriusConfig.setProp(SiriusConfiguration.AKKA_SYSTEM_NAME, "sirius-%d".format(port))
     siriusConfig.setProp(SiriusConfiguration.CLUSTER_CONFIG, membershipPath)
     siriusConfig.setProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, chunkSize)
     siriusConfig.setProp(SiriusConfiguration.LOG_REQUEST_FREQ_SECS, gapRequestFreqSecs)
     siriusConfig.setProp(SiriusConfiguration.PAXOS_MEMBERSHIP_CHECK_INTERVAL, 0.1)
     siriusConfig.setProp(SiriusConfiguration.REPROPOSAL_WINDOW, replicaReproposalWindow)
+
+    if (sslEnabled) {
+      siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERN_CONFIG, "src/test/resources/sirius-akka-base.conf")
+      siriusConfig.setProp(SiriusConfiguration.KEY_STORE_LOCATION, "src/test/resources/keystore")
+      siriusConfig.setProp(SiriusConfiguration.TRUST_STORE_LOCATION, "src/test/resources/truststore")
+      siriusConfig.setProp(SiriusConfiguration.KEY_STORE_PASSWORD, "password")
+      siriusConfig.setProp(SiriusConfiguration.KEY_PASSWORD, "password")
+      siriusConfig.setProp(SiriusConfiguration.TRUST_STORE_PASSWORD, "password")
+    }
 
     val sirius = SiriusFactory.createInstance(
       finalHandler,
@@ -120,7 +138,6 @@ class FullSystemITest extends NiceTest with TimedTest {
   }
 
   var tempDir: File = _
-  var membershipPath: String = _
   var sirii: List[SiriusImpl] = List()
 
   before {
@@ -131,20 +148,24 @@ class FullSystemITest extends NiceTest with TimedTest {
     tempDir = new File(tempDirName)
     tempDir.mkdirs()
 
-    // stage membership
-    val membershipFile = new File(tempDir, "membership")
-    membershipPath = membershipFile.getAbsolutePath
-    Path.fromString(membershipPath).append(
-      "akka.tcp://sirius-42289@localhost:42289/user/sirius\n" +
-      "akka.tcp://sirius-42290@localhost:42290/user/sirius\n" +
-      "akka.tcp://sirius-42291@localhost:42291/user/sirius\n"
-    )
+    writeClusterConfig(List()) // write blank cluster config to start
   }
 
   after {
     sirii.foreach(_.shutdown())
     sirii = List()
     Path(tempDir).deleteRecursively()
+  }
+
+  def writeClusterConfig(ports: List[Int], sslEnabled: Boolean = false) {
+    val protocol = FullSystemITest.getProtocol(sslEnabled)
+    val config = ports.map(port => "%s://sirius-%s@localhost:%s/user/sirius\n".format(protocol, port, port))
+                      .foldLeft("")(_ + _)
+
+    val membershipFile = new File(tempDir, "membership")
+    val membershipPath = membershipFile.getAbsolutePath
+    Path.fromString(membershipPath).delete(force = true)
+    Path.fromString(membershipPath).append(config)
   }
 
   def waitForMembership(sirii: List[SiriusImpl], membersExpected: Int) {
@@ -198,6 +219,7 @@ class FullSystemITest extends NiceTest with TimedTest {
 
   describe("a full sirius implementation") {
     it("must reach a decision for lots of slots") {
+      writeClusterConfig(List(42289, 42290, 42291))
       val numCommands = 50
       val (sirius1, _, log1) = makeSirius(42289)
       val (sirius2, _, log2) = makeSirius(42290)
@@ -221,6 +243,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     }
 
     it("must be able to make progress with a node being down and then catch up") {
+      writeClusterConfig(List(42289, 42290, 42291))
       val numCommands = 50
       val (sirius1, _, log1) = makeSirius(42289)
       val (sirius2, _, log2) = makeSirius(42290)
@@ -249,14 +272,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     }
 
     it("must work for master/slave mode") {
-      val path = Path.fromString(membershipPath)
-      path.delete()
-      path.append(
-        "akka.tcp://sirius-42289@localhost:42289/user/sirius\n" +
-        "akka.tcp://sirius-42290@localhost:42290/user/sirius\n" +
-        "akka.tcp://sirius-42291@localhost:42291/user/sirius\n"
-      )
-
+      writeClusterConfig(List(42289, 42290, 42291))
       val numCommands = 50
       val (sirius1, _, log1) = makeSirius(42289, replicaReproposalWindow = 4)
       val (sirius2, _, log2) = makeSirius(42290, replicaReproposalWindow = 4, gapRequestFreqSecs = 5)
@@ -277,11 +293,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
         "Wals were not equivalent")
 
-      path.truncate(0)
-      path.append(
-        "akka.tcp://sirius-42289@localhost:42289/user/sirius\n" +
-        "akka.tcp://sirius-42290@localhost:42290/user/sirius\n"
-      )
+      writeClusterConfig(List(42289, 42290))
       waitForMembership(sirii, 2)
 
       val nextCommandSet = generateCommands(numCommands + 1, numCommands * 2)
@@ -330,6 +342,7 @@ class FullSystemITest extends NiceTest with TimedTest {
   }
 
   it("should keep its membership updated properly when remote nodes go down") {
+    writeClusterConfig(List(42289, 42290, 42291))
     val (sirius1, _, _) = makeSirius(42289)
     val (sirius2, _, _) = makeSirius(42290)
     val (sirius3, _, _) = makeSirius(42291)
@@ -340,5 +353,30 @@ class FullSystemITest extends NiceTest with TimedTest {
     sirii = List(sirius1, sirius2)
 
     waitForMembership(sirii, 2)
+  }
+
+  it("should be able to make progress with SSL turned on") {
+    writeClusterConfig(List(42289, 42290, 42291), sslEnabled = true)
+    val (sirius1, _, log1) = makeSirius(42289, sslEnabled = true)
+    val (sirius2, _, log2) = makeSirius(42290, sslEnabled = true)
+    val (sirius3, _, log3) = makeSirius(42291, sslEnabled = true)
+
+    sirii = List(sirius1, sirius2, sirius3)
+    waitForMembership(sirii, 3)
+
+    val numCommands = 10
+    val failed = fireAndRetryCommands(sirii, generateCommands(1, numCommands), 4)
+    logger.debug("No response for %s out of %s".format(failed.size, numCommands))
+    assert(0 === failed.size, "There were failed commands")
+
+    assert(waitForTrue(verifyWalSize(log1, numCommands), 30000, 500),
+      "Wal 1 did not contain expected number of events (%s out of %s)".format(getWalSize(log1), numCommands))
+    assert(waitForTrue(verifyWalSize(log2, numCommands), 30000, 500),
+      "Wal 2 did not contain expected number of events (%s out of %s)".format(getWalSize(log2), numCommands))
+    assert(waitForTrue(verifyWalSize(log3, numCommands), 30000, 500),
+      "Wal 3 did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands))
+
+    assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
+      "Wals were not equivalent")
   }
 }

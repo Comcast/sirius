@@ -15,9 +15,11 @@
  */
 package com.comcast.xfinity.sirius.api.impl.membership
 
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+
 object BackwardsCompatibleClusterConfig {
-  def apply(backend: ClusterConfig): BackwardsCompatibleClusterConfig = {
-    new BackwardsCompatibleClusterConfig(backend)
+  def apply(backend: ClusterConfig)(implicit config: SiriusConfiguration): BackwardsCompatibleClusterConfig = {
+    new BackwardsCompatibleClusterConfig(backend)(config)
   }
 }
 
@@ -27,7 +29,12 @@ object BackwardsCompatibleClusterConfig {
  *
  * @param backend ClusterConfig supplying members
  */
-private[membership] class BackwardsCompatibleClusterConfig(backend: ClusterConfig) extends ClusterConfig {
+private[membership] class BackwardsCompatibleClusterConfig(backend: ClusterConfig)(config: SiriusConfiguration) extends ClusterConfig {
+  val prefix = config.getProp(SiriusConfiguration.ENABLE_SSL, false) match {
+    case true => "akka.ssl.tcp://"
+    case false => "akka.tcp://"
+  }
+
   /**
    * List of akka paths for the members of the cluster.
    *
@@ -36,7 +43,7 @@ private[membership] class BackwardsCompatibleClusterConfig(backend: ClusterConfi
   def members = {
     backend.members.map {
       case path if path.startsWith("akka://") =>
-        path.replaceFirst("akka://", "akka.tcp://")
+        path.replaceFirst("akka://", prefix)
       case path => path
     }
   }

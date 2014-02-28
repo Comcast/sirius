@@ -27,6 +27,7 @@ import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import java.io.File
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 @RunWith(classOf[JUnitRunner])
 class BootstrapLogITest extends NiceTest with TimedTest {
@@ -71,7 +72,7 @@ class BootstrapLogITest extends NiceTest with TimedTest {
 
     val config = new SiriusConfiguration
     config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath.path)
-
+    config.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(config))
     sirius = SiriusImpl(
       stringRequestHandler,
       logWriter,

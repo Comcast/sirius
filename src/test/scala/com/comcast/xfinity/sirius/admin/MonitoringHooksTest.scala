@@ -19,11 +19,12 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import javax.management.{ObjectName, MBeanServer}
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import org.mockito.Mockito._
-import org.mockito.Matchers.{eq => meq, any}
+import org.mockito.Matchers.{eq => meq, _}
 import akka.testkit.TestActorRef
 import java.util.{HashMap => JHashMap, Hashtable => JHashtable}
 import com.typesafe.config.ConfigFactory
 import akka.actor.{ActorRef, ActorSystem, Actor}
+import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 object MonitoringHooksTest {
 
@@ -49,6 +50,7 @@ class MonitoringHooksTest extends NiceTest with TimedTest {
     val mockMbeanServer = mock[MBeanServer]
     val siriusConfig = new SiriusConfiguration
     siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mockMbeanServer)
+    siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(siriusConfig))
 
     val monitor = new DummyMonitor
 
@@ -62,11 +64,11 @@ class MonitoringHooksTest extends NiceTest with TimedTest {
 
     val expectedObjectName = new ObjectName("com.comcast.xfinity.sirius:name=Sprinkles")
     doReturn(expectedObjectName).when(mockObjectNameHelper).
-      getObjectName(meq(monitor), meq(monitoredActor), meq(actorSystem))
+      getObjectName(meq(monitor), meq(monitoredActor), meq(actorSystem))(meq(siriusConfig))
 
     monitoredActor ! 'register
 
-    verify(mockObjectNameHelper).getObjectName(meq(monitor), any[ActorRef], meq(actorSystem))
+    verify(mockObjectNameHelper).getObjectName(meq(monitor), any[ActorRef], meq(actorSystem))(meq(siriusConfig))
 
     verify(mockMbeanServer).registerMBean(meq(monitor), meq(expectedObjectName))
 
@@ -77,10 +79,12 @@ class MonitoringHooksTest extends NiceTest with TimedTest {
 
   it ("should do nothing if the MBeanServer is not configured") {
     var wasCalled = false
+    val testConfig = new SiriusConfiguration
+    testConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(testConfig))
     val monitoredActor = TestActorRef(
       new MonitoredActor(
         {wasCalled = true; new DummyMonitor},
-        new SiriusConfiguration
+        testConfig
       ), "MBean Server test"
     )
 

@@ -20,15 +20,15 @@ import akka.actor.{ActorContext, Props, ActorRef, Actor}
 import com.comcast.xfinity.sirius.api.impl.NonCommutativeSiriusRequest
 import akka.event.Logging
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import com.comcast.xfinity.sirius.api.impl.paxos.PaxosSup.ChildProvider
+import com.comcast.xfinity.sirius.api.impl.paxos.PaxosSupervisor.ChildProvider
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 
-object PaxosSup {
+object PaxosSupervisor {
 
   /**
    * Factory for creating children actors of PaxosSup.
    *
-   * @param membership an {@link akka.agent.Agent} tracking the membership of the cluster
+   * @param membership an [[ akka.agent.Agent]] tracking the membership of the cluster
    * @param startingSeq the sequence number at which this node will begin issuing/acknowledging
    * @param performFun function specified by
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
@@ -62,12 +62,12 @@ object PaxosSup {
             startingSeqNum: Long,
             performFun: Replica.PerformFun,
             config: SiriusConfiguration): Props = {
-     Props(classOf[PaxosSup], new ChildProvider(membership, startingSeqNum, performFun, config))
+     Props(classOf[PaxosSupervisor], new ChildProvider(membership, startingSeqNum, performFun, config))
   }
+
 }
 
-// TODO rename this PaxosSupervisor
-class PaxosSup(childProvider: ChildProvider) extends Actor {
+class PaxosSupervisor(childProvider: ChildProvider) extends Actor {
 
   val leader = childProvider.createLeader
   val acceptor = childProvider.createAcceptor

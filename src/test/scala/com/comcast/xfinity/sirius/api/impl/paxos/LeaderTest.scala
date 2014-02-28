@@ -28,7 +28,7 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import scala.Some
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{Close, LeaderGone}
-import com.comcast.xfinity.sirius.util.RichJTreeMap
+import com.comcast.xfinity.sirius.util.{AkkaExternalAddressResolver, RichJTreeMap}
 import com.comcast.xfinity.sirius.api.impl.paxos.Leader.{Remote, Local, Unknown, ChildProvider}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
@@ -51,6 +51,9 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
                          startScoutFun: => ActorRef = defaultScout.ref,
                          startCommanderFun: (PValue, Int) => ActorRef = (p, i) => defaultCommander.ref,
                          startWatcherFun: => ActorRef = defaultWatcher.ref) = {
+    val testConfig = new SiriusConfiguration
+    testConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(testConfig))
+
     val childProvider = new ChildProvider(new SiriusConfiguration) {
       override def createCommander(leader: ActorRef,
                                    clusterInfo: ClusterInfo,
@@ -65,7 +68,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
                                        replyTo: ActorRef)(implicit context: ActorContext) = startWatcherFun
     }
     TestActorRef(
-      new Leader(membership, startingSeqNum, childProvider, helper, new SiriusConfiguration)
+      new Leader(membership, startingSeqNum, childProvider, helper, testConfig)
     )
   }
 
