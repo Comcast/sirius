@@ -20,6 +20,7 @@ import java.io.File
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
+import scalax.file.Path
 
 class UberStoreITest extends NiceTest with BeforeAndAfterAll {
 
@@ -34,7 +35,7 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
   }
 
   override def afterAll {
-    tempDir.delete()
+    Path(tempDir).deleteRecursively(force = true)
   }
 
   // XXX: not these sub tasks are not parallelizable
@@ -51,7 +52,7 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
 
     val events1Through100 = generateEvents(1, 100)
     it ("must be able to accept and retain a bunch of Delete events") {
-      events1Through100.foreach(uberStore.writeEntry(_))
+      events1Through100.foreach(uberStore.writeEntry)
       assert(events1Through100 === getAllEvents(uberStore))
     }
 
@@ -75,7 +76,7 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
       assert(101L === uberStore.getNextSeq)
       assert(events1Through100 === getAllEvents(uberStore))
 
-      events101Through200.foreach(uberStore.writeEntry(_))
+      events101Through200.foreach(uberStore.writeEntry)
       assert(201L === uberStore.getNextSeq)
       assert(events1Through100 ++ events101Through200 === getAllEvents(uberStore))
     }
