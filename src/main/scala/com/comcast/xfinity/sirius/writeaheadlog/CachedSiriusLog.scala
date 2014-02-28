@@ -46,7 +46,7 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
   private[writeaheadlog] var lastSeq = -1L
 
   /**
-   * ${inheritDoc}
+   * @inheritdoc
    *
    * Writes both to disk and to the in-mem write cache.  Trims cache if necessary,
    * depending on MAX_CACHE_SIZE.
@@ -78,7 +78,7 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
   }
 
   /**
-   * ${inheritDoc}
+   * @inheritdoc
    *
    * For bounded LogRange requests, will check write cache first, replying with
    * entries from memory if possible.  This should avoid seeking the range on disk

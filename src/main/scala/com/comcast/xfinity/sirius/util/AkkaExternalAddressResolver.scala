@@ -27,8 +27,10 @@ object AkkaExternalAddressResolver {
  * Class for figuring out a local actor refs remote address.  This is weird, and I got
  * the gist of it from the following guys:
  *
- *  https://groups.google.com/forum/?fromgroups=#!searchin/akka-user/full$20address/akka-user/POngjU9UpK8/wE74aYiWdWIJ
- *  http://doc.akka.io/docs/akka/snapshot/scala/serialization.html
+ *  <ul>
+ *    <li>[[https://groups.google.com/forum/?fromgroups=#!searchin/akka-user/full\$20address/akka-user/POngjU9UpK8/wE74aYiWdWIJ]]</li>
+ *    <li>[[http://doc.akka.io/docs/akka/snapshot/scala/serialization.html]]</li>
+ *  </ul>
  *
  * Don't use directly, akka does some voodoo to make the ExtendedActorSystem available.
  *

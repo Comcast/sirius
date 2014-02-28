@@ -101,7 +101,7 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
    *
    * Not thread safe with respect to indexFileHandle
    *
-   * @indexFileHandle RandomAccessFile for the index file, it's offset
+   * @param indexFileHandle RandomAccessFile for the index file, it's offset
    *                    will be advanced 24 bytes (entry length)
    */
   def readEntry(indexFileHandle: RandomAccessFile): (Long, Long) = {

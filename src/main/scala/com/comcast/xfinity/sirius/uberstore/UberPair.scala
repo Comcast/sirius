@@ -84,9 +84,6 @@ object UberPair {
  */
 class UberPair(dataFile: UberDataFile, index: SeqIndex) {
 
-  /**
-   * @inheritdoc
-   */
   def writeEntry(event: OrderedEvent) {
     if (isClosed) {
       throw new IllegalStateException("Attempting to write to closed UberStoreFilePair")
@@ -98,23 +95,14 @@ class UberPair(dataFile: UberDataFile, index: SeqIndex) {
     index.put(event.sequence, offset)
   }
 
-  /**
-   * @inheritdoc
-   */
   def getNextSeq = index.getMaxSeq match {
     case None => 1L
     case Some(seq) => seq + 1
   }
 
-  /**
-   * @inheritdoc
-   */
   def foldLeft[T](acc0: T)(foldFun: (T, OrderedEvent) => T): T =
     foldLeftRange(0, Long.MaxValue)(acc0)(foldFun)
 
-  /**
-   * @inheritdoc
-   */
   def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
     val (startOffset, endOffset) = index.getOffsetRange(startSeq, endSeq)
     dataFile.foldLeftRange(startOffset, endOffset)(acc0)(
