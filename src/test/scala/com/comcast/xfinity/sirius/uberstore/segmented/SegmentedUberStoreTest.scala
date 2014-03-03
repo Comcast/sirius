@@ -84,7 +84,6 @@ class SegmentedUberStoreTest extends NiceTest {
   }
 
   after {
-    println(dir.getAbsolutePath)
     Path(dir).deleteRecursively(force = true)
     Thread.sleep(5)
   }

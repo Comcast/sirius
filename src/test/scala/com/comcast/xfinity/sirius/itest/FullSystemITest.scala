@@ -376,7 +376,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     assert(waitForTrue(verifyWalSize(log3, numCommands), 30000, 500),
       "Wal 3 did not contain expected number of events (%s out of %s)".format(getWalSize(log3), numCommands))
 
-    assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
+    assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 10000, 100),
       "Wals were not equivalent")
   }
 }
