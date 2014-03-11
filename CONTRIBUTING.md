@@ -2,11 +2,16 @@ Contribution Guidelines
 =======================
 
 We love to see contributions to the project and have tried to make it
-easy to do so. If you wish to contribute code, then please keep to the
-following guidelines to ensure consistency within the codebase and
-that we have happy users.  All commits should be submitted via a pull
-request from a forked project regardless of the committer's
-privileges.
+easy to do so. If you would like to contribute code to this project
+you can do so through GitHub by forking the repository and sending a
+pull request.
+
+Before Comcast merges your code into the project you must sign the
+Comcast Contributor License Agreement (CLA).
+
+If you haven’t previously signed a Comcast CLA, we can e-mail you a PDF
+that you can sign and scan back to us.  Please send us an e-mail or create
+a new GitHub issue to request a PDF version of the CLA.
 
 For more details about contributing to github projects see
 http://gun.io/blog/how-to-github-fork-branch-and-pull-request/
