@@ -45,7 +45,7 @@ trait UberStoreFileOps {
    * @param readHandle the RandomAccessFile to read from, at the
    *          current offset
    *
-   * @return Some(bytes) or None if EOF encountered
+   * @return Some(bytes, nextOffset) or None if EOF encountered.
    */
-  def readNext(readHandle: RandomAccessFile): Option[Array[Byte]]
+  def readNext(readHandle: RandomAccessFile, offset: Long, length: Long): Option[(Array[Byte], Long)]
 }

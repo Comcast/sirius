@@ -47,20 +47,19 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
     offset
   }
 
+
   /**
    * @inheritdoc
    */
-  def readNext(readHandle: RandomAccessFile): Option[Array[Byte]] = {
-    val offset = readHandle.getFilePointer
-
-    if (offset == readHandle.length) { // EOF
+  def readNext(readHandle: RandomAccessFile, offset: Long, length: Long): Option[(Array[Byte], Long)] = {
+    if (offset == length) { // EOF
       None
     } else {
       val (entryLen, chksum) = readHeader(readHandle)
 
       val body = readBody(readHandle, entryLen)
       if (chksum == checksum(body)) {
-        Some(body) // [that i used to know | to love]
+        Some(body, offset + body.length + HEADER_SIZE) // [that i used to know | to love]
       } else {
         throw new IllegalStateException("File corrupted at offset " + offset)
       }
@@ -73,7 +72,7 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
     val entryHeaderBuf = ByteBuffer.allocate(HEADER_SIZE)
     readHandle.readFully(entryHeaderBuf.array)
 
-    (entryHeaderBuf.getInt(), entryHeaderBuf.getLong())
+    (entryHeaderBuf.getInt, entryHeaderBuf.getLong)
   }
 
   private def readBody(readHandle: RandomAccessFile, bodyLen: Int): Array[Byte] = {

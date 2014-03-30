@@ -69,6 +69,7 @@ class UberDataFileTest extends NiceTest {
       val mockDesc = mock[UberDataFile.UberFileDesc]
       doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
       doReturn(mockReadHandle).when(mockDesc).createReadHandle()
+      doReturn(51L).when(mockReadHandle).length
 
       val mockFileOps = mock[UberStoreFileOps]
       val mockCodec = mock[OrderedEventCodec]
@@ -77,9 +78,11 @@ class UberDataFileTest extends NiceTest {
 
       // Need to simulate 3 successful reads from the handle, followed by None indicating we hit the end
       val dummyBytes = "dummy".getBytes
-      doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(None).
-        when(mockFileOps).readNext(any[RandomAccessFile])
-      doReturn(0L).doReturn(10L).doReturn(20L).doReturn(30L).when(mockReadHandle).getFilePointer
+      doReturn(Some(dummyBytes, 17L))
+        .doReturn(Some(dummyBytes, 34L))
+        .doReturn(Some(dummyBytes, 51L))
+        .doReturn(None).
+        when(mockFileOps).readNext(any[RandomAccessFile], any[Long], any[Long])
 
       // Need to simulate the conversion of the events from above becoming OrderedEvents
       val event1 = OrderedEvent(1, 2, Delete("a"))
@@ -92,10 +95,14 @@ class UberDataFileTest extends NiceTest {
         (acc, off, evt) => (off, evt) :: acc
       ).reverse
 
-      assert(List((0L, event1), (10L, event2), (20L, event3)) === result)
+      assert(List((0L, event1), (17L, event2), (34L, event3)) === result)
 
       // verify that we read and deserialized the expected number of times
-      verify(mockFileOps, times(4)).readNext(same(mockReadHandle))
+      verify(mockFileOps, times(4)).readNext(same(mockReadHandle), any[Long], any[Long])
+      verify(mockFileOps).readNext(mockReadHandle, 0, 51L)
+      verify(mockFileOps).readNext(mockReadHandle, 17L, 51L)
+      verify(mockFileOps).readNext(mockReadHandle, 34L, 51L)
+      verify(mockFileOps).readNext(mockReadHandle, 51L, 51L)
       verify(mockCodec, times(3)).deserialize(same(dummyBytes))
 
       // also verify cleanup!
@@ -110,6 +117,7 @@ class UberDataFileTest extends NiceTest {
       val mockDesc = mock[UberDataFile.UberFileDesc]
       doReturn(mockWriteHandle).when(mockDesc).createWriteHandle()
       doReturn(mockReadHandle).when(mockDesc).createReadHandle()
+      doReturn(168L).when(mockReadHandle).length
 
       val mockFileOps = mock[UberStoreFileOps]
       val mockCodec = mock[OrderedEventCodec]
@@ -118,13 +126,12 @@ class UberDataFileTest extends NiceTest {
 
       // we will pretend we are starting at a later offset, and read a few events until we hit the end
       //  offset
-      doReturn(100L).doReturn(110L).doReturn(120L).doReturn(130L).
-        when(mockReadHandle).getFilePointer
-
       // Need to simulate 3 successful reads from the handle, corresponding with the offsets above
       val dummyBytes = "dummy".getBytes
-      doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).
-        when(mockFileOps).readNext(any[RandomAccessFile])
+      doReturn(Some(dummyBytes, 117L))
+        .doReturn(Some(dummyBytes, 134L))
+        .doReturn(Some(dummyBytes, 151L)).
+        when(mockFileOps).readNext(any[RandomAccessFile], any[Long], any[Long])
 
       // Need to simulate the conversion of the events from above becoming OrderedEvents
       val event1 = OrderedEvent(1, 2, Delete("a"))
@@ -133,16 +140,19 @@ class UberDataFileTest extends NiceTest {
       doReturn(event1).doReturn(event2).doReturn(event3).
         when(mockCodec).deserialize(any[Array[Byte]])
 
-      val result = underTest.foldLeftRange(100L, 120L)(List[(Long, OrderedEvent)]())(
+      val result = underTest.foldLeftRange(100L, 134L)(List[(Long, OrderedEvent)]())(
         (acc, off, evt) => (off, evt) :: acc
       ).reverse
 
-      assert(List((100L, event1), (110L, event2), (120L, event3)) === result)
+      assert(List((100L, event1), (117L, event2), (134L, event3)) === result)
 
       // verify that we started at the right offset
       verify(mockReadHandle).seek(100L)
 
-      verify(mockFileOps, times(3)).readNext(same(mockReadHandle))
+      verify(mockFileOps, times(3)).readNext(same(mockReadHandle), any[Long], any[Long])
+      verify(mockFileOps).readNext(mockReadHandle, 100L, 168L)
+      verify(mockFileOps).readNext(mockReadHandle, 117L, 168L)
+      verify(mockFileOps).readNext(mockReadHandle, 134L, 168L)
       verify(mockCodec, times(3)).deserialize(same(dummyBytes))
 
       // also verify cleanup!

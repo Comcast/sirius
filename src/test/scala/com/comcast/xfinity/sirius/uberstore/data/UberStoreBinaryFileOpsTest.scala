@@ -14,11 +14,9 @@
  *  limitations under the License.
  */
 
-package com.comcast.xfinity.sirius.uberstore
+package com.comcast.xfinity.sirius.uberstore.data
 
 import com.comcast.xfinity.sirius.NiceTest
-import common.Checksummer
-import data.UberStoreBinaryFileOps
 import java.io.RandomAccessFile
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito._
@@ -27,6 +25,7 @@ import java.util.Arrays
 import java.nio.{ByteOrder, ByteBuffer}
 import org.mockito.stubbing.Answer
 import org.mockito.invocation.InvocationOnMock
+import com.comcast.xfinity.sirius.uberstore.common.Checksummer
 
 object UberStoreBinaryFileOpsTest {
   trait FauxChecksummer extends Checksummer {
@@ -89,26 +88,20 @@ class UberStoreBinaryFileOpsTest extends NiceTest {
 
       val mockHandle = mock[RandomAccessFile]
 
-      val dummyFileLen = 1234L
-      doReturn(dummyFileLen).when(mockHandle).length
-      doReturn(dummyFileLen).when(mockHandle).getFilePointer
-
-      assert(None === underTest.readNext(mockHandle))
+      assert(None === underTest.readNext(mockHandle, 1234L, 1234L))
     }
 
-    it ("must return Some(bytes) if the next entry is available and the checksum checks out") {
+    it ("must return Some(bytes, nextOffset) if the next entry is available and the checksum checks out") {
       val underTest = new UberStoreBinaryFileOps with FauxChecksummer
 
       val mockHandle = mock[RandomAccessFile]
 
       val expectedBody = "it puts the lotion on its skin".getBytes
+      val expectedNextOffset = expectedBody.length + underTest.HEADER_SIZE
       val dummyChecksum = 123456789L
 
       underTest.setNextChecksum(dummyChecksum)
       val theHeader = ByteBuffer.allocate(4 + 8).putInt(expectedBody.length).putLong(dummyChecksum).array
-
-      doReturn(0L).when(mockHandle).getFilePointer
-      doReturn(10000L).when(mockHandle).length
 
       val readHeaderAnswer = mockReadAnswerForBytes(theHeader, theHeader.length)
       val readBodyAnswer = mockReadAnswerForBytes(expectedBody, expectedBody.length)
@@ -116,9 +109,10 @@ class UberStoreBinaryFileOpsTest extends NiceTest {
       // XXX: readFully is final, but it just calls through to read/3, so we can mock that
       doAnswer(readHeaderAnswer).doAnswer(readBodyAnswer).when(mockHandle).read(any[Array[Byte]], anyInt, anyInt)
 
-      underTest.readNext(mockHandle) match {
+      underTest.readNext(mockHandle, 0, 10000L) match {
         case None => assert(false, "Expected some data, but there was none")
-        case Some(readBody) =>
+        case Some((readBody, nextOffset)) =>
+          assert(nextOffset == expectedNextOffset, "Next offset not as expected")
           assert(Arrays.equals(expectedBody, readBody),
             "Body was not as expected")
       }
@@ -135,9 +129,6 @@ class UberStoreBinaryFileOpsTest extends NiceTest {
       underTest.setNextChecksum(dummyChecksum + 1)
       val theHeader = ByteBuffer.allocate(4 + 8).putInt(expectedBody.length).putLong(dummyChecksum).array
 
-      doReturn(0L).when(mockHandle).getFilePointer
-      doReturn(10000L).when(mockHandle).length
-
       val readHeaderAnswer = mockReadAnswerForBytes(theHeader, theHeader.length)
       val readBodyAnswer = mockReadAnswerForBytes(expectedBody, expectedBody.length)
 
@@ -145,7 +136,7 @@ class UberStoreBinaryFileOpsTest extends NiceTest {
       doAnswer(readHeaderAnswer).doAnswer(readBodyAnswer).when(mockHandle).read(any[Array[Byte]], anyInt, anyInt)
 
       intercept[IllegalStateException] {
-        underTest.readNext(mockHandle)
+        underTest.readNext(mockHandle, 0, 10000L)
       }
     }
   }
