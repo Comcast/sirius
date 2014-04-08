@@ -26,8 +26,7 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.typesafe.config.Config
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
@@ -158,6 +157,12 @@ object SiriusFactory {
     configMap.put(s"$transportPrefix.hostname",
       siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
     configMap.put(s"$transportPrefix.port", siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
+
+    val maxMessageSize = siriusConfig.getProp(SiriusConfiguration.MAX_AKKA_MESSAGE_SIZE_KB, "1024")
+    val bufferSize = maxMessageSize * 2
+    configMap.put(s"$transportPrefix.maximum-frame-size", s"${maxMessageSize}k")
+    configMap.put(s"$transportPrefix.send-buffer-size", s"${bufferSize}k")
+    configMap.put(s"$transportPrefix.receive-buffer-size", s"${bufferSize}k")
 
     if (sslEnabled) {
       configMap.put(s"$transportPrefix.random-number-generator",

@@ -270,6 +270,11 @@ object SiriusConfiguration {
    * Congestion Avoidance. Default is 500.
    */
   final val CATCHUP_DEFAULT_SSTHRESH = "sirius.catchup.default-ssthresh"
+
+  /*
+   * Maximum akka message size in KB. Default is 1024.
+   */
+  final val MAX_AKKA_MESSAGE_SIZE_KB = "sirius.akka.maximum-frame-size-kb"
 }
 
 /**
