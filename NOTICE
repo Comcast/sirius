@@ -2,3 +2,6 @@ Sirius Library
 Copyright 2012-2014 Comcast Cable Communications Management, LLC
 
 This product includes software developed at Comcast (http://www.comcast.com/).
+
+The CONTRIBUTING.md page was inspired by the CONTRIBUTING.md page from the
+Apache 2 licensed project lazybones (https://github.com/pledbrook/lazybones).
