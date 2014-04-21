@@ -19,7 +19,7 @@
 
         <header>
           <h1>Sirius</h1>
-          <h2>Distributed system library for consistently replicating application reference data</h2>
+          <h2>A distributed system library for managing application reference data</h2>
         </header>
 
         <section id="downloads" class="clearfix">
@@ -36,29 +36,34 @@
 
 <p><img src="https://magnum.travis-ci.com/Comcast/sirius.png?token=zSLLF7swbFqkKtu21hCs" alt="travis-build"></p>
 
-<p>Sirius is a library for distributing and coordinating data updates
-amongst a cluster of nodes. It handles building an absolute ordering
-for updates that arrive in the cluster, ensuring that cluster nodes
-eventually receive all updates, and persisting the updates on each
-node. These updates are generally used to build in-memory data
-structures on each node, allowing applications using Sirius to have
-direct access to native data structures representing up-to-date data.
-Sirius does not, however, build these data structures
-itself -- instead, the client application supplies a callback handler,
-which allows developers using Sirius to build whatever structures are
-most appropriate for their application.</p>
+<p>Sirius is an open source distributed system library from Comcast
+  that provides your application with convenient, low-latency access
+  to important <em>reference data</em>: small, read-only datasets with
+  relatively small update rates. As RAM sizes in serves continue their
+  upward climb, more and more of these datasets will fit in
+  memory. Enter Sirius.</p>
 
 <h4>
 <a name="features" class="anchor" href="#features"><span class="octicon octicon-link"></span></a>Features</h4>
 
 <ul>
-<li>Improved Performance :<em>Reference datasets fit into a single commodity server’s RAM.</em>
-</li>
-<li>Simplified Architecture :<em>Allows you to access remote data sets in native data structures.</em>
-</li>
-<li>Smooth Operation :<em>Sirius manages the heavy lifting for distributed systems replication and persistence.</em>
-</li>
-</ul><h4>
+<li><strong>Simple, transparent library interface:</strong> Arrange your data in
+  the native datastructures of your choice, and let Sirius feed the
+  updates to your application code.</li>
+<li><strong>Eventually consistent replication:</strong> Sirius handles
+  replicating updates&mdash;even across wide-area networks&mdash;in a
+  consistent order across every member of an application cluster.</li>
+<li><strong>Persistence and automated recovery:</strong> Sirius stores and
+  maintains local update logs and uses them to rebuild your in-memory
+  state after an application restart.</li>
+</ul>
+
+<p>
+In short, Sirius gives you access to your reference data with
+arbitrary, native datastructures while handling the distributed system
+heavy lifting for you.
+</p>
+
 <a name="links" class="anchor" href="#links"><span class="octicon octicon-link"></span></a>Links</h4>
 
 <ul>
