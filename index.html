@@ -48,22 +48,6 @@ itself -- instead, the client application supplies a callback handler,
 which allows developers using Sirius to build whatever structures are
 most appropriate for their application.</p>
 
-<p>Sirius handles building an absolute ordering for updates that arrive 
-in a cluster of nodes, ensuring that cluster nodes eventually receive 
-all updates, and persisting the updates on each node. </p>
-
-<p>Updates are generally used to build in-memory data structures on each node, 
-allowing applications using Sirius to have direct access to native data 
-structures representing up-to-date data. </p>
-
-<p>Sirius does not, however, build these data structures itself – instead, 
-the client application supplies a callback handler, which allows developers 
-using Sirius to build whatever structures are most appropriate for their application.</p>
-
-<p>Putting it another way: Sirius enables a cluster of nodes to keep 
-developer-controlled in-memory data structures eventually consistent, 
-allowing I/O-free access to shared information.</p>
-
 <h4>
 <a name="features" class="anchor" href="#features"><span class="octicon octicon-link"></span></a>Features</h4>
 
