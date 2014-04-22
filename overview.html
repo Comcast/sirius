@@ -118,6 +118,45 @@ heavy lifting for you.
   native data structures in its brain, providing convenient,
   low-latency access.</p>
 
+<h2>Replication</h2>
+<p>Sirius also provides a mechanism for very flexible replication topologies.
+Our Paxos implementation includes a catch-up protocol to allow
+  participating cluster members to retrieve missing updates from other
+  nodes (whether due to lost messages or because a server was offline
+  temporarily). We are able to re-use this same protocol to provide
+  for passive cluster members that do not participate in Paxos but
+  rather just play the role of "fast followers." Sirius cluster members
+are currently statically configured; if a server finds its address in
+the list of cluster members, it participates in the Paxos protocol,
+but if it doesn't, it becomes a follower.
+</p>
+
+<center>
+<img src="images/replication.png"
+     alt="sample cluster architecture illustrating some of the
+     possible replication topologies"/>
+</center>
+
+<p>
+For example, consider the example shown above showing four different
+clusters (possibly in different datacenters) labeled A-D. Clusters, A,
+B, and C could all have the same configuration containing just the
+servers in cluster A. This causes cluster A to run Paxos, but the
+members of clusters B and C to periodically catch up from randomly
+selected members of A. Meanwhile, cluster D could be configured with a
+membership list containing all the members of clusters B and C; this
+will cause the D nodes to catch up from randomly selected members of
+both clusters (even though neither of them is actually the primary
+Paxos cluster).
+</p>
+<p>
+Sirius thus lets you set up very a very flexible mesh of replication
+so that you could scale a Paxos &quot;ingest&quot; cluster separately
+from clusters that serve clients directly&mdash;possibly even
+different applications with a need for the same reference dataset.
+</p>
+
+
 <h2>Operational Experiences</h2>
 
 <p>Multiple teams and products within Comcast have been using
