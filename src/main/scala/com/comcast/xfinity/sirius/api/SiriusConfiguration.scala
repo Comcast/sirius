@@ -293,7 +293,7 @@ class SiriusConfiguration {
    *
    * @return the value stored under name, or the default if it's not found
    */
-  def getProp[T](name: String, default: T): T = conf.get(name) match {
+  def getProp[T](name: String, default: => T): T = conf.get(name) match {
     case Some(value) => value.asInstanceOf[T]
     case None => default
   }
