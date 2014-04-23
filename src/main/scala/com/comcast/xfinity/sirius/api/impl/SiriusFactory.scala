@@ -110,7 +110,7 @@ object SiriusFactory {
     // here it is! the real deal creation
     val impl = SiriusImpl(requestHandler, siriusLog, siriusConfig)
 
-    // create a SiriusInfo MBean which will remain registered until we explicity shutdown sirius
+    // create a SiriusInfo MBean which will remain registered until we explicitly shutdown sirius
     val (siriusInfoObjectName, siriusInfo) = createSiriusInfoMBean(actorSystem, impl.supervisor)(siriusConfig)
     mbeanServer.registerMBean(siriusInfo, siriusInfoObjectName)
 

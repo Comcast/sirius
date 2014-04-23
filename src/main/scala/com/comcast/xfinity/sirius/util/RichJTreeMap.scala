@@ -88,7 +88,7 @@ class RichJTreeMap[K, V] private extends JTreeMap[K, V] {
    *
    * @param predicate a function to be applied to each
    *        key value pair in the map. All elements for
-   *        which this function evaulates true up to
+   *        which this function evaluates true up to
    *        the first element (not inclusive) for which
    *        it returns false are removed.
    */

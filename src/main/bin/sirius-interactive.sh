@@ -18,7 +18,7 @@ sirius_base=`dirname $0`
 sirius_base=`cd $sirius_base/..; pwd`
 
 # Got this from the scala launcher, we somehow hose
-# the tty, so we do this to restor it when we're done
+# the tty, so we do this to restore it when we're done
 exit_code=1
 saved_stty=""
 
