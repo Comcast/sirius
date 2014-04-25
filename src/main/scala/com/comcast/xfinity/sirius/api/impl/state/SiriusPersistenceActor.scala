@@ -15,7 +15,7 @@
  */
 package com.comcast.xfinity.sirius.api.impl.state
 
-import akka.actor.{ActorContext, Props, Actor, ActorRef}
+import akka.actor.{Props, Actor, ActorRef}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl._
@@ -26,7 +26,7 @@ object SiriusPersistenceActor {
 
   /**
    * Trait encapsulating _queries_ into Sirius's log's state,
-   * that is the state of persisted data.g
+   * that is, the state of persisted data
    */
   sealed trait LogQuery
 
@@ -61,6 +61,16 @@ object SiriusPersistenceActor {
   case class LogSubrange(lowestSeqContained: Long,
                          highestSeqContained: Long,
                          events: List[OrderedEvent])
+
+  trait NewLogSubrange
+  trait PopulatedSubrange extends NewLogSubrange {
+    def rangeStart: Long
+    def rangeEnd: Long
+    def events: List[OrderedEvent]
+  }
+  case object EmptySubrange extends NewLogSubrange
+  case class PartialSubrange(rangeStart: Long, rangeEnd: Long, events: List[OrderedEvent]) extends PopulatedSubrange
+  case class CompleteSubrange(rangeStart: Long, rangeEnd: Long, events: List[OrderedEvent]) extends PopulatedSubrange
 
   /**
    * Message requesting maximum sequence number from a

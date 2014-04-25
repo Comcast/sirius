@@ -246,6 +246,19 @@ object SiriusConfiguration {
    */
   final val CLIENT_TIMEOUT_MS = "sirius.client.ask-timeout-ms"
 
+  /**
+   * Amount to increase catchup request timeout per event in window size. Default 0.01s
+   *
+   * timeout = timeout_base + ( w * timeout_per_event )
+   */
+  final val CATCHUP_TIMEOUT_INCREASE_PER_EVENT = "sirius.catchup.timeout-coefficient"
+
+  /**
+   * Base value of catchup request timeout. Default is 1s
+   *
+   * timeout = timeout_base + ( w * timeout_per_event )
+   */
+  final val CATCHUP_TIMEOUT_BASE = "sirius.catchup.timeout-constant"
 }
 
 /**
