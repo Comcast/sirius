@@ -23,10 +23,10 @@ exit_code=1
 saved_stty=""
 
 function onExit {
-    if [ "$saved_tty" == "" ]; then
+    if [ ! -z "$saved_stty" ]; then
         stty $saved_stty
-        exit $exit_code
     fi
+    exit $exit_code
 }
 
 trap onExit EXIT
