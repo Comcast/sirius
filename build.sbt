@@ -42,5 +42,7 @@ scalacOptions in (Compile,doc) ++= Seq("-doc-footer",
 
 scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources/overview.txt")
 
+parallelExecution := false
+
 // allows us to pull deps from pom file
 externalPom()
