@@ -150,41 +150,39 @@ object SiriusFactory {
 
   private def createHostPortConfig(siriusConfig: SiriusConfiguration): Config = {
     val configMap = new JHashMap[String, Any]()
-    val sslEnabled = siriusConfig.getProp(SiriusConfiguration.ENABLE_SSL,false)
+    val sslEnabled = siriusConfig.getProp(SiriusConfiguration.ENABLE_SSL, false)
+    val transportPrefix = if (sslEnabled) "akka.remote.netty.ssl" else "akka.remote.netty.tcp"
+    traceLog.info(s"AKKA using transport: $transportPrefix")
 
+    configMap.put("akka.remote.enabled-transports", List(transportPrefix).asJava)
+    configMap.put(s"$transportPrefix.hostname",
+      siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
+    configMap.put(s"$transportPrefix.port", siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
 
     if (sslEnabled) {
-      traceLog.info("AKKA using SSL transports akka.remote.netty.ssl. ")
-      configMap.put("akka.remote.netty.ssl.hostname",
-        siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
-      configMap.put("akka.remote.netty.ssl.security.random-number-generator",
-        siriusConfig.getProp(SiriusConfiguration.SSL_RANDOM_NUMBER_GENERATOR).getOrElse(""))
-      configMap.put("akka.remote.netty.ssl.port", siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
-      configMap.put("akka.remote.enabled-transports", List("akka.remote.netty.ssl").asJava)
-      configMap.put("akka.remote.netty.ssl.security.key-store",
-        siriusConfig.getProp(SiriusConfiguration.KEY_STORE_LOCATION)
-                    .getOrElse(throw new IllegalArgumentException("No key-store value provided")))
-      configMap.put("akka.remote.netty.ssl.security.trust-store",
-        siriusConfig.getProp(SiriusConfiguration.TRUST_STORE_LOCATION)
-                    .getOrElse(throw new IllegalArgumentException("No trust-store value provided")))
-      configMap.put("akka.remote.netty.ssl.security.key-store-password",
-        siriusConfig.getProp(SiriusConfiguration.KEY_STORE_PASSWORD)
-                    .getOrElse(throw new IllegalArgumentException("No key-store-password value provided")))
-      configMap.put("akka.remote.netty.ssl.security.key-password",
-        siriusConfig.getProp(SiriusConfiguration.KEY_PASSWORD)
-                    .getOrElse(throw new IllegalArgumentException("No key-password value provided")))
-      configMap.put("akka.remote.netty.ssl.security.trust-store-password",
-        siriusConfig.getProp(SiriusConfiguration.TRUST_STORE_PASSWORD)
-                    .getOrElse(throw new IllegalArgumentException("No trust-store-password value provided")))
+      configMap.put(s"$transportPrefix.random-number-generator",
+        siriusConfig.getProp(SiriusConfiguration.SSL_RANDOM_NUMBER_GENERATOR, ""))
 
-    } else {
-      configMap.put("akka.remote.netty.tcp.hostname",
-        siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
-      configMap.put("akka.remote.netty.tcp.port",
-        siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
-      configMap.put("akka.remote.enabled-transports", List("akka.remote.netty.tcp").asJava)
+      configMap.put(s"$transportPrefix.security.key-store",
+        siriusConfig.getProp(SiriusConfiguration.KEY_STORE_LOCATION,
+                             throw new IllegalArgumentException("No key-store provided")))
+
+      configMap.put(s"$transportPrefix.security.trust-store",
+        siriusConfig.getProp(SiriusConfiguration.TRUST_STORE_LOCATION,
+                             throw new IllegalArgumentException("No trust-store provided")))
+
+      configMap.put(s"$transportPrefix.security.key-store-password",
+        siriusConfig.getProp(SiriusConfiguration.KEY_STORE_PASSWORD,
+                             throw new IllegalArgumentException("No key-store-password value provided")))
+
+      configMap.put(s"$transportPrefix.security.key-password",
+        siriusConfig.getProp(SiriusConfiguration.KEY_PASSWORD,
+                             throw new IllegalArgumentException("No key-password value provided")))
+
+      configMap.put(s"$transportPrefix.security.trust-store-password",
+        siriusConfig.getProp(SiriusConfiguration.TRUST_STORE_PASSWORD,
+                             throw new IllegalArgumentException("No trust-store-password value provided")))
     }
-
 
     // this is just so that the intellij shuts up
     ConfigFactory.parseMap(configMap.asInstanceOf[JHashMap[String, _ <: AnyRef]])
