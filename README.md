@@ -1,6 +1,6 @@
 # Sirius
 
-![travis-build](https://magnum.travis-ci.com/Comcast/sirius.png?token=zSLLF7swbFqkKtu21hCs)
+[![Build Status](https://travis-ci.org/Comcast/sirius.svg?branch=master)](https://travis-ci.org/Comcast/sirius)
 
 Sirius is a library for distributing and coordinating data updates
 amongst a cluster of nodes. It handles building an absolute ordering
