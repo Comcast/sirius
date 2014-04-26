@@ -13,7 +13,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package com.comcast.xfinity.sirius.api.impl
+package com.comcast.xfinity.sirius
 
 import java.io.File
 import java.lang.management.ManagementFactory
@@ -22,7 +22,9 @@ import java.util.{HashMap => JHashMap}
 
 import com.comcast.xfinity.sirius.admin.ObjectNameHelper
 import com.comcast.xfinity.sirius.api.RequestHandler
+import com.comcast.xfinity.sirius.api.Sirius
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.api.impl.SiriusImpl
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -40,23 +42,27 @@ import scala.collection.JavaConverters._
 import org.slf4j.LoggerFactory
 
 /**
- * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
+ * Provides the factory for [[com.comcast.xfinity.sirius.api.Sirius]] instances
  */
 object SiriusFactory {
   val traceLog = LoggerFactory.getLogger("SiriusFactory")
 
   /**
-   * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
-   * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
-   * shutdown the dependent ActorSystem.
+   * Sirius factory method, constructs a SiriusImplementation and the
+   * dependent ActorSystem and return the created instance. Calling
+   * shutdown on the produced Sirius will also shutdown the dependent
+   * ActorSystem.
    *
-   * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
-   * @param siriusConfig a SiriusConfiguration containing configuration info needed for this node.
+   * @param requestHandler the RequestHandler containing callbacks for
+   *  manipulating the system's state
+   * @param siriusConfig a SiriusConfiguration containing configuration
+   *  info needed for this node.
    * @see SiriusConfiguration for info on needed config.
    *
-   * @return A SiriusImpl constructed using the parameters
+   * @return A Sirius (interface) constructed using the parameters
    */
-  def createInstance(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
+  def createInstance(requestHandler: RequestHandler,
+                     siriusConfig: SiriusConfiguration): Sirius = {
     val uberStoreDir = siriusConfig.getProp[String](SiriusConfiguration.LOG_LOCATION) match {
       case Some(dir) => dir
       case None =>
