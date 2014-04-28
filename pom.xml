@@ -16,11 +16,37 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.comcast.xfinity</groupId>
-  <artifactId>sirius</artifactId>
-  <name>Sirius</name>
-  <packaging>jar</packaging>
-  <version>1.2.1-SNAPSHOT</version>
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>7</version>
+    </parent>
+    <groupId>com.comcast</groupId>
+    <artifactId>sirius</artifactId>
+    <name>Sirius</name>
+    <packaging>jar</packaging>
+    <version>1.2.1-SNAPSHOT</version>
+    <description>The Comcast Sirius library </description>
+    <url>https://github.com/Comcast/sirius</url>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <url>git@github.com:Comcast/sirius.git</url>
+        <connection>scm:git@github.com:Comcast/sirius.git</connection>
+        <developerConnection>scm:git@github.com:Comcast/sirius.git</developerConnection>
+    </scm>
+    <developers>
+        <developer>
+            <id>Comcast</id>
+            <name>Comcast</name>
+            <email>...</email>
+        </developer>
+    </developers>
   <properties>
     <java-version>1.6</java-version>
     <scala-version-major>2.10</scala-version-major>
