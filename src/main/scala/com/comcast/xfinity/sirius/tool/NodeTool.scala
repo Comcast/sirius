@@ -20,12 +20,13 @@ import akka.util.Timeout
 import scala.concurrent.duration._
 import akka.pattern.ask
 import scala.concurrent.Await
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
-import akka.actor.{ActorSelection, ActorRef}
+import akka.actor.ActorSelection
 import com.comcast.xfinity.sirius.api.impl.status.StatusWorker._
 import com.comcast.xfinity.sirius.api.impl.status.NodeStats.FullNodeStatus
 import com.comcast.xfinity.sirius.util.SiriusShortNameParser
 import scala.language.postfixOps
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{NewLogSubrange => LogSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{CompleteSubrange, PartialSubrange, EmptySubrange, GetNextLogSeq, GetLogSubrange}
 
 /**
  * Object meant to be invoked as a main class from the terminal.  Provides some
@@ -55,12 +56,20 @@ object NodeTool {
 
       case Array("log-range", begin, end, nodeId) =>
         val ref = getNodeRef(nodeId)
-        getLogRange(ref, begin.toLong, end.toLong).events.foreach(println)
+        getLogRange(ref, begin.toLong, end.toLong) match {
+          case CompleteSubrange(_, _, events) => events.foreach(println)
+          case PartialSubrange(_, _, events) => events.foreach(println)
+          case EmptySubrange =>
+        }
 
       case Array("log-tail", nodeId) =>
         val ref = getNodeRef(nodeId)
         val lastSeq = getNextSeq(ref) - 1
-        getLogRange(ref, lastSeq - 20, lastSeq).events.foreach(println)
+        getLogRange(ref, lastSeq - 20, lastSeq) match {
+          case CompleteSubrange(_, _, events) => events.foreach(println)
+          case PartialSubrange(_, _, events) => events.foreach(println)
+          case EmptySubrange =>
+        }
 
       case Array("status", nodeId) =>
         val ref = getNodeRef(nodeId)

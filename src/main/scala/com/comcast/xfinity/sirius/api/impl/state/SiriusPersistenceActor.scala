@@ -149,15 +149,21 @@ class SiriusPersistenceActor(stateActor: ActorRef,
 
       lastWriteTime = thisWriteTime
 
-    // XXX: cap max request chunk size hard coded at 1000 for now for sanity
-    // TODO make the maxChunkSize configurable
-    case GetLogSubrange(rangeStart, rangeEnd) if rangeStart <= rangeEnd && (rangeStart - rangeEnd) <= 1000 =>
-      val chunkRange = siriusLog.foldLeftRange(rangeStart, rangeEnd)(List[OrderedEvent]())(
+    case GetLogSubrange(rangeStart, rangeEnd) if rangeEnd < siriusLog.getNextSeq => // we can answer fully
+      val events = siriusLog.foldLeftRange(rangeStart, rangeEnd)(List[OrderedEvent]())(
         (acc, event) => event :: acc
       ).reverse
-      // maxSeq is either the highest seq we have, or the top seq they requested
-      val maxSeq = min(siriusLog.getNextSeq - 1, rangeEnd)
-      sender ! LogSubrange(rangeStart, maxSeq, chunkRange)
+      sender ! CompleteSubrange(rangeStart, rangeEnd, events)
+
+    case GetLogSubrange(rangeStart, rangeEnd) if siriusLog.getNextSeq <= rangeStart => // we can't send anything useful back
+      sender ! EmptySubrange
+
+    case GetLogSubrange(rangeStart, rangeEnd) => // we can respond partially
+      val lastSeq = siriusLog.getNextSeq - 1
+      val events = siriusLog.foldLeftRange(rangeStart, lastSeq)(List[OrderedEvent]())(
+        (acc, event) => event :: acc
+      ).reverse
+      sender ! PartialSubrange(rangeStart, lastSeq, events)
 
     case GetNextLogSeq =>
       sender ! siriusLog.getNextSeq
