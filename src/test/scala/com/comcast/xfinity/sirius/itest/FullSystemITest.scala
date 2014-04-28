@@ -22,13 +22,11 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import java.io.File
 import com.comcast.xfinity.sirius.api.impl._
 import util.Random
-import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import scala.Some
-import scala.Tuple2
 import java.util.UUID
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import annotation.tailrec
+import com.comcast.xfinity.sirius.SiriusFactory
 import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 import org.slf4j.LoggerFactory
