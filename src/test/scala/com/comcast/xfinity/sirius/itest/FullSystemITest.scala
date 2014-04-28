@@ -172,7 +172,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     assert(waitForTrue({
       sirii.foreach(_.supervisor ! CheckClusterConfig)
       sirii.forall(_.getMembership.get.values.flatten.size == membersExpected)
-    }, 5000, 1500),
+    }, 10000, 1500),
       "Membership did not reach expected size: expected %s, got %s"
         .format(membersExpected, sirii.map(_.getMembership.get.values.flatten.size)))
     sirii.foreach(_.supervisor ! CheckPaxosMembership)
