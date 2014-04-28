@@ -195,7 +195,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
         case _ =>
       }
 
-    case unknown: AnyRef => logger.warning("SiriusSupervisor Actor received unrecongnized message {}", unknown)
+    case unknown: AnyRef => logger.warning("SiriusSupervisor Actor received unrecognized message {}", unknown)
   }
 
   def ensureOrderingActorRunning() {

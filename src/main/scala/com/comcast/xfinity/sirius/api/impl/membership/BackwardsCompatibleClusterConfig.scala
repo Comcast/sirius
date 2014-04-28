@@ -25,7 +25,7 @@ object BackwardsCompatibleClusterConfig {
 
 /**
  * Backwards-compatible ClusterConfig implementation. Will convert any "akka://" actor paths
- * into akka 2.2-compatible "akka.tcp://" paths. Wraps another concrete ClusterConfig implemntation.
+ * into akka 2.2-compatible "akka.tcp://" paths. Wraps another concrete ClusterConfig implementation.
  *
  * @param backend ClusterConfig supplying members
  */

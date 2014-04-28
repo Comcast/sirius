@@ -78,7 +78,7 @@ object PaxosStateBridge {
  * applied to the persistence layer in order.  As designed currently (on
  * purpose) the Paxos system will blindly deliver decisions, even if they have
  * already been decided.  This allows nodes that are behind to catch up.  Also,
- * there is no gaurentee that events will arrive in order, so a later event
+ * there is no guarantee that events will arrive in order, so a later event
  * may arrive before a current event.
  *
  * To accomplish this we buffer events that come before their time, only keeping
@@ -143,7 +143,7 @@ class PaxosStateBridge(startingSeq: Long,
 
     /*
      * When a decision arrives for the first time the actor identified by
-     * Decision.command.client is sent a SiriusResult.none message to aknowledge the
+     * Decision.command.client is sent a SiriusResult.none message to acknowledge the
      * event has been ordered. The OrderedEvent contained in the Decision is then
      * buffered to be sent to the persistence layer.  All ready decisions (contiguous
      * ones starting with the current sequence number) are sent to the persistence
@@ -188,7 +188,7 @@ class PaxosStateBridge(startingSeq: Long,
   def processLogSubrange(logSubrange: LogSubrange) {
     logSubrange match {
       case LogSubrange(rangeStart, rangeEnd, events) =>
-        // apply all events in range s.t. event.seqence >= nextSeq
+        // apply all events in range s.t. event.sequence >= nextSeq
         events.foreach((event: OrderedEvent) => {
           if (event.sequence >= nextSeq) {
             stateSupActor ! event
