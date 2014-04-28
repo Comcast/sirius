@@ -15,7 +15,7 @@
  */
 package com.comcast.xfinity.sirius.api.impl.membership
 
-import util.Random
+import scala.util.{Try, Random}
 import akka.actor.ActorRef
 import akka.agent.Agent
 import scala.math.floor
@@ -45,23 +45,14 @@ class MembershipHelper(val membershipAgent: Agent[Map[String, Option[ActorRef]]]
   }
 
   /**
-   * Get a random value from a map whose key does not equal localSiriusRef
-   * @return Some(ActorRef), not matching actorToAvoid, or None if none such found
+   * Get a random non-local actor in the cluster.
+   * @return successful actorRef if a remote actor exists, failure otherwise.
    */
-  def getRandomMember: Option[ActorRef] = {
-    val membership = membershipAgent()
-    val viableChoices = membership.values.flatten.filter(_ != localSiriusRef)
-
-    // if there is nothing in the map OR keyToAvoid is the only thing in the map, there is no viable member
-    if (viableChoices.isEmpty) {
-      None
-    } else {
-      val random = chooseRandomValue(viableChoices.size)
-      Some(viableChoices.toIndexedSeq(random))
+  def getRandomMember: Try[ActorRef] = {
+    val remoteActors = membershipAgent().values.flatten.filter(_ != localSiriusRef).toArray
+    Try {
+      require(remoteActors.size != 0)
+      remoteActors(Random.nextInt(remoteActors.size))
     }
-  }
-
-  private[membership] def chooseRandomValue(size: Int): Int = {
-    Random.nextInt(size)
   }
 }

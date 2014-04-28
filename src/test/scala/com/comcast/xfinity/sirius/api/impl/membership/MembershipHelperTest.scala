@@ -57,7 +57,7 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember
-        assert(data === None)
+        assert(data.isFailure)
       }
 
       it("should send back a None if the membershipMap is empty") {
@@ -65,7 +65,7 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember
-        assert(data === None)
+        assert(data.isFailure)
       }
 
       it("should send back a None if all values are currently None or local") {
@@ -73,7 +73,7 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
         val membershipHelper: MembershipHelper = MembershipHelper(membership, localActorRef)
 
         val data = membershipHelper.getRandomMember
-        assert(data === None)
+        assert(data.isFailure)
       }
     }
 

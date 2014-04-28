@@ -34,6 +34,7 @@ import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
+import scala.util.Success
 
 class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTest {
 
@@ -41,7 +42,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
 
   val config = new SiriusConfiguration
   val defaultMockMembershipHelper = mock[MembershipHelper]
-  doReturn(Some(TestProbe().ref)).when(defaultMockMembershipHelper).getRandomMember
+  doReturn(Success(TestProbe().ref)).when(defaultMockMembershipHelper).getRandomMember
   def makeStateBridge(startingSeq: Long,
                       stateSupActor: ActorRef = TestProbe().ref,
                       siriusSupActor: ActorRef = TestProbe().ref,

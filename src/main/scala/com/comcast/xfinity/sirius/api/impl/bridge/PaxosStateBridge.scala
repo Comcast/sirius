@@ -31,6 +31,7 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 object PaxosStateBridge {
   case object RequestGaps
@@ -271,14 +272,13 @@ class PaxosStateBridge(startingSeq: Long,
   }
 
   private[bridge] def createGapFetcher(seq: Long): Option[ActorRef] = {
-    val randomMember = membershipHelper.getRandomMember
-    randomMember match {
-      case Some(member) =>
+    membershipHelper.getRandomMember match {
+      case Success(member) =>
         traceLogger.debug("Creating gap fetcher to request {} events starting at {} from {}", chunkSize, seq, member)
         val gapFetcher = childProvider.createGapFetcher(seq, member, self)
         context.watch(gapFetcher)
         Some(gapFetcher)
-      case None =>
+      case Failure(ex) =>
         logger.warning("Failed to create GapFetcher: could not get remote" +
           "member for transfer request.")
         None
