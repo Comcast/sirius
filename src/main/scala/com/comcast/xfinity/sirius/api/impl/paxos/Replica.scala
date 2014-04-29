@@ -125,7 +125,7 @@ class Replica(localLeader: ActorRef,
           logger.warning("Received exception applying decision {}: {}", decision, t)
       }
 
-    case decisionHint @ DecisionHint(decisionHintSlotNum) =>
+    case decisionHint @ DecisionHint(decisionHintSlotNum) if decisionHintSlotNum >= slotNum =>
       slotNum = decisionHintSlotNum + 1
 
       outstandingProposals.filter((k, _) => k > decisionHintSlotNum)
