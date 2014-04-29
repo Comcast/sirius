@@ -27,6 +27,7 @@ import scala.util.{Try, Success}
 import java.util.concurrent.atomic.AtomicLong
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{EmptySubrange, PartialSubrange, CompleteSubrange}
 import scala.concurrent.duration.FiniteDuration
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class CatchupSupervisorTest extends NiceTest {
   implicit val actorSystem = ActorSystem("CatchupSupervisorTest")
@@ -40,7 +41,7 @@ class CatchupSupervisorTest extends NiceTest {
 
     // in order to specify the parent, we also have to specify a name for this actor. using akka's general approach anywaty.
     val name = "$" + base64(atomicLong.getAndIncrement)
-    TestActorRef(Props(classOf[CatchupSupervisor], childProvider, membershipHelper, 1.0, .1), parent, name)
+    TestActorRef(Props(classOf[CatchupSupervisor], childProvider, membershipHelper, 1.0, .1, new SiriusConfiguration()), parent, name)
   }
 
   def verifyCatchupActorCreated(childProvider: ChildProvider, timesInvoked: Int = 1) {

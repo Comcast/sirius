@@ -19,7 +19,7 @@ import akka.actor.{ActorContext, ActorRef, Props, Actor}
 import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import com.comcast.xfinity.sirius.api.impl.bridge.CatchupSupervisor.ChildProvider
+import com.comcast.xfinity.sirius.api.impl.bridge.CatchupSupervisor.{CatchupSupervisorInfoMBean, ChildProvider}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.CompleteSubrange
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
@@ -34,6 +34,11 @@ object CatchupSupervisor {
     }
   }
 
+  trait CatchupSupervisorInfoMBean {
+    def getSSThresh: Int
+    def getWindow: Int
+  }
+
   /**
    * Build Props for a new CatchupSupervisor.
    *
@@ -45,7 +50,7 @@ object CatchupSupervisor {
     val childProvider = new ChildProvider(config)
     val timeoutCoeff = config.getProp(SiriusConfiguration.CATCHUP_TIMEOUT_INCREASE_PER_EVENT, ".01").toDouble
     val timeoutConst = config.getProp(SiriusConfiguration.CATCHUP_TIMEOUT_BASE, "1").toDouble
-    Props(classOf[CatchupSupervisor], childProvider, membershipHelper, timeoutCoeff, timeoutConst)
+    Props(classOf[CatchupSupervisor], childProvider, membershipHelper, timeoutCoeff, timeoutConst, config)
   }
 }
 
@@ -56,7 +61,8 @@ object CatchupSupervisor {
 private[bridge] class CatchupSupervisor(childProvider: ChildProvider,
                                         membershipHelper: MembershipHelper,
                                         timeoutCoeff: Double,
-                                        timeoutConst: Double) extends Actor with MonitoringHooks {
+                                        timeoutConst: Double,
+                                        config: SiriusConfiguration) extends Actor with MonitoringHooks {
 
   val maxWindowSize = 1000
   var ssthresh = 500
@@ -98,5 +104,17 @@ private[bridge] class CatchupSupervisor(childProvider: ChildProvider,
 
     case StopCatchup =>
       context.unbecome()
+  }
+
+  override def preStart() {
+    registerMonitor(new CatchupSupervisorInfo(), config)
+  }
+  override def postStop() {
+    unregisterMonitors(config)
+  }
+
+  class CatchupSupervisorInfo extends CatchupSupervisorInfoMBean {
+    def getSSThresh = ssthresh
+    def getWindow = window
   }
 }
