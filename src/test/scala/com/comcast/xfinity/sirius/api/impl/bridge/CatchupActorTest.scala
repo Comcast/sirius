@@ -19,7 +19,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
 import akka.util.Helpers.base64
 import scala.concurrent.duration._
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{NewLogSubrange => LogSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import akka.actor._
 import akka.actor.Terminated
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.GetLogSubrange

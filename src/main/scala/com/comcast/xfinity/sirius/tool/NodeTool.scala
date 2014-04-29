@@ -25,7 +25,7 @@ import com.comcast.xfinity.sirius.api.impl.status.StatusWorker._
 import com.comcast.xfinity.sirius.api.impl.status.NodeStats.FullNodeStatus
 import com.comcast.xfinity.sirius.util.SiriusShortNameParser
 import scala.language.postfixOps
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{NewLogSubrange => LogSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{CompleteSubrange, PartialSubrange, EmptySubrange, GetNextLogSeq, GetLogSubrange}
 
 /**

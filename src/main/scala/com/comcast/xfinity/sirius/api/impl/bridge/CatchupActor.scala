@@ -16,7 +16,7 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
 
 import akka.actor.{ReceiveTimeout, Props, ActorRef, Actor}
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{NewLogSubrange => LogSubrange, GetLogSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{LogSubrange, GetLogSubrange}
 import scala.concurrent.duration.FiniteDuration
 
 case object CatchupRequestFailed

@@ -20,7 +20,6 @@ import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
-import scala.math.min
 
 object SiriusPersistenceActor {
 
@@ -43,32 +42,13 @@ object SiriusPersistenceActor {
    */
   case class GetLogSubrange(begin: Long, end: Long) extends LogQuery
 
-  /**
-   * Message encapsulating a range of events, as asked for by
-   * a GetSubrange message.
-   *
-   * This message is necessary due to type erasure, OrderedEvent
-   * is erased from the resultant List
-   *
-   * @param lowestSeqContained lowest seq contained in this range.  may or may not
-   *                           have a corresponding OrderedEvent in events (could
-   *                           have been compacted away)
-   * @param highestSeqContained highest seq contained in this range.  may or may not
-   *                           have a corresponding OrderedEvent in events (could
-   *                           have been compacted away)
-   * @param events the OrderedEvents in this range, in order
-   */
-  case class LogSubrange(lowestSeqContained: Long,
-                         highestSeqContained: Long,
-                         events: List[OrderedEvent])
-
-  trait NewLogSubrange
-  trait PopulatedSubrange extends NewLogSubrange {
+  trait LogSubrange
+  trait PopulatedSubrange extends LogSubrange {
     def rangeStart: Long
     def rangeEnd: Long
     def events: List[OrderedEvent]
   }
-  case object EmptySubrange extends NewLogSubrange
+  case object EmptySubrange extends LogSubrange
   case class PartialSubrange(rangeStart: Long, rangeEnd: Long, events: List[OrderedEvent]) extends PopulatedSubrange
   case class CompleteSubrange(rangeStart: Long, rangeEnd: Long, events: List[OrderedEvent]) extends PopulatedSubrange
 
