@@ -17,16 +17,13 @@ package com.comcast.xfinity.sirius.api.impl.bridge
 
 import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestProbe, TestActorRef}
-import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.util.Helpers.base64
-import com.comcast.xfinity.sirius.api.impl.bridge.CatchupSupervisor.ChildProvider
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import org.mockito.Mockito._
-import org.mockito.Matchers._
 import scala.util.{Try, Success}
 import java.util.concurrent.atomic.AtomicLong
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{EmptySubrange, PartialSubrange, CompleteSubrange}
-import scala.concurrent.duration.FiniteDuration
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class CatchupSupervisorTest extends NiceTest {
@@ -34,27 +31,30 @@ class CatchupSupervisorTest extends NiceTest {
 
   val atomicLong = new AtomicLong
   def makeMockCatchupSupervisor(remoteActorTry: Try[ActorRef] = Success(TestProbe().ref),
-                                childProvider: ChildProvider = mock[ChildProvider],
+                                maxWindowSize: Int = 1000,
+                                startingSSThresh: Int = 500,
                                 parent: ActorRef = TestProbe().ref): TestActorRef[CatchupSupervisor] = {
     val membershipHelper = mock[MembershipHelper]
     doReturn(remoteActorTry).when(membershipHelper).getRandomMember
 
-    // in order to specify the parent, we also have to specify a name for this actor. using akka's general approach anywaty.
-    val name = "$" + base64(atomicLong.getAndIncrement)
-    TestActorRef(Props(classOf[CatchupSupervisor], childProvider, membershipHelper, 1.0, .1, new SiriusConfiguration()), parent, name)
-  }
+    val timeoutCoeff = 1.0
+    val timeoutConst = .1
 
-  def verifyCatchupActorCreated(childProvider: ChildProvider, timesInvoked: Int = 1) {
-    verify(childProvider, times(timesInvoked)).createCatchupActor(any(classOf[ActorRef]), anyLong, anyInt, any(classOf[FiniteDuration]))(any(classOf[ActorContext]))
+    // in order to specify the parent, we also have to specify a name for this actor. using akka's approach.
+    val name = "$" + base64(atomicLong.getAndIncrement)
+    val props = Props(new CatchupSupervisor(membershipHelper, timeoutCoeff, timeoutConst,
+                                            maxWindowSize, startingSSThresh, new SiriusConfiguration()))
+    TestActorRef(props, parent, name)
   }
 
   describe("CatchupSupervisor") {
-    it("should create a catchupActor if it gets an InitiateCatchup message") {
-      val mockChildProvider = mock[ChildProvider]
-      val underTest = makeMockCatchupSupervisor(childProvider = mockChildProvider)
+    it("should request the next subrange if it gets an InitiateCatchup message") {
+      val remote = TestProbe()
+      val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
 
       underTest ! InitiateCatchup(1L)
-      verifyCatchupActorCreated(mockChildProvider)
+
+      remote.expectMsgClass(classOf[GetLogSubrange])
     }
     describe("for successful requests with a complete subrange") {
       it("should forward the message on to the parent") {
@@ -67,10 +67,9 @@ class CatchupSupervisorTest extends NiceTest {
 
         parentProbe.expectMsg(mockSubrange)
       }
-      it("should update window for SS phase") {
-        val underTest = makeMockCatchupSupervisor()
+      it("should update window for Slow Start phase") {
+        val underTest = makeMockCatchupSupervisor(startingSSThresh = 100)
         underTest.underlyingActor.window = 20
-        underTest.underlyingActor.ssthresh = 100
 
         val mockSubrange = mock[CompleteSubrange]
 
@@ -79,10 +78,9 @@ class CatchupSupervisorTest extends NiceTest {
 
         assert(40 === underTest.underlyingActor.window)
       }
-      it("should update window for CA phase") {
-        val underTest = makeMockCatchupSupervisor()
+      it("should update window for Congestion Avoidance phase") {
+        val underTest = makeMockCatchupSupervisor(startingSSThresh = 100)
         underTest.underlyingActor.window = 120
-        underTest.underlyingActor.ssthresh = 100
 
         val mockSubrange = mock[CompleteSubrange]
 
@@ -114,9 +112,8 @@ class CatchupSupervisorTest extends NiceTest {
         parentProbe.expectMsg(EmptySubrange)
       }
       it("should leave window and ssthresh unchanged") {
-        val underTest = makeMockCatchupSupervisor()
+        val underTest = makeMockCatchupSupervisor(startingSSThresh = 100)
         underTest.underlyingActor.window = 20
-        underTest.underlyingActor.ssthresh = 100
 
         underTest ! InitiateCatchup(1L)
         underTest ! CatchupRequestSucceeded(EmptySubrange)
@@ -137,9 +134,8 @@ class CatchupSupervisorTest extends NiceTest {
         parentProbe.expectMsg(mockSubrange)
       }
       it("should leave window and ssthresh unchanged") {
-        val underTest = makeMockCatchupSupervisor()
+        val underTest = makeMockCatchupSupervisor(startingSSThresh = 100)
         underTest.underlyingActor.window = 20
-        underTest.underlyingActor.ssthresh = 100
 
         val mockSubrange = mock[PartialSubrange]
 
@@ -172,36 +168,37 @@ class CatchupSupervisorTest extends NiceTest {
         assert(25 === underTest.underlyingActor.ssthresh)
       }
     }
-    it("should create a new CatchupActor upon receiving a ContinueCatchup request while in catchup mode") {
-      val mockChildProvider = mock[ChildProvider]
-      val underTest = makeMockCatchupSupervisor(childProvider = mockChildProvider)
 
-      underTest ! InitiateCatchup(1L)
-      verifyCatchupActorCreated(mockChildProvider)
+    it("should request the next subrange upon receiving a ContinueCatchup request while in catchup mode") {
+      val remote = TestProbe()
+      val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
+
+      underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
 
       underTest ! ContinueCatchup(1L)
-      verifyCatchupActorCreated(mockChildProvider, timesInvoked=2)
+
+      remote.expectMsg(GetLogSubrange(1L, 2L))
     }
     it("should ignore InitiateCatchup requests if it's currently in catchup mode") {
-      val mockChildProvider = mock[ChildProvider]
-      val underTest = makeMockCatchupSupervisor(childProvider = mockChildProvider)
+      val remote = TestProbe()
+      val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
+
+      underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
 
       underTest ! InitiateCatchup(1L)
-      verifyCatchupActorCreated(mockChildProvider)
 
-      underTest ! InitiateCatchup(1L)
-      verifyNoMoreInteractions(mockChildProvider)
+      remote.expectNoMsg()
     }
     it("should leave catchup mode and then be able to re-initiate catchup mode after receiving a StopCatchup") {
-      val mockChildProvider = mock[ChildProvider]
-      val underTest = makeMockCatchupSupervisor(childProvider = mockChildProvider)
+      val remote = TestProbe()
+      val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
 
-      underTest ! InitiateCatchup(1L)
-      verifyCatchupActorCreated(mockChildProvider)
+      underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
 
       underTest ! StopCatchup
       underTest ! InitiateCatchup(1L)
-      verifyCatchupActorCreated(mockChildProvider, 2)
+
+      remote.expectMsg(GetLogSubrange(1L, 2L))
     }
   }
 }

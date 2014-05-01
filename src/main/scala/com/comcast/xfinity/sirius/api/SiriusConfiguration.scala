@@ -259,6 +259,17 @@ object SiriusConfiguration {
    * timeout = timeout_base + ( w * timeout_per_event )
    */
   final val CATCHUP_TIMEOUT_BASE = "sirius.catchup.timeout-constant"
+
+  /**
+   * Maximum catchup window size, in number of events. Default is 1000.
+   */
+  final val CATCHUP_MAX_WINDOW_SIZE = "sirius.catchup.max-window-size"
+
+  /**
+   * Starting ssthresh, which is the point where catchup transitions from Slow Start to
+   * Congestion Avoidance. Default is 500.
+   */
+  final val CATCHUP_DEFAULT_SSTHRESH = "sirius.catchup.default-ssthresh"
 }
 
 /**
