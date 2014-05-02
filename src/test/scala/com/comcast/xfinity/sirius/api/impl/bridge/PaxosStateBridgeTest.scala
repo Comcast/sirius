@@ -19,22 +19,18 @@ import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
-import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.{ChildProvider, RequestGaps}
+import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.ChildProvider
 import scala.concurrent.duration._
 import akka.actor._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import org.mockito.Mockito._
-import collection.SortedMap
-import collection.JavaConversions._
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.LogSubrange
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
-import scala.Some
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
-import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.RequestFromSeq
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
 import scala.util.Success
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{EmptySubrange, PartialSubrange, CompleteSubrange}
 
 class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTest {
 
@@ -47,22 +43,20 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
                       stateSupActor: ActorRef = TestProbe().ref,
                       siriusSupActor: ActorRef = TestProbe().ref,
                       membershipHelper: MembershipHelper = defaultMockMembershipHelper,
-                      gapFetcherActor: ActorRef = TestProbe().ref,
+                      catchupSupervisor: ActorRef = TestProbe().ref,
                       chunkSize: Option[Int] = None) = {
 
     if (chunkSize != None) {
       config.setProp(SiriusConfiguration.LOG_REQUEST_CHUNK_SIZE, chunkSize.get)
     }
 
-    val childProvider = new ChildProvider(config) {
-      override def createGapFetcher(seq: Long, target: ActorRef, requester: ActorRef)(implicit context: ActorContext) = gapFetcherActor
+    val childProvider = new ChildProvider(config, membershipHelper) {
+      override def createCatchupSupervisor()(implicit context: ActorContext) = catchupSupervisor
     }
 
-    TestActorRef(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, membershipHelper, childProvider, config) {
+    TestActorRef(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, childProvider, 2.minutes, config) {
       override def preStart() {}
-      override def postStop() {
-        requestGapsCancellable.cancel()
-      }
+      override def postStop() {}
     })
   }
 
@@ -159,170 +153,94 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
       stateBridge !  Decision(14, Command(TestProbe().ref, 4, Delete("d")))
       stateBridge !  Decision(12, Command(TestProbe().ref, 4, Delete("d")))
 
+      siriusSupProbe.expectMsg(DecisionHint(11L))
+      siriusSupProbe.expectMsg(DecisionHint(11L))
       siriusSupProbe.expectMsg(DecisionHint(14L))
     }
   }
 
-  describe("when receiving a Terminated message") {
-    it("should set gapFetcher to None if the terminated actor matches the current fetcher") {
-      val gapFetcherActor = TestProbe()
-      val underTest = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)
-      underTest ! RequestGaps
-      assert(waitForTrue(Some(gapFetcherActor.ref) == underTest.underlyingActor.gapFetcher, 1000, 25))
+  describe("upon receiving a InitiateCatchup message") {
+    it("should ask the CatchupSupervisor to start catchup with the current seq") {
+      val catchupProbe = TestProbe()
+      val underTest = makeStateBridge(10, catchupSupervisor = catchupProbe.ref)
 
-      actorSystem.stop(gapFetcherActor.ref)
-
-      assert(waitForTrue(None == underTest.underlyingActor.gapFetcher, 1000, 25))
+      underTest ! InitiateCatchup
+      catchupProbe.expectMsg(InitiateCatchup(10))
     }
   }
+  describe("upon receiving a CompleteSubrange") {
+    it("should ask the CatchupSupervisor to continue catchup") {
+      val catchupProbe = TestProbe()
+      val underTest = makeStateBridge(10, catchupSupervisor = catchupProbe.ref)
 
-  describe("upon receiving a RequestGaps message") {
-    it ("must start a new GapFetcher if gapFetcher == None") {
-      val gapFetcherActor = TestProbe()
-      val stateBridge = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)
+      underTest ! InitiateCatchup
+      catchupProbe.expectMsg(InitiateCatchup(10))
 
-      stateBridge.underlyingActor.gapFetcher = None
-      stateBridge ! RequestGaps
-      assert(Some(gapFetcherActor.ref) === stateBridge.underlyingActor.gapFetcher)
-    }
-
-    it ("must not start a new GapFetcher if one already exists") {
-      val gapFetcherActor = TestProbe()
-      val gapFetcherActorAlreadyRunning = TestProbe()
-      val stateBridge = makeStateBridge(10, gapFetcherActor = gapFetcherActor.ref)
-
-      stateBridge.underlyingActor.gapFetcher = Some(gapFetcherActorAlreadyRunning.ref)
-
-      stateBridge ! RequestGaps
-      assert(Some(gapFetcherActorAlreadyRunning.ref) === stateBridge.underlyingActor.gapFetcher)
+      underTest ! CompleteSubrange(10, 10, List[OrderedEvent]())
+      catchupProbe.expectMsgClass(classOf[ContinueCatchup])
     }
   }
+  describe("upon receiving a PartialSubrange") {
+    it("should ask the CatchupSupervisor to stop catchup") {
+      val catchupProbe = TestProbe()
+      val underTest = makeStateBridge(10, catchupSupervisor = catchupProbe.ref)
 
-  describe ("upon receiving a LogSubrange message") {
-    describe ("that does not contain useful events") {
-      it ("should ignore it") {
-        val gapFetcher = TestProbe()
-        val stateSup = TestProbe()
-        val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref, stateSupActor = stateSup.ref)
-        underTest ! LogSubrange(8, 9, List(
-          OrderedEvent(8, 1, Delete("1")), OrderedEvent(9, 1, Delete("2"))
-        ))
+      underTest ! InitiateCatchup
+      catchupProbe.expectMsg(InitiateCatchup(10))
 
-        gapFetcher.expectNoMsg()
-        stateSup.expectNoMsg()
-      }
+      underTest ! PartialSubrange(10, 10, List[OrderedEvent]())
+      catchupProbe.expectMsg(StopCatchup)
     }
+  }
+  describe("upon receiving a EmptySubrange") {
+    it("should ask the CatchupSupervisor to stop catchup") {
+      val catchupProbe = TestProbe()
+      val underTest = makeStateBridge(10, catchupSupervisor = catchupProbe.ref)
 
-    describe ("that contains useful events (event.seq >= nextSeq)") {
-      it ("should process the events") {
-        val stateSup = TestProbe()
-        val underTest = makeStateBridge(10, stateSupActor = stateSup.ref)
-        underTest ! LogSubrange(9, 11, List(
-          OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
-        ))
+      underTest ! InitiateCatchup
+      catchupProbe.expectMsg(InitiateCatchup(10))
 
-        val expectedMessages = List(OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3")))
-        val stateMessages = stateSup.receiveN(2)
-        assert(expectedMessages === stateMessages)
-      }
-
-      it ("should update nextSeq to rangeEnd + 1") {
-        val underTest = makeStateBridge(10)
-        underTest ! LogSubrange(9, 11, List(
-          OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
-        ))
-        assert(12 === underTest.underlyingActor.nextSeq)
-      }
-
-      it ("should drop eventBuffer items < the updated nextSeq") {
-        val underTest = makeStateBridge(10)
-        underTest.underlyingActor.eventBuffer.putAll(SortedMap[Long, OrderedEvent](
-          10L -> OrderedEvent(10, 1, Delete("2")),
-          13L -> OrderedEvent(13, 1, Delete("5"))
-        ))
-        underTest ! LogSubrange(9, 11, List(
-          OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
-        ))
-
-        assert(1 === underTest.underlyingActor.eventBuffer.size)
-        assert(underTest.underlyingActor.eventBuffer.keySet.contains(13L))
-      }
-
-      it ("send a decision hint to siriusSup") {
-        val siriusSup = TestProbe()
-        val underTest = makeStateBridge(10, siriusSupActor = siriusSup.ref)
-        underTest ! LogSubrange(9, 11, List(
-          OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
-        ))
-
-        siriusSup.expectMsg(DecisionHint(11))
-      }
-
-      describe ("if the gapFetcher is alive and well") {
-        it ("should ask for another chunk if it got a full chunk") {
-          val gapFetcher = TestProbe()
-          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref, chunkSize = Some(2))
-          underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
-
-          underTest ! LogSubrange(10, 11, List(
-            OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
-          ))
-
-          gapFetcher.expectMsg(RequestFromSeq(12L))
-        }
-
-        it ("should not ask for anything further if the chunk was not complete") {
-          val gapFetcher = TestProbe()
-          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref, chunkSize = Some(3))
-          underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
-
-          underTest ! LogSubrange(10, 11, List(
-            OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
-          ))
-
-          gapFetcher.expectNoMsg()
-        }
-
-        it ("should correctly accept a subrange as 'complete', even if it has no events") {
-          val gapFetcher = TestProbe()
-          val underTest = makeStateBridge(1, gapFetcherActor = gapFetcher.ref, chunkSize = Some(10))
-          underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
-
-          underTest ! LogSubrange(1, 10, List())
-
-          gapFetcher.expectMsg(RequestFromSeq(11L))
-        }
-      }
-
-      describe ("if the gapFetcher is nonexistent") {
-        it ("should do nothing further") {
-          val gapFetcher = TestProbe()
-          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref)
-          underTest.underlyingActor.gapFetcher = None
-
-          underTest ! LogSubrange(9, 11, List(
-            OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
-          ))
-
-          gapFetcher.expectNoMsg()
-        }
-      }
-
-      describe ("if the gapFetcher is dead") {
-        it ("should do nothing further") {
-          val gapFetcher = TestProbe()
-          val underTest = makeStateBridge(10, gapFetcherActor = gapFetcher.ref)
-          underTest.underlyingActor.gapFetcher = Some(gapFetcher.ref)
-          gapFetcher.ref ! PoisonPill
-
-          underTest ! LogSubrange(9, 11, List(
-            OrderedEvent(9, 1, Delete("1")), OrderedEvent(10, 1, Delete("2")), OrderedEvent(11, 1, Delete("3"))
-          ))
-
-          gapFetcher.expectNoMsg()
-        }
-      }
+      underTest ! EmptySubrange
+      catchupProbe.expectMsg(StopCatchup)
     }
+  }
+  describe("upon receiving a PopulatedSubrange") {
+    it("should send the useful events to the StateSupervisor") {
+      val stateProbe = TestProbe()
+      val event = mock[OrderedEvent]
+      doReturn(10L).when(event).sequence
+      val underTest = makeStateBridge(10, stateSupActor = stateProbe.ref)
 
+      underTest ! InitiateCatchup
+      underTest ! CompleteSubrange(10, 11, List(event))
+
+      stateProbe.expectMsg(event)
+    }
+    it("should update nextSeq") {
+      val underTest = makeStateBridge(10)
+
+      underTest ! InitiateCatchup
+      underTest ! CompleteSubrange(10, 11, List[OrderedEvent]())
+
+      assert(12 === underTest.underlyingActor.nextSeq)
+    }
+    it("should remove now-out-of-date events from the event buffer") {
+      val underTest = makeStateBridge(10)
+      underTest.underlyingActor.eventBuffer.put(11L, mock[OrderedEvent])
+
+      underTest ! InitiateCatchup
+      underTest ! CompleteSubrange(10, 11, List[OrderedEvent]())
+
+      assert(!underTest.underlyingActor.eventBuffer.containsKey(11L))
+    }
+    it("should send a DecisionHint to the sirius supervisor") {
+      val supervisorProbe = TestProbe()
+      val underTest = makeStateBridge(10, siriusSupActor = supervisorProbe.ref)
+
+      underTest ! InitiateCatchup
+      underTest ! CompleteSubrange(10, 11, List())
+
+      supervisorProbe.expectMsg(DecisionHint(11))
+    }
   }
 }

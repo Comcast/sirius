@@ -87,7 +87,7 @@ class FullSystemITest extends NiceTest with TimedTest {
                  handler: Option[RequestHandler] = None,
                  wal: Option[SiriusLog] = None,
                  chunkSize: Int = 100,
-                 gapRequestFreqSecs: Int = 30,
+                 gapRequestFreqSecs: Int = 5,
                  replicaReproposalWindow: Int = 10,
                  sslEnabled: Boolean = false,
                  membershipPath: String = new File(tempDir, "membership").getAbsolutePath):
@@ -275,8 +275,8 @@ class FullSystemITest extends NiceTest with TimedTest {
       writeClusterConfig(List(42289, 42290, 42291))
       val numCommands = 50
       val (sirius1, _, log1) = makeSirius(42289, replicaReproposalWindow = 4)
-      val (sirius2, _, log2) = makeSirius(42290, replicaReproposalWindow = 4, gapRequestFreqSecs = 5)
-      val (sirius3, _, log3) = makeSirius(42291, replicaReproposalWindow = 4, gapRequestFreqSecs = 5)
+      val (sirius2, _, log2) = makeSirius(42290, replicaReproposalWindow = 4)
+      val (sirius3, _, log3) = makeSirius(42291, replicaReproposalWindow = 4)
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
 

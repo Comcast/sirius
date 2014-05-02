@@ -15,18 +15,17 @@
  */
 package com.comcast.xfinity.sirius.api.impl.state
 
-import akka.actor.{ActorContext, Props, Actor, ActorRef}
+import akka.actor.{Props, Actor, ActorRef}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
-import scala.math.min
 
 object SiriusPersistenceActor {
 
   /**
    * Trait encapsulating _queries_ into Sirius's log's state,
-   * that is the state of persisted data.g
+   * that is, the state of persisted data
    */
   sealed trait LogQuery
 
@@ -43,24 +42,15 @@ object SiriusPersistenceActor {
    */
   case class GetLogSubrange(begin: Long, end: Long) extends LogQuery
 
-  /**
-   * Message encapsulating a range of events, as asked for by
-   * a GetSubrange message.
-   *
-   * This message is necessary due to type erasure, OrderedEvent
-   * is erased from the resultant List
-   *
-   * @param lowestSeqContained lowest seq contained in this range.  may or may not
-   *                           have a corresponding OrderedEvent in events (could
-   *                           have been compacted away)
-   * @param highestSeqContained highest seq contained in this range.  may or may not
-   *                           have a corresponding OrderedEvent in events (could
-   *                           have been compacted away)
-   * @param events the OrderedEvents in this range, in order
-   */
-  case class LogSubrange(lowestSeqContained: Long,
-                         highestSeqContained: Long,
-                         events: List[OrderedEvent])
+  trait LogSubrange
+  trait PopulatedSubrange extends LogSubrange {
+    def rangeStart: Long
+    def rangeEnd: Long
+    def events: List[OrderedEvent]
+  }
+  case object EmptySubrange extends LogSubrange
+  case class PartialSubrange(rangeStart: Long, rangeEnd: Long, events: List[OrderedEvent]) extends PopulatedSubrange
+  case class CompleteSubrange(rangeStart: Long, rangeEnd: Long, events: List[OrderedEvent]) extends PopulatedSubrange
 
   /**
    * Message requesting maximum sequence number from a
@@ -139,15 +129,21 @@ class SiriusPersistenceActor(stateActor: ActorRef,
 
       lastWriteTime = thisWriteTime
 
-    // XXX: cap max request chunk size hard coded at 1000 for now for sanity
-    // TODO make the maxChunkSize configurable
-    case GetLogSubrange(rangeStart, rangeEnd) if rangeStart <= rangeEnd && (rangeStart - rangeEnd) <= 1000 =>
-      val chunkRange = siriusLog.foldLeftRange(rangeStart, rangeEnd)(List[OrderedEvent]())(
+    case GetLogSubrange(rangeStart, rangeEnd) if rangeEnd < siriusLog.getNextSeq => // we can answer fully
+      val events = siriusLog.foldLeftRange(rangeStart, rangeEnd)(List[OrderedEvent]())(
         (acc, event) => event :: acc
       ).reverse
-      // maxSeq is either the highest seq we have, or the top seq they requested
-      val maxSeq = min(siriusLog.getNextSeq - 1, rangeEnd)
-      sender ! LogSubrange(rangeStart, maxSeq, chunkRange)
+      sender ! CompleteSubrange(rangeStart, rangeEnd, events)
+
+    case GetLogSubrange(rangeStart, rangeEnd) if siriusLog.getNextSeq <= rangeStart => // we can't send anything useful back
+      sender ! EmptySubrange
+
+    case GetLogSubrange(rangeStart, rangeEnd) => // we can respond partially
+      val lastSeq = siriusLog.getNextSeq - 1
+      val events = siriusLog.foldLeftRange(rangeStart, lastSeq)(List[OrderedEvent]())(
+        (acc, event) => event :: acc
+      ).reverse
+      sender ! PartialSubrange(rangeStart, lastSeq, events)
 
     case GetNextLogSeq =>
       sender ! siriusLog.getNextSeq
