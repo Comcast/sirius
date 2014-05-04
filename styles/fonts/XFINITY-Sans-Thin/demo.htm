@@ -1,0 +1,81 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Webfonts Demo</title>
+<style type="text/css">
+@font-face {
+  font-family: "XFINITYSansThin";
+  src: url("34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot");
+  src: url("34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot?") format("embedded-opentype"),
+       url("34b618d9-a5ad-4b74-9dbd-228493df8bc7-3.woff") format("woff"),
+       url("34b618d9-a5ad-4b74-9dbd-228493df8bc7-1.ttf") format("truetype");
+  font-style: normal;
+  font-weight: normal;
+}
+   
+body { font-family:Arial, Sans-Serif; line-height:1.6em; font-size:13px; }
+h1 { font-size:48px; }
+h2, h3 { color:#099F10; }
+.content { width:800px; margin:10px auto 100px; }
+.demo { font-family:XFINITYSansThin; font-weight:normal; font-style:normal; line-height:normal; color:#000; }
+p.demo { font-size:16px; }
+.guidelines { color:#333; }
+pre { padding:0 0 0 20px; }
+hr { border:0; border-bottom:1px solid #000; margin:30px 0; }
+</style>
+</head>
+<body>
+  <div class="content">
+    <h1 class="demo">@font-face demo for the XFINITYSansThin</h1>
+    <p class="demo">
+      XFINITYSansThin - Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+      Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure
+      dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat
+      non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+     </p>
+     <hr />
+     <div class="guidelines">
+       <h2>CSS Implementation Guidelines</h2>
+       <p>Self-hosting customers should reasonably restrict access to Web Font Software from misuse by web pages or documents not originating from your Web Site. Referrer checking is recommended to prevent hotlinking or deeplinking:</p>
+        <ul>
+          <li>Block requests if the referring domain is not a licensed domain.</li>
+          <li>Honor request and serve the Web Fonts if it is a licensed domain.</li>
+          <li>If the request lacks a referrer header, it is permitted to serve the Web Fonts.</li>
+          <li>If your website is serving Web Fonts from a domain different from a licensed domain, it is permitted to use Access-Control-Allow-Origin: http://yourlicenseddomain.com in the HTTP response header. This is necessary for Web Fonts to be fetched cross-origin with the Firefox browser. Learn more about <a target="_blank" href="https://developer.mozilla.org/En/HTTP_access_control">HTTP access control for Firefox</a>.</li>
+        </ul>
+       <h3>CSS Sample</h3>
+       <p>Font file names have been obfuscated to protect the font software. You can identify font format based on file ending:</p>
+       <ul>
+        <li>1 - TrueType (ttf)</li>
+        <li>2 - Embedded OpenType (eot)</li>
+        <li>3 - Web Open Font Format (woff)</li>
+        <li>4 - Scalable Vector Graphics (svg)</li>
+       </ul>
+       <pre>
+@font-face {
+  font-family: "XFINITYSansThin";
+  src: url("34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot");
+  src: url("34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot?") format("embedded-opentype"),
+       url("34b618d9-a5ad-4b74-9dbd-228493df8bc7-3.woff") format("woff"),
+       url("34b618d9-a5ad-4b74-9dbd-228493df8bc7-1.ttf") format("truetype");
+  font-style: normal;
+  font-weight: normal;
+}
+       </pre>
+       <h3>Licensing information should be included within the CSS</h3>
+<pre>
+/*
+This CSS resource incorporates links to font software which is 
+the valuable copyrighted property of WebType LLC, The Font Bureau 
+and/or their suppliers. You may not 
+attempt to copy, install, redistribute, convert, modify or reverse 
+engineer this font software. Please contact WebType with any 
+questions: http://www.webtype.com 
+*/
+</pre>
+       <p>View <a href="license.txt">"WEB FONT SOFTWARE" LICENSE AGREEMENT</a></p>
+     </div>
+  </div>
+</body>
+</html>

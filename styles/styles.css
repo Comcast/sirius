@@ -1,0 +1,316 @@
+/* html { font-size: 62.5%; } */
+/* This CSS resource incorporates links to font software which is the valuable copyrighted property of Webtype L
+LC and/or its suppliers. You may not attempt to copy, install, redistribute, convert, modify or reverse engineer this
+font software. Please contact Webtype with any questions regarding Web Fonts:
+http://www.webtype.com
+ */
+@font-face {
+  font-family: 'XFINITYSansBold';
+  src: url("fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot");
+  src: url("fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot?#iefix") format("embedded-opentype"), url("fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-3.woff") format("woff"), url("fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-1.ttf") format("truetype"), url("fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-4.svg") format("svg");
+  font-weight: normal;
+  font-style: normal; }
+@font-face {
+  font-family: 'XFINITYSansMedium';
+  src: url("fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot");
+  src: url("fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot?#iefix") format("embedded-opentype"), url("fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-3.woff") format("woff"), url("fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-1.ttf") format("truetype"), url("fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-4.svg") format("svg");
+  font-weight: normal;
+  font-style: normal; }
+@font-face {
+  font-family: 'XFINITYSansLight';
+  src: url("fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot");
+  src: url("fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot?#iefix") format("embedded-opentype"), url("fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-3.woff") format("woff"), url("fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-1.ttf") format("truetype"), url("fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-4.svg") format("svg");
+  font-weight: normal;
+  font-style: normal; }
+@font-face {
+  font-family: 'XFINITYSansThin';
+  src: url("fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot");
+  src: url("fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot?#iefix") format("embedded-opentype"), url("fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-3.woff") format("woff"), url("fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-1.ttf") format("truetype"), url("fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg") format("svg");
+  font-weight: normal;
+  font-style: normal; }
+* {
+  font-weight: normal;
+  font-style: normal; }
+
+html {
+  font-size: 62.5%; }
+
+body {
+  width: 100%; }
+
+header > nav {
+  position: absolute;
+  right: 0;
+  top: 0; }
+
+a {
+  text-decoration: none;
+  color: #0085cb;
+  font-size: 16px;
+  font-size: 1.6rem;
+  font-family: XFINITYSansBold; }
+
+p > a {
+  font-size: 18px;
+  font-size: 1.8rem; }
+
+ul {
+  list-style: none;
+  padding: 0; }
+
+code {
+  font-size: 18px;
+  font-size: 1.8rem;
+  line-height: 28px;
+  line-height: 2.8rem; }
+
+.global-padding {
+  padding-right: 5%;
+  padding-left: 5%;
+  padding-top: 3%;
+  padding-bottom: 5%;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box; }
+
+.white {
+  color: #fff; }
+
+.body-copy {
+  font-family: XFINITYSansMedium;
+  font-size: 18px;
+  font-size: 1.8rem;
+  line-height: 28px;
+  line-height: 2.8rem; }
+
+.logo {
+  position: relative;
+  bottom: 12px;
+  bottom: 1.2rem; }
+
+.nav-item {
+  padding-right: 20px;
+  padding-right: 2rem; }
+  .nav-item:last-of-type {
+    padding-right: 0; }
+
+.module {
+  margin: 0; }
+  .module > p.white {
+    max-width: 690px;
+    max-width: 69rem;
+    text-align: center; }
+
+.textured-background {
+  background: url(../images/top-background.jpg) no-repeat fixed;
+  background-size: cover; }
+
+.centered {
+  margin: 0 auto;
+  text-align: center; }
+
+.headline-large {
+  font-family: XFINITYSansThin;
+  text-align: center;
+  font-size: 120px;
+  font-size: 12rem; }
+
+.headline-medium {
+  font-family: XFINITYSansThin;
+  text-align: center;
+  font-size: 70px;
+  font-size: 7rem; }
+
+.button-wrapper {
+  margin-left: 15px;
+  margin-left: 1.5rem; }
+  .button-wrapper .button {
+    margin-top: 50px;
+    margin-top: 5rem;
+    padding: 10px 10px 15px 10px;
+    padding: 1rem 1rem 1.5rem 1rem;
+    line-height: 28px;
+    line-height: 2.8rem; }
+
+.button {
+  font-family: XFINITYSansLight;
+  display: inline-block;
+  font-size: 22px;
+  font-size: 2.2rem;
+  margin-right: 30px;
+  margin-right: 3rem;
+  padding: 15px 10px 10px 10px;
+  padding: 1.5rem 1rem 1rem 1rem; }
+  .button:hover, .button:focus {
+    background-color: #94a0a6;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-radius: 5px;
+    border-radius: 0.5rem; }
+  .button:before {
+    position: relative;
+    top: 8px;
+    top: 0.8rem;
+    margin-right: 10px;
+    margin-right: 1rem; }
+
+.icon-go:before {
+  content: url("../images/arrow-right.png"); }
+
+.featured-content {
+  background-color: #e2ad27; }
+  .featured-content:nth-of-type(2) {
+    background-color: #F2C246;
+    border-top: 1px solid #212121; }
+
+.headline-small {
+  font-family: XFINITYSansLight;
+  padding: 10px;
+  padding: 1rem;
+  font-size: 28px;
+  font-size: 2.8rem;
+  margin: 0; }
+
+.headline-fancy {
+  border-left: 3px solid #0085cb; }
+
+p.headline-small {
+  max-width: 71%;
+  float: left; }
+
+.tiles {
+  text-align: center;
+  margin: 0 0;
+  padding: 0 0; }
+  .tiles > li {
+    display: inline-block;
+    vertical-align: top; }
+
+.tile {
+  padding: 0 0;
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  max-width: 300px;
+  max-width: 30rem;
+  margin-right: 100px;
+  margin-right: 10rem; }
+
+.one:before {
+  content: url(../images/icon-lightning.png); }
+
+.two:before {
+  content: url(../images/icon-replication.png); }
+
+.three {
+  margin-right: 0; }
+  .three:before {
+    content: url(../images/icon-computer.png); }
+
+.light {
+  font-family: XFINITYSansLight; }
+
+hr {
+  background: rgba(0, 0, 0, 0.15);
+  width: 85%;
+  height: 1px;
+  border: none;
+  margin-bottom: 50px;
+  margin-bottom: 5rem;
+  margin-top: 50px;
+  margin-top: 5rem; }
+
+.list-right {
+  float: right;
+  position: relative;
+  right: 75px;
+  right: 7.5rem; }
+  .list-right > ul {
+    list-style: circle inside;
+    min-width: 250px;
+    min-width: 25rem; }
+
+.clear:after {
+  content: "";
+  display: table;
+  clear: both; }
+
+.articles-wrapper {
+  position: relative;
+  bottom: 35px;
+  bottom: 3.5rem; }
+  .articles-wrapper article {
+    margin-bottom: 45px;
+    margin-bottom: 4.5rem; }
+  .articles-wrapper ul {
+    margin-left: 18px;
+    margin-left: 1.8rem; }
+  .articles-wrapper li:before {
+    content: ">  ";
+    color: #AB831D; }
+
+.code-wrapper {
+  position: relative;
+  bottom: 190px;
+  bottom: 19rem;
+  max-width: 500px;
+  max-width: 50rem;
+  margin-top: 20px;
+  margin-top: 2rem; }
+  .code-wrapper code {
+    display: block;
+    width: 100%;
+    position: relative;
+    right: 45px;
+    right: 4.5rem;
+    bottom: 10px;
+    bottom: 1rem; }
+  .code-wrapper pre {
+    color: black;
+    background: #F2C246;
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    -ms-border-radius: 4px;
+    -o-border-radius: 4px;
+    border-radius: 4px;
+    border: 1px solid #FCB705;
+    width: 450px;
+    width: 45rem;
+    height: 200px;
+    height: 20rem;
+    margin-left: 10px;
+    margin-left: 1rem;
+    overflow: hidden; }
+
+.highlight {
+  color: #0085cb; }
+
+.featured-image {
+  border: 1px solid #B5B3B3;
+  display: block;
+  margin: 0 auto; }
+
+footer {
+  background-color: #212121; }
+  footer > a {
+    position: relative;
+    left: 100px;
+    top: 15px; }
+  footer ul {
+    position: relative;
+    bottom: 25px;
+    bottom: 2.5rem; }
+    footer ul li {
+      display: inline-block;
+      padding: 10px;
+      padding: 1rem; }
+      footer ul li:first-of-type {
+        border-right: solid 1px #B5B3B3;
+        padding: 15px;
+        padding: 1.5rem; }
+
+.footer-copy {
+  font-size: 16px;
+  font-size: 1.6rem;
+  font-family: XFINITYSansMedium; }
+
+/*# sourceMappingURL=styles.css.map */
