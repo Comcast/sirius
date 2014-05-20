@@ -20,7 +20,7 @@ version := "1.2.1"
 scalaVersion := "2.10.2"
 
 // Set the artifact names.
-artifactName := { (scalaVersion: String, module: ModuleID, artifact: Artifact) =>
+artifactName := { (scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact) =>
   artifact.`type` match {
     case "jar" => "sirius.jar"
     case "src" => "sirius-sources.jar"
