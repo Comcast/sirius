@@ -3,7 +3,7 @@ layout: default
 title: Sirius by Comcast
 ---
 
-<a name="sirius" class="anchor" href="#sirius"><span class="octicon octicon-link"></span></a>Technical Overview</h1>
+<h1>Technical Overview</h1>
 
 <p>
 At Comcast, our applications need convenient, low-latency access to
@@ -67,10 +67,7 @@ heavy lifting for you.
   publisher becomes unavailable the application still has access to a
   (temporarily) stale mirror of the dataset.</p>
 
-<center>
-<img src="images/arch-diagram.png" alt="System diagram showing overall
-                                        flow of events"/>
-</center>
+<img src="images/arch-diagram.png" alt="System diagram showing overall flow of events"/>
 
 <p>The overall flow is shown in the diagram above. When an application
   receives an update, it hands the update off to Sirius as either a
@@ -102,11 +99,8 @@ the list of cluster members, it participates in the Paxos protocol,
 but if it doesn't, it becomes a follower.
 </p>
 
-<center>
-<img src="images/replication.png"
-     alt="sample cluster architecture illustrating some of the
-     possible replication topologies"/>
-</center>
+<img src="images/replication.png" alt="sample cluster architecture illustrating some of the possible replication topologies"/>
+
 
 <p>
 For example, consider the example shown above showing four different
@@ -176,7 +170,7 @@ the <a href="http://comcast.github.io/sirius/">project
 
 <hr/>
 
-<a name="links" class="anchor" href="#links"><span class="octicon octicon-link"></span></a>Links</h4>
+<h4>Links</h4>
 
 <ul>
 <li><a href="https://github.com/Comcast/sirius/wiki">Sirius Wiki</a></li>
