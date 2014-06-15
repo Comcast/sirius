@@ -100,29 +100,47 @@ LC and/or its suppliers. You may not attempt to copy, install, redistribute, con
 font software. Please contact Webtype with any questions regarding Web Fonts:
 http://www.webtype.com
  */
+
 @font-face {
-    font-family: 'XFINITYSansRegMedium';
-    src: url('/styles/fonts/xfinitysans-med-webfont.eot');
-    src: url('/styles/fonts/xfinitysans-med-webfont.eot?#iefix') format('embedded-opentype'),
-    url('/styles/fonts/xfinitysans-med-webfont.woff') format('woff'),
-    url('/styles/fonts/xfinitysans-med-webfont.ttf') format('truetype'),
+    font-family: 'XFINITYSansBold';
+    src: url('/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot');
+    src: url('/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot?#iefix') format('embedded-opentype'),
+    //url('/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-3.woff.woff') format('woff'),
+    //url('/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-1.ttf') format('truetype'),
+    url('/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-4.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
 }
 
 @font-face {
-    font-family: 'XFINITYSansLgtRegular';
-    src: url('/styles/fonts/xfinity_sans_light_71113.eot');
-    src: url('/styles/fonts/xfinity_sans_light_71113.eot?#iefix') format('embedded-opentype'),
-    url('/styles/fonts/xfinity_sans_light_71113.woff') format('woff'),
-    url('/styles/fonts/xfinity_sans_light_71113.ttf') format('truetype'),
+    font-family: 'XFINITYSansMedium';
+    src: url('/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot');
+    src: url('/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot?#iefix') format('embedded-opentype'),
+    //url('/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-3.woff') format('woff'),
+    //url('/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-1.ttf') format('truetype'),
+    url('/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-4.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
 }
 
 @font-face {
-    font-family: 'XFINITYSansThinRegular';
-    // src: url('/styles/fonts/XFINITYSans-Thin.eot');
-    // src: url('/styles/fonts/XFINITYSans-Thin.eot?#iefix') format('embedded-opentype'),
-    // url('/styles/fonts/XFINITYSans-Thin.woff') format('woff'),
-    // url('/styles/fonts/XFINITYSans-Thin.ttf') format('truetype');
-    src: url('/styles/fonts/hinted-web-versions/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg') format('svg');
+    font-family: 'XFINITYSansLight';
+    src: url('/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot');
+    src: url('/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot?#iefix') format('embedded-opentype'),
+    //url('/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-3.woff') format('woff'),
+    //url('/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-1.ttf') format('truetype'),
+    url('/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-4.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'XFINITYSansThin';
+    src: url('/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot');
+    src: url('/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot?#iefix') format('embedded-opentype'),
+    //url('/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-3.woff') format('woff'),
+    //url('/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-1.ttf') format('truetype'),
+    url('/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg') format('svg');
     font-weight: normal;
     font-style: normal;
 }
@@ -135,7 +153,6 @@ html {
 
 body {
     width: 100%;
-    font-family: XFINITYSansLgtRegular;
 }
 
 a {
@@ -161,6 +178,7 @@ ul {
 }
 
 .body-copy {
+    font-family: XFINITYSansMedium;
     @include rem(font-size, 18px);
     @include rem(line-height, 28px);
 }
@@ -179,7 +197,7 @@ nav {
 .link {
     color: $blue;
     @include rem(font-size, 16px);
-    font-family: XFINITYSansRegMedium;
+    font-family: XFINITYSansBold;
 }
 
 .nav-item {
@@ -204,7 +222,7 @@ nav {
 }
 
 .headline-large {
-    font-family: XFINITYSansThinRegular;
+    font-family: XFINITYSansThin;
     text-align: center;
     @include rem(font-size, 120px);
     @include rem(margin, 55px 55px);
@@ -217,6 +235,7 @@ nav {
 }
 
 .button {
+    font-family: XFINITYSansLight;
     display: inline-block;
     @include rem(font-size, 22px);
     @include rem(padding, 5px 10px 15px 10px);
@@ -249,6 +268,7 @@ nav {
 }
 
 .headline-small {
+    font-family: XFINITYSansLight;
     padding-bottom: 1.5%;
     @include rem(font-size, 28px);
     text-align: center;
@@ -295,6 +315,9 @@ nav {
 
 }
 
+.is-light {
+    font-family: XFINITYSansLight;
+}
 
 hr {
     background: rgba(black, 0.15);
@@ -331,5 +354,5 @@ footer {
 
 .footer-copy {
     font-size: 1.6rem;
-    font-family: XFINITYSansRegMedium;
+    font-family: XFINITYSansMedium;
 }

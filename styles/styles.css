@@ -5,24 +5,34 @@ font software. Please contact Webtype with any questions regarding Web Fonts:
 http://www.webtype.com
  */
 @font-face {
-  font-family: 'XFINITYSansRegMedium';
-  src: url("/styles/fonts/xfinitysans-med-webfont.eot");
-  src: url("/styles/fonts/xfinitysans-med-webfont.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/xfinitysans-med-webfont.woff") format("woff"), url("/styles/fonts/xfinitysans-med-webfont.ttf") format("truetype"); }
+  font-family: 'XFINITYSansBold';
+  src: url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot");
+  src: url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-4.svg") format("svg");
+  font-weight: normal;
+  font-style: normal; }
 @font-face {
-  font-family: 'XFINITYSansLgtRegular';
-  src: url("/styles/fonts/xfinity_sans_light_71113.eot");
-  src: url("/styles/fonts/xfinity_sans_light_71113.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/xfinity_sans_light_71113.woff") format("woff"), url("/styles/fonts/xfinity_sans_light_71113.ttf") format("truetype"); }
+  font-family: 'XFINITYSansMedium';
+  src: url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot");
+  src: url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-4.svg") format("svg");
+  font-weight: normal;
+  font-style: normal; }
 @font-face {
-  font-family: 'XFINITYSansThinRegular';
-  src: url("/styles/fonts/hinted-web-versions/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg") format("svg");
+  font-family: 'XFINITYSansLight';
+  src: url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot");
+  src: url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-4.svg") format("svg");
+  font-weight: normal;
+  font-style: normal; }
+@font-face {
+  font-family: 'XFINITYSansThin';
+  src: url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot");
+  src: url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg") format("svg");
   font-weight: normal;
   font-style: normal; }
 html {
   font-size: 62.5%; }
 
 body {
-  width: 100%;
-  font-family: XFINITYSansLgtRegular; }
+  width: 100%; }
 
 a {
   text-decoration: none; }
@@ -43,6 +53,7 @@ ul {
   color: white; }
 
 .body-copy {
+  font-family: XFINITYSansMedium;
   font-size: 18px;
   font-size: 1.8rem;
   line-height: 28px;
@@ -62,7 +73,7 @@ nav {
   color: #0085cb;
   font-size: 16px;
   font-size: 1.6rem;
-  font-family: XFINITYSansRegMedium; }
+  font-family: XFINITYSansBold; }
 
 .nav-item {
   padding-right: 20px;
@@ -81,7 +92,7 @@ nav {
   margin: 0 auto; }
 
 .headline-large {
-  font-family: XFINITYSansThinRegular;
+  font-family: XFINITYSansThin;
   text-align: center;
   font-size: 120px;
   font-size: 12rem;
@@ -93,6 +104,7 @@ nav {
   padding-left: 15.0015%; }
 
 .button {
+  font-family: XFINITYSansLight;
   display: inline-block;
   font-size: 22px;
   font-size: 2.2rem;
@@ -122,6 +134,7 @@ nav {
   background-color: #e2ad27; }
 
 .headline-small {
+  font-family: XFINITYSansLight;
   padding-bottom: 1.5%;
   font-size: 28px;
   font-size: 2.8rem;
@@ -158,6 +171,9 @@ nav {
   .three:before {
     content: url(/images/icon-computer.png); }
 
+.is-light {
+  font-family: XFINITYSansLight; }
+
 hr {
   background: rgba(0, 0, 0, 0.15);
   width: 85%;
@@ -184,4 +200,4 @@ footer {
 
 .footer-copy {
   font-size: 1.6rem;
-  font-family: XFINITYSansRegMedium; }
+  font-family: XFINITYSansMedium; }
