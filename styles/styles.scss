@@ -1,3 +1,335 @@
+$yellow: #e2ad27;
+$darkgrey: #212121;
+$white: #fff;
+$blue: #0085cb;
+
+//
+//  rem unit with px fallback
+//  @include rem($property, $values)
+//
+//  USAGE:
+
+//  @include rem(font-size, 16px);
+//
+//  outputs:
+//  font-size: 16px;
+//  font-size: 1.6rem;
+//
+//  @include rem(font, bold 10px 'Helvetica');
+//
+//  outputs:
+//  font: bold 10px 'Helvetica';
+//  font: bold 1rem 'Helvetica';
+
+//  @include rem(line-height, 16px);
+
+//  outputs:
+//  line-height: 16px;
+//  line-height: 1.6rem;
+//
+//  @include rem(margin, 0 24px 0 12px);
+//
+//  outputs:
+//  margin: 0 24px 0 12px;
+//  margin: 0 2.4rem 0 1.2rem;
+
+$baseFontSize: 10; /* html { font-size: 62.5%; } */
+
+@function parseInt($n) {
+  @return $n / ($n * 0 + 1);
+}
+
+@mixin rem($property, $values) {
+    $px : ();
+    $rem: ();
+
+    $root: $baseFontSize;
+
+    @each $value in $values {
+        @if $value == 0 or $value == auto {
+            $px : append($px , $value);
+            $rem: append($rem, $value);
+        }
+
+        @else if type-of($value) == number and( unit($value) == "px" or unit($value) == "rem" ){
+            $unit: unit($value);
+            $val: parseInt($value);
+
+            @if $unit == "px" {
+                $px : append($px,  $value);
+                $rem: append($rem, ($val / $root + rem));
+            }
+
+            @if $unit == "rem" {
+                $px : append($px,  ($val * $root + px));
+                $rem: append($rem, $value);
+            }
+        }
+
+        @else {
+            $px : append($px,  $value);
+            $rem: append($rem, $value);
+        }
+    }
+
+    @if $px == $rem {
+        #{$property}: $px;
+    } @else {
+        #{$property}: $px;
+        #{$property}: $rem;
+    }
+}
+
+@function rem($value) {
+    $root: $baseFontSize;
+    $val: parseInt($value);
+    $return: ();
+
+    @if unit($value) == "px" {
+        $return: append($return, ($val / $root + rem));
+    } @else {
+        $return: append($return, ($val * $root + px));
+    }
+
+    @return $return;
+}
+
+// FONTS //
+/* This CSS resource incorporates links to font software which is the valuable copyrighted property of Webtype L
+LC and/or its suppliers. You may not attempt to copy, install, redistribute, convert, modify or reverse engineer this
+font software. Please contact Webtype with any questions regarding Web Fonts:
+http://www.webtype.com
+ */
+@font-face {
+    font-family: 'XFINITYSansRegMedium';
+    src: url('/styles/fonts/xfinitysans-med-webfont.eot');
+    src: url('/styles/fonts/xfinitysans-med-webfont.eot?#iefix') format('embedded-opentype'),
+    url('/styles/fonts/xfinitysans-med-webfont.woff') format('woff'),
+    url('/styles/fonts/xfinitysans-med-webfont.ttf') format('truetype'),
+}
+
+@font-face {
+    font-family: 'XFINITYSansLgtRegular';
+    src: url('/styles/fonts/xfinity_sans_light_71113.eot');
+    src: url('/styles/fonts/xfinity_sans_light_71113.eot?#iefix') format('embedded-opentype'),
+    url('/styles/fonts/xfinity_sans_light_71113.woff') format('woff'),
+    url('/styles/fonts/xfinity_sans_light_71113.ttf') format('truetype'),
+}
+
+@font-face {
+    font-family: 'XFINITYSansThinRegular';
+    // src: url('/styles/fonts/XFINITYSans-Thin.eot');
+    // src: url('/styles/fonts/XFINITYSans-Thin.eot?#iefix') format('embedded-opentype'),
+    // url('/styles/fonts/XFINITYSans-Thin.woff') format('woff'),
+    // url('/styles/fonts/XFINITYSans-Thin.ttf') format('truetype');
+    src: url('/styles/fonts/hinted-web-versions/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+// STYLES //
+
+html {
+    font-size: 62.5%; //sets base 10 for rem mixin
+}
+
 body {
-	color: red;
+    width: 100%;
+    font-family: XFINITYSansLgtRegular;
+}
+
+a {
+    text-decoration: none;
+}
+
+ul {
+    padding: 0;
+}
+
+.global-padding {
+    padding-right: 5%;
+    padding-left: 5%;
+    padding-top: 3%;
+    padding-bottom: 5%;
+    -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+
+.white {
+    color: $white;
+}
+
+.body-copy {
+    @include rem(font-size, 18px);
+    @include rem(line-height, 28px);
+}
+
+.logo {
+    position: relative;
+    @include rem(bottom, 12px);
+}
+
+nav {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+.link {
+    color: $blue;
+    @include rem(font-size, 16px);
+    font-family: XFINITYSansRegMedium;
+}
+
+.nav-item {
+    @include rem(padding-right, 20px);
+}
+
+.module {
+
+    > p {
+        @include rem(max-width, 690px);
+        text-align: center;
+    }
+}
+
+.textured-background {
+    background: url(/images/top-background.jpg) no-repeat fixed;
+    background-size: cover;
+}
+
+.centered {
+    margin: 0 auto;
+}
+
+.headline-large {
+    font-family: XFINITYSansThinRegular;
+    text-align: center;
+    @include rem(font-size, 120px);
+    @include rem(margin, 55px 55px);
+}
+
+.button-wrapper {
+    $buttonWrapperWidth: 50%;
+    max-width: $buttonWrapperWidth;
+    padding-left: $buttonWrapperWidth / 3.333;
+}
+
+.button {
+    display: inline-block;
+    @include rem(font-size, 22px);
+    @include rem(padding, 5px 10px 15px 10px);
+    @include rem(margin-right, 30px);
+    @include rem(margin-top, 60px);
+
+    &:hover, &:focus {
+        background-color: #94a0a6;
+        background-color: rgba(black, 0.4);
+        @include rem(border-radius, 5px);
+    }
+
+    &:before {
+        margin-right: 10px;
+        position: relative;
+        top: 8px;
+    }
+}
+
+.download:before {
+    content: url('/images/arrow-down.png');
+}
+
+.go:before {
+    content: url('/images/arrow-right.png');
+}
+
+.featured-content {
+    background-color: $yellow;
+}
+
+.headline-small {
+    padding-bottom: 1.5%;
+    @include rem(font-size, 28px);
+    text-align: center;
+}
+
+.tiles {
+    text-align: center;
+    margin: 0 0;
+    padding: 0 0;
+
+    > li {
+        display: inline-block;
+        vertical-align: top;
+    }
+
+    li {
+        list-style: none;
+    }
+}
+
+.tile {
+    padding: 0 0;
+    -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+    @include rem(max-width, 300px);
+    @include rem(margin-right, 100px);
+}
+
+.one:before {
+    content: url(/images/icon-lightning.png);
+}
+
+.two:before {
+    content: url(/images/icon-replication.png);
+}
+
+.three {
+    margin-right: 0;
+
+    &:before {
+        content: url(/images/icon-computer.png);
+    }
+
+}
+
+
+hr {
+    background: rgba(black, 0.15);
+    width: 85%;
+    height: 1px;
+    border: none;
+    margin-bottom: 5rem;
+    margin-top: 5rem;
+}
+
+.centered-list {
+    list-style: none;
+    text-align: center;
+    margin: 0;
+}
+
+footer {
+    background-color: $darkgrey;
+
+    ul {
+        padding-top: 100px;
+    }
+
+    li {
+        display: inline-block;
+        vertical-align: top;
+    }
+
+    img {
+        position: relative;
+        bottom: 40px;
+    }
+}
+
+.footer-copy {
+    font-size: 1.6rem;
+    font-family: XFINITYSansRegMedium;
 }
