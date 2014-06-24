@@ -3,182 +3,115 @@ layout: default
 title: Sirius by Comcast
 ---
 
-<h1>Technical Overview</h1>
+</div><!-- closing div from header.html for background-->
 
-<p>
-At Comcast, our applications need convenient, low-latency access to
-important <em>reference datasets</em>. For example,
-our <a href="http://xfinitytv.comcast.net/">XfinityTV</a> websites and
-apps need to use entertainment-related data to serve almost every API
-or web request to our datacenters: information like what
-year <em>Casablanca</em> was released, or how many episodes were in
-Season 7 of <em>Seinfeld</em>, or when the next episode of the Voice
-will be airing (and on which channel!).</p>
+<section class="module global-padding featured-content body-copy">
 
-<p>We traditionally managed this information with a combination of
-  relational databases and RESTful web services but yearned for
-  something simpler than the ORM, HTTP client, and cache management
-  code our developers dealt with on a daily basis. As main memory
-  sizes on commodity servers continued to grow, however, we asked
-  ourselves:
-<blockquote>
-How can we keep this reference data entirely in RAM, while ensuring it
-gets updated as needed and is easily accessible to application developers?
-</blockquote>
-</p>
+  <h1 class="headline-small">Technical Overview</h1>
 
-<p>The Sirius distributed system library is our answer to that question, and 
-  we're happy to announce that we've made it available as
-  an <a href="http://comcast.github.io/sirius/">open source
-  project</a>. Sirius is written in Scala and uses the Akka actor
-  system under the covers, but is easily usable by any JVM-based
-  language.</p>
+  <p>At Comcast, our applications need convenient, low-latency access to important <em>reference datasets</em>. For example, our <a href="http://xfinitytv.comcast.net/">XfinityTV</a> websites and apps need to use entertainment-related data to serve almost every API or web request to our datacenters: information like what year <em>Casablanca</em> was released, or how many episodes were in Season 7 of <em>Seinfeld</em>, or when the next episode of The Voice will be airing (and on which channel)!</p>
 
-<h2>Features</h2>
+  <p>We traditionally managed this information with a combination of relational databases and RESTful web services but yearned for something simpler than the ORM, HTTP client, and cache management code our developers dealt with on a daily basis. As main memory sizes on commodity servers continued to grow, however, we asked ourselves:</p>
+  
+  <blockquote> How can we keep this reference data entirely in RAM, while ensuring it
+  gets updated as needed and is easily accessible to application developers? </blockquote>
 
-<p>Sirius offers developers the following combination of
-  properties:</p>
+  <p>The Sirius distributed system library is our answer to that question. Sirius is written in Scala and uses the Akka actor system under the covers, but is easily usable by any JVM-based language.</p>
 
-<ul>
-<li><strong>Simple and semantically transparent interface</strong> for
-  application developers, including the freedom to use arbitrary,
-  native data structures for the in-memory representation of the
-  reference data.</li>
-<li><strong>Eventually consistent, near real-time replication</strong>
-  of reference data updates, even across wide-area networks between
-  datacenters.</li>
-<li><strong>Persistence management</strong> and <strong>automated
-    recovery</strong> after application restarts.
-</ul>
+  <h2 class="headline-small">Features</h2>
 
-<p>
-In short, Sirius gives you access to your reference data with
-arbitrary, native data structures while handling the distributed system
-heavy lifting for you.
-</p>
+  <p>Sirius offers developers the following combination of properties:</p>
 
-<h2>System Architecture</h2>
+  <ul>
+    <li><strong>Simple and semantically transparent interface</strong> for application developers, including the freedom to use arbitrary, native data structures for the in-memory representation of the reference data.
+    </li>
+    <li>
+      <strong>Eventually consistent, near real-time replication</strong> of reference data updates, even across wide-area networks between datacenters.
+    </li>
+    <li>
+      <strong>Persistence management</strong> and <strong>automated recovery</strong> after application restarts.
+    </li>
+  </ul>
 
-<p>Sirius is built around a model where an external
-  system of record (or an intermediate) is responsible for <em>publishing</em>
-  updates into an application cluster. This push-based model inverts
-  the usual pull-based model and provides two major benefits: (1) a
-  simple library interface; and (2) easy degradation&mdash;if the
-  publisher becomes unavailable the application still has access to a
-  (temporarily) stale mirror of the dataset.</p>
+  <p>In short, Sirius gives you access to your reference data with arbitrary, native data structures while handling the distributed system heavy lifting for you.</p>
 
-<img src="images/arch-diagram.png" alt="System diagram showing overall flow of events"/>
+  <h2 class="headline-small">System Architecture</h2>
 
-<p>The overall flow is shown in the diagram above. When an application
-  receives an update, it hands the update off to Sirius as either a
-  &quot;PUT&quot; or &quot;DELETE&quot;&mdash;Sirius provides a
-  straightforward key-value interface. Sirius then uses the Paxos
-  protocol to assign the update a globally consistent sequence number
-  and ensure it gets replicated to all cluster members; updates are
-  also recorded in local transaction logs. Finally, Sirius invokes a
-  callback, one update at a time, to let the application know it can
-  update its in-memory mirror (affectionately called the application's
-  &quot;brain&quot; by our developers). This same callback is used
-  when replaying a log to rebuild the application's brain at startup
-  time.</p>
+  <p>Sirius is built around a model where an external system of record (or an intermediate) is responsible for publishing updates into an application cluster. This push-based model inverts the usual pull-based model and provides two major benefits:</p>
+    <p>(1) a simple library interface <br />
+    (2) easy degradation&mdash;if the publisher becomes unavailable the application still has access to a (temporarily) stale mirror of the dataset.</p>
 
-<p>On the read path, the application can simply read directly from the
-  native data structures in its brain, providing convenient,
-  low-latency access.</p>
+  <img src="images/arch-diagram.png" alt="System diagram showing overall flow of events"/>
 
-<h2>Replication</h2>
-<p>Sirius also provides a mechanism for very flexible replication topologies.
-Our implementation includes a catch-up protocol to allow
-  participating cluster members to retrieve missing updates from other
-  nodes (whether due to lost messages or because a server was offline
-  temporarily). We are able to re-use this same protocol to provide
-  for passive cluster members that do not participate in Paxos but
-  rather just play the role of "fast followers." Sirius cluster members
-are currently statically configured; if a server finds its address in
-the list of cluster members, it participates in the Paxos protocol,
-but if it doesn't, it becomes a follower.
-</p>
+  <p>The overall flow is shown in the diagram above. When an application receives an update, it hands the update off to Sirius as either a &quot;PUT&quot; or &quot;DELETE&quot;&mdash;Sirius provides a straightforward key-value interface. Sirius then uses the Paxos protocol to assign the update a globally consistent sequence number and ensure it gets replicated to all cluster members; updates are also recorded in local transaction logs. Finally, Sirius invokes a callback, one update at a time, to let the application know it can update its in-memory mirror (affectionately called the application's &quot;brain&quot; by our developers). This same callback is used when replaying a log to rebuild the application's brain at startup time.</p>
 
-<img src="images/replication.png" alt="sample cluster architecture illustrating some of the possible replication topologies"/>
+  <p>On the read path, the application can simply read directly from the native data structures in its brain, providing convenient, low-latency access.</p>
+
+  <h2 class="headline-small">Replication</h2>
+
+  <p>Sirius also provides a mechanism for very flexible replication topologies. Our implementation includes a catch-up protocol to allow participating cluster members to retrieve missing updates from other nodes (whether due to lost messages or because a server was offline temporarily). We are able to re-use this same protocol to provide for passive cluster members that do not participate in Paxos but rather just play the role of "fast followers." Sirius cluster members are currently statically configured; if a server finds its address in the list of cluster members, it participates in the Paxos protocol, but if it doesn't, it becomes a follower.</p>
+
+  <img src="images/replication.png" alt="sample cluster architecture illustrating some of the possible replication topologies"/>
 
 
-<p>
-For example, consider the example shown above showing four different
-clusters (possibly in different datacenters) labeled A-D. Clusters, A,
-B, and C could all have the same configuration containing just the
-servers in cluster A. This causes cluster A to run Paxos, but the
-members of clusters B and C to periodically catch up from randomly
-selected members of A. Meanwhile, cluster D could be configured with a
-membership list containing all the members of clusters B and C; this
-will cause the D nodes to catch up from randomly selected members of
-both clusters (even though neither of them is actually the primary
-Paxos cluster).
-</p>
-<p>
-Sirius thus lets you set up very a very flexible mesh of replication
-so that you could scale a Paxos &quot;ingest&quot; cluster separately
-from clusters that serve clients directly&mdash;possibly even
-different applications with a need for the same reference dataset.
-</p>
+  <p>For example, consider the example shown above showing four different clusters (possibly in different datacenters) labeled A-D. Clusters, A, B, and C could all have the same configuration containing just the servers in cluster A. This causes cluster A to run Paxos, but the members of clusters B and C to periodically catch up from randomly selected members of A. Meanwhile, cluster D could be configured with a membership list containing all the members of clusters B and C; this will cause the D nodes to catch up from randomly selected members of both clusters (even though neither of them is actually the primary Paxos cluster).</p>
 
+  <p>Sirius thus lets you set up very a very flexible mesh of replication so that you could scale a Paxos &quot;ingest&quot; cluster separately from clusters that serve clients directly&mdash;possibly even different applications with a need for the same reference dataset.</p>
 
-<h2>Operational Experiences</h2>
+  <h2 class="headline-small">Operational Experiences</h2>
 
-<p>Multiple teams and products within Comcast have been using
-  Sirius-enabled applications in production since August
-  2012&mdash;nearly two years with relatively few problems. Sirius was
-  designed to be operationally friendly from the beginning and
-  includes:
-<ul>
-<li>automatic compaction and management of the local transaction
-  logs</li>
-<li>command-line tools for working with the logs</li>
-<li>automatic registration of operational metrics via JMX if provided
-  with an MBean server</li>
-<li>graceful degradation during many types of failures and automatic recovery
-  afterwards</li>
-</ul>
-</p>
+  <p>Multiple teams and products within Comcast have been using Sirius-enabled applications in production since August 2012&mdash;nearly two years with relatively few problems. Sirius was designed to be operationally friendly from the beginning and includes:</p>
 
-<h2>Learn More</h2>
-<p>We've written a
-  detailed <a href="https://github.com/Comcast/sirius/wiki/Getting+started+with+Sirius">Getting
-  Started Guide</a> that includes a
-  simple <a href="https://github.com/Comcast/sirius-reference-app">reference
-  application</a> so you can see how Sirius works. You should also
-  check
-  out <a href="https://github.com/Comcast/sirius/wiki/When-to-use-Sirius">when
-  to use Sirius</a> to see if your use case is a good fit.</p>
-<p>Sirius is also available from Maven central as:
-<pre>
-&lt;dependency>
-  &lt;groupId>com.comcast&lt;/groupId>
-  &lt;artifactId>sirius&lt;/artifactId>
-  &lt;version>1.2.0&lt;/version>
-&lt;/dependency>
-</pre>
-or you can grab a tarball or zip file from
-the <a href="http://comcast.github.io/sirius/">project
-  homepage</a>.</p>
+  <ul>
+    <li>automatic compaction and management of the local transaction logs</li>
+    <li>command-line tools for working with the logs</li>
+    <li>automatic registration of operational metrics via JMX if provided with an MBean server</li>
+    <li>graceful degradation during many types of failures and automatic recovery afterwards</li>
+  </ul>
+ 
+  <h2 class="headline-small">Learn More</h2>
 
-<h2>Contributors Wanted!</h2>
-<p>We're keen to get your feedback and pull requests on the main
-  <a href="https://github.com/Comcast/sirius">project repository at
-  Github</a>. If you are interested in building robust distributed
-  systems like Sirius, you should also head on over to our <a href="http://jobs.comcast.com/en/job-opportunities/technology">jobs
-  site!</a></p>
+  <p>We've written a detailed <a href="https://github.com/Comcast/sirius/wiki/Getting+started+with+Sirius">Getting Started Guide</a> that includes a simple <a href="https://github.com/Comcast/sirius-reference-app">reference application</a> so you can see how Sirius works. You should also check out <a href="https://github.com/Comcast/sirius/wiki/When-to-use-Sirius">when to use Sirius</a> to see if your use case is a good fit.</p>
 
-<hr/>
+  <p>Sirius is also available from Maven central as:</p>
+  
+  <pre>
+  &lt;dependency>
+    &lt;groupId>com.comcast&lt;/groupId>
+    &lt;artifactId>sirius&lt;/artifactId>
+    &lt;version>1.2.0&lt;/version>
+  &lt;/dependency>
+  </pre>
 
-<h4>Links</h4>
+  <p>or you can grab a tarball or zip file from the <a href="http://comcast.github.io/sirius/">project homepage</a>.</p>
 
-<ul>
-<li><a href="https://github.com/Comcast/sirius/wiki">Sirius Wiki</a></li>
-<li><a href="https://github.com/Comcast/sirius/wiki/Getting+started+with+Sirius">Getting started with Sirius</a></li>
-<li><a href="https://github.com/Comcast/sirius/wiki/Configuring+Sirius">Configuring Sirius</a></li>
-<li><a href="https://github.com/Comcast/sirius/wiki/How+to+deploy+Sirius">How to deploy Sirius</a></li>
-<li><a href="https://github.com/Comcast/sirius/blob/master/CONTRIBUTING.md">Contributing Guidelines</a></li>
-<li><a href="https://github.com/Comcast/sirius/blob/master/LICENSE">License</a></li>
-</ul>
+  <h2 class="headline-small">Contributors Wanted!</h2>
+
+  <p>We're keen to get your feedback and pull requests on the main <a href="https://github.com/Comcast/sirius">project repository at Github</a>. If you are interested in building robust distributed systems like Sirius, you should also head on over to our <a href="http://jobs.comcast.com/en/job-opportunities/technology">jobs site!</a></p>
+
+  <hr/>
+
+  <h4>Links</h4>
+
+  <ul>
+    <li>
+      <a class="link" href="https://github.com/Comcast/sirius/wiki">Sirius Wiki</a>
+    </li>
+    <li>
+      <a class="link" href="https://github.com/Comcast/sirius/wiki/Getting+started+with+Sirius">Getting started with Sirius</a>
+    </li>
+    <li>
+      <a class="link" href="https://github.com/Comcast/sirius/wiki/Configuring+Sirius">Configuring Sirius</a>
+    </li>
+    <li>
+      <a class="link" href="https://github.com/Comcast/sirius/wiki/How+to+deploy+Sirius">How to deploy Sirius</a>
+    </li>
+    <li>
+      <a class="link" href="https://github.com/Comcast/sirius/blob/master/CONTRIBUTING.md">Contributing Guidelines</a>
+    </li>
+    <li>
+      <a class="link" href="https://github.com/Comcast/sirius/blob/master/LICENSE">License</a>
+    </li>
+  </ul>
 </section>
         
