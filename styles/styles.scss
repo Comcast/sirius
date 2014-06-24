@@ -225,7 +225,6 @@ nav {
     font-family: XFINITYSansThin;
     text-align: center;
     @include rem(font-size, 120px);
-    @include rem(margin, 55px 55px);
 }
 
 .button-wrapper {

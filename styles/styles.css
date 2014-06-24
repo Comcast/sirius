@@ -95,9 +95,7 @@ nav {
   font-family: XFINITYSansThin;
   text-align: center;
   font-size: 120px;
-  font-size: 12rem;
-  margin: 55px 55px;
-  margin: 5.5rem 5.5rem; }
+  font-size: 12rem; }
 
 .button-wrapper {
   max-width: 50%;
