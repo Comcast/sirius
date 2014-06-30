@@ -25,3 +25,7 @@ allowing I/O-free access to shared information.
 * [How to deploy Sirius](https://github.com/Comcast/sirius/wiki/How+to+deploy+Sirius)
 * [Contributing Guidelines](https://github.com/Comcast/sirius/blob/master/CONTRIBUTING.md)
 * [License](https://github.com/Comcast/sirius/blob/master/LICENSE)
+
+####Questions, Comments, Bugs and More
+* [Found a bug or file a feature request](https://github.com/Comcast/sirius/issues)
+* [Ask a question about using Sirius](http://stackoverflow.com/search?tab=newest&q=sirius)
