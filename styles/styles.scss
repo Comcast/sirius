@@ -1,5 +1,7 @@
 $yellow: #e2ad27;
+$lightyellow: #F2C246;
 $darkgrey: #212121;
+$lightgrey: #B5B3B3;
 $white: #fff;
 $blue: #0085cb;
 
@@ -155,11 +157,25 @@ body {
     width: 100%;
 }
 
+header > nav {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
 a {
     text-decoration: none;
+    color: $blue;
+    @include rem(font-size, 16px);
+    font-family: XFINITYSansBold;
+}
+
+p > a {
+   @include rem(font-size, 18px); 
 }
 
 ul {
+    list-style: none;
     padding: 0;
 }
 
@@ -188,25 +204,17 @@ ul {
     @include rem(bottom, 12px);
 }
 
-nav {
-    position: absolute;
-    right: 0;
-    top: 0;
-}
-
-.link {
-    color: $blue;
-    @include rem(font-size, 16px);
-    font-family: XFINITYSansBold;
-}
-
 .nav-item {
     @include rem(padding-right, 20px);
+
+    &:last-of-type {
+        padding-right: 0;
+    }
 }
 
 .module {
 
-    > p {
+    > p.white {
         @include rem(max-width, 690px);
         text-align: center;
     }
@@ -219,6 +227,7 @@ nav {
 
 .centered {
     margin: 0 auto;
+    text-align: center;
 }
 
 .headline-large {
@@ -227,19 +236,29 @@ nav {
     @include rem(font-size, 120px);
 }
 
+.headline-medium {
+    font-family: XFINITYSansThin;
+    text-align: center;
+    @include rem(font-size, 70px);
+}
+
 .button-wrapper {
     $buttonWrapperWidth: 50%;
     max-width: $buttonWrapperWidth;
     padding-left: $buttonWrapperWidth / 3.333;
+
+    > .button {
+    @include rem(margin-top, 60px);
+    @include rem(padding, 5px 10px 15px 10px);
+    }
 }
 
 .button {
     font-family: XFINITYSansLight;
     display: inline-block;
     @include rem(font-size, 22px);
-    @include rem(padding, 5px 10px 15px 10px);
     @include rem(margin-right, 30px);
-    @include rem(margin-top, 60px);
+    @include rem(padding, 10px 10px);
 
     &:hover, &:focus {
         background-color: #94a0a6;
@@ -254,23 +273,41 @@ nav {
     }
 }
 
-.download:before {
+.icon-download:before {
     content: url('/images/arrow-down.png');
 }
 
-.go:before {
+.icon-go:before {
     content: url('/images/arrow-right.png');
 }
 
 .featured-content {
     background-color: $yellow;
+
+    &:nth-of-type(2) {
+        background-color: $lightyellow;
+        border-top: 1px solid $darkgrey;
+    }
 }
 
-.headline-small {
+.headline-small-centered {
     font-family: XFINITYSansLight;
     padding-bottom: 1.5%;
     @include rem(font-size, 28px);
     text-align: center;
+}
+
+// @TODO - refactor centered text classes
+
+.headline-small-left {
+    font-family: XFINITYSansLight;
+    margin: 0;
+    @include rem(font-size, 28px);
+}
+
+p.headline-small-left {
+    max-width: 71%;
+    float: left;
 }
 
 .tiles {
@@ -281,10 +318,6 @@ nav {
     > li {
         display: inline-block;
         vertical-align: top;
-    }
-
-    li {
-        list-style: none;
     }
 }
 
@@ -314,7 +347,7 @@ nav {
 
 }
 
-.is-light {
+.light {
     font-family: XFINITYSansLight;
 }
 
@@ -327,10 +360,42 @@ hr {
     margin-top: 5rem;
 }
 
-.centered-list {
-    list-style: none;
-    text-align: center;
-    margin: 0;
+.list-right {
+    float: right;
+    position: relative;
+    @include rem(right, 75px);
+
+    > ul {
+        list-style: circle inside;
+        @include rem(min-width, 250px);
+    }
+}
+
+.clear:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.articles-wrapper {
+    position: relative;
+    @include rem(bottom, 35px);
+
+    ul {
+        @include rem(margin-left, 18px);
+    }
+
+    li:before {
+        content: ">  ";
+        color: #AB831D;
+    }
+
+}
+
+.featured-image {
+    border: 1px solid $lightgrey;
+    display: block;
+    margin: 0 auto;
 }
 
 footer {
