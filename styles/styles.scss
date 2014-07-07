@@ -218,6 +218,7 @@ code {
 }
 
 .module {
+    margin: 0;
 
     > p.white {
         @include rem(max-width, 690px);
@@ -436,6 +437,7 @@ footer {
     background-color: $darkgrey;
 
     ul {
+        margin: 0;
         @include rem(padding-top, 100px);
     }
 

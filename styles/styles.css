@@ -90,10 +90,12 @@ code {
   .nav-item:last-of-type {
     padding-right: 0; }
 
-.module > p.white {
-  max-width: 690px;
-  max-width: 69rem;
-  text-align: center; }
+.module {
+  margin: 0; }
+  .module > p.white {
+    max-width: 690px;
+    max-width: 69rem;
+    text-align: center; }
 
 .textured-background {
   background: url(/images/top-background.jpg) no-repeat fixed;
@@ -281,6 +283,7 @@ hr {
 footer {
   background-color: #212121; }
   footer ul {
+    margin: 0;
     padding-top: 100px;
     padding-top: 10rem; }
   footer li {
