@@ -293,22 +293,18 @@ code {
     }
 }
 
-.headline-small-centered {
+.headline-small {
     font-family: XFINITYSansLight;
     @include rem(padding, 10px);
     @include rem(font-size, 28px);
-    text-align: center;
-}
-
-// @TODO - refactor centered text classes
-
-.headline-small-left {
-    font-family: XFINITYSansLight;
     margin: 0;
-    @include rem(font-size, 28px);
 }
 
-p.headline-small-left {
+.headline-fancy {
+    border-left: 3px solid $blue;
+}
+
+p.headline-small {
     max-width: 71%;
     float: left;
 }
@@ -383,6 +379,10 @@ hr {
 .articles-wrapper {
     position: relative;
     @include rem(bottom, 35px);
+
+    article {
+        @include rem(margin-bottom, 45px);
+    }
 
     ul {
         @include rem(margin-left, 18px);

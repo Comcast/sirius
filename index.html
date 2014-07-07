@@ -25,7 +25,7 @@ title: Sirius by Comcast
     <li>
       <ul class="tile one">
         <li>
-          <h1 class="headline-small-centered">Simple, transparent library interface</h1>
+          <h1 class="headline-small centered">Simple, transparent library interface</h1>
         </li>
         <li>
           <p class="body-copy light">Arrange your data in the native data structures of your choice, and let Sirius feed the updates to your application code.</p>
@@ -35,7 +35,7 @@ title: Sirius by Comcast
     <li>
       <ul class="tile two">
         <li>
-          <h1 class="headline-small-centered">Eventually consistent replication</h1>
+          <h1 class="headline-small centered">Eventually consistent replication</h1>
         </li>
         <li>
           <p class="body-copy light">Sirius handles replicating updates&mdash;even across wide-area networks&mdash;in a consistent order across every member of an application cluster.</p>
@@ -45,7 +45,7 @@ title: Sirius by Comcast
     <li>
       <ul class="tile three">
         <li>
-          <h1 class="headline-small-centered">Persistence and automated recovery</h1>
+          <h1 class="headline-small centered">Persistence and automated recovery</h1>
         </li>
         <li>
           <p class="body-copy light">Sirius stores and maintains local update logs and uses them to rebuild your in-memory state after an application restart.</p>
@@ -58,11 +58,11 @@ title: Sirius by Comcast
   <hr/>
 
   <div class="clear">
-    <p class="headline-small-left">In short, Sirius gives you access to your reference data with arbitrary, native <br />data structures while handling the distributed system
+    <p class="headline-small">In short, Sirius gives you access to your reference data with arbitrary, native <br />data structures while handling the distributed system
     heavy lifting for you.</p>
 
     <aside class="list-right">
-      <h1 class="headline-small-left">Next Steps:</h1>
+      <h1 class="headline-small">Next Steps:</h1>
 
       <ul class="body-copy">
         <li>
@@ -91,7 +91,7 @@ title: Sirius by Comcast
   </div>
 
   <div class="code-wrapper">
-    <h1 class="headline-small-left">Maven Central:</h1>
+    <h1 class="headline-small">Maven Central:</h1>
       
     <pre>
       <code>
@@ -130,7 +130,7 @@ title: Sirius by Comcast
     </article>
 
     <article id="features">
-      <h2 class="headline-small-centered">Features</h2>
+      <h2 class="headline-small headline-fancy">Features</h2>
 
       <p class="body-copy light">Sirius offers developers the following combination of properties:</p>
 
@@ -149,7 +149,7 @@ title: Sirius by Comcast
     </article>
 
     <article id="system-architecture">
-      <h2 class="headline-small-centered">System Architecture</h2>
+      <h2 class="headline-small headline-fancy">System Architecture</h2>
 
       <p class="body-copy light">Sirius is built around a model where an external system of record (or an intermediate) is responsible for publishing updates into an application cluster. This push-based model inverts the usual pull-based model and provides two major benefits:</p>
         <p class="body-copy light">(1) a simple library interface <br />
@@ -163,7 +163,7 @@ title: Sirius by Comcast
     </article>
 
     <article id="replication">
-      <h2 class="headline-small-centered">Replication</h2>
+      <h2 class="headline-small headline-fancy">Replication</h2>
 
       <p class="body-copy light">Sirius also provides a mechanism for very flexible replication topologies. Our implementation includes a catch-up protocol to allow participating cluster members to retrieve missing updates from other nodes (whether due to lost messages or because a server was offline temporarily). We are able to re-use this same protocol to provide for passive cluster members that do not participate in Paxos but rather just play the role of "fast followers." Sirius cluster members are currently statically configured; if a server finds its address in the list of cluster members, it participates in the Paxos protocol, but if it doesn't, it becomes a follower.</p>
 
@@ -175,7 +175,7 @@ title: Sirius by Comcast
     </article>
 
     <article id="operational-experiences">
-      <h2 class="headline-small-centered">Operational Experiences</h2>
+      <h2 class="headline-small headline-fancy">Operational Experiences</h2>
 
       <p class="body-copy light">Multiple teams and products within Comcast have been using Sirius-enabled applications in production since August 2012&mdash;nearly two years with relatively few problems. Sirius was designed to be operationally friendly from the beginning and includes:</p>
 
@@ -188,9 +188,9 @@ title: Sirius by Comcast
     </article>
    
     <hr/>
-   
+
     <article>
-      <h2 class="headline-small-centered">Contributors Wanted!</h2>
+      <h2 class="headline-small headline-fancy">Contributors Wanted!</h2>
 
       <p class="body-copy light">We're keen to get your feedback and pull requests on the main <a href="https://github.com/Comcast/sirius">project repository at Github</a>. If you are interested in building robust distributed systems like Sirius, you should also head on over to our <a href="http://jobs.comcast.com/en/job-opportunities/technology">jobs site!</a></p>
     </article>

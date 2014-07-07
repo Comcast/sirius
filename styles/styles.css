@@ -157,21 +157,18 @@ code {
     background-color: #f2c246;
     border-top: 1px solid #212121; }
 
-.headline-small-centered {
+.headline-small {
   font-family: XFINITYSansLight;
   padding: 10px;
   padding: 1rem;
   font-size: 28px;
   font-size: 2.8rem;
-  text-align: center; }
+  margin: 0; }
 
-.headline-small-left {
-  font-family: XFINITYSansLight;
-  margin: 0;
-  font-size: 28px;
-  font-size: 2.8rem; }
+.headline-fancy {
+  border-left: 3px solid #0085cb; }
 
-p.headline-small-left {
+p.headline-small {
   max-width: 71%;
   float: left; }
 
@@ -236,6 +233,9 @@ hr {
   position: relative;
   bottom: 35px;
   bottom: 3.5rem; }
+  .articles-wrapper article {
+    margin-bottom: 45px;
+    margin-bottom: 4.5rem; }
   .articles-wrapper ul {
     margin-left: 18px;
     margin-left: 1.8rem; }
