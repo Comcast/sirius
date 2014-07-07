@@ -269,9 +269,9 @@ code {
     }
 
     &:before {
-        margin-right: 10px;
         position: relative;
-        top: 8px;
+        @include rem(top, 8px);
+        @include rem(margin-right, 10px);
     }
 }
 
@@ -358,8 +358,8 @@ hr {
     width: 85%;
     height: 1px;
     border: none;
-    margin-bottom: 5rem;
-    margin-top: 5rem;
+    @include rem(margin-bottom, 50px);
+    @include rem(margin-top, 50px);
 }
 
 .list-right {
@@ -396,15 +396,15 @@ hr {
 
 .code-wrapper {
     position: relative;
-    bottom: 125px;
-    max-width: 500px;
+    @include rem(bottom, 125px);
+    @include rem(max-width, 500px);
 
     code {
         display: block;
         width: 100%;
         position: relative;
-        right: 45px;
-        bottom: 10px;
+        @include rem(right, 45px);
+        @include rem(bottom, 10px);
     }
 
     pre {
@@ -416,8 +416,8 @@ hr {
         -o-border-radius: 4px;
         border-radius: 4px;
         border: 1px solid #FCB705;
-        width: 450px;
-        height: 200px;
+        @include rem(width, 450px);
+        @include rem(height, 200px);
         overflow: hidden;
     }
 }
@@ -436,7 +436,7 @@ footer {
     background-color: $darkgrey;
 
     ul {
-        padding-top: 100px;
+        @include rem(padding-top, 100px);
     }
 
     li {
@@ -446,11 +446,11 @@ footer {
 
     img {
         position: relative;
-        bottom: 40px;
+        @include rem(bottom, 40px);
     }
 }
 
 .footer-copy {
-    font-size: 1.6rem;
+    @include rem(font-size, 16px);
     font-family: XFINITYSansMedium;
 }

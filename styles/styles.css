@@ -137,9 +137,11 @@ code {
     border-radius: 5px;
     border-radius: 0.5rem; }
   .button:before {
-    margin-right: 10px;
     position: relative;
-    top: 8px; }
+    top: 8px;
+    top: 0.8rem;
+    margin-right: 10px;
+    margin-right: 1rem; }
 
 .icon-download:before {
   content: url("/images/arrow-down.png"); }
@@ -208,7 +210,9 @@ hr {
   width: 85%;
   height: 1px;
   border: none;
+  margin-bottom: 50px;
   margin-bottom: 5rem;
+  margin-top: 50px;
   margin-top: 5rem; }
 
 .list-right {
@@ -240,13 +244,17 @@ hr {
 .code-wrapper {
   position: relative;
   bottom: 125px;
-  max-width: 500px; }
+  bottom: 12.5rem;
+  max-width: 500px;
+  max-width: 50rem; }
   .code-wrapper code {
     display: block;
     width: 100%;
     position: relative;
     right: 45px;
-    bottom: 10px; }
+    right: 4.5rem;
+    bottom: 10px;
+    bottom: 1rem; }
   .code-wrapper pre {
     color: black;
     background: #f2c246;
@@ -257,7 +265,9 @@ hr {
     border-radius: 4px;
     border: 1px solid #FCB705;
     width: 450px;
+    width: 45rem;
     height: 200px;
+    height: 20rem;
     overflow: hidden; }
 
 .highlight {
@@ -271,14 +281,17 @@ hr {
 footer {
   background-color: #212121; }
   footer ul {
-    padding-top: 100px; }
+    padding-top: 100px;
+    padding-top: 10rem; }
   footer li {
     display: inline-block;
     vertical-align: top; }
   footer img {
     position: relative;
-    bottom: 40px; }
+    bottom: 40px;
+    bottom: 4rem; }
 
 .footer-copy {
+  font-size: 16px;
   font-size: 1.6rem;
   font-family: XFINITYSansMedium; }
