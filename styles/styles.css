@@ -283,12 +283,13 @@ hr {
 footer {
   background-color: #212121; }
   footer ul {
-    margin: 0;
-    padding-top: 100px;
-    padding-top: 10rem; }
+    margin: 0; }
+    footer ul:first-of-type {
+      padding-top: 100px;
+      padding-top: 10rem; }
   footer li {
     display: inline-block;
-    vertical-align: top; }
+    vertical-align: middle; }
   footer img {
     position: relative;
     bottom: 40px;

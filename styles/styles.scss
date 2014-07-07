@@ -438,12 +438,15 @@ footer {
 
     ul {
         margin: 0;
-        @include rem(padding-top, 100px);
+
+        &:first-of-type {
+            @include rem(padding-top, 100px);
+        }
     }
 
     li {
         display: inline-block;
-        vertical-align: top;
+        vertical-align: middle;
     }
 
     img {
