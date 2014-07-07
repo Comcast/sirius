@@ -248,13 +248,10 @@ code {
 }
 
 .button-wrapper {
-    $buttonWrapperWidth: 50%;
-    max-width: $buttonWrapperWidth;
-    padding-left: $buttonWrapperWidth / 3.333;
+    @include rem(margin-left, 15px);
 
-    > .button {
-    @include rem(margin-top, 60px);
-    @include rem(padding, 5px 10px 15px 10px);
+    .button {
+        @include rem(margin-top, 50px);
     }
 }
 
@@ -297,7 +294,7 @@ code {
 
 .headline-small-centered {
     font-family: XFINITYSansLight;
-    padding-bottom: 1.5%;
+    @include rem(padding, 10px);
     @include rem(font-size, 28px);
     text-align: center;
 }

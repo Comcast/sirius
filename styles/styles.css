@@ -116,13 +116,11 @@ code {
   font-size: 7rem; }
 
 .button-wrapper {
-  max-width: 50%;
-  padding-left: 15.0015%; }
-  .button-wrapper > .button {
-    margin-top: 60px;
-    margin-top: 6rem;
-    padding: 5px 10px 15px 10px;
-    padding: 0.5rem 1rem 1.5rem 1rem; }
+  margin-left: 15px;
+  margin-left: 1.5rem; }
+  .button-wrapper .button {
+    margin-top: 50px;
+    margin-top: 5rem; }
 
 .button {
   font-family: XFINITYSansLight;
@@ -157,7 +155,8 @@ code {
 
 .headline-small-centered {
   font-family: XFINITYSansLight;
-  padding-bottom: 1.5%;
+  padding: 10px;
+  padding: 1rem;
   font-size: 28px;
   font-size: 2.8rem;
   text-align: center; }
