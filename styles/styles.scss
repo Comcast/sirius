@@ -179,6 +179,11 @@ ul {
     padding: 0;
 }
 
+code {
+    @include rem(font-size, 18px);
+    @include rem(line-height, 28px);
+}
+
 .global-padding {
     padding-right: 5%;
     padding-left: 5%;
@@ -390,6 +395,38 @@ hr {
         color: #AB831D;
     }
 
+}
+
+.code-wrapper {
+    position: relative;
+    bottom: 125px;
+    max-width: 500px;
+
+    code {
+        display: block;
+        width: 100%;
+        position: relative;
+        right: 45px;
+        bottom: 10px;
+    }
+
+    pre {
+        color: black;
+        background: $lightyellow;
+        -webkit-border-radius: 4px;
+        -moz-border-radius: 4px;
+        -ms-border-radius: 4px;
+        -o-border-radius: 4px;
+        border-radius: 4px;
+        border: 1px solid #FCB705;
+        width: 450px;
+        height: 200px;
+        overflow: hidden;
+    }
+}
+
+.highlight {
+    color: $blue;
 }
 
 .featured-image {

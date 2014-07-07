@@ -54,6 +54,12 @@ ul {
   list-style: none;
   padding: 0; }
 
+code {
+  font-size: 18px;
+  font-size: 1.8rem;
+  line-height: 28px;
+  line-height: 2.8rem; }
+
 .global-padding {
   padding-right: 5%;
   padding-left: 5%;
@@ -231,6 +237,32 @@ hr {
   .articles-wrapper li:before {
     content: ">  ";
     color: #AB831D; }
+
+.code-wrapper {
+  position: relative;
+  bottom: 125px;
+  max-width: 500px; }
+  .code-wrapper code {
+    display: block;
+    width: 100%;
+    position: relative;
+    right: 45px;
+    bottom: 10px; }
+  .code-wrapper pre {
+    color: black;
+    background: #f2c246;
+    -webkit-border-radius: 4px;
+    -moz-border-radius: 4px;
+    -ms-border-radius: 4px;
+    -o-border-radius: 4px;
+    border-radius: 4px;
+    border: 1px solid #FCB705;
+    width: 450px;
+    height: 200px;
+    overflow: hidden; }
+
+.highlight {
+  color: #0085cb; }
 
 .featured-image {
   border: 1px solid #b5b3b3;
