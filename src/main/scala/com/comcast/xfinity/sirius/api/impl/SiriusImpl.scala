@@ -25,11 +25,12 @@ import akka.actor._
 import java.util.concurrent.Future
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import scala.concurrent.{Await, Future => AkkaFuture}
+import scala.concurrent.{Future => AkkaFuture, ExecutionContext, Await}
 import akka.util.Timeout
 import scala.concurrent.duration._
 import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 object SiriusImpl {
 
@@ -61,7 +62,7 @@ object SiriusImpl {
  * @param actorSystem the actorSystem to use to create the Actors for Sirius
  */
 class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val actorSystem: ActorSystem)
-    extends Sirius {
+    extends Sirius1Dot2 {
 
   val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, "sirius")
   implicit val timeout: Timeout =
@@ -129,6 +130,12 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
    */
   def onShutdown(shutdownHook: => Unit) {
     onShutdownHook = Some(() => shutdownHook)
+  }
+
+  def onInitialized(initHook: Runnable) {
+    (supervisor ? SiriusSupervisor.RegisterInitHook) onSuccess {
+      case _ => initHook.run()
+    }
   }
 
   /**
