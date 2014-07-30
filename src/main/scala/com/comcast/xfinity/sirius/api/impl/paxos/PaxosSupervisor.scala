@@ -28,7 +28,7 @@ object PaxosSupervisor {
   /**
    * Factory for creating children actors of PaxosSup.
    *
-   * @param membership an [[akka.agent.Agent]] tracking the membership of the cluster
+   * @param membership an [[http://doc.akka.io/api/akka/2.0/akka/agent/Agent.html akka.agent.Agent]] tracking the membership of the cluster
    * @param startingSeq the sequence number at which this node will begin issuing/acknowledging
    * @param performFun function specified by
    *          [[com.comcast.xfinity.sirius.api.impl.paxos.Replica.PerformFun]], applied to
