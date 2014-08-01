@@ -19,6 +19,9 @@ version := "1.2.1"
 
 scalaVersion := "2.10.2"
 
+//bintray seems to be more reliable and much faster than maven central
+resolvers += "Bintray" at "http://jcenter.bintray.com"
+
 // Set the artifact names.
 artifactName := { (scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact) =>
   artifact.`type` match {
