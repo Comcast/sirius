@@ -241,6 +241,11 @@ object SiriusConfiguration {
   final val LOG_REQUEST_FREQ_SECS = "sirius.log-request.freq-secs"
 
   /**
+   * How long (in seconds) to periodically check leader state
+   */
+  final val CHECK_LEADER_STATE_FREQ_SECS = "sirius.check-leader-state.freq-secs"
+
+  /**
    * How long (in milliseconds) for requests in SiriusImpl to wait for a response from
    * the underlying actor (int)
    */
