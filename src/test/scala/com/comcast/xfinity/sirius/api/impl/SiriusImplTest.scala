@@ -30,6 +30,8 @@ import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
+import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{IsInitializedResponse, IsInitializedRequest}
+import com.comcast.xfinity.sirius.api.impl.SiriusImplTestCompanion.ProbeWrapper
 
 object SiriusImplTestCompanion {
 
@@ -90,6 +92,9 @@ class SiriusImplTest extends NiceTest with TimedTest {
           this
         case GetStatus =>
           sender ! mockNodeStatus
+          this
+        case IsInitializedRequest =>
+          sender ! IsInitializedResponse(initialized = true)
           this
       }
     })
@@ -199,6 +204,27 @@ class SiriusImplTest extends NiceTest with TimedTest {
         underTest.shutdown()
         assert(1 === timesShutdownWasCalled)
 
+      }
+    }
+
+    describe(".askIfInitialized") {
+      it("should ask the supervisor about initialization status") {
+        underTest.isOnline
+
+        supervisorActorProbe.expectMsg(IsInitializedRequest)
+      }
+      it("should return false if the ask times out") {
+        val as = ActorSystem()
+        val supervisorProbe = TestProbe()
+
+        val config = new SiriusConfiguration
+        config.setProp(SiriusConfiguration.CLIENT_TIMEOUT_MS, 100)
+        val siriusImpl = new SiriusImpl(new SiriusConfiguration, Props(classOf[ProbeWrapper], supervisorProbe))(as)
+
+        // kill supervisor probe so it won't respond
+        actorSystem.stop(supervisorProbe.ref)
+
+        assert(false === siriusImpl.isOnline)
       }
     }
 

@@ -30,6 +30,7 @@ import akka.util.Timeout
 import scala.concurrent.duration._
 import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
+import scala.util.Try
 
 object SiriusImpl {
 
@@ -146,6 +147,6 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
   private def askIfInitialized(supRef: ActorRef): Boolean = {
     val isInitializedFuture =
         (supRef ? SiriusSupervisor.IsInitializedRequest).mapTo[SiriusSupervisor.IsInitializedResponse]
-    Await.result(isInitializedFuture, timeout.duration).initialized
+    Try(Await.result(isInitializedFuture, timeout.duration).initialized).getOrElse(false)
   }
 }
