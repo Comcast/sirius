@@ -43,8 +43,8 @@ object SiriusConfiguration {
    * the no-arg constructor of [[http://docs.oracle.com/javase/1.5.0/docs/api/java/security/SecureRandom.html java.security.SecureRandom]].
    *
    * Possible values include AES128CounterSecureRNG, AES256CounterSecureRNG, AES128CounterInetRNG,
-   * AES256CounterInetRNG, SHA1PRNG, NativePRNG. See [[http://doc.akka.io/japi/akka/2.2-M4/akka/remote/transport/netty/NettySSLSupport$.html akka.remote.transport.netty.NettySSLSupport]] for
-   * more details.
+   * AES256CounterInetRNG, SHA1PRNG. See lines 457-470 of the [[http://doc.akka.io/docs/akka/2.2.1/general/configuration.html#akka-remote akka-remote reference configuration]] for more details;
+   * this option is simply passed through to Akka by Sirius.
    */
   final val SSL_RANDOM_NUMBER_GENERATOR = "sirius.akka.ssl.rng"
 
