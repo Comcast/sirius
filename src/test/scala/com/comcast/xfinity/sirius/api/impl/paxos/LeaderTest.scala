@@ -372,6 +372,22 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         electedLeader.expectMsg(Propose(1L, command))
         electedLeader.expectMsg(Propose(3L, command2))
       }
+
+      describe("when the remote leader is unresolvable") {
+        it("should start a scout") {
+          var timesScoutStarted = 0
+          val leaderActor = makeMockedUpLeader(
+            startScoutFun = {
+              timesScoutStarted += 1
+              TestProbe().ref
+            }
+          )
+          leaderActor ! Preempted(Ballot(0, "unresolvable"))
+
+          //starts once when leader is created and another time on remote failure
+          assert(waitForTrue(timesScoutStarted == 2, 1000, 25))
+        }
+      }
     }
 
     describe("when receiving a Terminated message") {
@@ -577,5 +593,5 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         assert(2 === commandersStarted)
         assert(0 === retriesLeft)
       }
-    }
+  }
 }

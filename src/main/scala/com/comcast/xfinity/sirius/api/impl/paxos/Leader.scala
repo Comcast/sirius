@@ -241,7 +241,7 @@ class Leader(membership: MembershipHelper,
         startLeaderWatcher()
 
       case Failure(_) =>
-      // XXX really hope this doesn't happen, right after we've gotten the Preempted message with a new id in it
+        startScout()
     }
   }
 
