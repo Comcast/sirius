@@ -220,16 +220,24 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
       val underTest = makeStateBridge(10)
 
       underTest ! InitiateCatchup
-      underTest ! CompleteSubrange(10, 11, List[OrderedEvent]())
+      underTest ! CompleteSubrange(10, 11, List[OrderedEvent](event(10), event(11)))
 
       assert(12 === underTest.underlyingActor.nextSeq)
+    }
+    it("should not update nextSeq if the subrange was not useful") {
+      val underTest = makeStateBridge(15)
+
+      underTest ! InitiateCatchup
+      underTest ! CompleteSubrange(10, 11, List[OrderedEvent](event(10), event(11)))
+
+      assert(15 === underTest.underlyingActor.nextSeq)
     }
     it("should remove now-out-of-date events from the event buffer") {
       val underTest = makeStateBridge(10)
       underTest.underlyingActor.eventBuffer.put(11L, mock[OrderedEvent])
 
       underTest ! InitiateCatchup
-      underTest ! CompleteSubrange(10, 11, List[OrderedEvent]())
+      underTest ! CompleteSubrange(10, 11, List[OrderedEvent](event(10), event(11)))
 
       assert(!underTest.underlyingActor.eventBuffer.containsKey(11L))
     }
@@ -238,9 +246,10 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
       val underTest = makeStateBridge(10, siriusSupActor = supervisorProbe.ref)
 
       underTest ! InitiateCatchup
-      underTest ! CompleteSubrange(10, 11, List())
+      underTest ! CompleteSubrange(10, 11, List(event(10), event(11)))
 
       supervisorProbe.expectMsg(DecisionHint(11))
     }
   }
+  def event(sequence: Long) = OrderedEvent(sequence, 0L, Delete(String.valueOf(sequence)))
 }
