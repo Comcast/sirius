@@ -67,9 +67,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
   val mockNodeStatus = mock[FullNodeStatus]
 
   before {
-    actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
-            akka.loggers = ["akka.testkit.TestEventListener"]
-    """))
+    actorSystem = ActorSystem("testsystem")
 
     membership = mock[Map[String, Option[ActorRef]]]
 
@@ -207,7 +205,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
       }
     }
 
-    describe(".askIfInitialized") {
+    describe(".isOnline") {
       it("should ask the supervisor about initialization status") {
         underTest.isOnline
 
@@ -216,15 +214,25 @@ class SiriusImplTest extends NiceTest with TimedTest {
       it("should return false if the ask times out") {
         val as = ActorSystem()
         val supervisorProbe = TestProbe()
+        supervisorProbe.setAutoPilot(new TestActor.AutoPilot {
+          def run(sender: ActorRef, msg: Any): TestActor.AutoPilot = msg match {
+            case IsInitializedRequest =>
+              sender ! IsInitializedResponse(initialized = true)
+              this
+            case _ => this
+          }
+        })
 
         val config = new SiriusConfiguration
         config.setProp(SiriusConfiguration.CLIENT_TIMEOUT_MS, 100)
         val siriusImpl = new SiriusImpl(new SiriusConfiguration, Props(classOf[ProbeWrapper], supervisorProbe))(as)
 
+        assert(waitForTrue(siriusImpl.isOnline, 5000, 100))
+
         // kill supervisor probe so it won't respond
         actorSystem.stop(supervisorProbe.ref)
 
-        assert(false === siriusImpl.isOnline)
+        assert(waitForTrue(!siriusImpl.isOnline, 5000, 100))
       }
     }
 
