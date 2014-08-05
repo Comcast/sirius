@@ -42,6 +42,7 @@ object Leader {
   case object Unknown extends ElectedLeader
   case object Local extends ElectedLeader
   case class Remote(ref: ActorRef, ballot: Ballot) extends ElectedLeader
+  case object StateCheck
 
   /**
    * Factory for creating the children actors of Leader.
@@ -77,8 +78,9 @@ object Leader {
              config: SiriusConfiguration): Props = {
      val childProvider = new ChildProvider(config)
      val leaderHelper = new LeaderHelper
+     val checkLeaderStateFreq = config.getProp(SiriusConfiguration.CHECK_LEADER_STATE_FREQ_SECS, 5).seconds
 
-     Props(classOf[Leader], membership, startingSeqNum, childProvider, leaderHelper, config)
+     Props(classOf[Leader], membership, startingSeqNum, childProvider, leaderHelper, config, checkLeaderStateFreq)
    }
 }
 
@@ -86,11 +88,15 @@ class Leader(membership: MembershipHelper,
              startingSeqNum: Long,
              childProvider: ChildProvider,
              leaderHelper: LeaderHelper,
-             config: SiriusConfiguration)
+             config: SiriusConfiguration,
+             checkLeaderStateFreq: FiniteDuration)
       extends Actor with MonitoringHooks {
     import Leader._
 
   implicit val executionContext = context.dispatcher
+
+  //periodically checks for / fixes corrupt state in Leader
+  val leaderStateCheck = context.system.scheduler.schedule(checkLeaderStateFreq, checkLeaderStateFreq, self, StateCheck)
 
   val logger = Logging(context.system, "Sirius")
   val traceLogger = Logging(context.system, "SiriusTrace")
@@ -124,6 +130,7 @@ class Leader(membership: MembershipHelper,
 
   override def postStop() {
     unregisterMonitors(config)
+    leaderStateCheck.cancel()
   }
 
   def receive = {
@@ -217,6 +224,15 @@ class Leader(membership: MembershipHelper,
     case DecisionHint(lastSlot) =>
       latestDecidedSlot = lastSlot
       reapProposals()
+
+    case StateCheck =>
+      electedLeader match {
+        case Unknown =>
+          startScout()
+        case Remote(_, _) if currentLeaderWatcher == None =>
+          startLeaderWatcher()
+        case _ =>
+      }
 
     case Terminated(terminated) =>
       currentLeaderWatcher match {

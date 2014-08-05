@@ -25,14 +25,14 @@ import collection.immutable.SortedMap
 import java.util.{TreeMap => JTreeMap}
 import scala.collection.JavaConversions._
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import scala.Some
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{Close, LeaderGone}
 import com.comcast.xfinity.sirius.util.{AkkaExternalAddressResolver, RichJTreeMap}
-import com.comcast.xfinity.sirius.api.impl.paxos.Leader.{Remote, Local, Unknown, ChildProvider}
+import com.comcast.xfinity.sirius.api.impl.paxos.Leader._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
+import scala.concurrent.duration.FiniteDuration
 
 
 class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
@@ -68,7 +68,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
                                        replyTo: ActorRef)(implicit context: ActorContext) = startWatcherFun
     }
     TestActorRef(
-      new Leader(membership, startingSeqNum, childProvider, helper, testConfig)
+      new Leader(membership, startingSeqNum, childProvider, helper, testConfig, FiniteDuration(1, "hour"))
     )
   }
 
@@ -386,6 +386,41 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
           //starts once when leader is created and another time on remote failure
           assert(waitForTrue(timesScoutStarted == 2, 1000, 25))
+        }
+      }
+    }
+
+    describe("when receiving a StateCheck message") {
+      describe("and electedLeader is Unknown") {
+        it("should start a scout") {
+          var scoutStarts = 0
+          val leaderRef = makeMockedUpLeader(
+            startScoutFun = {
+              scoutStarts += 1
+              TestProbe().ref
+            }
+          )
+
+          leaderRef ! Leader.StateCheck
+          //once for instantiation of leader and another for state check
+          assert(waitForTrue(scoutStarts == 2, 2000, 25))
+        }
+      }
+      describe("and electedLeader is Remote but the watcher is None") {
+        it("should start a watcher") {
+          var watchLeaderStarts = 0
+          val leaderRef = makeMockedUpLeader(
+            startWatcherFun = {
+              watchLeaderStarts += 1
+              TestProbe().ref
+            }
+          )
+
+          val leader = leaderRef.underlyingActor
+          leader.electedLeader = Remote(TestProbe().ref, Ballot.empty)
+          leaderRef ! Leader.StateCheck
+
+          assert(waitForTrue(watchLeaderStarts == 1, 2000, 25))
         }
       }
     }
