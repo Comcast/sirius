@@ -78,7 +78,7 @@ class LeaderWatcher(replyTo: ActorRef, childProvider: ChildProvider,
 
   implicit val executionContext = context.system.dispatcher
 
-  val CHECK_FREQ_SEC = config.getProp(SiriusConfiguration.PAXOS_LEADERSHIP_PING_INTERVAL, 20)
+  val CHECK_FREQ_SEC = config.getProp(SiriusConfiguration.PAXOS_LEADERSHIP_PING_INTERVAL, 10)
   val checkCancellable =
     context.system.scheduler.schedule(0 seconds, CHECK_FREQ_SEC seconds, self, CheckLeader)
 
