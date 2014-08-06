@@ -30,6 +30,8 @@ import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
+import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{IsInitializedResponse, IsInitializedRequest}
+import com.comcast.xfinity.sirius.api.impl.SiriusImplTestCompanion.ProbeWrapper
 
 object SiriusImplTestCompanion {
 
@@ -65,9 +67,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
   val mockNodeStatus = mock[FullNodeStatus]
 
   before {
-    actorSystem = ActorSystem("testsystem", ConfigFactory.parseString("""
-            akka.loggers = ["akka.testkit.TestEventListener"]
-    """))
+    actorSystem = ActorSystem("testsystem")
 
     membership = mock[Map[String, Option[ActorRef]]]
 
@@ -90,6 +90,9 @@ class SiriusImplTest extends NiceTest with TimedTest {
           this
         case GetStatus =>
           sender ! mockNodeStatus
+          this
+        case IsInitializedRequest =>
+          sender ! IsInitializedResponse(initialized = true)
           this
       }
     })
@@ -199,6 +202,37 @@ class SiriusImplTest extends NiceTest with TimedTest {
         underTest.shutdown()
         assert(1 === timesShutdownWasCalled)
 
+      }
+    }
+
+    describe(".isOnline") {
+      it("should ask the supervisor about initialization status") {
+        underTest.isOnline
+
+        supervisorActorProbe.expectMsg(IsInitializedRequest)
+      }
+      it("should return false if the ask times out") {
+        val as = ActorSystem()
+        val supervisorProbe = TestProbe()
+        supervisorProbe.setAutoPilot(new TestActor.AutoPilot {
+          def run(sender: ActorRef, msg: Any): TestActor.AutoPilot = msg match {
+            case IsInitializedRequest =>
+              sender ! IsInitializedResponse(initialized = true)
+              this
+            case _ => this
+          }
+        })
+
+        val config = new SiriusConfiguration
+        config.setProp(SiriusConfiguration.CLIENT_TIMEOUT_MS, 100)
+        val siriusImpl = new SiriusImpl(new SiriusConfiguration, Props(classOf[ProbeWrapper], supervisorProbe))(as)
+
+        assert(waitForTrue(siriusImpl.isOnline, 5000, 100))
+
+        // kill supervisor probe so it won't respond
+        actorSystem.stop(supervisorProbe.ref)
+
+        assert(waitForTrue(!siriusImpl.isOnline, 5000, 100))
       }
     }
 
