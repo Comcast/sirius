@@ -40,6 +40,10 @@ object MembershipActor {
     def getMembership: String
     def getMembershipRoundTrip: Map[String, Long]
     def getTimeSinceLastPingUpdate: Map[String, Long]
+    def getClusterConfigMembers: List[String]
+    def getTimeSinceLastResolutionAttempt: Option[Long]
+    def getLastResolutionPaths: List[String]
+    def getNumResolutionFailures: Long
   }
 
   /**
@@ -90,6 +94,9 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
 
   var membershipRoundTripMap = HashMap[String, Long]()
   var lastPingUpdateMap = HashMap[String, Long]()
+  var lastResolutionTime: Option[Long] = None
+  var lastResolutionPaths = List[String]()
+  var resolutionFailures = 0L
 
   override def preStart() {
     registerMonitor(new MembershipInfo, config)
@@ -155,17 +162,20 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
    */
   def updateActorRefs(actorPaths: List[String]) {
     val membership = membershipAgent.get()
-    actorPaths
-      .filter(path => !membership.isDefinedAt(path) || membership(path) == None) // we don't already have a working reference
-      .foreach(path => {
-        context.actorSelection(path).resolveOne(1 seconds) onComplete {
-          case Success(actor) =>
-            context.watch(actor)
-            membershipAgent send (_ + (path -> Some(actor)))
-          case Failure(_) =>
-            membershipAgent send (_ + (path -> None))
-        }
-      })
+    val pathsToResolve =  actorPaths.filter(path => !membership.isDefinedAt(path) || membership(path) == None)
+    lastResolutionPaths = pathsToResolve
+    lastResolutionTime = Some(System.currentTimeMillis())
+
+    pathsToResolve.foreach(path => {
+      context.actorSelection(path).resolveOne(1 seconds) onComplete {
+        case Success(actor) =>
+          context.watch(actor)
+          membershipAgent send (_ + (path -> Some(actor)))
+        case Failure(_) =>
+          membershipAgent send (_ + (path -> None))
+          resolutionFailures += 1
+      }
+    })
   }
 
   class MembershipInfo extends MembershipInfoMBean {
@@ -177,5 +187,9 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
         case (acc, (key, pingTime)) => acc + (key -> (currentTime - pingTime))
       }
     }
+    def getClusterConfigMembers = clusterConfig.members
+    def getTimeSinceLastResolutionAttempt = lastResolutionTime.map(System.currentTimeMillis() - _)
+    def getLastResolutionPaths = lastResolutionPaths
+    def getNumResolutionFailures = resolutionFailures
   }
 }
