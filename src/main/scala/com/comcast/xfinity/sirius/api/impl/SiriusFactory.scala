@@ -158,7 +158,7 @@ object SiriusFactory {
       siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
     configMap.put(s"$transportPrefix.port", siriusConfig.getProp(SiriusConfiguration.PORT, 2552))
 
-    val maxMessageSize = siriusConfig.getProp(SiriusConfiguration.MAX_AKKA_MESSAGE_SIZE_KB, "1024")
+    val maxMessageSize = siriusConfig.getProp(SiriusConfiguration.MAX_AKKA_MESSAGE_SIZE_KB, 1024)
     val bufferSize = maxMessageSize * 2
     configMap.put(s"$transportPrefix.maximum-frame-size", s"${maxMessageSize}k")
     configMap.put(s"$transportPrefix.send-buffer-size", s"${bufferSize}k")

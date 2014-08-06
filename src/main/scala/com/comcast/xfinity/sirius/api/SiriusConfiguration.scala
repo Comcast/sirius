@@ -252,14 +252,14 @@ object SiriusConfiguration {
   final val CLIENT_TIMEOUT_MS = "sirius.client.ask-timeout-ms"
 
   /**
-   * Amount to increase catchup request timeout per event in window size. Default 0.01s
+   * Amount to increase catchup request timeout per event in window size, in seconds. Default 0.01. Type is Double.
    *
    * timeout = timeout_base + ( w * timeout_per_event )
    */
   final val CATCHUP_TIMEOUT_INCREASE_PER_EVENT = "sirius.catchup.timeout-coefficient"
 
   /**
-   * Base value of catchup request timeout. Default is 1s
+   * Base value of catchup request timeout in seconds. Default is 1.0. Type is double.
    *
    * timeout = timeout_base + ( w * timeout_per_event )
    */
@@ -277,7 +277,7 @@ object SiriusConfiguration {
   final val CATCHUP_DEFAULT_SSTHRESH = "sirius.catchup.default-ssthresh"
 
   /*
-   * Maximum akka message size in KB. Default is 1024.
+   * Maximum akka message size in KB. Default is 1024. Type is Integer.
    */
   final val MAX_AKKA_MESSAGE_SIZE_KB = "sirius.akka.maximum-frame-size-kb"
 }

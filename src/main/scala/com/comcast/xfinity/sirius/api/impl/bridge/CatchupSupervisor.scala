@@ -47,8 +47,8 @@ object CatchupSupervisor {
    * @return Props object for a new CatchupSupervisor
    */
   def props(membershipHelper: MembershipHelper, config: SiriusConfiguration): Props = {
-    val timeoutCoeff = config.getProp(SiriusConfiguration.CATCHUP_TIMEOUT_INCREASE_PER_EVENT, ".01").toDouble
-    val timeoutConst = config.getProp(SiriusConfiguration.CATCHUP_TIMEOUT_BASE, "1").toDouble
+    val timeoutCoeff = config.getProp(SiriusConfiguration.CATCHUP_TIMEOUT_INCREASE_PER_EVENT, .01)
+    val timeoutConst = config.getProp(SiriusConfiguration.CATCHUP_TIMEOUT_BASE, 1.0)
     val maxWindowSize = config.getProp(SiriusConfiguration.CATCHUP_MAX_WINDOW_SIZE, 1000)
     val startingSSThresh = config.getProp(SiriusConfiguration.CATCHUP_DEFAULT_SSTHRESH, 500)
     Props(new CatchupSupervisor(membershipHelper, timeoutCoeff, timeoutConst, maxWindowSize, startingSSThresh, config))
