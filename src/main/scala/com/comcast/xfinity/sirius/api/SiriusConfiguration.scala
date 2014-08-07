@@ -15,6 +15,8 @@
  */
 package com.comcast.xfinity.sirius.api
 
+import scala.util.Try
+
 object SiriusConfiguration {
 
   /**
@@ -327,9 +329,17 @@ class SiriusConfiguration {
    *
    * @return the value stored under name, or the default if it's not found
    */
-  def getProp[T](name: String, default: => T): T = conf.get(name) match {
-    case Some(value) => value.asInstanceOf[T]
-    case None => default
+  def getProp[T](name: String, default: => T): T = getProp[T](name).getOrElse(default)
+
+  def getDouble(name: String): Option[Double] = conf.get(name).map {
+    case value => Try(value.asInstanceOf[Double]).getOrElse(String.valueOf(value).toDouble)
   }
 
+  def getDouble(name: String, default: => Double): Double = getDouble(name).getOrElse(default)
+
+  def getInt(name: String): Option[Int] = conf.get(name).map {
+    case value => Try(value.asInstanceOf[Int]).getOrElse(String.valueOf(value).toInt)
+  }
+
+  def getInt(name: String, default: => Int): Int = getInt(name).getOrElse(default)
 }
