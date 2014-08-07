@@ -17,7 +17,7 @@ package com.comcast.xfinity.sirius.api.impl
 
 import compat.AkkaFutureAdapter
 import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.api.Sirius
+import com.comcast.xfinity.sirius.api.Sirius1Dot3
 import akka.pattern.ask
 import membership.MembershipActor._
 import com.comcast.xfinity.sirius.api.SiriusResult
@@ -62,7 +62,7 @@ object SiriusImpl {
  * @param actorSystem the actorSystem to use to create the Actors for Sirius
  */
 class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val actorSystem: ActorSystem)
-    extends Sirius {
+    extends Sirius1Dot3 {
 
   val supName = config.getProp(SiriusConfiguration.SIRIUS_SUPERVISOR_NAME, "sirius")
   implicit val timeout: Timeout =

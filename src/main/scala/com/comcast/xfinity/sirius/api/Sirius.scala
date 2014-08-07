@@ -41,3 +41,8 @@ trait Sirius {
    */
   def isOnline: Boolean
 }
+
+trait Sirius1Dot3 extends Sirius {
+  def shutdown(): Unit
+}
+
