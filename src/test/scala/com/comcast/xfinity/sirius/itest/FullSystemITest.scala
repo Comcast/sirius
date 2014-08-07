@@ -20,16 +20,15 @@ import scalax.file.Path
 import com.comcast.xfinity.sirius.{LatchedRequestHandler, TimedTest, NiceTest}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import java.io.File
-import com.comcast.xfinity.sirius.api.impl._
 import util.Random
-import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+import com.comcast.xfinity.sirius.api.impl.{SiriusImpl, NonCommutativeSiriusRequest, OrderedEvent}
 import scala.Some
 import scala.Tuple2
 import java.util.UUID
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import annotation.tailrec
-import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
+import com.comcast.xfinity.sirius.api._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
@@ -134,7 +133,7 @@ class FullSystemITest extends NiceTest with TimedTest {
 
     assert(waitForTrue(sirius.isOnline, 2000, 500), "Failed while waiting for sirius to boot")
 
-    (sirius, finalHandler, finalWal)
+    (sirius.asInstanceOf[SiriusImpl], finalHandler, finalWal)
   }
 
   var tempDir: File = _
