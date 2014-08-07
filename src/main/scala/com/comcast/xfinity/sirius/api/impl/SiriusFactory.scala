@@ -15,29 +15,8 @@
  */
 package com.comcast.xfinity.sirius.api.impl
 
-import java.io.File
-import java.lang.management.ManagementFactory
-import java.net.InetAddress
-import java.util.{HashMap => JHashMap}
-
-import com.comcast.xfinity.sirius.admin.ObjectNameHelper
-import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import com.comcast.xfinity.sirius.api.{SiriusFactory => NewSiriusFactory}
-import com.comcast.xfinity.sirius.info.SiriusInfo
-import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
+import com.comcast.xfinity.sirius.api.{RequestHandler, SiriusConfiguration, SiriusFactory => NewSiriusFactory}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.typesafe.config.{Config, ConfigFactory}
-
-import akka.actor.ActorRef
-import akka.actor.ActorSystem
-import javax.management.ObjectName
-import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
-import com.comcast.xfinity.sirius.uberstore.UberStore
-import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
-
-import scala.collection.JavaConverters._
-import org.slf4j.LoggerFactory
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances. Please note that
