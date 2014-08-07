@@ -17,6 +17,8 @@ package com.comcast.xfinity.sirius.api
 
 import java.util.concurrent.Future
 
+@deprecated(message = "Please upgrade to using com.comcast.xfinity.sirius.api.api1Dot2.Sirius1Dot2 instead",
+  since = "1.2.0")
 trait Sirius {
   
   /**
