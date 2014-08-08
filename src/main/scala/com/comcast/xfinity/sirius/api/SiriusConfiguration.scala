@@ -319,7 +319,9 @@ class SiriusConfiguration {
    *
    * @return Some(value) if it exists, or None if not
    */
-  def getProp[T](name: String): Option[T] = conf.get(name).asInstanceOf[Option[T]]
+  def getProp[T](name: String): Option[T] = conf.get(name).map {
+    case value => value.asInstanceOf[T]
+  }
 
   /**
    * Get a property with a default fallback
