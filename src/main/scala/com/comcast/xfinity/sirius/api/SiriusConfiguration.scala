@@ -120,6 +120,14 @@ object SiriusConfiguration {
   final val MEMBERSHIP_PING_INTERVAL = "sirius.membership.ping-interval-secs"
 
   /**
+   * The allowed number of ping failures before a member of the cluster is
+   * considered dead. This is an estimate as opposed to a real number. The
+   * threshold for checking member health is actually based on time:
+   * <code>threshold = allowedPingFailures * pingInterval + pingInterval / 2</code>
+   */
+  final val ALLOWED_PING_FAILURES = "sirius.membership.allowed-ping-failure"
+
+  /**
    * How often to check the membershipAgent for updates, in seconds (int).
    * Used by the supervisor when determining whether to keep paxos on or off.
    */

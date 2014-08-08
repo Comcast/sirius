@@ -34,7 +34,7 @@ object MembershipActor {
   case class Ping(sent: Long) extends MembershipMessage
   case class Pong(pingSent: Long) extends MembershipMessage
 
-  private[membership] object PingMembership
+  private[membership] object CheckMembershipHealth
 
   private[membership] trait MembershipInfoMBean {
     def getMembership: String
@@ -60,9 +60,11 @@ object MembershipActor {
     )
     val clusterConfig = BackwardsCompatibleClusterConfig(FileBasedClusterConfig(clusterConfigLocation))(config)
     val checkIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_CHECK_INTERVAL, 30)
-    val pingIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_PING_INTERVAL, 30)
+    val pingIntervalSecs = config.getProp(SiriusConfiguration.MEMBERSHIP_PING_INTERVAL, 10)
+    val allowedPingFailures = config.getProp(SiriusConfiguration.ALLOWED_PING_FAILURES, 3)
 
-    Props(classOf[MembershipActor], membershipAgent, clusterConfig, checkIntervalSecs seconds, pingIntervalSecs seconds, config)
+    Props(classOf[MembershipActor], membershipAgent, clusterConfig, checkIntervalSecs seconds, pingIntervalSecs seconds,
+      allowedPingFailures, config)
   }
 }
 
@@ -83,14 +85,16 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
                       clusterConfig: ClusterConfig,
                       checkInterval: FiniteDuration,
                       pingInterval: FiniteDuration,
+                      allowedPingFailures: Int,
                       config: SiriusConfiguration)
-    extends Actor with MonitoringHooks{
+  extends Actor with MonitoringHooks {
+
   import MembershipActor._
 
   val logger = Logging(context.system, "Sirius")
 
   val configCheckSchedule = context.system.scheduler.schedule(checkInterval, checkInterval, self, CheckClusterConfig)
-  val memberPingSchedule = context.system.scheduler.schedule(pingInterval, pingInterval, self, PingMembership)
+  val memberPingSchedule = context.system.scheduler.schedule(pingInterval, pingInterval, self, CheckMembershipHealth)
 
   var membershipRoundTripMap = HashMap[String, Long]()
   var lastPingUpdateMap = HashMap[String, Long]()
@@ -116,18 +120,37 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
     case GetMembershipData => sender ! membershipAgent.get()
 
     case Ping(sent) => sender ! Pong(sent)
+
     case Pong(pingSent) =>
       val currentTime = System.currentTimeMillis
       val senderPath = sender.path.toString
       membershipRoundTripMap += senderPath -> (currentTime - pingSent)
       lastPingUpdateMap += senderPath -> currentTime
 
-    case PingMembership =>
-      val currentTime = System.currentTimeMillis
-      membershipAgent.get().values.flatten.foreach(_ ! Ping(currentTime))
+    case CheckMembershipHealth =>
+      pruneDeadMembers
+      membershipAgent.get.values.flatten.foreach(_ ! Ping(System.currentTimeMillis))
 
     case Terminated(terminated) =>
       membershipAgent send (_ + (terminated.path.toString -> None))
+  }
+
+  private[membership] def pruneDeadMembers() = {
+    val lastPingThreshold = allowedPingFailures * pingInterval.toMillis + pingInterval.toMillis / 2
+
+    val expired = lastPingUpdateMap.filter { case (_, time) =>
+      System.currentTimeMillis - time > lastPingThreshold
+    }
+
+    expired.foreach { case (path, _) =>
+      membershipAgent send (_ + (path -> None))
+      membershipRoundTripMap -= path
+      lastPingUpdateMap -= path
+    }
+
+    if (expired.nonEmpty) {
+      membershipAgent.future().onComplete(_ => this.self ! CheckClusterConfig)
+    }
   }
 
   /**

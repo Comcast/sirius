@@ -15,9 +15,12 @@
  */
 package com.comcast.xfinity.sirius.api.impl.membership
 
+import java.util.Date
+
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import org.mockito.Mockito._
 import akka.agent.Agent
+import scala.concurrent.Await
 import scala.concurrent.duration._
 import org.mockito.Matchers._
 import akka.actor.{ActorSystem, ActorRef}
@@ -26,15 +29,19 @@ import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor._
 import javax.management.{ObjectName, MBeanServer}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import org.mockito.ArgumentCaptor
-import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{PingMembership, MembershipInfoMBean}
+import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{CheckMembershipHealth, MembershipInfoMBean}
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 class MembershipActorTest extends NiceTest with TimedTest {
 
+  val pingInterval = 120 seconds
+  val allowedFailures = 5
+
   def makeMembershipActor(clusterConfig: Option[ClusterConfig] = None,
                           membershipAgent: Agent[Map[String, Option[ActorRef]]] = Agent[Map[String, Option[ActorRef]]](Map())(actorSystem.dispatcher),
-                          mbeanServer: MBeanServer = mock[MBeanServer]):
-                         (TestActorRef[MembershipActor], Agent[Map[String, Option[ActorRef]]]) = {
+                          mbeanServer: MBeanServer = mock[MBeanServer],
+                          callSuperUpdateMembership: Boolean = true):
+                         (TestActorRef[MembershipActorMock], Agent[Map[String, Option[ActorRef]]]) = {
 
     val cluster = clusterConfig.getOrElse({
       val mockClusterConfig = mock[ClusterConfig]
@@ -45,8 +52,10 @@ class MembershipActorTest extends NiceTest with TimedTest {
     val siriusConfig = new SiriusConfiguration
     siriusConfig.setProp(SiriusConfiguration.MBEAN_SERVER, mbeanServer)
     siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(siriusConfig))
-    val underTest = TestActorRef[MembershipActor](
-      new MembershipActor(membershipAgent, cluster, 120.seconds, 120.seconds, siriusConfig), "membership-actor-test"
+    val underTest = TestActorRef[MembershipActorMock](
+      new MembershipActorMock(membershipAgent, cluster, 120.seconds, pingInterval, allowedFailures, siriusConfig,
+        callSuperUpdateMembership),
+        "membership-actor-test"
     )(actorSystem)
 
     (underTest, membershipAgent)
@@ -87,6 +96,67 @@ class MembershipActorTest extends NiceTest with TimedTest {
       assert(waitForTrue(membershipAgent.get().size == 2, 2000, 100), "Did not reach correct membership size.")
       assert(Some(probeOne.ref) === membershipAgent.get()(probeOnePath))
       assert(Some(probeTwo.ref) === membershipAgent.get()(probeTwoPath))
+    }
+
+    it("should prune dead actors when PingMembership is received") {
+      val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) =
+        makeMembershipActor(callSuperUpdateMembership = false)
+
+      membershipAgent send(_ + ("foo" -> Some(TestProbe().ref)))
+      membershipAgent send(_ + ("bar" -> Some(TestProbe().ref)))
+      membershipAgent send(_ + ("foobar" -> Some(TestProbe().ref)))
+      Await.ready(membershipAgent.future(), 1 second)
+
+      val expiredTime = System.currentTimeMillis - (pingInterval.toMillis * allowedFailures + pingInterval.toMillis / 2)
+      underTest.underlyingActor.lastPingUpdateMap += ("foo" -> expiredTime)
+      underTest.underlyingActor.lastPingUpdateMap += ("bar" -> new Date().getTime)
+      underTest.underlyingActor.membershipRoundTripMap += ("foo" -> new Date().getTime)
+
+      underTest ! CheckMembershipHealth
+
+      assert(waitForTrue(membershipAgent.get.size == 3, 2000, 100), "Did not reach correct membership size.")
+      assert(waitForTrue(membershipAgent.get.isDefinedAt("bar"), 2000, 100), "bar is not defined.")
+      assert(waitForTrue(membershipAgent.get.isDefinedAt("foobar"), 2000, 100), "foobar is not defined.")
+      assert(waitForTrue(membershipAgent.get()("foo") == None, 2000, 100), "foo is defined but is not None.")
+      assert(!underTest.underlyingActor.lastPingUpdateMap.contains("foo"), "foo should have been deleted")
+      assert(!underTest.underlyingActor.membershipRoundTripMap.contains("foo"), "foo should have been deleted")
+    }
+
+    it("should call update membership if there is a dead actor when PingMembership is received") {
+      val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) =
+        makeMembershipActor(callSuperUpdateMembership = false)
+
+      membershipAgent send(_ + ("foo" -> Some(TestProbe().ref)))
+      membershipAgent send(_ + ("bar" -> Some(TestProbe().ref)))
+      membershipAgent send(_ + ("foobar" -> Some(TestProbe().ref)))
+      Await.ready(membershipAgent.future(), 1 second)
+
+      val expiredTime = System.currentTimeMillis - (pingInterval.toMillis * allowedFailures + pingInterval.toMillis / 2)
+      underTest.underlyingActor.lastPingUpdateMap += ("foo" -> expiredTime)
+      underTest.underlyingActor.lastPingUpdateMap += ("bar" -> new Date().getTime)
+
+      underTest ! CheckMembershipHealth
+
+      assert(waitForTrue(underTest.underlyingActor.updateMembershipCalls == 1, 2000, 100),
+        "update membership was not called.")
+    }
+
+    it("should not call update membership if there are no dead actors when PingMembership is received") {
+      val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) =
+        makeMembershipActor(callSuperUpdateMembership = false)
+
+      membershipAgent send(_ + ("bar" -> Some(TestProbe().ref)))
+      membershipAgent send(_ + ("foobar" -> Some(TestProbe().ref)))
+      membershipAgent send(_ + ("foobar" -> Some(TestProbe().ref)))
+      Await.ready(membershipAgent.future(), 1 second)
+
+      underTest.underlyingActor.lastPingUpdateMap += ("bar" -> new Date().getTime)
+
+      underTest ! CheckMembershipHealth
+
+      //make sure the agent is done doing its thing
+      Await.ready(membershipAgent.future(), 1 second)
+      assert(underTest.underlyingActor.updateMembershipCalls == 0, "update membership was called.")
     }
 
     it("should not add actors from membership that fail to resolve") {
@@ -199,11 +269,38 @@ class MembershipActorTest extends NiceTest with TimedTest {
                                "3" -> Some(senderProbe3.ref))
       waitForTrue(membershipAgent.get().size == 3, 200, 10)
 
-      senderProbe1.send(underTest, PingMembership)
+      senderProbe1.send(underTest, CheckMembershipHealth)
 
       senderProbe1.expectMsgClass(classOf[Ping])
       senderProbe2.expectMsgClass(classOf[Ping])
       senderProbe3.expectMsgClass(classOf[Ping])
     }
+  }
+}
+
+class MembershipActorMock(membershipAgent: Agent[Map[String, Option[ActorRef]]],
+                           clusterConfig: ClusterConfig,
+                           checkInterval: FiniteDuration,
+                           pingInterval: FiniteDuration,
+                           allowedPingFailures: Int,
+                           config: SiriusConfiguration,
+                           callSuperUpdateMembership: Boolean) extends MembershipActor(membershipAgent,
+                                                                                        clusterConfig,
+                                                                                        checkInterval,
+                                                                                        pingInterval,
+                                                                                        allowedPingFailures,
+                                                                                        config) {
+
+  var updateMembershipCalls = 0
+
+
+  override def preStart(): Unit = {
+    updateMembershipCalls -= 1
+    super.preStart()
+  }
+
+  override private[membership] def updateMembership(): Unit = {
+    updateMembershipCalls += 1
+    if(callSuperUpdateMembership) super.updateMembership()
   }
 }
