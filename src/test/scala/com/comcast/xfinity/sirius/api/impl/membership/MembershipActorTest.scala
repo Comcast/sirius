@@ -102,12 +102,13 @@ class MembershipActorTest extends NiceTest with TimedTest {
       val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) =
         makeMembershipActor(callSuperUpdateMembership = false)
 
-      membershipAgent send(_ + ("foo" -> Some(TestProbe().ref)))
-      membershipAgent send(_ + ("bar" -> Some(TestProbe().ref)))
-      membershipAgent send(_ + ("foobar" -> Some(TestProbe().ref)))
+      membershipAgent send(
+        Map("foo" -> Some(TestProbe().ref), "bar" -> Some(TestProbe().ref), "foobar" -> Some(TestProbe().ref))
+      )
+
       Await.ready(membershipAgent.future(), 1 second)
 
-      val expiredTime = System.currentTimeMillis - (pingInterval.toMillis * allowedFailures + pingInterval.toMillis / 2)
+      val expiredTime = System.currentTimeMillis - (pingInterval.toMillis * allowedFailures + pingInterval.toMillis)
       underTest.underlyingActor.lastPingUpdateMap += ("foo" -> expiredTime)
       underTest.underlyingActor.lastPingUpdateMap += ("bar" -> new Date().getTime)
       underTest.underlyingActor.membershipRoundTripMap += ("foo" -> new Date().getTime)
@@ -115,23 +116,26 @@ class MembershipActorTest extends NiceTest with TimedTest {
       underTest ! CheckMembershipHealth
 
       assert(waitForTrue(membershipAgent.get.size == 3, 2000, 100), "Did not reach correct membership size.")
-      assert(waitForTrue(membershipAgent.get.isDefinedAt("bar"), 2000, 100), "bar is not defined.")
-      assert(waitForTrue(membershipAgent.get.isDefinedAt("foobar"), 2000, 100), "foobar is not defined.")
+      assert(waitForTrue(membershipAgent.get.isDefinedAt("bar"), 2000, 100), "Valid reference was unexpectedly removed")
+      assert(waitForTrue(membershipAgent.get.isDefinedAt("foobar"), 2000, 100),
+        "Valid reference was unexpectedly removed")
       assert(waitForTrue(membershipAgent.get()("foo") == None, 2000, 100), "foo is defined but is not None.")
-      assert(!underTest.underlyingActor.lastPingUpdateMap.contains("foo"), "foo should have been deleted")
-      assert(!underTest.underlyingActor.membershipRoundTripMap.contains("foo"), "foo should have been deleted")
+      assert(!underTest.underlyingActor.lastPingUpdateMap.contains("foo"), "foo should have been deleted from ping map")
+      assert(!underTest.underlyingActor.membershipRoundTripMap.contains("foo"),
+        "foo should have been deleted from roundtrip map")
     }
 
     it("should call update membership if there is a dead actor when PingMembership is received") {
       val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) =
         makeMembershipActor(callSuperUpdateMembership = false)
 
-      membershipAgent send(_ + ("foo" -> Some(TestProbe().ref)))
-      membershipAgent send(_ + ("bar" -> Some(TestProbe().ref)))
-      membershipAgent send(_ + ("foobar" -> Some(TestProbe().ref)))
+      membershipAgent send(
+        Map("foo" -> Some(TestProbe().ref), "bar" -> Some(TestProbe().ref), "foobar" -> Some(TestProbe().ref))
+      )
+
       Await.ready(membershipAgent.future(), 1 second)
 
-      val expiredTime = System.currentTimeMillis - (pingInterval.toMillis * allowedFailures + pingInterval.toMillis / 2)
+      val expiredTime = System.currentTimeMillis - (pingInterval.toMillis * allowedFailures + pingInterval.toMillis)
       underTest.underlyingActor.lastPingUpdateMap += ("foo" -> expiredTime)
       underTest.underlyingActor.lastPingUpdateMap += ("bar" -> new Date().getTime)
 
@@ -154,8 +158,6 @@ class MembershipActorTest extends NiceTest with TimedTest {
 
       underTest ! CheckMembershipHealth
 
-      //make sure the agent is done doing its thing
-      Await.ready(membershipAgent.future(), 1 second)
       assert(underTest.underlyingActor.updateMembershipCalls == 0, "update membership was called.")
     }
 
@@ -295,6 +297,8 @@ class MembershipActorMock(membershipAgent: Agent[Map[String, Option[ActorRef]]],
 
 
   override def preStart(): Unit = {
+    // when prestart is called (which happens when the actor is created) updateMembership is called. Subtracting one
+    // offsets this initial call so updateMembershipCalls directly relates to explicit updateMembership() calls in tests
     updateMembershipCalls -= 1
     super.preStart()
   }

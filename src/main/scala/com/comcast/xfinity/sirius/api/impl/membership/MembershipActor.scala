@@ -128,14 +128,14 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
       lastPingUpdateMap += senderPath -> currentTime
 
     case CheckMembershipHealth =>
-      pruneDeadMembers
+      pruneDeadMembers()
       membershipAgent.get.values.flatten.foreach(_ ! Ping(System.currentTimeMillis))
 
     case Terminated(terminated) =>
       membershipAgent send (_ + (terminated.path.toString -> None))
   }
 
-  private[membership] def pruneDeadMembers() = {
+  private[membership] def pruneDeadMembers() {
     val lastPingThreshold = allowedPingFailures * pingInterval.toMillis + pingInterval.toMillis / 2
 
     val expired = lastPingUpdateMap.filter { case (_, time) =>
@@ -149,7 +149,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
     }
 
     if (expired.nonEmpty) {
-      membershipAgent.future().onComplete(_ => this.self ! CheckClusterConfig)
+      membershipAgent.future().onComplete(_ => self ! CheckClusterConfig)
     }
   }
 
