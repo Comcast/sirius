@@ -28,6 +28,10 @@ class SiriusConfigurationTest extends NiceTest {
 
     underTest.setProp("world", "asdf")
     assert(Some("asdf") === underTest.getProp[String]("world"))
+
+    val testObject = new Object()
+    underTest.setProp("foo", testObject)
+    assert(Some(testObject) === underTest.getProp("foo"))
   }
 
   it ("must return data directly, or a default if provided") {
@@ -36,5 +40,67 @@ class SiriusConfigurationTest extends NiceTest {
     assert("bar" === underTest.getProp("hello", "bar"))
     underTest.setProp("hello", "world")
     assert("world" === underTest.getProp("hello", "not-world"))
+  }
+
+  describe("getDouble") {
+    it("must return a double for a string") {
+      val underTest = new SiriusConfiguration()
+      underTest.setProp("foo", "1.0")
+      assert(1.0 === underTest.getDouble("foo", 2.0))
+      assert(Some(1.0) === underTest.getDouble("foo"))
+    }
+
+    it ("must return a double for an int") {
+      val underTest = new SiriusConfiguration()
+      underTest.setProp("foo", 1)
+      assert(1.0 === underTest.getDouble("foo", 2.0))
+      assert(Some(1.0) === underTest.getDouble("foo"))
+    }
+
+    it ("must return a double for a double") {
+      val underTest = new SiriusConfiguration()
+      underTest.setProp("foo", 1.0)
+      assert(1.0 === underTest.getDouble("foo", 2.0))
+      assert(Some(1.0) === underTest.getDouble("foo"))
+    }
+
+    it ("must throw an exception if the value can't be turned into a double") {
+      val underTest = new SiriusConfiguration()
+      underTest.setProp("foo", List(1L, 2L))
+      intercept[IllegalArgumentException] {
+        underTest.getDouble("foo", 2.0)
+      }
+    }
+  }
+
+  describe("when defaulting / typing with an Int") {
+    it("must return an Int for a string") {
+      val underTest = new SiriusConfiguration()
+      underTest.setProp("foo", "1")
+      assert(1 === underTest.getInt("foo", 2))
+      assert(Some(1) === underTest.getInt("foo"))
+    }
+
+    it ("must return an Int for a Long") {
+      val underTest = new SiriusConfiguration()
+      underTest.setProp("foo", 1L)
+      assert(1 === underTest.getInt("foo", 2))
+      assert(Some(1) === underTest.getInt("foo"))
+    }
+
+    it ("must return an Int for an Int") {
+      val underTest = new SiriusConfiguration()
+      underTest.setProp("foo", 1)
+      assert(1 === underTest.getInt("foo", 2))
+      assert(Some(1) === underTest.getInt("foo"))
+    }
+
+    it ("must throw an exception if the value can't be turned into an Int") {
+      val underTest = new SiriusConfiguration()
+      underTest.setProp("foo", List(1L, 2L))
+      intercept[IllegalArgumentException] {
+        underTest.getInt("foo", 2)
+      }
+    }
   }
 }

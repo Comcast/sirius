@@ -15,6 +15,8 @@
  */
 package com.comcast.xfinity.sirius.api
 
+import scala.util.Try
+
 object SiriusConfiguration {
 
   /**
@@ -260,14 +262,14 @@ object SiriusConfiguration {
   final val CLIENT_TIMEOUT_MS = "sirius.client.ask-timeout-ms"
 
   /**
-   * Amount to increase catchup request timeout per event in window size. Default 0.01s
+   * Amount to increase catchup request timeout per event in window size, in seconds. Default 0.01. Type is Double.
    *
    * timeout = timeout_base + ( w * timeout_per_event )
    */
   final val CATCHUP_TIMEOUT_INCREASE_PER_EVENT = "sirius.catchup.timeout-coefficient"
 
   /**
-   * Base value of catchup request timeout. Default is 1s
+   * Base value of catchup request timeout in seconds. Default is 1.0. Type is double.
    *
    * timeout = timeout_base + ( w * timeout_per_event )
    */
@@ -285,7 +287,7 @@ object SiriusConfiguration {
   final val CATCHUP_DEFAULT_SSTHRESH = "sirius.catchup.default-ssthresh"
 
   /*
-   * Maximum akka message size in KB. Default is 1024.
+   * Maximum akka message size in KB. Default is 1024. Type is Integer.
    */
   final val MAX_AKKA_MESSAGE_SIZE_KB = "sirius.akka.maximum-frame-size-kb"
 }
@@ -325,7 +327,9 @@ class SiriusConfiguration {
    *
    * @return Some(value) if it exists, or None if not
    */
-  def getProp[T](name: String): Option[T] = conf.get(name).asInstanceOf[Option[T]]
+  def getProp[T](name: String): Option[T] = conf.get(name).map {
+    case value => value.asInstanceOf[T]
+  }
 
   /**
    * Get a property with a default fallback
@@ -335,9 +339,17 @@ class SiriusConfiguration {
    *
    * @return the value stored under name, or the default if it's not found
    */
-  def getProp[T](name: String, default: => T): T = conf.get(name) match {
-    case Some(value) => value.asInstanceOf[T]
-    case None => default
+  def getProp[T](name: String, default: => T): T = getProp[T](name).getOrElse(default)
+
+  def getDouble(name: String): Option[Double] = conf.get(name).map {
+    case value => Try(value.asInstanceOf[Double]).getOrElse(String.valueOf(value).toDouble)
   }
 
+  def getDouble(name: String, default: => Double): Double = getDouble(name).getOrElse(default)
+
+  def getInt(name: String): Option[Int] = conf.get(name).map {
+    case value => Try(value.asInstanceOf[Int]).getOrElse(String.valueOf(value).toInt)
+  }
+
+  def getInt(name: String, default: => Int): Int = getInt(name).getOrElse(default)
 }
