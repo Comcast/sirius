@@ -15,7 +15,7 @@
 
 name := "sirius"
 
-version := "1.2.2-SNAPSHOT"
+version := "1.2.2"
 
 scalaVersion := "2.10.2"
 
