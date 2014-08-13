@@ -40,6 +40,7 @@ object MembershipActor {
     def getMembership: String
     def getMembershipRoundTrip: Map[String, Long]
     def getTimeSinceLastPingUpdate: Map[String, Long]
+    def getTimeSinceLastLivenessDetected: Map[String, Long]
     def getClusterConfigMembers: List[String]
     def getTimeSinceLastResolutionAttempt: Option[Long]
     def getLastResolutionPaths: List[String]
@@ -98,6 +99,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
 
   var membershipRoundTripMap = HashMap[String, Long]()
   var lastPingUpdateMap = HashMap[String, Long]()
+  var lastLivenessDetectedMap = HashMap[String, Long]()
   var lastResolutionTime: Option[Long] = None
   var lastResolutionPaths = List[String]()
   var resolutionFailures = 0L
@@ -126,6 +128,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
       val senderPath = sender.path.toString
       membershipRoundTripMap += senderPath -> (currentTime - pingSent)
       lastPingUpdateMap += senderPath -> currentTime
+      lastLivenessDetectedMap += senderPath -> currentTime
 
     case CheckMembershipHealth =>
       pruneDeadMembers()
@@ -138,14 +141,14 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
   private[membership] def pruneDeadMembers() {
     val lastPingThreshold = allowedPingFailures * pingInterval.toMillis + pingInterval.toMillis / 2
 
-    val expired = lastPingUpdateMap.filter { case (_, time) =>
+    val expired = lastLivenessDetectedMap.filter { case (_, time) =>
       System.currentTimeMillis - time > lastPingThreshold
     }
 
     expired.foreach { case (path, _) =>
       membershipAgent send (_ + (path -> None))
       membershipRoundTripMap -= path
-      lastPingUpdateMap -= path
+      lastLivenessDetectedMap -= path
     }
 
     if (expired.nonEmpty) {
@@ -193,6 +196,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
       context.actorSelection(path).resolveOne(1 seconds) onComplete {
         case Success(actor) =>
           context.watch(actor)
+          lastLivenessDetectedMap += path -> System.currentTimeMillis
           membershipAgent send (_ + (path -> Some(actor)))
         case Failure(_) =>
           membershipAgent send (_ + (path -> None))
@@ -207,6 +211,12 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
     def getTimeSinceLastPingUpdate: Map[String, Long] = {
       val currentTime = System.currentTimeMillis()
       lastPingUpdateMap.foldLeft(HashMap[String, Long]()){
+        case (acc, (key, pingTime)) => acc + (key -> (currentTime - pingTime))
+      }
+    }
+    def getTimeSinceLastLivenessDetected: Map[String, Long] = {
+      val currentTime = System.currentTimeMillis()
+      lastLivenessDetectedMap.foldLeft(HashMap[String, Long]()){
         case (acc, (key, pingTime)) => acc + (key -> (currentTime - pingTime))
       }
     }

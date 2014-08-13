@@ -98,6 +98,22 @@ class MembershipActorTest extends NiceTest with TimedTest {
       assert(Some(probeTwo.ref) === membershipAgent.get()(probeTwoPath))
     }
 
+    it("should add an entry to LastLivenessDetected when an actor resolves successfully") {
+      val mockClusterConfig = mock[ClusterConfig]
+      val probeOne = TestProbe()
+      val probeOnePath = probeOne.ref.path.toString
+      doReturn(List(probeOnePath)).when(mockClusterConfig).members
+
+      val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) = makeMembershipActor(clusterConfig = Some(mockClusterConfig))
+
+      assert(!underTest.underlyingActor.lastLivenessDetectedMap.isDefinedAt(probeOnePath))
+
+      underTest ! CheckClusterConfig
+
+      assert(waitForTrue(membershipAgent.get().size == 1, 2000, 100), "Did not reach correct membership size.")
+      assert(underTest.underlyingActor.lastLivenessDetectedMap.isDefinedAt(probeOnePath))
+    }
+
     it("should prune dead actors when PingMembership is received") {
       val (underTest, membershipAgent: Agent[Map[String, Option[ActorRef]]]) =
         makeMembershipActor(callSuperUpdateMembership = false)
@@ -109,8 +125,8 @@ class MembershipActorTest extends NiceTest with TimedTest {
       Await.ready(membershipAgent.future(), 1 second)
 
       val expiredTime = System.currentTimeMillis - (pingInterval.toMillis * allowedFailures + pingInterval.toMillis)
-      underTest.underlyingActor.lastPingUpdateMap += ("foo" -> expiredTime)
-      underTest.underlyingActor.lastPingUpdateMap += ("bar" -> new Date().getTime)
+      underTest.underlyingActor.lastLivenessDetectedMap += ("foo" -> expiredTime)
+      underTest.underlyingActor.lastLivenessDetectedMap += ("bar" -> new Date().getTime)
       underTest.underlyingActor.membershipRoundTripMap += ("foo" -> new Date().getTime)
 
       underTest ! CheckMembershipHealth
@@ -120,7 +136,7 @@ class MembershipActorTest extends NiceTest with TimedTest {
       assert(waitForTrue(membershipAgent.get.isDefinedAt("foobar"), 2000, 100),
         "Valid reference was unexpectedly removed")
       assert(waitForTrue(membershipAgent.get()("foo") == None, 2000, 100), "foo is defined but is not None.")
-      assert(!underTest.underlyingActor.lastPingUpdateMap.contains("foo"), "foo should have been deleted from ping map")
+      assert(!underTest.underlyingActor.lastLivenessDetectedMap.contains("foo"), "foo should have been deleted from ping map")
       assert(!underTest.underlyingActor.membershipRoundTripMap.contains("foo"),
         "foo should have been deleted from roundtrip map")
     }
@@ -136,8 +152,8 @@ class MembershipActorTest extends NiceTest with TimedTest {
       Await.ready(membershipAgent.future(), 1 second)
 
       val expiredTime = System.currentTimeMillis - (pingInterval.toMillis * allowedFailures + pingInterval.toMillis)
-      underTest.underlyingActor.lastPingUpdateMap += ("foo" -> expiredTime)
-      underTest.underlyingActor.lastPingUpdateMap += ("bar" -> new Date().getTime)
+      underTest.underlyingActor.lastLivenessDetectedMap += ("foo" -> expiredTime)
+      underTest.underlyingActor.lastLivenessDetectedMap += ("bar" -> new Date().getTime)
 
       underTest ! CheckMembershipHealth
 
@@ -154,7 +170,7 @@ class MembershipActorTest extends NiceTest with TimedTest {
       membershipAgent send(_ + ("foobar" -> Some(TestProbe().ref)))
       Await.ready(membershipAgent.future(), 1 second)
 
-      underTest.underlyingActor.lastPingUpdateMap += ("bar" -> new Date().getTime)
+      underTest.underlyingActor.lastLivenessDetectedMap += ("bar" -> new Date().getTime)
 
       underTest ! CheckMembershipHealth
 
@@ -247,14 +263,14 @@ class MembershipActorTest extends NiceTest with TimedTest {
 
       senderProbe.send(underTest, Pong(System.currentTimeMillis() - 100L))
 
-      assert(membershipInfo.getTimeSinceLastPingUpdate.keySet.size == 1)
-      assert(membershipInfo.getTimeSinceLastPingUpdate.get(senderPath) != None)
+      assert(membershipInfo.getTimeSinceLastLivenessDetected.keySet.size == 1)
+      assert(membershipInfo.getTimeSinceLastLivenessDetected.get(senderPath) != None)
       assert(membershipInfo.getMembershipRoundTrip(senderPath) >= 0)
 
       senderProbe2.send(underTest, Pong(System.currentTimeMillis() - 200L))
 
-      assert(membershipInfo.getTimeSinceLastPingUpdate.keySet.size == 2)
-      assert(membershipInfo.getTimeSinceLastPingUpdate.get(senderPath2) != None)
+      assert(membershipInfo.getTimeSinceLastLivenessDetected.keySet.size == 2)
+      assert(membershipInfo.getTimeSinceLastLivenessDetected.get(senderPath2) != None)
       assert(membershipInfo.getMembershipRoundTrip(senderPath2) >= 0)
 
     }
