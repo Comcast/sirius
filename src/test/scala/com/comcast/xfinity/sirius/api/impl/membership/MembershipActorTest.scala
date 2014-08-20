@@ -137,8 +137,6 @@ class MembershipActorTest extends NiceTest with TimedTest {
         "Valid reference was unexpectedly removed")
       assert(waitForTrue(membershipAgent.get()("foo") == None, 2000, 100), "foo is defined but is not None.")
       assert(!underTest.underlyingActor.lastLivenessDetectedMap.contains("foo"), "foo should have been deleted from ping map")
-      assert(!underTest.underlyingActor.membershipRoundTripMap.contains("foo"),
-        "foo should have been deleted from roundtrip map")
     }
 
     it("should call update membership if there is a dead actor when PingMembership is received") {

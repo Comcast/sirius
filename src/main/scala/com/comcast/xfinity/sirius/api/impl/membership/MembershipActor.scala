@@ -147,7 +147,6 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
 
     expired.foreach { case (path, _) =>
       membershipAgent send (_ + (path -> None))
-      membershipRoundTripMap -= path
       lastLivenessDetectedMap -= path
     }
 
