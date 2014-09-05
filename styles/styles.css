@@ -97,6 +97,10 @@ code {
     max-width: 69rem;
     text-align: center; }
 
+.hack {
+  height: 900px;
+  height: 90rem; }
+
 .textured-background {
   background: url(/images/top-background.jpg) no-repeat fixed;
   background-size: cover; }
@@ -122,7 +126,11 @@ code {
   margin-left: 1.5rem; }
   .button-wrapper .button {
     margin-top: 50px;
-    margin-top: 5rem; }
+    margin-top: 5rem;
+    padding: 10px 10px 15px 10px;
+    padding: 1rem 1rem 1.5rem 1rem;
+    line-height: 28px;
+    line-height: 2.8rem; }
 
 .button {
   font-family: XFINITYSansLight;
@@ -131,8 +139,8 @@ code {
   font-size: 2.2rem;
   margin-right: 30px;
   margin-right: 3rem;
-  padding: 10px 10px;
-  padding: 1rem 1rem; }
+  padding: 15px 10px 10px 10px;
+  padding: 1.5rem 1rem 1rem 1rem; }
   .button:hover, .button:focus {
     background-color: #94a0a6;
     background-color: rgba(0, 0, 0, 0.4);
@@ -245,8 +253,8 @@ hr {
 
 .code-wrapper {
   position: relative;
-  bottom: 125px;
-  bottom: 12.5rem;
+  bottom: 190px;
+  bottom: 19rem;
   max-width: 500px;
   max-width: 50rem; }
   .code-wrapper code {
@@ -270,6 +278,8 @@ hr {
     width: 45rem;
     height: 200px;
     height: 20rem;
+    margin-left: 10px;
+    margin-left: 1rem;
     overflow: hidden; }
 
 .highlight {
@@ -282,18 +292,24 @@ hr {
 
 footer {
   background-color: #212121; }
-  footer ul {
-    margin: 0; }
-    footer ul:first-of-type {
-      padding-top: 100px;
-      padding-top: 10rem; }
-  footer li {
-    display: inline-block;
-    vertical-align: middle; }
-  footer img {
+  footer > a {
     position: relative;
-    bottom: 40px;
-    bottom: 4rem; }
+    left: 100px;
+    top: 15px; }
+  footer ul {
+    position: relative;
+    bottom: 25px;
+    bottom: 2.5rem; }
+    footer ul li {
+      display: inline-block;
+      line-height: 5px;
+      line-height: 0.5rem;
+      padding: 10px;
+      padding: 1rem; }
+      footer ul li:first-of-type {
+        border-right: solid 1px #b5b3b3;
+        padding: 15px;
+        padding: 1.5rem; }
 
 .footer-copy {
   font-size: 16px;

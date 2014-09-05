@@ -5,7 +5,8 @@ $lightgrey: #B5B3B3;
 $white: #fff;
 $blue: #0085cb;
 
-//
+// REM MIXIN
+
 //  rem unit with px fallback
 //  @include rem($property, $values)
 //
@@ -97,6 +98,7 @@ $baseFontSize: 10; /* html { font-size: 62.5%; } */
 }
 
 // FONTS //
+
 /* This CSS resource incorporates links to font software which is the valuable copyrighted property of Webtype L
 LC and/or its suppliers. You may not attempt to copy, install, redistribute, convert, modify or reverse engineer this
 font software. Please contact Webtype with any questions regarding Web Fonts:
@@ -226,6 +228,10 @@ code {
     }
 }
 
+.hack {
+        @include rem(height, 900px); //TODO - fix this hack
+    }
+
 .textured-background {
     background: url(/images/top-background.jpg) no-repeat fixed;
     background-size: cover;
@@ -253,6 +259,8 @@ code {
 
     .button {
         @include rem(margin-top, 50px);
+        @include rem(padding, 10px 10px 15px 10px);
+        @include rem(line-height, 28px);
     }
 }
 
@@ -261,7 +269,7 @@ code {
     display: inline-block;
     @include rem(font-size, 22px);
     @include rem(margin-right, 30px);
-    @include rem(padding, 10px 10px);
+    @include rem(padding, 15px 10px 10px 10px);
 
     &:hover, &:focus {
         background-color: #94a0a6;
@@ -397,7 +405,7 @@ hr {
 
 .code-wrapper {
     position: relative;
-    @include rem(bottom, 125px);
+    @include rem(bottom, 190px);
     @include rem(max-width, 500px);
 
     code {
@@ -419,7 +427,9 @@ hr {
         border: 1px solid #FCB705;
         @include rem(width, 450px);
         @include rem(height, 200px);
+        @include rem(margin-left, 10px);
         overflow: hidden;
+
     }
 }
 
@@ -436,22 +446,26 @@ hr {
 footer {
     background-color: $darkgrey;
 
-    ul {
-        margin: 0;
-
-        &:first-of-type {
-            @include rem(padding-top, 100px);
-        }
-    }
-
-    li {
-        display: inline-block;
-        vertical-align: middle;
-    }
-
-    img {
+    > a {
         position: relative;
-        @include rem(bottom, 40px);
+        left: 100px;
+        top: 15px;
+    }
+
+    ul {
+        position: relative;
+        @include rem(bottom, 25px);
+
+        li {
+            display: inline-block;
+            @include rem(line-height, 5px);
+            @include rem(padding, 10px);
+
+            &:first-of-type {
+                border-right: solid 1px $lightgrey;
+                @include rem(padding, 15px);
+            }
+        }
     }
 }
 
