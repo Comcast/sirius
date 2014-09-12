@@ -303,8 +303,6 @@ footer {
     bottom: 2.5rem; }
     footer ul li {
       display: inline-block;
-      line-height: 5px;
-      line-height: 0.5rem;
       padding: 10px;
       padding: 1rem; }
       footer ul li:first-of-type {

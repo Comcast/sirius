@@ -459,7 +459,6 @@ footer {
 
         li {
             display: inline-block;
-            @include rem(line-height, 5px);
             @include rem(padding, 10px);
 
             &:first-of-type {
