@@ -233,10 +233,6 @@ code {
     }
 }
 
-.hack {
-        @include rem(height, 900px); //TODO - fix this hack
-    }
-
 .textured-background {
     background: url(/images/top-background.jpg) no-repeat fixed;
     background-size: cover;
@@ -408,6 +404,7 @@ hr {
     position: relative;
     @include rem(bottom, 190px);
     @include rem(max-width, 500px);
+    @include rem(margin-top, 20px);
 
     code {
         display: block;

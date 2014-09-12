@@ -101,10 +101,6 @@ code {
     max-width: 69rem;
     text-align: center; }
 
-.hack {
-  height: 900px;
-  height: 90rem; }
-
 .textured-background {
   background: url(/images/top-background.jpg) no-repeat fixed;
   background-size: cover; }
@@ -257,7 +253,9 @@ hr {
   bottom: 190px;
   bottom: 19rem;
   max-width: 500px;
-  max-width: 50rem; }
+  max-width: 50rem;
+  margin-top: 20px;
+  margin-top: 2rem; }
   .code-wrapper code {
     display: block;
     width: 100%;
