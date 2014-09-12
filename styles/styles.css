@@ -7,27 +7,31 @@ http://www.webtype.com
 @font-face {
   font-family: 'XFINITYSansBold';
   src: url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot");
-  src: url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-4.svg") format("svg");
+  src: url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-3.woff") format("woff"), url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-1.ttf") format("truetype"), url("/styles/fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-4.svg") format("svg");
   font-weight: normal;
   font-style: normal; }
 @font-face {
   font-family: 'XFINITYSansMedium';
   src: url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot");
-  src: url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-4.svg") format("svg");
+  src: url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-3.woff") format("woff"), url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-1.ttf") format("truetype"), url("/styles/fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-4.svg") format("svg");
   font-weight: normal;
   font-style: normal; }
 @font-face {
   font-family: 'XFINITYSansLight';
   src: url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot");
-  src: url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-4.svg") format("svg");
+  src: url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-3.woff") format("woff"), url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-1.ttf") format("truetype"), url("/styles/fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-4.svg") format("svg");
   font-weight: normal;
   font-style: normal; }
 @font-face {
   font-family: 'XFINITYSansThin';
   src: url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot");
-  src: url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg") format("svg");
+  src: url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot?#iefix") format("embedded-opentype"), url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-3.woff") format("woff"), url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-1.ttf") format("truetype"), url("/styles/fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg") format("svg");
   font-weight: normal;
   font-style: normal; }
+* {
+  font-weight: normal;
+  font-style: normal; }
+
 html {
   font-size: 62.5%; }
 
