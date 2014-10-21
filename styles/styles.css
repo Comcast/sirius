@@ -159,7 +159,7 @@ code {
 .featured-content {
   background-color: #e2ad27; }
   .featured-content:nth-of-type(2) {
-    background-color: #F2C246;
+    background-color: #CFA53E;
     border-top: 1px solid #212121; }
 
 .headline-small {
@@ -174,7 +174,9 @@ code {
   border-left: 3px solid #0085cb; }
 
 p.headline-small {
-  max-width: 71%;
+  max-width: 65%;
+  margin-right: 15px;
+  margin-right: 1.5rem;
   float: left; }
 
 .tiles {
@@ -312,5 +314,3 @@ footer {
   font-size: 16px;
   font-size: 1.6rem;
   font-family: XFINITYSansMedium; }
-
-/*# sourceMappingURL=styles.css.map */

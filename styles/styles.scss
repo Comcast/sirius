@@ -2,6 +2,7 @@
 
 $yellow: #e2ad27;
 $lightyellow: #F2C246;
+$darkyellow: #CFA53E;
 $darkgrey: #212121;
 $lightgrey: #B5B3B3;
 $white: #fff;
@@ -295,7 +296,7 @@ code {
     background-color: $yellow;
 
     &:nth-of-type(2) {
-        background-color: $lightyellow;
+        background-color: $darkyellow;
         border-top: 1px solid $darkgrey;
     }
 }
@@ -312,7 +313,8 @@ code {
 }
 
 p.headline-small {
-    max-width: 71%;
+    max-width: 65%;
+    @include rem(margin-right, 15px);
     float: left;
 }
 
