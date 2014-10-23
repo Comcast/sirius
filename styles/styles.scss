@@ -1,0 +1,476 @@
+// VARIABLES
+
+$yellow: #e2ad27;
+$lightyellow: #F2C246;
+$darkyellow: #CFA53E;
+$darkgrey: #212121;
+$lightgrey: #B5B3B3;
+$white: #fff;
+$blue: #0085cb;
+
+// REM MIXIN
+
+//  rem unit with px fallback
+//  @include rem($property, $values)
+//
+//  USAGE:
+
+//  @include rem(font-size, 16px);
+//
+//  outputs:
+//  font-size: 16px;
+//  font-size: 1.6rem;
+//
+//  @include rem(font, bold 10px 'Helvetica');
+//
+//  outputs:
+//  font: bold 10px 'Helvetica';
+//  font: bold 1rem 'Helvetica';
+
+//  @include rem(line-height, 16px);
+
+//  outputs:
+//  line-height: 16px;
+//  line-height: 1.6rem;
+//
+//  @include rem(margin, 0 24px 0 12px);
+//
+//  outputs:
+//  margin: 0 24px 0 12px;
+//  margin: 0 2.4rem 0 1.2rem;
+
+$baseFontSize: 10; /* html { font-size: 62.5%; } */
+
+@function parseInt($n) {
+  @return $n / ($n * 0 + 1);
+}
+
+@mixin rem($property, $values) {
+    $px : ();
+    $rem: ();
+
+    $root: $baseFontSize;
+
+    @each $value in $values {
+        @if $value == 0 or $value == auto {
+            $px : append($px , $value);
+            $rem: append($rem, $value);
+        }
+
+        @else if type-of($value) == number and( unit($value) == "px" or unit($value) == "rem" ){
+            $unit: unit($value);
+            $val: parseInt($value);
+
+            @if $unit == "px" {
+                $px : append($px,  $value);
+                $rem: append($rem, ($val / $root + rem));
+            }
+
+            @if $unit == "rem" {
+                $px : append($px,  ($val * $root + px));
+                $rem: append($rem, $value);
+            }
+        }
+
+        @else {
+            $px : append($px,  $value);
+            $rem: append($rem, $value);
+        }
+    }
+
+    @if $px == $rem {
+        #{$property}: $px;
+    } @else {
+        #{$property}: $px;
+        #{$property}: $rem;
+    }
+}
+
+@function rem($value) {
+    $root: $baseFontSize;
+    $val: parseInt($value);
+    $return: ();
+
+    @if unit($value) == "px" {
+        $return: append($return, ($val / $root + rem));
+    } @else {
+        $return: append($return, ($val * $root + px));
+    }
+
+    @return $return;
+}
+
+// FONTS //
+
+/* This CSS resource incorporates links to font software which is the valuable copyrighted property of Webtype L
+LC and/or its suppliers. You may not attempt to copy, install, redistribute, convert, modify or reverse engineer this
+font software. Please contact Webtype with any questions regarding Web Fonts:
+http://www.webtype.com
+ */
+
+@font-face {
+    font-family: 'XFINITYSansBold';
+    src: url('fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot');
+    src: url('fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-2.eot?#iefix') format('embedded-opentype'),
+    url('fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-3.woff') format('woff'),
+    url('fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-1.ttf') format('truetype'),
+    url('fonts/XFINITY-Sans-Bold/19ab5393-ad15-475d-97fd-ae2e7339e4e4-4.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'XFINITYSansMedium';
+    src: url('fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot');
+    src: url('fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-2.eot.eot?#iefix') format('embedded-opentype'),
+    url('fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-3.woff') format('woff'),
+    url('fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-1.ttf') format('truetype'),
+    url('fonts/XFINITY-Sans-Medium/db434f6f-3b5c-4740-886f-15faa26f4baa-4.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'XFINITYSansLight';
+    src: url('fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot');
+    src: url('fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-2.eot?#iefix') format('embedded-opentype'),
+    url('fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-3.woff') format('woff'),
+    url('fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-1.ttf') format('truetype'),
+    url('fonts/XFINITY-Sans-Light/9e29c7c6-da39-4c81-b212-5a3a5c4bb999-4.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'XFINITYSansThin';
+    src: url('fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot');
+    src: url('fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-2.eot.eot?#iefix') format('embedded-opentype'),
+    url('fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-3.woff') format('woff'),
+    url('fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-1.ttf') format('truetype'),
+    url('fonts/XFINITY-Sans-Thin/34b618d9-a5ad-4b74-9dbd-228493df8bc7-4.svg') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+// STYLES //
+
+* {
+    font-weight: normal;
+    font-style: normal;
+}
+
+html {
+    font-size: 62.5%; //sets base 10 for rem mixin
+}
+
+body {
+    width: 100%;
+}
+
+header > nav {
+    position: absolute;
+    right: 0;
+    top: 0;
+}
+
+a {
+    text-decoration: none;
+    color: $blue;
+    @include rem(font-size, 16px);
+    font-family: XFINITYSansBold;
+}
+
+p > a {
+   @include rem(font-size, 18px); 
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+code {
+    @include rem(font-size, 18px);
+    @include rem(line-height, 28px);
+}
+
+.global-padding {
+    padding-right: 5%;
+    padding-left: 5%;
+    padding-top: 3%;
+    padding-bottom: 5%;
+    -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+
+.white {
+    color: $white;
+}
+
+.body-copy {
+    font-family: XFINITYSansMedium;
+    @include rem(font-size, 18px);
+    @include rem(line-height, 28px);
+}
+
+.logo {
+    position: relative;
+    @include rem(bottom, 12px);
+}
+
+.nav-item {
+    @include rem(padding-right, 20px);
+
+    &:last-of-type {
+        padding-right: 0;
+    }
+}
+
+.module {
+    margin: 0;
+
+    > p.white {
+        @include rem(max-width, 690px);
+        text-align: center;
+    }
+}
+
+.textured-background {
+    background: url(../images/top-background.jpg) no-repeat fixed;
+    background-size: cover;
+}
+
+.centered {
+    margin: 0 auto;
+    text-align: center;
+}
+
+.headline-large {
+    font-family: XFINITYSansThin;
+    text-align: center;
+    @include rem(font-size, 120px);
+}
+
+.headline-medium {
+    font-family: XFINITYSansThin;
+    text-align: center;
+    @include rem(font-size, 70px);
+}
+
+.button-wrapper {
+    @include rem(margin-left, 15px);
+
+    .button {
+        @include rem(margin-top, 50px);
+        @include rem(padding, 10px 10px 15px 10px);
+        @include rem(line-height, 28px);
+    }
+}
+
+.button {
+    font-family: XFINITYSansLight;
+    display: inline-block;
+    @include rem(font-size, 22px);
+    @include rem(margin-right, 30px);
+    @include rem(padding, 15px 10px 10px 10px);
+
+    &:hover, &:focus {
+        background-color: #94a0a6;
+        background-color: rgba(black, 0.4);
+        @include rem(border-radius, 5px);
+    }
+
+    &:before {
+        position: relative;
+        @include rem(top, 8px);
+        @include rem(margin-right, 10px);
+    }
+}
+
+.icon-go:before {
+    content: url('../images/arrow-right.png');
+}
+
+.featured-content {
+    background-color: $yellow;
+
+    &:nth-of-type(2) {
+        background-color: $darkyellow;
+        border-top: 1px solid $darkgrey;
+    }
+}
+
+.headline-small {
+    font-family: XFINITYSansLight;
+    @include rem(padding, 10px);
+    @include rem(font-size, 28px);
+    margin: 0;
+}
+
+.headline-fancy {
+    border-left: 3px solid $blue;
+}
+
+p.headline-small {
+    max-width: 65%;
+    @include rem(margin-right, 15px);
+    float: left;
+}
+
+.tiles {
+    text-align: center;
+    margin: 0 0;
+    padding: 0 0;
+
+    > li {
+        display: inline-block;
+        vertical-align: top;
+    }
+}
+
+.tile {
+    padding: 0 0;
+    -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+    @include rem(max-width, 300px);
+    @include rem(margin-right, 100px);
+}
+
+.one:before {
+    content: url(../images/icon-lightning.png);
+}
+
+.two:before {
+    content: url(../images/icon-replication.png);
+}
+
+.three {
+    margin-right: 0;
+
+    &:before {
+        content: url(../images/icon-computer.png);
+    }
+
+}
+
+.light {
+    font-family: XFINITYSansLight;
+}
+
+hr {
+    background: rgba(black, 0.15);
+    width: 85%;
+    height: 1px;
+    border: none;
+    @include rem(margin-bottom, 50px);
+    @include rem(margin-top, 50px);
+}
+
+.list-right {
+    float: right;
+    position: relative;
+    @include rem(right, 75px);
+
+    > ul {
+        list-style: circle inside;
+        @include rem(min-width, 250px);
+    }
+}
+
+.clear:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.articles-wrapper {
+    position: relative;
+    @include rem(bottom, 35px);
+
+    article {
+        @include rem(margin-bottom, 45px);
+    }
+
+    ul {
+        @include rem(margin-left, 18px);
+    }
+
+    li:before {
+        content: ">  ";
+        color: #AB831D;
+    }
+
+}
+
+.code-wrapper {
+    position: relative;
+    @include rem(bottom, 190px);
+    @include rem(max-width, 500px);
+    @include rem(margin-top, 20px);
+
+    code {
+        display: block;
+        width: 100%;
+        position: relative;
+        @include rem(right, 45px);
+        @include rem(bottom, 10px);
+    }
+
+    pre {
+        color: black;
+        background: $lightyellow;
+        -webkit-border-radius: 4px;
+        -moz-border-radius: 4px;
+        -ms-border-radius: 4px;
+        -o-border-radius: 4px;
+        border-radius: 4px;
+        border: 1px solid #FCB705;
+        @include rem(width, 450px);
+        @include rem(height, 200px);
+        @include rem(margin-left, 10px);
+        overflow: hidden;
+
+    }
+}
+
+.highlight {
+    color: $blue;
+}
+
+.featured-image {
+    border: 1px solid $lightgrey;
+    display: block;
+    margin: 0 auto;
+}
+
+footer {
+    background-color: $darkgrey;
+
+    > a {
+        position: relative;
+        left: 100px;
+        top: 15px;
+    }
+
+    ul {
+        position: relative;
+        @include rem(bottom, 25px);
+
+        li {
+            display: inline-block;
+            @include rem(padding, 10px);
+
+            &:first-of-type {
+                border-right: solid 1px $lightgrey;
+                @include rem(padding, 15px);
+            }
+        }
+    }
+}
+
+.footer-copy {
+    @include rem(font-size, 16px);
+    font-family: XFINITYSansMedium;
+}
