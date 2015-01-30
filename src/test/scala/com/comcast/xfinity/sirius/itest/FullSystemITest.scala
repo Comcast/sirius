@@ -90,6 +90,7 @@ class FullSystemITest extends NiceTest with TimedTest {
                  gapRequestFreqSecs: Int = 5,
                  replicaReproposalWindow: Int = 10,
                  sslEnabled: Boolean = false,
+                 maxWindowSize: Int = 1000,
                  membershipPath: String = new File(tempDir, "membership").getAbsolutePath):
                 (SiriusImpl, RequestHandler, SiriusLog) = {
 
@@ -116,6 +117,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     siriusConfig.setProp(SiriusConfiguration.LOG_REQUEST_FREQ_SECS, gapRequestFreqSecs)
     siriusConfig.setProp(SiriusConfiguration.PAXOS_MEMBERSHIP_CHECK_INTERVAL, 0.1)
     siriusConfig.setProp(SiriusConfiguration.REPROPOSAL_WINDOW, replicaReproposalWindow)
+    siriusConfig.setProp(SiriusConfiguration.CATCHUP_MAX_WINDOW_SIZE, maxWindowSize)
 
     if (sslEnabled) {
       siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERN_CONFIG, "src/test/resources/sirius-akka-base.conf")
@@ -378,5 +380,89 @@ class FullSystemITest extends NiceTest with TimedTest {
 
     assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 10000, 100),
       "Wals were not equivalent")
+  }
+
+  def createSegmentedLog(name: String, maxEvents: Option[Long] = None): SegmentedUberStore = {
+    val config = new SiriusConfiguration()
+
+    maxEvents foreach {
+      config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, _)
+    }
+    SegmentedUberStore.init(new File(tempDir, name).getAbsolutePath)
+    SegmentedUberStore(new File(tempDir, name).getAbsolutePath, config)
+  }
+
+  it("should be able to catchup even after the next item has been compacted away") {
+    val log1 = createSegmentedLog("1", maxEvents = Some(4L))
+    log1.writeEntry(OrderedEvent(1, 0, Delete("1")))
+    log1.writeEntry(OrderedEvent(2, 0, Delete("2")))
+    log1.writeEntry(OrderedEvent(3, 0, Delete("3")))
+    log1.writeEntry(OrderedEvent(4, 0, Delete("4")))
+
+    log1.writeEntry(OrderedEvent(5, 0, Delete("3")))
+    log1.writeEntry(OrderedEvent(6, 0, Delete("4")))
+    log1.writeEntry(OrderedEvent(7, 0, Delete("5")))
+    log1.writeEntry(OrderedEvent(8, 0, Delete("6")))
+
+    val log2 = createSegmentedLog("2", maxEvents = Some(4L))
+    log2.writeEntry(OrderedEvent(1, 0, Delete("1")))
+    log2.writeEntry(OrderedEvent(2, 0, Delete("2")))
+
+    assert(verifyWalSize(log1, 8))
+    assert(verifyWalSize(log2, 2))
+
+    log1.compact()
+
+    assert(verifyWalSize(log1, 6))
+
+    writeClusterConfig(List(42289, 42290))
+    val (sirius1, _, _) = makeSirius(42289, wal = Some(log1))
+    val (sirius2, _, _) = makeSirius(42290, wal = Some(log2))
+    sirii = List(sirius1, sirius2)
+    waitForMembership(sirii, 2)
+
+    assert(waitForTrue(verifyWalSize(log2, 6), 30000, 500), "Follower did not catch up")
+  }
+
+  it("should be able to catchup even after the next item (and its entire segment) has been compacted away") {
+    val log1 = createSegmentedLog("1", maxEvents = Some(4L))
+    log1.writeEntry(OrderedEvent(1, 0, Delete("1")))
+    log1.writeEntry(OrderedEvent(2, 0, Delete("2")))
+    log1.writeEntry(OrderedEvent(3, 0, Delete("3")))
+    log1.writeEntry(OrderedEvent(4, 0, Delete("4")))
+
+    // entire second segment is compacted away
+    log1.writeEntry(OrderedEvent(5, 0, Delete("5")))
+    log1.writeEntry(OrderedEvent(6, 0, Delete("6")))
+    log1.writeEntry(OrderedEvent(7, 0, Delete("7")))
+    log1.writeEntry(OrderedEvent(8, 0, Delete("8")))
+
+    log1.writeEntry(OrderedEvent(9, 0, Delete("5")))
+    log1.writeEntry(OrderedEvent(10, 0, Delete("6")))
+    log1.writeEntry(OrderedEvent(11, 0, Delete("7")))
+    log1.writeEntry(OrderedEvent(12, 0, Delete("8")))
+
+    log1.writeEntry(OrderedEvent(13, 0, Delete("9")))
+
+    val log2 = createSegmentedLog("2", maxEvents = Some(4L))
+    log2.writeEntry(OrderedEvent(1, 0, Delete("1")))
+    log2.writeEntry(OrderedEvent(2, 0, Delete("2")))
+    log2.writeEntry(OrderedEvent(3, 0, Delete("3")))
+    log2.writeEntry(OrderedEvent(4, 0, Delete("4")))
+
+    assert(verifyWalSize(log1, 11))
+    assert(verifyWalSize(log2, 4))
+
+    log1.compact()
+
+    assert(verifyWalSize(log1, 9))
+
+    writeClusterConfig(List(42289, 42290))
+    val (sirius1, _, _) = makeSirius(42289, wal = Some(log1), maxWindowSize = 2)
+    val (sirius2, _, _) = makeSirius(42290, wal = Some(log2), maxWindowSize = 2)
+    sirii = List(sirius1, sirius2)
+    waitForMembership(sirii, 2)
+
+    assert(waitForTrue(verifyWalSize(log2, 9), 30000, 500), "Follower did not catch up")
   }
 }
