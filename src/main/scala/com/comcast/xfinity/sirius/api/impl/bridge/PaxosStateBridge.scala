@@ -161,11 +161,14 @@ class PaxosStateBridge(startingSeq: Long,
   }
 
   private def applySubrange(subrange: PopulatedSubrange) {
-    // for each useful event, send it to the stateSupervisor and update nextSeq
+    // for each useful event, send it to the stateSupervisor
     subrange.events.dropWhile(_.sequence < nextSeq).foreach {
       case event =>
         stateSupervisor ! event
-        nextSeq = event.sequence + 1
+    }
+    // update nextSeq based on the declared rangeEnd, no matter what events were actually included
+    if (subrange.rangeEnd >= nextSeq) {
+      nextSeq = subrange.rangeEnd + 1
     }
     // dump out of the buffer events that no longer matter
     eventBuffer.dropWhile((slot, _) => slot < nextSeq)

@@ -179,6 +179,20 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
       underTest ! CompleteSubrange(10, 10, List[OrderedEvent]())
       catchupProbe.expectMsgClass(classOf[ContinueCatchup])
     }
+    it("should update nextSeq for a CompleteSubrange regardless of the updates contained") {
+      val catchupProbe = TestProbe()
+      val underTest = makeStateBridge(10, catchupSupervisor = catchupProbe.ref)
+
+      underTest ! InitiateCatchup
+      catchupProbe.expectMsg(InitiateCatchup(10))
+
+      assert(10 === underTest.underlyingActor.nextSeq)
+
+      underTest ! CompleteSubrange(10, 11, List[OrderedEvent]())
+      catchupProbe.expectMsgClass(classOf[ContinueCatchup])
+
+      assert(12 === underTest.underlyingActor.nextSeq)
+    }
   }
   describe("upon receiving a PartialSubrange") {
     it("should ask the CatchupSupervisor to stop catchup") {
