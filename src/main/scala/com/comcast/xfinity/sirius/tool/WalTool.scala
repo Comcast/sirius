@@ -81,11 +81,23 @@ object WalTool {
     Console.err.println("       Same as key-filter, except the resulting UberStore contains all")
     Console.err.println("       OrderedEvents not matching regexp")
     Console.err.println()
+    Console.err.println("   key-filter-deletes-not-older-than <earliestMillis> <inWalDir> <outWalDir>")
+    Console.err.println("       Write all OrderedEvents in UberStore to a new UberStore in outWalDir ")
+    Console.err.println("       while filtering Deletes that are older than the specified timestamp ")
+    Console.err.println()
+    Console.err.println("   key-filter-puts-not-older-than <regexp> <earliestMillis> <inWalDir> <outWalDir>")
+    Console.err.println("       Write all OrderedEvents in UberStore in inWalDir to a new UberStore in outWalDir")
+    Console.err.println("       while filtering Puts that match the regexp and are older than the specified timestamp")
+    Console.err.println()
     Console.err.println("   key-list <inWalDir> <outFile>")
     Console.err.println("       Write all keys from wal in outFile")
     Console.err.println()
     Console.err.println("   key-list-filter <regexp> <inWalDir> <outFile>")
     Console.err.println("       write all keys that match regexp to outFile")
+    Console.err.println()
+    Console.err.println("   key-list-filter-puts-older-than <regexp> <earliestMillis> <inWalDir> <outFile>")
+    Console.err.println("       Write all Put keys that match regexp and are older than the specified timestamp")
+    Console.err.println("       to outFile")
     Console.err.println()
     Console.err.println("   replay <inWalDir> <host> <concurrency>")
     Console.err.println("       For each OrderedEvent will issue an http request")
@@ -131,6 +143,14 @@ object WalTool {
         val filterFun: OrderedEvent => Boolean = keyMatch(regexp, _)
         filter(inWal, outWal, filterFun)
 
+      case Array("key-filter-deletes-not-older-than", earlistTimestamp, inWal, outFile) =>
+        filterDeletesOlderThan(inWal, outFile, earlistTimestamp.toLong)
+
+      case Array("key-filter-puts-not-older-than", regexpStr, earliestTimestamp, inWal, outWal) =>
+        val regexp = regexpStr.r
+        val filterFun: OrderedEvent => Boolean = !keyMatchPutsOlderThan(regexp, earliestTimestamp.toLong, _)
+        filter(inWal, outWal, filterFun)
+
       case Array("key-filter-not", regexpStr, inWal, outWal) =>
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = !keyMatch(regexp, _)
@@ -142,6 +162,11 @@ object WalTool {
       case Array("key-list-filter", regexpStr, inWal, outFile) =>
         val regexp = regexpStr.r
         val filterFun: OrderedEvent => Boolean = keyMatch(regexp, _)
+        keyListFilter(inWal, outFile, filterFun)
+
+      case Array("key-list-filter-puts-older-than", regexpStr, earliestTimestamp, inWal, outFile) =>
+        val regexp = regexpStr.r
+        val filterFun: OrderedEvent => Boolean = keyMatchPutsOlderThan(regexp, earliestTimestamp.toLong, _)
         keyListFilter(inWal, outFile, filterFun)
 
       case Array("replay", inWal, host, concurrency) =>
@@ -275,6 +300,19 @@ object WalTool {
     case _ => false
   }
 
+  /**
+   * Does the key match r and is a Put and is older than the specified timestamp
+   * @param r Regexp to match
+   * @param earliestTimestamp timestamp to filter Puts if older than.
+   * @param evt OrderedEvent to check
+   */
+  private def keyMatchPutsOlderThan(r: Regex, earliestTimestamp: Long, evt: OrderedEvent): Boolean = {
+    evt match {
+      case OrderedEvent(_, timestamp, Put(key, _)) => (r.findFirstIn(key) != None) && (timestamp < earliestTimestamp)
+      case _ => false
+    }
+  }
+
   private def keyList(inWal:String, outFile:String){
     val wal: SiriusLog = siriusLog(inWal)
     val keySet = Set[WrappedArray[Byte]]()
@@ -299,7 +337,7 @@ object WalTool {
     val wal  = siriusLog(inWal)
     val keySet = scala.collection.mutable.Set[WrappedArray[Byte]]()
     wal.foreach( _ match {
-      case (evt: OrderedEvent) if pred(evt) => System.out.println("Matched");evt.request match {
+      case (evt: OrderedEvent) if pred(evt) => evt.request match {
         case (put:Put) => keySet += WrappedArray.make(put.key.getBytes)
         case (delete: Delete) => keySet -= WrappedArray.make(delete.key.getBytes)
       }
@@ -313,6 +351,41 @@ object WalTool {
       })
     }finally{
       out.close()
+    }
+  }
+
+  /**
+   * Write all entries from UberStore specified by inUberDir to outUberDir (which should not exist)
+   * while filtering deletes that are older the specified timestamp.
+   *
+   * @param earliestTimestamp the earliest timestamp
+   * @param inUberDir input UberStore directory
+   * @param outUberDir output UberStore directory
+   */
+  private def filterDeletesOlderThan(inUberDir: String, outUberDir: String, earliestTimestamp: Long) {
+    createFreshDir(outUberDir)
+
+    val inWal = siriusLog(inUberDir)
+
+    val outWal = inUberDir match {
+      case (dir : String) if UberTool.isLegacy(dir) => UberStore(outUberDir)
+      case (dir: String) if UberTool.isSegmented(dir) =>
+        SegmentedUberStore.init(outUberDir)
+        SegmentedUberStore(outUberDir)
+      case _ => throw new IllegalArgumentException(inUberDir + " does not appear to be a valid Uberstore")
+    }
+
+    inWal.foreach {
+      case evt if filterDeletesOlderThan(evt, earliestTimestamp) != None => outWal.writeEntry(evt)
+      case _ =>
+    }
+  }
+
+  private def filterDeletesOlderThan(evt: OrderedEvent, earliestTimestamp: Long): Option[OrderedEvent] = {
+    evt.request match {
+      case (put: Put) => Some(evt)
+      case (delete: Delete) if evt.timestamp >= earliestTimestamp => Some(evt)
+      case _ => None
     }
   }
 

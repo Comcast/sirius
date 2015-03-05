@@ -15,14 +15,27 @@
  */
 package com.comcast.xfinity.sirius.uberstore.segmented
 
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
+
 import scalax.file.Path
 import java.io.File
 import annotation.tailrec
 
 object SegmentedCompactor {
-
   val COMPACTING_SUFFIX = ".compacting"
   val TEMP_SUFFIX = ".temp"
+
+  def apply(siriusConfig: SiriusConfiguration) : SegmentedCompactor = {
+
+    val maxDeleteAgeHours = siriusConfig.getInt(SiriusConfiguration.COMPACTION_MAX_DELETE_AGE_HOURS, Integer.MAX_VALUE)
+    val maxDeleteAgeMillis = 60L * 60 * 1000 * maxDeleteAgeHours
+
+    new SegmentedCompactor(maxDeleteAgeMillis)
+  }
+}
+
+private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
 
   /**
    * Replaces one Segment file with another, removing the original.
@@ -40,7 +53,7 @@ object SegmentedCompactor {
     val originalPath = Path.fromString(original.location.getAbsolutePath)
     val replacementPath = Path.fromString(replacement)
     val tempPath = Path.fromString(
-      new File(original.location.getParent, original.location.getName + TEMP_SUFFIX).getAbsolutePath
+      new File(original.location.getParent, original.location.getName + SegmentedCompactor.TEMP_SUFFIX).getAbsolutePath
     )
 
     originalPath.moveTo(tempPath)
@@ -81,7 +94,7 @@ object SegmentedCompactor {
     val keys = toCompact.keys
     segments.foldLeft(Map[Segment, String]())(
       (map, toCompact) => {
-        val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + COMPACTING_SUFFIX)
+        val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + SegmentedCompactor.COMPACTING_SUFFIX)
         compactSegment(keys, toCompact, compactInto)
 
         compactInto.setApplied(toCompact.isApplied)
@@ -92,17 +105,21 @@ object SegmentedCompactor {
   }
 
   /**
-   * Compact a single Segment, according to the GC keys provided
+   * Compact a single Segment, according to the GC keys provided.  Deletes that are older than the maxDeleteAge
+   * are purged.
    *
    * @param keys keys to gc against
    * @param source source segment, to be GC'ed
    * @param dest destination segment, empty, will be populated
    */
   private def compactSegment(keys: Set[String], source: Segment, dest: Segment) {
-    // XXX if we want to remove old deletes from the log...
-    // val currentTime = System.currentTimeMillis
+
+    // The earliest timestamp for a Delete to remain.  Deletes with an earlier timestamp will be purged.
+    // By default maxDeleteAgeMillis is really big so no Deletes will be purged.
+    val earliestDeleteTimestamp = System.currentTimeMillis - maxDeleteAgeMillis
+
     source.foreach {
-      // case OrderedEvent(_, timestamp, Delete(key)) if (currentTime - timestamp) > MAX_DELETE_AGE => // nothing
+      case OrderedEvent(_, timestamp, Delete(key)) if timestamp < earliestDeleteTimestamp => // nothing
       case event if !keys.contains(event.request.key) => dest.writeEntry(event)
       case _ => // this event is overridden by some future event: garbage collect it.
     }
@@ -116,7 +133,7 @@ object SegmentedCompactor {
    * @return optional tuple2 of mergeable segments
    */
   @tailrec
-  def findNextMergeableSegments(segments: List[Segment], isMergeable: (Segment, Segment) => Boolean): Option[(Segment, Segment)] = {
+  final def findNextMergeableSegments(segments: List[Segment], isMergeable: (Segment, Segment) => Boolean): Option[(Segment, Segment)] = {
     segments.take(2) match {
       case list if list.size < 2 => None
       case list if isMergeable(list(0), list(1)) => Some(list(0), list(1))
@@ -152,3 +169,4 @@ object SegmentedCompactor {
   }
 
 }
+

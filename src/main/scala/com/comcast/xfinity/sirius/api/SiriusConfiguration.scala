@@ -195,6 +195,13 @@ object SiriusConfiguration {
   final val COMPACTION_SCHEDULE_MINS = "sirius.log.compaction-schedule-mins"
 
   /**
+   * The maximum age for a Delete in hours that remains after compaction.  Deletes
+   * that are older than this age will be purged during compaction.  The default
+   * is that Deletes will not be purged during compaction.
+   */
+  final val COMPACTION_MAX_DELETE_AGE_HOURS = "sirius.log.compaction-max-delete-age-hours"
+
+  /**
    * Name of the sirius supervisor, typically we will not change this,
    * but it's here just in case (string)
    */

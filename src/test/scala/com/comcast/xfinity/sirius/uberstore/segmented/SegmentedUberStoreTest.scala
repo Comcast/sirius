@@ -148,7 +148,9 @@ class SegmentedUberStoreTest extends NiceTest {
     }
 
     it ("should split after the specified number of events have been written") {
-      val underTest = new SegmentedUberStore(dir, 10L)
+      val siriusConfig = new SiriusConfiguration()
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor)
 
       assert("1" === underTest.liveDir.name)
       writeUberStoreEvents(underTest, Range.inclusive(1, 10).toList)
@@ -195,7 +197,9 @@ class SegmentedUberStoreTest extends NiceTest {
 
   describe("compact") {
     it ("should perform a do-nothing compact of a single Segment, if |readOnlyDirs| == 1") {
-      val underTest = new SegmentedUberStore(dir, 10L)
+      val siriusConfig = new SiriusConfiguration()
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor)
 
       writeUberStoreEvents(underTest, Range.inclusive(1, 10).toList)
       underTest.compactAll()
@@ -206,7 +210,9 @@ class SegmentedUberStoreTest extends NiceTest {
     }
 
     it ("should perform a real compact of Segment 1 if Segment 2 is read-only") {
-      val underTest = new SegmentedUberStore(dir, 10L)
+      val siriusConfig = new SiriusConfiguration()
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor)
 
       writeUberStoreEvents(underTest, Range.inclusive(1, 10).toList)
       writeUberStoreEvents(underTest, Range.inclusive(6, 15).toList)

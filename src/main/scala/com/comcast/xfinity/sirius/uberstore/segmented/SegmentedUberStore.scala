@@ -83,7 +83,9 @@ object SegmentedUberStore {
 
     repair(base)
 
-    new SegmentedUberStore(new File(base), MAX_EVENTS_PER_SEGMENT)
+    val segmentedCompactor = SegmentedCompactor(siriusConfig)
+
+    new SegmentedUberStore(new File(base), MAX_EVENTS_PER_SEGMENT, segmentedCompactor)
   }
 }
 
@@ -93,7 +95,7 @@ object SegmentedUberStore {
  *
  * @param base directory SegmentedUberStore is based in
  */
-class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long) extends SiriusLog {
+class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long, segmentedCompactor: SegmentedCompactor) extends SiriusLog {
 
   val replaceLock = new Object()
   val compactLock = new Object()
@@ -212,8 +214,8 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long)
    * Compact readOnlyDirs until they can be compacted no longer.
    */
   private[segmented] def compactAll() {
-    for (toCompact <- SegmentedCompactor.findCompactableSegments(readOnlyDirs)) {
-      val compactionMap = SegmentedCompactor.compactAgainst(toCompact, readOnlyDirs)
+    for (toCompact <- segmentedCompactor.findCompactableSegments(readOnlyDirs)) {
+      val compactionMap = segmentedCompactor.compactAgainst(toCompact, readOnlyDirs)
       replaceSegments(compactionMap) // mutates readOnlyDirs
       toCompact.setApplied(applied = true)
     }
@@ -234,11 +236,11 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long)
    */
   @tailrec
   private[segmented] final def merge() {
-    SegmentedCompactor.findNextMergeableSegments(readOnlyDirs, isMergeable) match {
+    segmentedCompactor.findNextMergeableSegments(readOnlyDirs, isMergeable) match {
       case Some((left, right)) =>
         val merged = new File(base, "%s-%s.merged".format(left.name, right.name))
 
-        SegmentedCompactor.mergeSegments(left, right, merged)
+        segmentedCompactor.mergeSegments(left, right, merged)
         replaceLock synchronized {
           replaceSegment(left, merged.getAbsolutePath)
           removeSegment(right)
@@ -275,13 +277,13 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long)
   }
 
   private def replaceSegment(original: Segment, replacement: String) = replaceLock.synchronized {
-    val newSegment = SegmentedCompactor.replace(original, replacement)
+    val newSegment = segmentedCompactor.replace(original, replacement)
     readOnlyDirs = replaceElement(readOnlyDirs, original, newSegment)
   }
 
   private def removeSegment(segment: Segment) = replaceLock.synchronized {
     readOnlyDirs = readOnlyDirs.filterNot(_ == segment)
-    SegmentedCompactor.delete(segment)
+    segmentedCompactor.delete(segment)
   }
 
   /**
