@@ -23,6 +23,7 @@ if [ $# -ne 1 ]
 then
   echo "Usage: `basename $0` <base_dir>" >&2
   echo "  base_dir is the directory that contains the uberstore directory to be backed up." >&2
+  echo "  WARNING - Do not execute this script while Sirius is running." >&2
   exit 1
 fi
 
