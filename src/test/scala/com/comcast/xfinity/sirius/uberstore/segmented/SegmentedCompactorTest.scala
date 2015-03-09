@@ -18,6 +18,8 @@ package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.NiceTest
 import java.io.File
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+
 import scalax.file.Path
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
@@ -35,9 +37,9 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
     dir
   }
 
-  def writeEvents(segment: Segment, events: List[Long]) {
+  def writeEvents(segment: Segment, events: List[Long], timestamp: Long = 0L) {
     for (i <- events) {
-      segment.writeEntry(OrderedEvent(i, 0L, Delete(i.toString)))
+      segment.writeEntry(OrderedEvent(i, timestamp, Delete(i.toString)))
     }
   }
 
@@ -50,6 +52,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
     segment.foldLeft(List[String]())((acc, event) => event.request.key :: acc).reverse.mkString(" ")
 
   var dir: File = _
+
+  val siriusConfig = new SiriusConfiguration()
 
   before {
     dir = createTempDir
@@ -70,7 +74,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       val expected = replacement.foldLeft(List[Long]())(foldFun)
 
-      val result = SegmentedCompactor.replace(original, replacement.location.getAbsolutePath)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val result = segmentedCompactor.replace(original, replacement.location.getAbsolutePath)
 
       assert(original.location.getAbsolutePath === result.location.getAbsolutePath)
       assert(expected === result.foldLeft(List[Long]())(foldFun))
@@ -85,7 +90,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       val expected = List[Long]()
 
-      val result = SegmentedCompactor.replace(original, replacement.location.getAbsolutePath)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val result = segmentedCompactor.replace(original, replacement.location.getAbsolutePath)
 
       assert(original.location.getAbsolutePath === result.location.getAbsolutePath)
       assert(expected === result.foldLeft(List[Long]())(foldFun))
@@ -95,7 +101,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
   describe("findCompactableSegments") {
     it("should return an empty List if no segments are provided") {
       val list = List[Segment]()
-      assert(List() === SegmentedCompactor.findCompactableSegments(list))
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      assert(List() === segmentedCompactor.findCompactableSegments(list))
     }
 
     it("should return an empty List if all segments have been applied") {
@@ -104,7 +111,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       doReturn(true).when(mockSegment).isApplied
 
-      assert(List() === SegmentedCompactor.findCompactableSegments(list))
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      assert(List() === segmentedCompactor.findCompactableSegments(list))
     }
 
     it("should return only the segments that have not been applied if there are some") {
@@ -115,7 +123,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       doReturn(true).when(appliedSegment).isApplied
       doReturn(false).when(notAppliedSegment).isApplied
 
-      assert(List(notAppliedSegment) === SegmentedCompactor.findCompactableSegments(list))
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      assert(List(notAppliedSegment) === segmentedCompactor.findCompactableSegments(list))
     }
   }
 
@@ -127,7 +136,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
       first.setApplied(applied = false)
-      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val compactionMap = segmentedCompactor.compactAgainst(second, segments)
       assert(false === makeSegment(compactionMap(first)).isApplied)
     }
 
@@ -138,7 +148,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
       first.setApplied(applied = true)
-      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val compactionMap = segmentedCompactor.compactAgainst(second, segments)
       assert(true === makeSegment(compactionMap(first)).isApplied)
     }
 
@@ -150,7 +161,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
-      val compactionMap = SegmentedCompactor.compactAgainst(first, segments)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val compactionMap = segmentedCompactor.compactAgainst(first, segments)
 
       assert(None == compactionMap.get(first))
       assert(None == compactionMap.get(second))
@@ -165,7 +177,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
-      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val compactionMap = segmentedCompactor.compactAgainst(second, segments)
 
       assert(None != compactionMap.get(first))
       assert(None == compactionMap.get(second))
@@ -180,7 +193,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
-      val compactionMap = SegmentedCompactor.compactAgainst(third, segments)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val compactionMap = segmentedCompactor.compactAgainst(third, segments)
 
       assert(None != compactionMap.get(first))
       assert(None != compactionMap.get(second))
@@ -195,7 +209,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
-      val compactionMap = SegmentedCompactor.compactAgainst(third, segments)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val compactionMap = segmentedCompactor.compactAgainst(third, segments)
 
       assert(None != compactionMap.get(first))
       assert(None != compactionMap.get(second))
@@ -210,7 +225,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       writeEvents(first, List(1L, 2L, 3L, 4L))
       writeEvents(second, List(3L, 4L, 5L, 6L))
 
-      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val compactionMap = segmentedCompactor.compactAgainst(second, segments)
       val compacted = makeSegment(compactionMap(first))
 
       assert("1 2" === listEvents(compacted))
@@ -224,7 +240,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       writeEvents(first, List(1L, 2L, 3L, 4L))
       writeEvents(second, List(1L, 2L, 3L, 4L))
 
-      val compactionMap = SegmentedCompactor.compactAgainst(second, segments)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      val compactionMap = segmentedCompactor.compactAgainst(second, segments)
       val compacted = makeSegment(compactionMap(first))
 
       assert(List(first) === compactionMap.keys.toList)
@@ -232,11 +249,58 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
     }
   }
 
+  it("should remove all Delete events in appropriate segments that are older than COMPACTION_MAX_DELETE_AGE_HOURS") {
+    val first = Segment(dir, "1")
+    val second = Segment(dir, "2")
+    val segments = List(first, second)
+
+    val now = System.currentTimeMillis()
+    val twoHoursAgo = now - 2L * 60 * 60 * 1000
+
+    writeEvents(first, List(1L), twoHoursAgo) // This one should be compacted out due to age.
+    writeEvents(first, List(2L, 3L, 4L), now)
+    writeEvents(second, List(3L, 4L, 5L, 6L), now)
+
+    val siriusConfigWithMaxAge = new SiriusConfiguration()
+    siriusConfigWithMaxAge.setProp(SiriusConfiguration.COMPACTION_MAX_DELETE_AGE_HOURS, 1)
+    val segmentedCompactor = SegmentedCompactor(siriusConfigWithMaxAge)
+    val compactionMap = segmentedCompactor.compactAgainst(second, segments)
+
+    val compacted = makeSegment(compactionMap(first))
+
+    assert("2" === listEvents(compacted))
+  }
+
+  it("should not remove any Delete events when COMPACTION_MAX_DELETE_AGE_HOURS is bigger than the current time") {
+    val first = Segment(dir, "1")
+    val second = Segment(dir, "2")
+    val segments = List(first, second)
+
+    val now = System.currentTimeMillis()
+    val twoHoursAgo = now - 2L * 60 * 60 * 1000
+
+    writeEvents(first, List(1L), twoHoursAgo)
+    writeEvents(first, List(2L, 3L, 4L), now)
+    writeEvents(second, List(3L, 4L, 5L, 6L), now)
+
+    val siriusConfigWithMaxAge = new SiriusConfiguration()
+    val nowInHours = now / (60L * 60 * 1000)
+    val biggerThanNowInHours = nowInHours + 168 // One week bigger than now, in hours
+    siriusConfigWithMaxAge.setProp(SiriusConfiguration.COMPACTION_MAX_DELETE_AGE_HOURS, biggerThanNowInHours)
+
+    val segmentedCompactor = SegmentedCompactor(siriusConfigWithMaxAge)
+    val compactionMap = segmentedCompactor.compactAgainst(second, segments)
+
+    val compactedFirst = makeSegment(compactionMap(first))
+    assert("1 2" === listEvents(compactedFirst))
+  }
+
   describe("findNextMergeableSegments") {
     it("should do nothing if the input is of size 0 or 1") {
       val isMergeable = (left: Segment, right: Segment) => true
-      assert(None === SegmentedCompactor.findNextMergeableSegments(List(), isMergeable))
-      assert(None === SegmentedCompactor.findNextMergeableSegments(List(Segment(dir, "1")), isMergeable))
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      assert(None === segmentedCompactor.findNextMergeableSegments(List(), isMergeable))
+      assert(None === segmentedCompactor.findNextMergeableSegments(List(Segment(dir, "1")), isMergeable))
     }
 
     it("should return the first two elements if the return true for the isMergeable predicate") {
@@ -244,32 +308,37 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
       val segments = List(one, two, three)
 
-      assert(Some(one, two) === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      assert(Some(one, two) === segmentedCompactor.findNextMergeableSegments(segments, isMergeable))
     }
     it("should return None if there are no mergeable elements in the list") {
       val isMergeable = (left: Segment, right: Segment) => false
       val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
       val segments = List(one, two, three)
 
-      assert(None === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      assert(None === segmentedCompactor.findNextMergeableSegments(segments, isMergeable))
     }
     it("should return the first mergeable elements in the list if there are any") {
       val isMergeable = (left: Segment, right: Segment) => left.name == "2" && right.name == "3"
       val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
       val segments = List(one, two, three)
 
-      assert(Some(two, three) === SegmentedCompactor.findNextMergeableSegments(segments, isMergeable))
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      assert(Some(two, three) === segmentedCompactor.findNextMergeableSegments(segments, isMergeable))
     }
   }
   describe("delete") {
     it("should close the input segment") {
       val segment = Segment(dir, "1")
-      SegmentedCompactor.delete(segment)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      segmentedCompactor.delete(segment)
       assert(true === segment.isClosed)
     }
     it("should remove the location of segment from the filesystem") {
       val segment = Segment(dir, "1")
-      SegmentedCompactor.delete(segment)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      segmentedCompactor.delete(segment)
       assert(false === segment.location.exists())
     }
   }
@@ -279,7 +348,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       val target = new File(dir, "1-2.merged")
 
       assert(false === target.exists())
-      SegmentedCompactor.mergeSegments(left, right, target)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      segmentedCompactor.mergeSegments(left, right, target)
       assert(true === target.exists())
     }
     it("should write all of the elements from left and right into target, in order") {
@@ -288,7 +358,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       writeEvents(right, List(4L, 5L, 6L))
       val target = new File(dir, "1-2.merged")
 
-      SegmentedCompactor.mergeSegments(left, right, target)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      segmentedCompactor.mergeSegments(left, right, target)
 
       assert("1 2 3 4 5 6" === listEvents(Segment(target)))
     }
@@ -298,7 +369,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       right.setApplied(applied = true)
       val target = new File(dir, "1-2.merged")
 
-      SegmentedCompactor.mergeSegments(left, right, target)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      segmentedCompactor.mergeSegments(left, right, target)
 
       assert(true === Segment(target).isApplied)
     }
@@ -308,7 +380,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       right.setApplied(applied = true)
       val target = new File(dir, "1-2.merged")
 
-      SegmentedCompactor.mergeSegments(left, right, target)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      segmentedCompactor.mergeSegments(left, right, target)
 
       assert(false === Segment(target).isApplied)
     }
