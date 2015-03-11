@@ -25,7 +25,7 @@
     <artifactId>sirius</artifactId>
     <name>Sirius</name>
     <packaging>jar</packaging>
-    <version>1.2.5</version>
+    <version>1.2.6-SNAPSHOT</version>
     <description>The Comcast Sirius library </description>
     <url>https://github.com/Comcast/sirius</url>
     <licenses>
