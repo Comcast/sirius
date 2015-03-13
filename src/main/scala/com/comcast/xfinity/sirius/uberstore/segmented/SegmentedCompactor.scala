@@ -76,22 +76,22 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
    * that should not be compacted (i.e., segments in the list occurring after toCompact
    * in time)
    *
-   * @param toCompact segment to compact against
+   * @param toCompactAgainst segment to compact against
    * @param allSegments list of segments to be compacted
    * @return Map of (old Segment -> compacted Segment location)
    */
-  def compactAgainst(toCompact: Segment, allSegments: List[Segment]): Map[Segment, String] =
-    compactSegments(toCompact, allSegments.filter(_.name.toLong < toCompact.name.toLong))
+  def compactAgainst(toCompactAgainst: Segment, allSegments: List[Segment]): Map[Segment, String] =
+    compactSegments(toCompactAgainst, allSegments.filter(_.name.toLong < toCompactAgainst.name.toLong))
 
   /**
    * Compact all provided Segments against the provided Segment. There is no filtering in this method: only
    * provide the Segments you want compacted.
    *
-   * @param toCompact Segment to compact against
+   * @param toCompactAgainst Segment to compact against
    * @param segments segments to be compacted
    */
-  private def compactSegments(toCompact: Segment, segments: List[Segment]): Map[Segment, String] = {
-    val keys = toCompact.keys
+  private def compactSegments(toCompactAgainst: Segment, segments: List[Segment]): Map[Segment, String] = {
+    val keys = toCompactAgainst.keys
     segments.foldLeft(Map[Segment, String]())(
       (map, toCompact) => {
         val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + SegmentedCompactor.COMPACTING_SUFFIX)
