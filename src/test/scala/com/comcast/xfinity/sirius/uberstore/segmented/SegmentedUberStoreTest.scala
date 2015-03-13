@@ -254,6 +254,26 @@ class SegmentedUberStoreTest extends NiceTest {
       assert("1 2 3 4" === listEvents(newThird))
       assert(true === newThird.isApplied)
     }
+
+    it ("should internally compact a single segment") {
+      val first = Segment(dir, "1")
+      Segment(dir, "2")
+
+      List(
+        OrderedEvent(1L, 0L, Delete("1")),
+        OrderedEvent(2L, 0L, Delete("2")),
+        OrderedEvent(3L, 0L, Delete("3")),
+        OrderedEvent(4L, 0L, Delete("3")),
+        OrderedEvent(5L, 0L, Delete("3")),
+        OrderedEvent(6L, 0L, Delete("6"))
+      ).foreach(first.writeEntry)
+
+      val underTest = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
+      underTest.compactAll()
+
+      val seqs = first.foldLeft(List[Long]())((acc, evt) => evt.sequence +: acc).reverse
+      assert(List(1L, 2L, 5L, 6L) === seqs)
+    }
   }
 
   describe("merge") {

@@ -193,6 +193,8 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
     }
 
   /**
+   * For each non-internally-compacted segment, internally compact it.
+   *
    * For each unapplied Segment, compact previous segments according to its keys,
    * continuing as long as there are unapplied segments. When Segments have been
    * applied, merge any adjacent undersized segments.
@@ -219,6 +221,11 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
    * Compact readOnlyDirs until they can be compacted no longer.
    */
   private[segmented] def compactAll() {
+    for (toCompact <- segmentedCompactor.findInternalCompactionCandidates(readOnlyDirs)) {
+      val compactedLocation = segmentedCompactor.compactInternally(toCompact)
+      replaceSegment(toCompact, compactedLocation) // mutates readOnlyDirs
+    }
+
     for (toCompact <- segmentedCompactor.findCompactableSegments(readOnlyDirs)) {
       val compactionMap = segmentedCompactor.compactAgainst(toCompact, readOnlyDirs)
       replaceSegments(compactionMap) // mutates readOnlyDirs
