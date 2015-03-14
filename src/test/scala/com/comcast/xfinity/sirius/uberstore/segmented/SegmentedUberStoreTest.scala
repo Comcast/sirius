@@ -274,6 +274,26 @@ class SegmentedUberStoreTest extends NiceTest {
       val seqs = first.foldLeft(List[Long]())((acc, evt) => evt.sequence +: acc).reverse
       assert(List(1L, 2L, 5L, 6L) === seqs)
     }
+    it("should remove both updates if a PUT is masked by a purge-able delete") {
+      val segment = Segment(dir, "1")
+      Segment(dir, "2") // to compact against
+      Segment(dir, "3") // currently active segment
+
+      val now = System.currentTimeMillis()
+      val twoHoursAgo = now - 2L * 60 * 60 * 1000
+
+      List(
+        OrderedEvent(1L, twoHoursAgo - 10, Put("oldKey", "".getBytes)),
+        OrderedEvent(2L, twoHoursAgo, Delete("oldKey"))
+      ).foreach(segment.writeEntry)
+
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.COMPACTION_MAX_DELETE_AGE_HOURS, 1)
+      val underTest = SegmentedUberStore(dir.getAbsolutePath, config)
+      underTest.compactAll()
+
+      assert("" === listEvents(segment))
+    }
   }
 
   describe("merge") {

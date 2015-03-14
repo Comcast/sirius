@@ -162,6 +162,15 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       assert(true === compacted.isInternallyCompacted)
     }
+    it("should preserve the keys-applied flag") {
+      val segment = Segment(dir, "1")
+      segment.setApplied(applied = true)
+
+      val underTest = SegmentedCompactor(new SiriusConfiguration())
+      val compacted = makeSegment(underTest.compactInternally(segment))
+
+      assert(true === compacted.isApplied)
+    }
   }
 
   describe("findInternalCompactionCandidates") {

@@ -100,6 +100,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
       case _ => // nothing
     }
 
+    compactInto.setApplied(toCompact.isApplied)
     compactInto.setInternallyCompacted(compacted = true)
     compactInto.close()
 
