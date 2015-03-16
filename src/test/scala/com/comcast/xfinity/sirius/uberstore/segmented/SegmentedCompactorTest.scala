@@ -476,16 +476,40 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       assert(false === Segment(target).isApplied)
     }
-    it("should set the new segment's isInternallyCompacted flag to false") {
-      val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
-      left.setInternallyCompacted(compacted = true)
-      right.setInternallyCompacted(compacted = true)
+    it("should set the new segment's isInternallyCompacted correctly") {
+      def createMerged(leftFile: File, rightFile: File, target: File)
+                      (leftApplied: Boolean, leftCompacted: Boolean,
+                       rightApplied: Boolean, rightCompacted: Boolean): Segment = {
+        Path(leftFile).deleteRecursively()
+        Path(rightFile).deleteRecursively()
+        Path(target).deleteRecursively()
+
+        val left = Segment(leftFile)
+        val right = Segment(rightFile)
+
+        left.setApplied(leftApplied)
+        left.setInternallyCompacted(leftCompacted)
+        right.setApplied(rightApplied)
+        right.setInternallyCompacted(rightCompacted)
+
+        val segmentedCompactor = SegmentedCompactor(new SiriusConfiguration())
+        segmentedCompactor.mergeSegments(left, right, target)
+        Segment(target)
+      }
+
+      val (leftFile, rightFile) = (new File(dir, "1"), new File(dir, "2"))
       val target = new File(dir, "1-2.merged")
+      val merge = createMerged(leftFile, rightFile, target) _
 
-      val segmentedCompactor = SegmentedCompactor(siriusConfig)
-      segmentedCompactor.mergeSegments(left, right, target)
-
-      assert(false === Segment(target).isInternallyCompacted)
+      // should only be true if both segments have been applied and internally compacted
+      for (leftApplied <- List(true, false);
+           leftCompacted <- List(true, false);
+           rightApplied <- List(true, false);
+           rightCompacted <- List(true, false)) {
+        val expected = leftApplied && leftCompacted && rightApplied && rightCompacted
+        assert(expected === merge(leftApplied, leftCompacted, rightApplied, rightCompacted).isInternallyCompacted,
+               "Did not get expected value for isInternallyCompacted after merge")
+      }
     }
   }
 }

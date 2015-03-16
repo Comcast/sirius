@@ -207,7 +207,8 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
     left.foreach(target.writeEntry)
     right.foreach(target.writeEntry)
     target.setApplied(applied = left.isApplied && right.isApplied)
-    target.setInternallyCompacted(compacted = false)
+    target.setInternallyCompacted(left.isApplied && left.isInternallyCompacted &&
+                                  right.isApplied && right.isInternallyCompacted)
     target.close()
   }
 
