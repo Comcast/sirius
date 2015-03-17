@@ -128,7 +128,89 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
     }
   }
 
+  describe("compactInternally") {
+    it("should remove earlier entries for duplicate keys within the segment") {
+      val segment = Segment(dir, "1")
+      List(
+        OrderedEvent(1L, 0L, Delete("1")),
+        OrderedEvent(2L, 0L, Delete("2")),
+        OrderedEvent(3L, 0L, Delete("2")),
+        OrderedEvent(4L, 0L, Delete("2")),
+        OrderedEvent(5L, 0L, Delete("5"))
+      ).foreach(segment.writeEntry)
+
+      val underTest = SegmentedCompactor(new SiriusConfiguration())
+      val compacted = makeSegment(underTest.compactInternally(segment))
+
+      val seqs = compacted.foldLeft(List[Long]())((acc, evt) => evt.sequence +: acc).reverse
+      assert(List(1L, 4L, 5L) === seqs)
+      assert("1 2 5" === listEvents(compacted))
+    }
+    it("should do nothing if there are no duplicate keys") {
+      val segment = Segment(dir, "1")
+      writeEvents(segment, List(1L, 2L, 3L, 4L))
+
+      val underTest = SegmentedCompactor(new SiriusConfiguration())
+      val compacted = makeSegment(underTest.compactInternally(segment))
+      assert("1 2 3 4" === listEvents(compacted))
+    }
+    it("should set the internallyCompacted flag to true") {
+      val segment = Segment(dir, "1")
+
+      val underTest = SegmentedCompactor(new SiriusConfiguration())
+      val compacted = makeSegment(underTest.compactInternally(segment))
+
+      assert(true === compacted.isInternallyCompacted)
+    }
+    it("should preserve the keys-applied flag") {
+      val segment = Segment(dir, "1")
+      segment.setApplied(applied = true)
+
+      val underTest = SegmentedCompactor(new SiriusConfiguration())
+      val compacted = makeSegment(underTest.compactInternally(segment))
+
+      assert(true === compacted.isApplied)
+    }
+  }
+
+  describe("findInternalCompactionCandidates") {
+    it("should return an empty list if all segments are internally compacted") {
+      val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
+      one.setInternallyCompacted(compacted = true)
+      two.setInternallyCompacted(compacted = true)
+      three.setInternallyCompacted(compacted = true)
+
+      val underTest = SegmentedCompactor(new SiriusConfiguration())
+      val candidates = underTest.findInternalCompactionCandidates(List(one, two, three))
+
+      assert(List() === candidates)
+    }
+    it("should return only the segments that have not been internally compacted") {
+      val (one, two, three) = (Segment(dir, "1"), Segment(dir, "2"), Segment(dir, "3"))
+      one.setInternallyCompacted(compacted = true)
+      two.setInternallyCompacted(compacted = false)
+      three.setInternallyCompacted(compacted = true)
+
+      val underTest = SegmentedCompactor(new SiriusConfiguration())
+      val candidates = underTest.findInternalCompactionCandidates(List(one, two, three))
+
+      assert(List(two) === candidates)
+    }
+  }
+
   describe("compactAgainst") {
+    it("should fail if one of the segments to compact has not been internally compacted") {
+      val first = Segment(dir, "1")
+      val second = Segment(dir, "2")
+      val segments = List(first)
+
+      first.setInternallyCompacted(compacted = false)
+
+      val segmentedCompactor = SegmentedCompactor(siriusConfig)
+      intercept[IllegalStateException] {
+        segmentedCompactor.compactAgainst(second, segments)
+      }
+    }
     it("should preserve a false isApplied flag when a segment is compacted") {
       val first = Segment(dir, "1")
       val second = Segment(dir, "2")
@@ -136,6 +218,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
       first.setApplied(applied = false)
+      first.setInternallyCompacted(compacted = true)
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       val compactionMap = segmentedCompactor.compactAgainst(second, segments)
       assert(false === makeSegment(compactionMap(first)).isApplied)
@@ -148,6 +231,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
 
       first.setApplied(applied = true)
+      first.setInternallyCompacted(compacted = true)
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       val compactionMap = segmentedCompactor.compactAgainst(second, segments)
       assert(true === makeSegment(compactionMap(first)).isApplied)
@@ -176,6 +260,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       val segments = List(first, second, third)
 
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+      segments.foreach(_.setInternallyCompacted(compacted = true))
 
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       val compactionMap = segmentedCompactor.compactAgainst(second, segments)
@@ -192,6 +277,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       val segments = List(first, second, third)
 
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+      segments.foreach(_.setInternallyCompacted(compacted = true))
 
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       val compactionMap = segmentedCompactor.compactAgainst(third, segments)
@@ -208,6 +294,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       val segments = List(third, second, first)
 
       segments.foreach(writeEvents(_, List(1L, 2L, 3L, 4L)))
+      segments.foreach(_.setInternallyCompacted(compacted = true))
 
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       val compactionMap = segmentedCompactor.compactAgainst(third, segments)
@@ -224,6 +311,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       writeEvents(first, List(1L, 2L, 3L, 4L))
       writeEvents(second, List(3L, 4L, 5L, 6L))
+      segments.foreach(_.setInternallyCompacted(compacted = true))
 
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       val compactionMap = segmentedCompactor.compactAgainst(second, segments)
@@ -239,6 +327,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
       writeEvents(first, List(1L, 2L, 3L, 4L))
       writeEvents(second, List(1L, 2L, 3L, 4L))
+      segments.foreach(_.setInternallyCompacted(compacted = true))
 
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       val compactionMap = segmentedCompactor.compactAgainst(second, segments)
@@ -260,6 +349,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
     writeEvents(first, List(1L), twoHoursAgo) // This one should be compacted out due to age.
     writeEvents(first, List(2L, 3L, 4L), now)
     writeEvents(second, List(3L, 4L, 5L, 6L), now)
+    segments.foreach(_.setInternallyCompacted(compacted = true))
 
     val siriusConfigWithMaxAge = new SiriusConfiguration()
     siriusConfigWithMaxAge.setProp(SiriusConfiguration.COMPACTION_MAX_DELETE_AGE_HOURS, 1)
@@ -282,6 +372,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
     writeEvents(first, List(1L), twoHoursAgo)
     writeEvents(first, List(2L, 3L, 4L), now)
     writeEvents(second, List(3L, 4L, 5L, 6L), now)
+    segments.foreach(_.setInternallyCompacted(compacted = true))
 
     val siriusConfigWithMaxAge = new SiriusConfiguration()
     val nowInHours = now / (60L * 60 * 1000)
@@ -384,6 +475,41 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       segmentedCompactor.mergeSegments(left, right, target)
 
       assert(false === Segment(target).isApplied)
+    }
+    it("should set the new segment's isInternallyCompacted correctly") {
+      def createMerged(leftFile: File, rightFile: File, target: File)
+                      (leftApplied: Boolean, leftCompacted: Boolean,
+                       rightApplied: Boolean, rightCompacted: Boolean): Segment = {
+        Path(leftFile).deleteRecursively()
+        Path(rightFile).deleteRecursively()
+        Path(target).deleteRecursively()
+
+        val left = Segment(leftFile)
+        val right = Segment(rightFile)
+
+        left.setApplied(leftApplied)
+        left.setInternallyCompacted(leftCompacted)
+        right.setApplied(rightApplied)
+        right.setInternallyCompacted(rightCompacted)
+
+        val segmentedCompactor = SegmentedCompactor(new SiriusConfiguration())
+        segmentedCompactor.mergeSegments(left, right, target)
+        Segment(target)
+      }
+
+      val (leftFile, rightFile) = (new File(dir, "1"), new File(dir, "2"))
+      val target = new File(dir, "1-2.merged")
+      val merge = createMerged(leftFile, rightFile, target) _
+
+      // should only be true if both segments have been applied and internally compacted
+      for (leftApplied <- List(true, false);
+           leftCompacted <- List(true, false);
+           rightApplied <- List(true, false);
+           rightCompacted <- List(true, false)) {
+        val expected = leftApplied && leftCompacted && rightApplied && rightCompacted
+        assert(expected === merge(leftApplied, leftCompacted, rightApplied, rightCompacted).isInternallyCompacted,
+               "Did not get expected value for isInternallyCompacted after merge")
+      }
     }
   }
 }

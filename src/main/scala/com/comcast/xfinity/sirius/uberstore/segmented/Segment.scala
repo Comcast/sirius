@@ -48,13 +48,15 @@ object Segment {
     val dataFile = new File(location, "data")
     val indexFile = new File(location, "index")
     val compactionFlagFile = new File(location, "keys-collected")
+    val internalCompactionFlagFile = new File(location, "internally-compacted")
 
     val data = UberDataFile(dataFile.getAbsolutePath)
     val index = DiskOnlySeqIndex(indexFile.getAbsolutePath)
     val compactionFlag = FlagFile(compactionFlagFile.getAbsolutePath)
+    val internalCompactionFlag = FlagFile(internalCompactionFlagFile.getAbsolutePath)
 
     repairIndex(index, data)
-    new Segment(location, location.getName, data, index, compactionFlag)
+    new Segment(location, location.getName, data, index, compactionFlag, internalCompactionFlag)
   }
 
   /**
@@ -94,7 +96,8 @@ object Segment {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class Segment private[uberstore](val location: File, val name: String, dataFile: UberDataFile, index: SeqIndex, compactionFlag: FlagFile) {
+class Segment private[uberstore](val location: File, val name: String, dataFile: UberDataFile,
+                                 index: SeqIndex, compactionFlag: FlagFile, internalCompactionFlag: FlagFile) {
 
   /**
    * Get the number of entries written to the Segment
@@ -195,4 +198,19 @@ class Segment private[uberstore](val location: File, val name: String, dataFile:
     compactionFlag.set(value = applied)
   }
 
+  /**
+   * Has this segment been internally compacted?
+   *
+   * @return true if internal compaction is completed, false otherwise
+   */
+  def isInternallyCompacted = internalCompactionFlag.value
+
+  /**
+   * Set the internally-compacted flag
+   *
+   * @param compacted the value of the flag
+   */
+  def setInternallyCompacted(compacted: Boolean) {
+    internalCompactionFlag.set(compacted)
+  }
 }

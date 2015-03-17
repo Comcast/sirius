@@ -21,6 +21,7 @@ import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 import scalax.file.Path
 import java.io.File
 import annotation.tailrec
+import java.util
 
 object SegmentedCompactor {
   val COMPACTING_SUFFIX = ".compacting"
@@ -64,6 +65,14 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
   }
 
   /**
+   * Find all segments that have not been internally compacted, so that they might be compacted.
+   *
+   * @param segments read only segments to filter on
+   * @return list of segments that should be internally compacted
+   */
+  def findInternalCompactionCandidates(segments: List[Segment]): List[Segment] = segments.filterNot(_.isInternallyCompacted)
+
+  /**
    * If one exists, finds a segment in the supplied list that can be applied in compaction.
    *
    * @param segments list of all candidate segments
@@ -72,32 +81,65 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
   def findCompactableSegments(segments: List[Segment]): List[Segment] = segments.filterNot(_.isApplied)
 
   /**
+   * Internally compact a segment, essentially removing all updates for a given key *except* for the last
+   * one, in sequence-number order.
+   *
+   * @param toCompact segment to internally compact
+   * @return location of compacted segment
+   */
+  def compactInternally(toCompact: Segment): String = {
+    val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + SegmentedCompactor.COMPACTING_SUFFIX)
+    val keySequenceMap = new util.HashMap[String, Long]
+    toCompact.foreach { event =>
+      keySequenceMap.put(event.request.key, event.sequence)
+    }
+
+    // only write events if they're the most recent for a given key inside the segment
+    toCompact.foreach {
+      case event if keySequenceMap.get(event.request.key) == event.sequence => compactInto.writeEntry(event)
+      case _ => // nothing
+    }
+
+    compactInto.setApplied(toCompact.isApplied)
+    compactInto.setInternallyCompacted(compacted = true)
+    compactInto.close()
+
+    compactInto.location.getAbsolutePath
+  }
+
+  /**
    * Compact supplied list against a single segment. This method will filter out segments
    * that should not be compacted (i.e., segments in the list occurring after toCompact
    * in time)
    *
-   * @param toCompact segment to compact against
+   * @param toCompactAgainst segment to compact against
    * @param allSegments list of segments to be compacted
    * @return Map of (old Segment -> compacted Segment location)
    */
-  def compactAgainst(toCompact: Segment, allSegments: List[Segment]): Map[Segment, String] =
-    compactSegments(toCompact, allSegments.filter(_.name.toLong < toCompact.name.toLong))
+  def compactAgainst(toCompactAgainst: Segment, allSegments: List[Segment]): Map[Segment, String] =
+    compactSegments(toCompactAgainst, allSegments.filter(_.name.toLong < toCompactAgainst.name.toLong))
 
   /**
    * Compact all provided Segments against the provided Segment. There is no filtering in this method: only
    * provide the Segments you want compacted.
    *
-   * @param toCompact Segment to compact against
+   * @param toCompactAgainst Segment to compact against
    * @param segments segments to be compacted
    */
-  private def compactSegments(toCompact: Segment, segments: List[Segment]): Map[Segment, String] = {
-    val keys = toCompact.keys
+  private def compactSegments(toCompactAgainst: Segment, segments: List[Segment]): Map[Segment, String] = {
+    val keys = toCompactAgainst.keys
     segments.foldLeft(Map[Segment, String]())(
       (map, toCompact) => {
+        // toCompact MUST be internally compacted or we risk losing data
+        if (!toCompact.isInternallyCompacted) {
+          throw new IllegalStateException("Attempted to compact against a non-internally compacted Segment.")
+        }
+
         val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + SegmentedCompactor.COMPACTING_SUFFIX)
         compactSegment(keys, toCompact, compactInto)
 
         compactInto.setApplied(toCompact.isApplied)
+        compactInto.setInternallyCompacted(toCompact.isInternallyCompacted)
         compactInto.close()
 
         map + (toCompact -> compactInto.location.getAbsolutePath)
@@ -165,6 +207,8 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
     left.foreach(target.writeEntry)
     right.foreach(target.writeEntry)
     target.setApplied(applied = left.isApplied && right.isApplied)
+    target.setInternallyCompacted(left.isApplied && left.isInternallyCompacted &&
+                                  right.isApplied && right.isInternallyCompacted)
     target.close()
   }
 

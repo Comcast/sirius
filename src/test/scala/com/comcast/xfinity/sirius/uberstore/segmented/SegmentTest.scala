@@ -29,14 +29,15 @@ import scalax.file.Path
 
 object SegmentTest {
 
-  def createMockedUpLog: (UberDataFile, SeqIndex, FlagFile, Segment) = {
+  def createMockedUpLog: (UberDataFile, SeqIndex, FlagFile, FlagFile, Segment) = {
     val mockDataFile = mock(classOf[UberDataFile])
     val mockIndex = mock(classOf[SeqIndex])
     val mockFile = mock(classOf[File])
-    val mockFlag = mock(classOf[FlagFile])
+    val mockAppliedFlag = mock(classOf[FlagFile])
+    val mockCompactedFlag = mock(classOf[FlagFile])
     // XXX: non-io tests require us to access private constructor
-    val underTest =  new Segment(mockFile, "foo", mockDataFile, mockIndex, mockFlag)
-    (mockDataFile, mockIndex, mockFlag, underTest)
+    val underTest =  new Segment(mockFile, "foo", mockDataFile, mockIndex, mockAppliedFlag, mockCompactedFlag)
+    (mockDataFile, mockIndex, mockAppliedFlag, mockCompactedFlag, underTest)
   }
 }
 
@@ -59,7 +60,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   }
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {
-      val (mockDataFile, mockIndex, _, underTest) = createMockedUpLog
+      val (mockDataFile, mockIndex, _, _, underTest) = createMockedUpLog
 
       doReturn(None).when(mockIndex).getMaxSeq
       doReturn(1234L).when(mockDataFile).writeEvent(any[OrderedEvent])
@@ -72,7 +73,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it ("must not allow out of order events") {
-      val (_, mockIndex, _, underTest) = createMockedUpLog
+      val (_, mockIndex, _, _, underTest) = createMockedUpLog
 
       doReturn(Some(5L)).when(mockIndex).getMaxSeq
 
@@ -84,7 +85,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
 
   describe("getNextSeq") {
     it ("must return 1 if the index is empty") {
-      val (_, mockIndex, _, underTest) = createMockedUpLog
+      val (_, mockIndex, _, _, underTest) = createMockedUpLog
 
       doReturn(None).when(mockIndex).getMaxSeq
 
@@ -92,7 +93,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     }
 
     it ("must return 1 greater than the max if the index is populated") {
-      val (_, mockIndex, _, underTest) = createMockedUpLog
+      val (_, mockIndex, _, _, underTest) = createMockedUpLog
 
       doReturn(Some(6L)).when(mockIndex).getMaxSeq
 
@@ -102,7 +103,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
 
   describe("foldLeft") {
     it ("must fold over the entire data file, as known by the index") {
-      val (mockDataFile, mockIndex, _, underTest) = createMockedUpLog
+      val (mockDataFile, mockIndex, _, _, underTest) = createMockedUpLog
 
       val theFoldFun = (s: Symbol, e: OrderedEvent) => s
 
@@ -118,7 +119,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   }
 
   describe("isClosed") {
-    val (mockDataFile, mockIndex, _, underTest) = createMockedUpLog
+    val (mockDataFile, mockIndex, _, _, underTest) = createMockedUpLog
     it ("should return true if only index is closed") {
       doReturn(false).when(mockDataFile).isClosed
       doReturn(true).when(mockIndex).isClosed
@@ -141,7 +142,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     }
   }
   describe("size"){
-    val (_, mockIndex, _, underTest) = createMockedUpLog
+    val (_, mockIndex, _, _, underTest) = createMockedUpLog
     it ("Should return the size of the index"){
       doReturn (2L).when(mockIndex).size
       assert(2 === underTest.size)
@@ -190,7 +191,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   }
   describe("close") {
     it ("should close underlying index and data") {
-      val (mockDataFile, mockIndex, _, underTest) = createMockedUpLog
+      val (mockDataFile, mockIndex, _, _, underTest) = createMockedUpLog
       doReturn(false).when(mockDataFile).isClosed
       doReturn(false).when(mockIndex).isClosed
 
@@ -201,20 +202,25 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     }
   }
   describe("isApplied") {
-    it ("should call through to the underlying FlagFile") {
-      val (_, _, mockFlag, underTest) = createMockedUpLog
+    it ("should call through to the underlying FlagFiles") {
+      val (_, _, mockFlag, mockFlag2, underTest) = createMockedUpLog
       doReturn(true).when(mockFlag).value
+      doReturn(false).when(mockFlag2).value
 
       assert(true === underTest.isApplied)
+      assert(false === underTest.isInternallyCompacted)
       verify(mockFlag).value
+      verify(mockFlag2).value
     }
   }
   describe("setApplied") {
-    it ("should call through to the underlying FlagFile") {
-      val (_, _, mockFlag, underTest) = createMockedUpLog
+    it ("should call through to the underlying FlagFiles") {
+      val (_, _, mockFlag, mockFlag2, underTest) = createMockedUpLog
 
       underTest.setApplied(applied = true)
+      underTest.setInternallyCompacted(compacted = false)
       verify(mockFlag).set(value = true)
+      verify(mockFlag2).set(value = false)
     }
   }
 }
