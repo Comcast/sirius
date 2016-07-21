@@ -15,8 +15,8 @@
  */
 package com.comcast.xfinity.sirius.util
 
-import akka.event.slf4j.{Slf4jLogger, Slf4jEventHandler}
 import akka.event.Logging._
+import akka.event.slf4j.Slf4jLogger
 
 /**
  * Akka Logging event handler for suppressing unnecessarily noisy
