@@ -23,6 +23,7 @@ import akka.agent.Agent
 import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
 import org.scalatest.BeforeAndAfterAll
 import org.mockito.Mockito._
+import org.mockito.Matchers._
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.{CompactionMessage, Compact}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{GetMembershipData, MembershipMessage}
@@ -67,6 +68,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
   var paxosProbe: TestProbe = _
   var persistenceProbe: TestProbe = _
   var stateProbe: TestProbe = _
+  var stateBridgeProbe: TestProbe = _
   var membershipProbe: TestProbe = _
   var compactionProbe: TestProbe = _
   var startStopProbe: TestProbe = _
@@ -83,6 +85,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     paxosProbe = TestProbe()
     persistenceProbe = TestProbe()
     stateProbe = TestProbe()
+    stateBridgeProbe = TestProbe()
     membershipProbe = TestProbe()
     compactionProbe = TestProbe()
     startStopProbe = TestProbe()
@@ -90,6 +93,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     supervisor = createSiriusSupervisor(stateAgent = Agent(new SiriusState)(actorSystem.dispatcher),
                                         membershipAgent = mockMembershipAgent,
                                         stateSup = stateProbe.ref,
+                                        stateBridge = stateBridgeProbe.ref,
                                         membershipActor = membershipProbe.ref,
                                         paxosSupervisor = paxosProbe.ref,
                                         compactionManager = compactionProbe.ref)
@@ -209,6 +213,17 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       actorSystem.stop(paxosProbe.ref)
 
       assert(waitForTrue(supervisor.underlyingActor.orderingActor == None, 1000, 100))
+    }
+
+    it("should not start a StateBridge until after initialization") {
+      assert(None === supervisor.underlyingActor.stateBridge)
+      initializeSupervisor(supervisor)
+      assert(Some(stateBridgeProbe.ref) === supervisor.underlyingActor.stateBridge)
+    }
+    it("should throw an IllegalStateException if we attempt to start an ordering actor without a statebridge") {
+      intercept[IllegalStateException] {
+        supervisor.underlyingActor.ensureOrderingActorRunning()
+      }
     }
   }
 }

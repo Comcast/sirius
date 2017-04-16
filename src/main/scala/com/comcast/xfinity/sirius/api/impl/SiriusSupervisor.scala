@@ -125,7 +125,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
   var orderingActor: Option[ActorRef] = None
   var compactionManager : Option[ActorRef] = None
   val statusSubsystem = childProvider.createStatusSubsystem(self)
-  val stateBridge = childProvider.createStateBridge(stateSup, context.self, membershipHelper)
+  var stateBridge: Option[ActorRef] = None
 
   private val logger = Logging(context.system, "Sirius")
 
@@ -148,6 +148,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
 
         siriusStateAgent send (_.copy(supervisorInitialized = true))
 
+        stateBridge = Some(childProvider.createStateBridge(stateSup, context.self, membershipHelper))
         compactionManager = Some(childProvider.createCompactionManager())
         context.become(initialized)
 
@@ -199,13 +200,15 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
   }
 
   def ensureOrderingActorRunning() {
-    orderingActor match {
-      case Some(actorRef) =>
+    (orderingActor, stateBridge) match {
+      case (Some(orderingRef), _) =>
         // do nothing, already alive and kicking
-      case _ =>
-        val actor = childProvider.createPaxosSupervisor(membershipHelper, stateBridge ! _)
+      case (None, Some(stateBridgeRef)) =>
+        val actor = childProvider.createPaxosSupervisor(membershipHelper, stateBridgeRef ! _)
         context.watch(actor)
         orderingActor = Some(actor)
+      case (_, None) =>
+        throw new IllegalStateException("Could not start ordering subsystem: no PaxosStateBridge found.")
     }
   }
 
