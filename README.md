@@ -18,7 +18,7 @@ Said another way: Sirius enables a cluster of nodes to keep
 developer-controlled in-memory data structures eventually consistent,
 allowing I/O-free access to shared information.
 
-####Next Steps
+#### Next Steps
 * [Sirius Wiki](https://github.com/Comcast/sirius/wiki)
 * [Getting started with Sirius](https://github.com/Comcast/sirius/wiki/Getting+started+with+Sirius)
 * [Configuring Sirius](https://github.com/Comcast/sirius/wiki/Configuring+Sirius)
@@ -26,6 +26,6 @@ allowing I/O-free access to shared information.
 * [Contributing Guidelines](https://github.com/Comcast/sirius/blob/master/CONTRIBUTING.md)
 * [License](https://github.com/Comcast/sirius/blob/master/LICENSE)
 
-####Questions, Comments, Bugs and More
+#### Questions, Comments, Bugs and More
 * [Found a bug or file a feature request](https://github.com/Comcast/sirius/issues)
 * [Ask a question about using Sirius](http://stackoverflow.com/search?tab=newest&q=sirius)
