@@ -37,6 +37,8 @@ class MembershipActorTest extends NiceTest with TimedTest {
   val pingInterval = 120 seconds
   val allowedFailures = 5
 
+  implicit var actorSystem: ActorSystem = _
+
   def makeMembershipActor(clusterConfig: Option[ClusterConfig] = None,
                           membershipAgent: Agent[Map[String, Option[ActorRef]]] = Agent[Map[String, Option[ActorRef]]](Map())(actorSystem.dispatcher),
                           mbeanServer: MBeanServer = mock[MBeanServer],
@@ -56,12 +58,10 @@ class MembershipActorTest extends NiceTest with TimedTest {
       new MembershipActorMock(membershipAgent, cluster, 120.seconds, pingInterval, allowedFailures, siriusConfig,
         callSuperUpdateMembership),
         "membership-actor-test"
-    )(actorSystem)
+    )
 
     (underTest, membershipAgent)
   }
-
-  implicit var actorSystem: ActorSystem = _
 
   before {
     actorSystem = ActorSystem("testsystem")

@@ -17,10 +17,36 @@ name := "sirius"
 
 version := "1.2.7-SNAPSHOT"
 
-scalaVersion := "2.10.2"
+scalaVersion := "2.11.8"
+
+organization := "com.comcast"
 
 //bintray seems to be more reliable and much faster than maven central
 resolvers += "Bintray" at "http://jcenter.bintray.com"
+
+resolvers += "Typesafe Public Repo" at "http://repo.typesafe.com/typesafe/releases"
+
+resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
+
+libraryDependencies ++= {
+  val akkaV = "2.4.8"
+
+  Seq(
+    "com.typesafe.akka"             %% "akka-actor"                     % akkaV,
+    "com.typesafe.akka"             %% "akka-remote"                    % akkaV,
+    "com.typesafe.akka"             %% "akka-slf4j"                     % akkaV,
+    "com.typesafe.akka"             %% "akka-agent"                     % akkaV,
+    "org.slf4j"                     %  "slf4j-api"                      % "1.7.7",
+    "com.github.scala-incubator.io" %% "scala-io-file"                  % "0.4.3",
+    "org.scala-lang.modules"        %% "scala-parser-combinators"       % "1.0.4",    
+    "org.scalatest"                 %% "scalatest"                      % "2.2.4"   % "test",
+    "org.mockito"                   %  "mockito-core"                   % "1.10.19" % "test",
+    "junit"                         %  "junit"                          % "4.12"    % "test",
+    "org.slf4j"                     %  "slf4j-log4j12"                  % "1.7.7"   % "test",
+    "log4j"                         %  "log4j"                          % "1.2.17"  % "test",
+    "com.typesafe.akka"             %% "akka-testkit"                   % akkaV     % "test"
+  )
+}
 
 // Set the artifact names.
 artifactName := { (scalaVersion: ScalaVersion, module: ModuleID, artifact: Artifact) =>
@@ -36,7 +62,7 @@ artifactName := { (scalaVersion: ScalaVersion, module: ModuleID, artifact: Artif
 crossPaths := false
 
 // compiler options
-javacOptions ++= Seq("-source", "1.6", "-target", "1.6")
+javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
@@ -47,5 +73,47 @@ scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources
 
 parallelExecution := false
 
-// allows us to pull deps from pom file
-externalPom()
+publishMavenStyle := true
+
+publishTo := {
+  val nexus = "https://oss.sonatype.org/"
+  if (isSnapshot.value)
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
+}
+
+pomIncludeRepository := { _ => false }
+
+pomExtra := (
+  <url>https://github.com/Comcast/sirius</url>
+    <licenses>
+      <license>
+        <name>The Apache Software License, Version 2.0</name>
+        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        <distribution>repo</distribution>
+      </license>
+    </licenses>
+    <scm>
+      <url>git@github.com:Comcast/sirius.git</url>
+      <connection>scm:git@github.com:Comcast/sirius.git</connection>
+      <developerConnection>scm:git@github.com:Comcast/sirius.git</developerConnection>
+    </scm>
+    <developers>
+      <developer>
+        <id>Comcast</id>
+        <name>Comcast</name>
+        <email>...</email>
+      </developer>
+    </developers>
+  )
+
+publishArtifact in Test := false
+
+testOptions in Test += Tests.Argument("-oD")
+
+ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 75
+
+ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true
+
+ScoverageSbtPlugin.ScoverageKeys.coverageHighlighting := true

@@ -41,8 +41,7 @@ class SiriusPersistenceActorTest extends NiceTest {
     testStateWorkerProbe = TestProbe()(actorSystem)
     underTestActor = TestActorRef(
       new SiriusPersistenceActor(testStateWorkerProbe.ref, mockSiriusLog, new SiriusConfiguration)
-    )(actorSystem)
-
+    )
   }
 
   after {

@@ -16,30 +16,38 @@
 package com.comcast.xfinity.sirius.tool
 
 import java.io._
+
 import scala.util.matching.Regex
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.tool.format.OrderedEventFormatter
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import com.comcast.xfinity.sirius.uberstore.{UberTool, UberStore}
+import com.comcast.xfinity.sirius.uberstore.{UberStore, UberTool}
+
 import scala.concurrent.{Await, Future}
 import scala.collection.mutable.Map
-import akka.actor.{ActorSystem, Props, Actor}
-import akka.routing.RoundRobinRouter
+import akka.actor.{Actor, ActorSystem, Props}
+import akka.routing.RoundRobinPool
 import akka.pattern.ask
+
 import scala.concurrent.duration._
 import com.typesafe.config.ConfigFactory
 import akka.util.Timeout
 import java.net.{HttpURLConnection, URL}
+
 import scala._
 import java.lang.String
+import java.util.concurrent.TimeUnit
+
 import scala.Left
 import com.comcast.xfinity.sirius.api.impl.Put
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+
 import scala.Right
 import scala.Console
 import com.comcast.xfinity.sirius.api.impl.Delete
+
 import scala.collection.mutable.WrappedArray
 import scala.collection.mutable.Set
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -496,14 +504,14 @@ object WalTool {
     val customConf = ConfigFactory.parseString(confString)
 
     implicit val system = ActorSystem("Log-Replay", ConfigFactory.load(customConf))
-    implicit val timeout = Timeout(1000L * 10 * concurrency)
+    implicit val timeout = Timeout(1000L * 10 * concurrency, TimeUnit.MILLISECONDS)
 
     val inWal = siriusLog(inWalDir)
 
     val reapPeriod = concurrency * 10
     var start = System.currentTimeMillis
 
-    val httpActor = system.actorOf(Props[HttpDispatchActor].withRouter(RoundRobinRouter(nrOfInstances = concurrency)))
+    val httpActor = system.actorOf(Props[HttpDispatchActor].withRouter(RoundRobinPool(nrOfInstances = concurrency)))
 
     val walAccumulator = inWal.foldLeft(WalAccumulator(0, List[Future[(Result)]]())) {
       case (acc: WalAccumulator, evt) => {
