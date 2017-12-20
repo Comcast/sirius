@@ -15,10 +15,12 @@
  */
 package com.comcast.xfinity.sirius.api.impl.compat
 
-import scala.concurrent.{Await, Future => AkkaFuture}
-import scala.concurrent.duration._
-import java.util.concurrent.{TimeoutException, ExecutionException, TimeUnit, Future}
+import java.util.concurrent.CompletableFuture
+
+import scala.concurrent.Future
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * Class encapsulating a {@link akka.dispatch.Future} in a
@@ -26,47 +28,15 @@ import scala.language.postfixOps
  *
  * @param akkaFuture the {@see akka.dispatch.Future} to wrap
  */
-class AkkaFutureAdapter[T](akkaFuture: AkkaFuture[T]) extends Future[T] {
+class AkkaFutureAdapter[T](akkaFuture: Future[T]) extends CompletableFuture[T] {
+  akkaFuture onComplete {
+    case Success(result) => complete(result)
+    case Failure(exception) => completeExceptionally(exception)
+  }
 
   /**
-   * Not implemented, you may not cancel an Akka Future
-   */
-  def cancel(mayInterrupt: Boolean): Boolean =
+    * Not implemented, you may not cancel an Akka Future
+    */
+  override def cancel(mayInterruptIfRunning: Boolean): Boolean =
     throw new IllegalStateException("Not implemented")
-
-  /**
-   * Always returns true, since this is not cancellable
-   *
-   * @return true always
-   */
-  def isCancelled: Boolean = false // if not cancellable can't be cancelled
-
-  /**
-   * {@inheritDoc}
-   */
-  def isDone: Boolean = akkaFuture.isCompleted
-
-  /**
-   * {@inheritDoc}
-   */
-  def get: T =
-    try {
-      // there is still no way in hell this can time out
-      Await.result(akkaFuture, 7 days)
-    } catch {
-      case e: Throwable => throw new ExecutionException(e)
-    }
-
-  /**
-   * {@inheritDoc}
-   */
-  @throws(classOf[ExecutionException])
-  @throws(classOf[TimeoutException])
-  def get(l: Long, timeUnit: TimeUnit) =
-    try {
-      Await.result(akkaFuture, timeUnit.toMillis(l) milliseconds)
-    } catch {
-      case te: TimeoutException => throw te
-      case e: Throwable => throw new ExecutionException(e)
-    }
 }
