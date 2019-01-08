@@ -37,7 +37,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
   implicit val actorSystem = ActorSystem("ReplicaTest")
 
   override def afterAll() {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   def makeReplica(localLeader: ActorRef = TestProbe().ref,

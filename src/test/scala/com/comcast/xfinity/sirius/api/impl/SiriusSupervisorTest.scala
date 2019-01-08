@@ -75,7 +75,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
   var supervisor: TestActorRef[SiriusSupervisor] = _
 
   override def afterAll() {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   before {

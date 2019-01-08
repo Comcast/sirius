@@ -16,20 +16,25 @@
 
 package com.comcast.xfinity.sirius.itest
 
-import scalax.file.Path
-import com.comcast.xfinity.sirius.{LatchedRequestHandler, TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.{LatchedRequestHandler, NiceTest, TimedTest}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import java.io.File
+import java.io.{File => JFile}
+
 import com.comcast.xfinity.sirius.api.impl._
+
 import util.Random
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+
 import scala.Some
 import scala.Tuple2
 import java.util.UUID
+
+import better.files.File
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
+
 import annotation.tailrec
-import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler, SiriusConfiguration}
+import com.comcast.xfinity.sirius.api.{RequestHandler, SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
@@ -91,7 +96,7 @@ class FullSystemITest extends NiceTest with TimedTest {
                  replicaReproposalWindow: Int = 10,
                  sslEnabled: Boolean = false,
                  maxWindowSize: Int = 1000,
-                 membershipPath: String = new File(tempDir, "membership").getAbsolutePath):
+                 membershipPath: String = new JFile(tempDir, "membership").getAbsolutePath):
                 (SiriusImpl, RequestHandler, SiriusLog) = {
 
     val finalHandler = handler match {
@@ -101,7 +106,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     val finalWal = wal match {
       case Some(siriusLog) => siriusLog
       case None => {
-        val uberstoreFile = new File(tempDir, UUID.randomUUID().toString)
+        val uberstoreFile = new JFile(tempDir, UUID.randomUUID().toString)
         uberstoreFile.mkdir
         UberStore(uberstoreFile.getAbsolutePath)
       }
@@ -139,7 +144,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     (sirius, finalHandler, finalWal)
   }
 
-  var tempDir: File = _
+  var tempDir: JFile = _
   var sirii: List[SiriusImpl] = List()
 
   before {
@@ -147,7 +152,7 @@ class FullSystemITest extends NiceTest with TimedTest {
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
-    tempDir = new File(tempDirName)
+    tempDir = new JFile(tempDirName)
     tempDir.mkdirs()
 
     writeClusterConfig(List()) // write blank cluster config to start
@@ -156,7 +161,7 @@ class FullSystemITest extends NiceTest with TimedTest {
   after {
     sirii.foreach(_.shutdown())
     sirii = List()
-    Path(tempDir).deleteRecursively()
+    File(tempDir.getPath).delete()
   }
 
   def writeClusterConfig(ports: List[Int], sslEnabled: Boolean = false) {
@@ -164,10 +169,10 @@ class FullSystemITest extends NiceTest with TimedTest {
     val config = ports.map(port => "%s://sirius-%s@localhost:%s/user/sirius\n".format(protocol, port, port))
                       .foldLeft("")(_ + _)
 
-    val membershipFile = new File(tempDir, "membership")
+    val membershipFile = new JFile(tempDir, "membership")
     val membershipPath = membershipFile.getAbsolutePath
-    Path.fromString(membershipPath).delete(force = true)
-    Path.fromString(membershipPath).append(config)
+    File(membershipPath).delete(swallowIOExceptions = true)
+    File(membershipPath).append(config)
   }
 
   def waitForMembership(sirii: List[SiriusImpl], membersExpected: Int) {
@@ -388,8 +393,8 @@ class FullSystemITest extends NiceTest with TimedTest {
     maxEvents foreach {
       config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, _)
     }
-    SegmentedUberStore.init(new File(tempDir, name).getAbsolutePath)
-    SegmentedUberStore(new File(tempDir, name).getAbsolutePath, config)
+    SegmentedUberStore.init(new JFile(tempDir, name).getAbsolutePath)
+    SegmentedUberStore(new JFile(tempDir, name).getAbsolutePath, config)
   }
 
   it("should be able to catchup even after the next item has been compacted away") {

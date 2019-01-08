@@ -17,22 +17,22 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.NiceTest
-import java.io.File
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import java.io.{File => JFile}
 
-import scalax.file.Path
+import better.files.File
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 import org.mockito.Mockito._
 
 class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
-  def createTempDir: File = {
+  def createTempDir: JFile = {
     val tempDirName = "%s/compactor-itest-%s".format(
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
-    val dir = new File(tempDirName)
+    val dir = new JFile(tempDirName)
     dir.mkdirs()
     dir
   }
@@ -44,14 +44,14 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
   }
 
   def makeSegment(fullPath: String): Segment = {
-    val file = new File(fullPath)
+    val file = new JFile(fullPath)
     Segment(file.getParentFile, file.getName)
   }
 
   def listEvents(segment: Segment) =
     segment.foldLeft(List[String]())((acc, event) => event.request.key :: acc).reverse.mkString(" ")
 
-  var dir: File = _
+  var dir: JFile = _
 
   val siriusConfig = new SiriusConfiguration()
 
@@ -60,7 +60,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
   }
 
   after {
-    Path.fromString(dir.getAbsolutePath).deleteRecursively(force = true)
+    File(dir.getAbsolutePath).delete()
   }
 
   describe("replace") {
@@ -436,7 +436,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
   describe("mergeSegments") {
     it("should create a new segment at targetFile") {
       val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
-      val target = new File(dir, "1-2.merged")
+      val target = new JFile(dir, "1-2.merged")
 
       assert(false === target.exists())
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
@@ -447,7 +447,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
       writeEvents(left, List(1L, 2L, 3L))
       writeEvents(right, List(4L, 5L, 6L))
-      val target = new File(dir, "1-2.merged")
+      val target = new JFile(dir, "1-2.merged")
 
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       segmentedCompactor.mergeSegments(left, right, target)
@@ -458,7 +458,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
       left.setApplied(applied = true)
       right.setApplied(applied = true)
-      val target = new File(dir, "1-2.merged")
+      val target = new JFile(dir, "1-2.merged")
 
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       segmentedCompactor.mergeSegments(left, right, target)
@@ -469,7 +469,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       val (left, right) = (Segment(dir, "1"), Segment(dir, "2"))
       left.setApplied(applied = false)
       right.setApplied(applied = true)
-      val target = new File(dir, "1-2.merged")
+      val target = new JFile(dir, "1-2.merged")
 
       val segmentedCompactor = SegmentedCompactor(siriusConfig)
       segmentedCompactor.mergeSegments(left, right, target)
@@ -477,12 +477,12 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
       assert(false === Segment(target).isApplied)
     }
     it("should set the new segment's isInternallyCompacted correctly") {
-      def createMerged(leftFile: File, rightFile: File, target: File)
+      def createMerged(leftFile: JFile, rightFile: JFile, target: JFile)
                       (leftApplied: Boolean, leftCompacted: Boolean,
                        rightApplied: Boolean, rightCompacted: Boolean): Segment = {
-        Path(leftFile).deleteRecursively()
-        Path(rightFile).deleteRecursively()
-        Path(target).deleteRecursively()
+        File(leftFile.getPath).delete(swallowIOExceptions = true)
+        File(rightFile.getPath).delete(swallowIOExceptions = true)
+        File(target.getPath).delete(swallowIOExceptions = true)
 
         val left = Segment(leftFile)
         val right = Segment(rightFile)
@@ -497,8 +497,8 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
         Segment(target)
       }
 
-      val (leftFile, rightFile) = (new File(dir, "1"), new File(dir, "2"))
-      val target = new File(dir, "1-2.merged")
+      val (leftFile, rightFile) = (new JFile(dir, "1"), new JFile(dir, "2"))
+      val target = new JFile(dir, "1-2.merged")
       val merge = createMerged(leftFile, rightFile, target) _
 
       // should only be true if both segments have been applied and internally compacted

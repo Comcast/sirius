@@ -34,7 +34,7 @@ class CompactionActorTest extends NiceTest with BeforeAndAfterAll {
   )
 
   override def afterAll() {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   describe ("A compaction actor") {

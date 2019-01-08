@@ -45,7 +45,7 @@ class SiriusPersistenceActorTest extends NiceTest {
   }
 
   after {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   def makePersistenceActor(stateActor: ActorRef = TestProbe().ref,

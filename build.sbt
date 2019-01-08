@@ -17,7 +17,8 @@ name := "sirius"
 
 version := "2.0.1-SNAPSHOT"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.8"
+crossScalaVersions := Seq("2.11.8", "2.12.8")
 
 organization := "com.comcast"
 
@@ -29,7 +30,7 @@ resolvers += "Typesafe Public Repo" at "http://repo.typesafe.com/typesafe/releas
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= {
-  val akkaV = "2.4.8"
+  val akkaV = "2.5.19"
 
   Seq(
     "com.typesafe.akka"             %% "akka-actor"                     % akkaV,
@@ -37,9 +38,8 @@ libraryDependencies ++= {
     "com.typesafe.akka"             %% "akka-slf4j"                     % akkaV,
     "com.typesafe.akka"             %% "akka-agent"                     % akkaV,
     "org.slf4j"                     %  "slf4j-api"                      % "1.7.7",
-    "com.github.scala-incubator.io" %% "scala-io-file"                  % "0.4.3",
-    "org.scala-lang.modules"        %% "scala-parser-combinators"       % "1.0.4",    
-    "org.scalatest"                 %% "scalatest"                      % "2.2.4"   % "test",
+    "com.github.pathikrit"          %% "better-files"                   % "3.7.0", 
+    "org.scalatest"                 %% "scalatest"                      % "3.0.5"   % "test",
     "org.mockito"                   %  "mockito-core"                   % "1.10.19" % "test",
     "junit"                         %  "junit"                          % "4.12"    % "test",
     "org.slf4j"                     %  "slf4j-log4j12"                  % "1.7.7"   % "test",
@@ -112,8 +112,8 @@ publishArtifact in Test := false
 
 testOptions in Test += Tests.Argument("-oD")
 
-ScoverageSbtPlugin.ScoverageKeys.coverageMinimum := 75
+scoverage.ScoverageKeys.coverageMinimum := 75
 
-ScoverageSbtPlugin.ScoverageKeys.coverageFailOnMinimum := true
+scoverage.ScoverageKeys.coverageFailOnMinimum := true
 
-ScoverageSbtPlugin.ScoverageKeys.coverageHighlighting := true
+scoverage.ScoverageKeys.coverageHighlighting := true

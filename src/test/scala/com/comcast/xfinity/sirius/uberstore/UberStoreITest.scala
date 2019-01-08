@@ -16,26 +16,27 @@
 
 package com.comcast.xfinity.sirius.uberstore
 
-import java.io.File
+import java.io.{File => JFile}
+
+import better.files.File
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
-import scalax.file.Path
 
 class UberStoreITest extends NiceTest with BeforeAndAfterAll {
 
-  val tempDir: File = {
+  val tempDir: JFile = {
     val tempDirName = "%s/uberstore-itest-%s".format(
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
-    val dir = new File(tempDirName)
+    val dir = new JFile(tempDirName)
     dir.mkdirs()
     dir
   }
 
   override def afterAll {
-    Path(tempDir).deleteRecursively(force = true)
+    File(tempDir.getPath).delete()
   }
 
   // XXX: not these sub tasks are not parallelizable
@@ -82,7 +83,7 @@ class UberStoreITest extends NiceTest with BeforeAndAfterAll {
     }
 
     it ("must be able to recover from a missing index") {
-      val file = new File(tempDir, "1.index")
+      val file = new JFile(tempDir, "1.index")
       assert(file.exists(), "Your test is hosed, expecting 1.index to exist")
       file.delete()
       assert(!file.exists(), "Your test is hosed, expecting 1.index to be bye bye")

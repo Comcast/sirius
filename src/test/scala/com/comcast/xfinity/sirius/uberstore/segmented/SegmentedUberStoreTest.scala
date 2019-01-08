@@ -17,11 +17,12 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.NiceTest
-import java.io.File
+import java.io.{File => JFile}
+
+import better.files.File
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.Delete
-import scalax.file.Path
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class SegmentedUberStoreTest extends NiceTest {
@@ -32,19 +33,19 @@ class SegmentedUberStoreTest extends NiceTest {
       System.currentTimeMillis()
     )
     SegmentedUberStore.init(tempDirName)
-    new File(tempDirName)
+    new JFile(tempDirName)
   }
 
-  def createSegment(baseDir: File, seq: String): File = {
-    val dir = new File(baseDir, seq)
+  def createSegment(baseDir: JFile, seq: String): JFile = {
+    val dir = new JFile(baseDir, seq)
     dir.mkdir
 
-    new File(dir, "index").createNewFile()
-    new File(dir, "data").createNewFile()
+    new JFile(dir, "index").createNewFile()
+    new JFile(dir, "data").createNewFile()
     dir
   }
 
-  def createPopulatedSegment(baseDir: File, name: String, events: List[Int], isApplied: Boolean = false) {
+  def createPopulatedSegment(baseDir: JFile, name: String, events: List[Int], isApplied: Boolean = false) {
     val segment = Segment(baseDir, name)
     segment.setApplied(applied = isApplied)
 
@@ -67,7 +68,7 @@ class SegmentedUberStoreTest extends NiceTest {
   }
 
   def makeSegment(fullPath: String): Segment = {
-    val file = new File(fullPath)
+    val file = new JFile(fullPath)
     Segment(file.getParentFile, file.getName)
   }
 
@@ -77,14 +78,14 @@ class SegmentedUberStoreTest extends NiceTest {
   def listEvents(uberstore: SegmentedUberStore) =
     uberstore.foldLeft(List[String]())((acc, event) => event.request.key :: acc).reverse.mkString(" ")
 
-  var dir: File = _
+  var dir: JFile = _
 
   before {
     dir = createTempDir
   }
 
   after {
-    Path(dir).deleteRecursively(force = true)
+    File(dir.getPath).delete()
     Thread.sleep(5)
   }
 

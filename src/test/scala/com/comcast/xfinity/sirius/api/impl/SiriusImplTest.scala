@@ -17,6 +17,7 @@ package com.comcast.xfinity.sirius.api.impl
 
 import akka.testkit.TestProbe
 import akka.util.Timeout.durationToTimeout
+
 import scala.concurrent.duration._
 import akka.util.Timeout
 import com.typesafe.config.ConfigFactory
@@ -25,13 +26,16 @@ import akka.actor._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import java.util.concurrent.TimeUnit
+
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor._
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
-import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{IsInitializedResponse, IsInitializedRequest}
+import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{IsInitializedRequest, IsInitializedResponse}
 import com.comcast.xfinity.sirius.api.impl.SiriusImplTestCompanion.ProbeWrapper
+
+import scala.concurrent.Await
 
 object SiriusImplTestCompanion {
 
@@ -103,8 +107,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
   }
 
   after {
-    actorSystem.shutdown()
-    actorSystem.awaitTermination()
+    Await.ready(actorSystem.terminate(), Duration.Inf)
   }
 
   describe("a SiriusImpl") {
@@ -189,7 +192,7 @@ class SiriusImplTest extends NiceTest with TimedTest {
         terminationProbe.watch(underTest.supervisor)
         underTest.shutdown()
         terminationProbe.expectMsgClass(classOf[Terminated])
-        assert(!underTest.actorSystem.isTerminated, "ActorSystem should not be terminated")
+        assert(!underTest.actorSystem.whenTerminated.isCompleted, "ActorSystem should not be terminated")
         assert(false === underTest.isOnline)
       }
 

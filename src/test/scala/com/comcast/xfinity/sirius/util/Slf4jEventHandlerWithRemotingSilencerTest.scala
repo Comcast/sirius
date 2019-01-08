@@ -28,7 +28,7 @@ class Slf4jEventHandlerWithRemotingSilencerTest extends NiceTest with BeforeAndA
   implicit val actorSystem = ActorSystem("Slf4jEventHandlerWithRemotingSilencerTest")
 
   override def afterAll() {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   it ("must drop all warn and error messages beginning with 'REMOTE: RemoteClient' or " +

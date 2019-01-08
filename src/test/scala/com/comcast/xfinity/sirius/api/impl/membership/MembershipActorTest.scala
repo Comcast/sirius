@@ -68,8 +68,8 @@ class MembershipActorTest extends NiceTest with TimedTest {
   }
 
   after {
-    actorSystem.shutdown()
-    waitForTrue(actorSystem.isTerminated, 1000, 50)
+    val terminated = actorSystem.terminate()
+    Await.ready(terminated, 1.second)
   }
 
   describe("a MembershipActor") {

@@ -36,7 +36,7 @@ class AcceptorTest extends NiceTest with BeforeAndAfterAll {
   val reapFreqSecs = 30
 
   override def afterAll {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   describe("An Acceptor") {

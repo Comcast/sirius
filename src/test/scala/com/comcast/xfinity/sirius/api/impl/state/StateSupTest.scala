@@ -44,7 +44,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
   implicit val actorSystem = ActorSystem("StateSupTest")
 
   override def afterAll {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   describe("when receiving a Get") {
