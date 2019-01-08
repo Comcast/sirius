@@ -30,7 +30,7 @@ resolvers += "Typesafe Public Repo" at "http://repo.typesafe.com/typesafe/releas
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= {
-  val akkaV = "2.5.19"
+  val akkaV = "2.4.20"
 
   Seq(
     "com.typesafe.akka"             %% "akka-actor"                     % akkaV,
