@@ -15,14 +15,16 @@
  */
 package com.comcast.xfinity.sirius.api.impl.compat
 
-import com.comcast.xfinity.sirius.NiceTest
-import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.{ExecutionContext, Future => AkkaFuture}
-import akka.dispatch.ExecutionContexts._
-import akka.actor.ActorSystem
 import java.io.IOException
 import java.util.concurrent.{ExecutionException, TimeUnit, TimeoutException}
+
+import akka.actor.ActorSystem
 import akka.dispatch.ExecutionContexts
+import com.comcast.xfinity.sirius.NiceTest
+import org.scalatest.BeforeAndAfterAll
+
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future => AkkaFuture}
 
 class AkkaFutureAdapterTest extends NiceTest with BeforeAndAfterAll {
 
@@ -30,8 +32,7 @@ class AkkaFutureAdapterTest extends NiceTest with BeforeAndAfterAll {
   implicit val ec = ExecutionContexts.global()
 
   override def afterAll {
-    as.shutdown()
-    as.awaitTermination()
+    Await.ready(as.terminate(), Duration.Inf)
   }
 
   describe("AkkaFutureAdapter") {
