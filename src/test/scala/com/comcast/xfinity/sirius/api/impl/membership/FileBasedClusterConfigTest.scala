@@ -16,28 +16,31 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import com.comcast.xfinity.sirius.NiceTest
-import java.io.File
-import scalax.file.Path
-import scalax.io.Line.Terminators.NewLine
+import java.io.{File => JFile}
+
+import better.files.File
+import better.files.Dsl._
 
 object FileBasedClusterConfigTest {
-  def createTempDir = {
+  def createTempDir: JFile = {
     Thread.sleep(5)
     val tempDirName = "%s/file-based-cluster-config-test-%s".format(
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
-    new File(tempDirName)
+    mkdirs(File(tempDirName))
+    new JFile(tempDirName)
   }
 }
 
 class FileBasedClusterConfigTest extends NiceTest {
-  var tempDir: File = _
+  var tempDir: JFile = _
+  val lineSep: String = System.lineSeparator()
 
-  def writeClusterConfig(dir: File, lines: List[String]): Path = {
-    val clusterConfig = Path.fromString(new File(dir, "sirius.cluster.config").getAbsolutePath)
-    clusterConfig.delete()
-    clusterConfig.writeStrings(lines, NewLine.sep)
+  def writeClusterConfig(dir: JFile, lines: List[String]): File = {
+    val clusterConfig = File(new JFile(dir, "sirius.cluster.config").getAbsolutePath)
+    clusterConfig.delete(swallowIOExceptions = true)
+    clusterConfig.write(lines.mkString(lineSep))
     clusterConfig
   }
 
@@ -45,25 +48,25 @@ class FileBasedClusterConfigTest extends NiceTest {
     tempDir = FileBasedClusterConfigTest.createTempDir
   }
   after {
-    Path(tempDir).deleteRecursively()
+    File(tempDir.getPath).delete(swallowIOExceptions = true)
   }
 
   describe("FileBasedClusterConfig") {
     it("should return all lines of a normal file") {
       val file = writeClusterConfig(tempDir, List("one", "two", "three"))
-      val underTest = FileBasedClusterConfig(file.path)
+      val underTest = FileBasedClusterConfig(file.pathAsString)
 
       assert("onetwothree" === underTest.members.reduce(_ + _))
     }
     it("should ignore commented lines") {
       val file = writeClusterConfig(tempDir, List("one", "# two", "three"))
-      val underTest = FileBasedClusterConfig(file.path)
+      val underTest = FileBasedClusterConfig(file.pathAsString)
 
       assert("onethree" === underTest.members.reduce(_ + _))
     }
     it("should respond to changes in the underlying file") {
       val file = writeClusterConfig(tempDir, List("one", "two", "three"))
-      val underTest = FileBasedClusterConfig(file.path)
+      val underTest = FileBasedClusterConfig(file.pathAsString)
 
       assert("onetwothree" === underTest.members.reduce(_ + _))
 

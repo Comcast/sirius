@@ -17,26 +17,27 @@
 package com.comcast.xfinity.sirius.uberstore.seqindex
 
 import com.comcast.xfinity.sirius.NiceTest
-import java.io.File
+import java.io.{File => JFile}
+
+import better.files.File
 import org.scalatest.BeforeAndAfterAll
-import scalax.file.Path
 
 // here's the deal, this is insane to try to test with mockery,
 //  so do the real deal
 class DiskOnlySeqIndexTest extends NiceTest with BeforeAndAfterAll {
 
-  val tempDir: File = {
+  val tempDir: JFile = {
     val tempDirName = "%s/diskonly-seq-index-itest-%s".format(
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
-    val dir = new File(tempDirName)
+    val dir = new JFile(tempDirName)
     dir.mkdirs()
     dir
   }
 
   override def afterAll {
-    Path(tempDir).deleteRecursively(force = true)
+    File(tempDir.getPath).delete()
   }
 
   describe("Index size"){

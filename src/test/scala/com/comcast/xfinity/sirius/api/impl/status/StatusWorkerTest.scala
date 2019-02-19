@@ -30,7 +30,7 @@ class StatusWorkerTest extends NiceTest with BeforeAndAfterAll {
   implicit val actorSystem = ActorSystem("StatusWorkerTest")
 
   override def afterAll() {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   describe("in response to a GetStatus message") {

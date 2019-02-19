@@ -17,11 +17,12 @@ package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
+import java.io.{File => JFile}
 
-import scalax.file.Path
-import java.io.File
 import annotation.tailrec
 import java.util
+
+import better.files.File
 
 object SegmentedCompactor {
   val COMPACTING_SUFFIX = ".compacting"
@@ -51,15 +52,13 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
   def replace(original: Segment, replacement: String): Segment = {
     original.close()
 
-    val originalPath = Path.fromString(original.location.getAbsolutePath)
-    val replacementPath = Path.fromString(replacement)
-    val tempPath = Path.fromString(
-      new File(original.location.getParent, original.location.getName + SegmentedCompactor.TEMP_SUFFIX).getAbsolutePath
-    )
+    val originalPath = File(original.location.getAbsolutePath)
+    val replacementPath = File(replacement)
+    val tempPath = File(original.location.getParent, original.location.getName + SegmentedCompactor.TEMP_SUFFIX)
 
     originalPath.moveTo(tempPath)
     replacementPath.moveTo(originalPath)
-    tempPath.deleteRecursively()
+    tempPath.delete()
 
     Segment(original.location.getParentFile, original.location.getName)
   }
@@ -192,7 +191,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
    */
   def delete(segment: Segment) {
     segment.close()
-    Path.fromString(segment.location.getAbsolutePath).deleteRecursively()
+    File(segment.location.getAbsolutePath).delete()
   }
 
   /**
@@ -202,7 +201,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
    * @param right second source segment
    * @param targetFile location where to write the files. This probably should not already exist.
    */
-  def mergeSegments(left: Segment, right: Segment, targetFile: File) {
+  def mergeSegments(left: Segment, right: Segment, targetFile: JFile) {
     val target = Segment(targetFile)
     left.foreach(target.writeEntry)
     right.foreach(target.writeEntry)

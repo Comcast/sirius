@@ -19,15 +19,19 @@ package com.comcast.xfinity.sirius.itest
 import akka.actor.ActorSystem
 import org.junit.rules.TemporaryFolder
 import com.comcast.xfinity.sirius.writeaheadlog._
-import scalax.file.Path
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
-import com.comcast.xfinity.sirius.api.impl.{Put, OrderedEvent, SiriusImpl}
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Put, SiriusImpl}
+import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.uberstore.UberStore
-import java.io.File
+import java.io.{File => JFile}
+
+import better.files.File
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 @RunWith(classOf[JUnitRunner])
 class BootstrapLogITest extends NiceTest with TimedTest {
@@ -37,10 +41,10 @@ class BootstrapLogITest extends NiceTest with TimedTest {
   var actorSystem: ActorSystem = _
 
   val tempFolder = new TemporaryFolder()
-  var logDir: File = _
+  var logDir: JFile = _
 
   var stringRequestHandler: StringRequestHandler = _
-  var clusterConfigPath: Path = _
+  var clusterConfigPath: File = _
 
   private def stageFiles() {
     tempFolder.create()
@@ -54,7 +58,7 @@ class BootstrapLogITest extends NiceTest with TimedTest {
 
   private def stageClusterConfigFile() {
     val clusterConfigFileName = tempFolder.newFile("cluster.conf").getAbsolutePath
-    clusterConfigPath = Path.fromString(clusterConfigFileName)
+    clusterConfigPath = File(clusterConfigFileName)
     clusterConfigPath.append("host1:2552\n")
     clusterConfigPath.append("host2:2552\n")
   }
@@ -71,7 +75,7 @@ class BootstrapLogITest extends NiceTest with TimedTest {
     stringRequestHandler = new StringRequestHandler()
 
     val config = new SiriusConfiguration
-    config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath.path)
+    config.setProp(SiriusConfiguration.CLUSTER_CONFIG, clusterConfigPath.pathAsString)
     config.setProp(SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER,AkkaExternalAddressResolver(actorSystem)(config))
     sirius = SiriusImpl(
       stringRequestHandler,
@@ -82,9 +86,9 @@ class BootstrapLogITest extends NiceTest with TimedTest {
   }
 
   after {
-    actorSystem.shutdown()
+    val terminated = actorSystem.terminate()
     tempFolder.delete()
-    actorSystem.awaitTermination()
+    Await.ready(terminated, Duration.Inf)
   }
 
   describe("a Sirius") {

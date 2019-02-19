@@ -49,7 +49,7 @@ class LeaderWatcherTest extends NiceTest with BeforeAndAfterAll {
   }
 
   override def afterAll() {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   describe ("on instantiation") {

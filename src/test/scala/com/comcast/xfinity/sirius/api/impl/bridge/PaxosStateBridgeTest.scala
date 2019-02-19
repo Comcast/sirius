@@ -61,7 +61,7 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
   }
 
   override def afterAll {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   describe("when receiving a Decision message") {

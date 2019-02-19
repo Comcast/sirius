@@ -125,6 +125,6 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll with TimedTe
   }
 
   override def afterAll() {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 }

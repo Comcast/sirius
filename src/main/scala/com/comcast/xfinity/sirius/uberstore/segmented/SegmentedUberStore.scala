@@ -16,21 +16,23 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import java.io.File
+import java.io.{File => JFile}
+
+import better.files.File
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+
 import annotation.tailrec
-import scalax.file.Path
 
 object SegmentedUberStore {
 
   def versionId: String = "SEGMENTED-1.0"
 
   def init(location: String) {
-    val dir = new File(location)
+    val dir = new JFile(location)
     dir.mkdirs()
 
-    new File(dir, SegmentedUberStore.versionId).createNewFile()
+    new JFile(dir, SegmentedUberStore.versionId).createNewFile()
   }
 
   /**
@@ -40,27 +42,27 @@ object SegmentedUberStore {
    * @param location location of SegmentedUberStore
    */
   def repair(location: String) {
-    val dir = new File(location)
+    val dir = new JFile(location)
 
     val baseNames = dir.listFiles.filter(_.getName.contains(".")).foldLeft(Set[String]())(
       (acc, file) =>  acc + file.getName.substring(0, file.getName.indexOf('.'))
     )
 
     baseNames.foreach(baseName => {
-      val baseFile = new File(dir, baseName)
-      val tempFile = new File(dir, baseName + SegmentedCompactor.TEMP_SUFFIX)
-      val compactedFile = new File(dir, baseName + SegmentedCompactor.COMPACTING_SUFFIX)
+      val baseFile = new JFile(dir, baseName)
+      val tempFile = new JFile(dir, baseName + SegmentedCompactor.TEMP_SUFFIX)
+      val compactedFile = new JFile(dir, baseName + SegmentedCompactor.COMPACTING_SUFFIX)
 
       if (baseFile.exists && compactedFile.exists) {
         // compacted exists, base exists: incomplete compaction, delete compacted
-        Path(compactedFile).deleteRecursively()
+        File(compactedFile.getPath).delete()
       } else if (tempFile.exists && compactedFile.exists) {
         // compacted exists, temp exists: incomplete replace, mv compacted base
-        Path(compactedFile).moveTo(Path(baseFile))
-        Path(tempFile).deleteRecursively()
+        File(compactedFile.getPath).moveTo(File(baseFile.getPath))
+        File(tempFile.getPath).delete()
       } else if (baseFile.exists && tempFile.exists) {
         // base exists, temp exists: incomplete replace, rm temp
-        Path(tempFile).deleteRecursively()
+        File(tempFile.getPath).delete()
       }
     })
   }
@@ -77,7 +79,7 @@ object SegmentedUberStore {
   def apply(base: String, siriusConfig: SiriusConfiguration = new SiriusConfiguration): SegmentedUberStore = {
     val MAX_EVENTS_PER_SEGMENT = siriusConfig.getProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 1000000L)
 
-    if (!new File(base, versionId).exists) {
+    if (!new JFile(base, versionId).exists) {
       throw new IllegalStateException("Cannot start. Configured to boot with storage: %s, which is not found in %s".format(versionId, base))
     }
 
@@ -85,7 +87,7 @@ object SegmentedUberStore {
 
     val segmentedCompactor = SegmentedCompactor(siriusConfig)
 
-    new SegmentedUberStore(new File(base), MAX_EVENTS_PER_SEGMENT, segmentedCompactor)
+    new SegmentedUberStore(new JFile(base), MAX_EVENTS_PER_SEGMENT, segmentedCompactor)
   }
 }
 
@@ -95,7 +97,7 @@ object SegmentedUberStore {
  *
  * @param base directory SegmentedUberStore is based in
  */
-class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long, segmentedCompactor: SegmentedCompactor) extends SiriusLog {
+class SegmentedUberStore private[segmented] (base: JFile, eventsPerSegment: Long, segmentedCompactor: SegmentedCompactor) extends SiriusLog {
 
   val replaceLock = new Object()
   val compactLock = new Object()
@@ -174,7 +176,7 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
    * @param segments all segments (assumed unsorted)
    * @return tuple2 of (live segment, inactive segments)
    */
-  private def groupSegments(location: File, segments: List[String]): (Segment, List[Segment]) = {
+  private def groupSegments(location: JFile, segments: List[String]): (Segment, List[Segment]) = {
     segments.sortWith(_.toLong > _.toLong) match {
       case Nil => (Segment(location, "1"), Nil)
       case hd :: tl => (Segment(location, hd), tl.reverse.map(Segment(location, _)))
@@ -187,7 +189,7 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
    * @param location root directory of uberstore
    * @return unsorted list of valid Segment names in location
    */
-  private def listSegments(location: File): List[String] =
+  private def listSegments(location: JFile): List[String] =
     location.listFiles.toList.collect {
       case f if f.isDirectory && f.getName.forall(_.isDigit) => f.getName
     }
@@ -210,7 +212,7 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
    * @return a measure of size of the SiriusLog
    */
   def size: Long = {
-    def recursiveListFiles(f: File): Array[File] = {
+    def recursiveListFiles(f: JFile): Array[JFile] = {
       val these = f.listFiles
       these ++ these.filter(_.isDirectory).flatMap(recursiveListFiles)
     }
@@ -250,7 +252,7 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
   private[segmented] final def merge() {
     segmentedCompactor.findNextMergeableSegments(readOnlyDirs, isMergeable) match {
       case Some((left, right)) =>
-        val merged = new File(base, "%s-%s.merged".format(left.name, right.name))
+        val merged = new JFile(base, "%s-%s.merged".format(left.name, right.name))
 
         segmentedCompactor.mergeSegments(left, right, merged)
         replaceLock synchronized {

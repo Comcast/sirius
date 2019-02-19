@@ -67,7 +67,7 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
       val actualObjectName = underTest.getObjectName(new DummyMonitor, actor, actorSystem)(siriusConfig)
       assert(expectedObjectName === actualObjectName)
     } finally {
-      actorSystem.shutdown()
+      actorSystem.terminate()
     }
   }
 
@@ -99,7 +99,7 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
       val actualObjectName = underTest.getObjectName(new DummyMonitor, actor, actorSystem)(siriusConfig)
       assert(expectedObjectName === actualObjectName)
     } finally {
-      actorSystem.shutdown()
+      actorSystem.terminate()
     }
   }
 }

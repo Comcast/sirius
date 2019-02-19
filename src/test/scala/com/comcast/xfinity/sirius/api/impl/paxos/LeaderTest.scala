@@ -79,7 +79,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
   }
 
   override def afterAll {
-    actorSystem.shutdown()
+    actorSystem.terminate()
   }
 
   describe("A Leader") {

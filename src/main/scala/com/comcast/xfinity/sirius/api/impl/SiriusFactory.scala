@@ -27,7 +27,6 @@ import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.typesafe.config.{Config, ConfigFactory}
-
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import javax.management.ObjectName
@@ -37,6 +36,9 @@ import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 import scala.collection.JavaConverters._
 import org.slf4j.LoggerFactory
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 /**
  * Provides the factory for [[com.comcast.xfinity.sirius.api.impl.SiriusImpl]] instances
@@ -115,8 +117,7 @@ object SiriusFactory {
 
     // need to shut down the actor system and unregister the mbeans when sirius is done
     impl.onShutdown({
-      actorSystem.shutdown()
-      actorSystem.awaitTermination()
+      Await.ready(actorSystem.terminate(), Duration.Inf)
       mbeanServer.unregisterMBean(siriusInfoObjectName)
     })
 

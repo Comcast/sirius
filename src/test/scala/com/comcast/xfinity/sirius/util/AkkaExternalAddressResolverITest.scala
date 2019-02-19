@@ -58,7 +58,7 @@ class AkkaExternalAddressResolverITest extends NiceTest with BeforeAndAfterAll {
         assert("akka.tcp://test-system@127.0.0.1:2559/user/myRef" === resolver.externalAddressFor(myActor))
 
       } finally {
-        actorSystem.shutdown()
+        actorSystem.terminate()
       }
     }
   }
@@ -73,7 +73,7 @@ class AkkaExternalAddressResolverITest extends NiceTest with BeforeAndAfterAll {
         val resolver = siriusConfig.getProp[AkkaExternalAddressResolver](SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER).get
         assert("akka://test-system/user/myRef" === resolver.externalAddressFor(myActor))
       } finally {
-        actorSystem.shutdown()
+        actorSystem.terminate()
       }
     }
   }

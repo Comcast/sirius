@@ -17,7 +17,11 @@ package com.comcast.xfinity.sirius.tool.helper
 
 import akka.actor.ActorSystem
 import java.util.{HashMap => JHashMap}
+
 import com.typesafe.config.ConfigFactory
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 /**
  * Helper object providing quick and dirty access to a singleton
@@ -55,7 +59,7 @@ object ActorSystemHelper {
    */
   def shutDownActorSystem() {
     actorSystemOpt match {
-      case Some(as) => as.shutdown()
+      case Some(as) => Await.ready(as.terminate(), Duration.Inf)
       case None => // no-op
     }
   }

@@ -15,12 +15,11 @@
  */
 package com.comcast.xfinity.sirius.api.impl.membership
 
-import scalax.file.Path
-import scalax.io.Line.Terminators.NewLine
+import better.files._
 
 object FileBasedClusterConfig {
   def apply(config: String): FileBasedClusterConfig = {
-    val configFile = Path.fromString(config)
+    val configFile = File(config)
 
     if (!configFile.exists) {
       throw new IllegalStateException("ClusterConfig file not found at location %s, cannot boot.".format(config))
@@ -35,7 +34,7 @@ object FileBasedClusterConfig {
  *
  * @param config Path of config file
  */
-private[membership] class FileBasedClusterConfig(config: Path) extends ClusterConfig {
+private[membership] class FileBasedClusterConfig(config: File) extends ClusterConfig {
 
   /**
    * List of akka paths for the members of the cluster.
@@ -43,7 +42,7 @@ private[membership] class FileBasedClusterConfig(config: Path) extends ClusterCo
    * @return list of members
    */
   def members = {
-    config.lines(NewLine, includeTerminator = false)
+    config.lines()
       .toList
       .filterNot(_.startsWith("#"))
   }

@@ -18,9 +18,10 @@ package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
-import java.io.File
-import scalax.file.Path
+import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent, Put}
+import java.io.{File => JFile}
+
+import better.files.File
 import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 
 object UberToolTest {
@@ -46,7 +47,7 @@ object UberToolTest {
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
-    val file = new File(tempDirName)
+    val file = new JFile(tempDirName)
     file.mkdirs()
     file
   }
@@ -63,7 +64,7 @@ class UberToolTest extends NiceTest {
 
       assert(true === UberTool.isLegacy(location))
 
-      Path.fromString(location).deleteRecursively(force = true)
+      File(location).delete()
     }
     it ("must return false for a segmented uberstore") {
       val location = createTempDir.getAbsolutePath
@@ -73,7 +74,7 @@ class UberToolTest extends NiceTest {
 
       assert(false === UberTool.isLegacy(location))
 
-      Path.fromString(location).deleteRecursively(force = true)
+      File(location).delete()
     }
   }
 
@@ -86,7 +87,7 @@ class UberToolTest extends NiceTest {
 
       assert(true === UberTool.isSegmented(location))
 
-      Path.fromString(location).deleteRecursively(force = true)
+      File(location).delete()
     }
     it ("must return false for a legacy uberstore") {
       val location = createTempDir.getAbsolutePath
@@ -95,7 +96,7 @@ class UberToolTest extends NiceTest {
 
       assert(false === UberTool.isSegmented(location))
 
-      Path.fromString(location).deleteRecursively(force = true)
+      File(location).delete()
     }
   }
 

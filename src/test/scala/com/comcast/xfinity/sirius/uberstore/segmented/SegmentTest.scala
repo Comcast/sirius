@@ -18,21 +18,23 @@ package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.NiceTest
 import org.mockito.Mockito._
-import org.mockito.Matchers.{any, eq => meq, anyLong}
+import org.mockito.Matchers.{any, anyLong, eq => meq}
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
 import com.comcast.xfinity.sirius.uberstore.seqindex.SeqIndex
-import java.io.File
+import java.io.{File => JFile}
+
+import better.files.File
 import org.scalatest.BeforeAndAfterAll
+
 import scala.collection.immutable.StringOps
-import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
-import scalax.file.Path
+import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent, Put}
 
 object SegmentTest {
 
   def createMockedUpLog: (UberDataFile, SeqIndex, FlagFile, FlagFile, Segment) = {
     val mockDataFile = mock(classOf[UberDataFile])
     val mockIndex = mock(classOf[SeqIndex])
-    val mockFile = mock(classOf[File])
+    val mockFile = mock(classOf[JFile])
     val mockAppliedFlag = mock(classOf[FlagFile])
     val mockCompactedFlag = mock(classOf[FlagFile])
     // XXX: non-io tests require us to access private constructor
@@ -45,18 +47,18 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
 
   import SegmentTest._
 
-  val tempDir: File = {
+  val tempDir: JFile = {
     val tempDirName = "%s/segment-itest-%s".format(
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()
     )
-    val dir = new File(tempDirName)
+    val dir = new JFile(tempDirName)
     dir.mkdirs()
     dir
   }
 
   override def afterAll() {
-    Path(tempDir).deleteRecursively(force = true)
+    File(tempDir.getPath).delete()
   }
   describe("writeEntry") {
     it ("must persist the event to the dataFile, and offset to the index") {
