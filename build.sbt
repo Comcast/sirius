@@ -15,7 +15,7 @@
 
 name := "sirius"
 
-version := "2.0.1-SNAPSHOT"
+version := "2.1.0"
 
 scalaVersion := "2.12.8"
 crossScalaVersions := Seq("2.11.8", "2.12.8")
@@ -59,7 +59,7 @@ artifactName := { (scalaVersion: ScalaVersion, module: ModuleID, artifact: Artif
 }
 
 // disable using the Scala version in output paths and artifacts
-crossPaths := false
+crossPaths := true
 
 // compiler options
 javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
