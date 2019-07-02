@@ -15,10 +15,10 @@
  */
 package com.comcast.xfinity.sirius.uberstore.data
 
-import java.io.RandomAccessFile
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import annotation.tailrec
 import com.comcast.xfinity.sirius.uberstore.common.Fnv1aChecksummer
+
+import scala.annotation.tailrec
 
 object UberDataFile {
 
@@ -35,59 +35,28 @@ object UberDataFile {
    *
    * @return fully constructed UberDataFile
    */
-  def apply(dataFileName: String) = {
-    val uberFileDesc = new UberFileDesc(dataFileName)
+  def apply(dataFileName: String, fileHandleFactory: UberDataFileHandleFactory): UberDataFile = {
     val fileOps = new UberStoreBinaryFileOps with Fnv1aChecksummer
     val codec = new BinaryEventCodec
-    new UberDataFile(uberFileDesc, fileOps, codec)
-  }
-
-  /**
-   * Private class for delivering file handles for an UberDataFile,
-   * need this because write handles are created on demand.
-   *
-   * THIS IS PRIVATE TO UBERDATAFILE, DON'T MESS WITH IT
-   *
-   * @param dataFileName the name of the file for this descriptor to wrap
-   */
-  private[data] class UberFileDesc(dataFileName: String) {
-    /**
-     * Construct and return a writable RandomAccessFile
-     *
-     * Has the side effect of opening a file descriptor, this must be
-     * closed by the caller.
-     *
-     * @return read/write RandomAccessFile (note write only is not allowed)
-     */
-    def createWriteHandle() = new RandomAccessFile(dataFileName, "rw")
-
-    /**
-     * Construct a read only RandomAccessFile
-     *
-     * Has the side effect of opening a file descriptor, this must be
-     * closed by the caller.
-     *
-     * @return read only RandomAccessFile
-     */
-    def createReadHandle() = new RandomAccessFile(dataFileName, "r")
+    new UberDataFile(dataFileName, fileHandleFactory, fileOps, codec)
   }
 }
 
 /**
  * Lower level file access for UberStore data files.
  *
- * @param uberFileDesc the UberDataFile.UberFileDesc to provide handles
+ * @param fileHandleFactory the UberDataFile.UberFileDesc to provide handles
  *          to the underlying file. Extracted out for testing.
  * @param fileOps service class providing low level file operations
  * @param codec OrderedEventCodec for transforming OrderedEvents
  */
 // TODO: use trait to hide this constructor but keep type visible?
-private[uberstore] class UberDataFile(uberFileDesc: UberDataFile.UberFileDesc,
+private[uberstore] class UberDataFile(dataFileName: String,
+                                      fileHandleFactory: UberDataFileHandleFactory,
                                       fileOps: UberStoreFileOps,
                                       codec: OrderedEventCodec) {
 
-  val writeHandle = uberFileDesc.createWriteHandle()
-  writeHandle.seek(writeHandle.length)
+  val writeHandle: UberDataFileWriteHandle = fileHandleFactory.createWriteHandle(dataFileName)
 
   var isClosed = false
 
@@ -130,9 +99,8 @@ private[uberstore] class UberDataFile(uberFileDesc: UberDataFile.UberFileDesc,
    * @return T the final accumulator value
    */
   def foldLeftRange[T](baseOff: Long, endOff: Long)(acc0: T)(foldFun: (T, Long, OrderedEvent) => T): T = {
-    val readHandle = uberFileDesc.createReadHandle()
+    val readHandle = fileHandleFactory.createReadHandle(dataFileName, baseOff)
     try {
-      readHandle.seek(baseOff)
       foldLeftUntil(readHandle, endOff, acc0, foldFun)
     } finally {
       readHandle.close()
@@ -141,8 +109,8 @@ private[uberstore] class UberDataFile(uberFileDesc: UberDataFile.UberFileDesc,
 
   // private low low low level fold left
   @tailrec
-  private def foldLeftUntil[T](readHandle: RandomAccessFile, maxOffset: Long, acc: T, foldFun: (T, Long, OrderedEvent) => T): T = {
-    val offset = readHandle.getFilePointer
+  private def foldLeftUntil[T](readHandle: UberDataFileReadHandle, maxOffset: Long, acc: T, foldFun: (T, Long, OrderedEvent) => T): T = {
+    val offset = readHandle.offset()
     if (offset > maxOffset) {
       acc
     } else {

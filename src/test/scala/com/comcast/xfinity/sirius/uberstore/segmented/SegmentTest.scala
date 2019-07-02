@@ -18,10 +18,11 @@ package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.NiceTest
 import org.mockito.Mockito._
-import org.mockito.Matchers.{any, eq => meq, anyLong}
-import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
+import org.mockito.Matchers.{any, anyLong, eq => meq}
+import com.comcast.xfinity.sirius.uberstore.data.{RandomAccessFileHandleFactory, UberDataFile, UberDataFileHandleFactory}
 import com.comcast.xfinity.sirius.uberstore.seqindex.SeqIndex
 import java.io.File
+
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.StringOps
 import com.comcast.xfinity.sirius.api.impl.{Put, Delete, OrderedEvent}
@@ -54,6 +55,11 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
     dir.mkdirs()
     dir
   }
+
+  val fileHandleFactory: UberDataFileHandleFactory = RandomAccessFileHandleFactory
+
+  def buildSegment(base: File, name: String) =
+    Segment(base, name, fileHandleFactory)
 
   override def afterAll() {
     Path(tempDir).deleteRecursively(force = true)
@@ -152,25 +158,25 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   describe ("keys"){
 
     it ("Should return an empty set if the set of keys are empty"){
-      val underTest = Segment(tempDir, "0keys")
+      val underTest = buildSegment(tempDir, "0keys")
       assert(underTest.keys.isEmpty)
     }
 
     it ("Should return the correct number of keys if the set of keys is not empty. With Deletes only"){
-      val underTest = Segment(tempDir, "hasKeys-Delete")
+      val underTest = buildSegment(tempDir, "hasKeys-Delete")
       underTest.writeEntry(OrderedEvent(1, 678, Delete("yarr")))
       underTest.writeEntry(OrderedEvent(2, 1200, Delete("secondYarr")))
       assert(2 === underTest.keys.size)
     }
     it ("Should return the correct number of keys if the set of keys is not empty. With Puts only"){
-      val underTest = Segment(tempDir, "hasKeys-Put")
+      val underTest = buildSegment(tempDir, "hasKeys-Put")
       val newByteArray = new StringOps("data").getBytes
       underTest.writeEntry(OrderedEvent(1, 678, Put("yarr",newByteArray)))
       underTest.writeEntry(OrderedEvent(2, 1000, Put("secondYarr",newByteArray)))
       assert(Set("yarr", "secondYarr") === underTest.keys)
     }
     it ("Should return the correct number of keys if the set of keys is not empty. With Puts & Deletes"){
-      val underTest = Segment(tempDir, "hasKeys-All")
+      val underTest = buildSegment(tempDir, "hasKeys-All")
       val newByteArray = new StringOps("data").getBytes
       underTest.writeEntry(OrderedEvent(1, 678, Put("yarr",newByteArray)))
       underTest.writeEntry(OrderedEvent(2, 1000, Put("secondYarr",newByteArray)))
@@ -179,7 +185,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
       assert(Set("yarr", "secondYarr", "thirdYarr", "fourthYarr") === underTest.keys)
     }
     it ("should return a unique number of keys if the set of keys is not empty and has duplicates"){
-      val underTest = Segment(tempDir, "hasUniqueKeys")
+      val underTest = buildSegment(tempDir, "hasUniqueKeys")
       val newByteArray = new StringOps("data").getBytes
       underTest.writeEntry(OrderedEvent(1, 678, Delete("yarr")))
       underTest.writeEntry(OrderedEvent(2, 1200, Delete("secondYarr")))

@@ -16,8 +16,8 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.uberstore.seqindex.{SeqIndex, DiskOnlySeqIndex}
-import com.comcast.xfinity.sirius.uberstore.data.UberDataFile
+import com.comcast.xfinity.sirius.uberstore.seqindex.{DiskOnlySeqIndex, SeqIndex}
+import com.comcast.xfinity.sirius.uberstore.data.{UberDataFile, UberDataFileHandleFactory}
 import java.io.File
 
 object Segment {
@@ -30,8 +30,8 @@ object Segment {
    *
    * @return an Segment instance, fully repaired and usable
    */
-  def apply(base: File, name: String): Segment = {
-    apply(new File(base, name))
+  def apply(base: File, name: String, fileHandleFactory: UberDataFileHandleFactory): Segment = {
+    apply(new File(base, name), fileHandleFactory)
   }
 
   /**
@@ -42,7 +42,7 @@ object Segment {
    *
    * @return an Segment instance, fully repaired and usable
    */
-  def apply(location: File): Segment = {
+  def apply(location: File, fileHandleFactory: UberDataFileHandleFactory): Segment = {
     location.mkdirs()
 
     val dataFile = new File(location, "data")
@@ -50,7 +50,7 @@ object Segment {
     val compactionFlagFile = new File(location, "keys-collected")
     val internalCompactionFlagFile = new File(location, "internally-compacted")
 
-    val data = UberDataFile(dataFile.getAbsolutePath)
+    val data = UberDataFile(dataFile.getAbsolutePath, fileHandleFactory)
     val index = DiskOnlySeqIndex(indexFile.getAbsolutePath)
     val compactionFlag = FlagFile(compactionFlagFile.getAbsolutePath)
     val internalCompactionFlag = FlagFile(internalCompactionFlagFile.getAbsolutePath)
@@ -96,8 +96,12 @@ object Segment {
  * @param dataFile the UberDataFile to store data in
  * @param index the SeqIndex to use
  */
-class Segment private[uberstore](val location: File, val name: String, dataFile: UberDataFile,
-                                 index: SeqIndex, compactionFlag: FlagFile, internalCompactionFlag: FlagFile) {
+class Segment private[uberstore](val location: File,
+                                 val name: String,
+                                 dataFile: UberDataFile,
+                                 index: SeqIndex,
+                                 compactionFlag: FlagFile,
+                                 internalCompactionFlag: FlagFile) {
 
   /**
    * Get the number of entries written to the Segment
