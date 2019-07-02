@@ -17,8 +17,10 @@ package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 import java.io.File
+
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.uberstore.data.UberDataFileHandleFactory
 
 object UberStore {
 
@@ -31,12 +33,14 @@ object UberStore {
    *
    * @return an instantiated UberStore
    */
-  def apply(baseDir: String): UberStore = {
+  def apply(baseDir: String, siriusConfig: SiriusConfiguration = new SiriusConfiguration): UberStore = {
     if (!isValidUberStore(baseDir)) {
       throw new IllegalStateException("Cannot start. Configured to boot with legacy UberStore, but other UberStore format found.")
     }
 
-    new UberStore(baseDir, UberPair(baseDir, 1L))
+    val fileHandleFactory = UberDataFileHandleFactory(siriusConfig)
+
+    new UberStore(baseDir, UberPair(baseDir, 1L, fileHandleFactory))
   }
 
   /**

@@ -189,6 +189,17 @@ object SiriusConfiguration {
   final val LOG_WRITE_CACHE_SIZE = "sirius.log.write-cache-size"
 
   /**
+    * Whether or not to use a buffered reader when reading through the log
+    */
+  final val LOG_USE_READ_BUFFER = "sirius.log.read-buffer-enabled"
+
+  /**
+    * Indicates the size of the buffer in bytes when reading events from the log.
+    * The default buffer size is 8192 bytes. (int)
+    */
+  final val LOG_READ_BUFFER_SIZE_BYTES = "sirius.log.read-buffer-size-bytes"
+
+  /**
    * Minutes between triggering compaction. First trigger will happen this many minutes
    * after boot.  A value of 0 turns off compaction, and compaction is off by default.
    */

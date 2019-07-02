@@ -67,7 +67,7 @@ object SiriusFactory {
     val backendLog = {
       siriusConfig.getProp(SiriusConfiguration.LOG_VERSION_ID, "") match {
         case version if version == SegmentedUberStore.versionId => SegmentedUberStore(uberStoreDir, siriusConfig)
-        case _ => UberStore(uberStoreDir)
+        case _ => UberStore(uberStoreDir, siriusConfig)
       }
     }
 
