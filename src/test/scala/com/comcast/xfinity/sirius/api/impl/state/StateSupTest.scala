@@ -20,10 +20,11 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Delete, Get}
+import com.comcast.xfinity.sirius.api.impl.{Delete, Get, OrderedEvent, SiriusState}
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
+import com.comcast.xfinity.sirius.api.{BrainlessRequestHandler, RequestHandler, SiriusConfiguration}
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
+import org.mockito.{Matchers, Mockito}
 
 object StateSupTest {
   def makeMockedUpChildProvider(implicit actorSystem: ActorSystem): (TestProbe, TestProbe, StateSup.ChildProvider) = {
@@ -99,6 +100,20 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
       senderProbe.send(stateSup, GetNextLogSeq)
       persistenceProbe.expectMsg(GetNextLogSeq)
       assert(senderProbe.ref === persistenceProbe.lastSender)
+    }
+  }
+
+  describe("when the RequestHandler is BrainlessRequestHandler") {
+    it ("skips replaying the SiriusLog") {
+      val requestHandler = BrainlessRequestHandler
+      val mockLog = mock[SiriusLog]
+      val mockStateAgent = mock[Agent[SiriusState]]
+
+      val (_, persistenceProbe, mockChildProvider) = makeMockedUpChildProvider
+
+      val stateSup = TestActorRef(new StateSup(requestHandler, mockLog, mockStateAgent, mockChildProvider, new SiriusConfiguration))
+
+      Mockito.verify(mockLog, Mockito.never()).foreach(Matchers.any())
     }
   }
 }
