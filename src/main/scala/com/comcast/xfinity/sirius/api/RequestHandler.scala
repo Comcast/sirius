@@ -30,12 +30,12 @@ package com.comcast.xfinity.sirius.api
 trait RequestHandler {
 
   /**
-   * Handle a GET request
-   *
-   * @param key String identifying the search query
-   *
-   * @return a SiriusResult wrapping the result of the query
-   */
+    * Handle a GET request
+    *
+    * @param key String identifying the search query
+    *
+    * @return a SiriusResult wrapping the result of the query
+    */
   def handleGet(key: String): SiriusResult
 
   /**
@@ -63,5 +63,4 @@ trait RequestHandler {
    *          In the future the API may be modified to return void.
    */
   def handleDelete(key: String): SiriusResult
-
 }

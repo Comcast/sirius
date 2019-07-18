@@ -22,7 +22,7 @@ import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl.{SiriusState, OrderedEvent, Delete, Get}
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
+import com.comcast.xfinity.sirius.api.{RequestWithMetadataHandler, SiriusConfiguration}
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
 
 object StateSupTest {
@@ -49,7 +49,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
   describe("when receiving a Get") {
     it ("must forward the message to the in memory state subsystem") {
-      val mockRequestHandler = mock[RequestHandler]
+      val mockRequestHandler = mock[RequestWithMetadataHandler]
       val mockLog = mock[SiriusLog]
       val mockStateAgent = mock[Agent[SiriusState]]
 
@@ -66,7 +66,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
   describe("when receiving an OrderedEvent") {
     it ("must send the OrderedEvent to the persistence subsystem") {
-      val mockRequestHandler = mock[RequestHandler]
+      val mockRequestHandler = mock[RequestWithMetadataHandler]
       val mockLog = mock[SiriusLog]
       val mockStateAgent = mock[Agent[SiriusState]]
 
@@ -83,7 +83,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
   describe("when receiving a LogQuery message") {
     it ("must forward the message to the persistence subsystem") {
-      val mockRequestHandler = mock[RequestHandler]
+      val mockRequestHandler = mock[RequestWithMetadataHandler]
       val mockLog = mock[SiriusLog]
       val mockStateAgent = mock[Agent[SiriusState]]
 

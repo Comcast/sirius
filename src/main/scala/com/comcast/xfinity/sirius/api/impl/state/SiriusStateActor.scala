@@ -15,11 +15,10 @@
  */
 package com.comcast.xfinity.sirius.api.impl.state
 
-import akka.actor.{Props, Actor}
-import com.comcast.xfinity.sirius.api.impl._
-import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
+import akka.actor.{Actor, Props}
 import akka.event.Logging
-import com.comcast.xfinity.sirius.api.impl.SiriusRequest
+import com.comcast.xfinity.sirius.api.impl.{SiriusRequest, _}
+import com.comcast.xfinity.sirius.api.{RequestWithMetadataHandler, SiriusResult}
 
 object SiriusStateActor {
 
@@ -30,7 +29,7 @@ object SiriusStateActor {
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(requestHandler: RequestHandler): Props = {
+  def props(requestHandler: RequestWithMetadataHandler): Props = {
     Props(classOf[SiriusStateActor], requestHandler)
   }
 }
@@ -43,24 +42,26 @@ object SiriusStateActor {
  *
  * @param requestHandler the request handler containing callbacks for manipulating state
  */
-class SiriusStateActor(requestHandler: RequestHandler) extends Actor {
+class SiriusStateActor(requestHandler: RequestWithMetadataHandler) extends Actor {
 
   val logger = Logging(context.system, "Sirius")
   
   def receive = {
+    case event: OrderedEvent =>
+      sender ! processSiriusRequestSafely(event.sequence, event.timestamp, event.request)
     case req: SiriusRequest =>
       // XXX: With the way things work now, we probably shouldn't
       //      be responding to Puts and Deletes...  These are
       //      responded to when an order has been decided on
-      sender ! processSiriusRequestSafely(req)
+      sender ! processSiriusRequestSafely(0L, 0L, req)
   }
 
-  private def processSiriusRequestSafely(req: SiriusRequest): SiriusResult = {
+  private def processSiriusRequestSafely(sequence: Long, timestamp: Long, req: SiriusRequest): SiriusResult = {
     try {
       req match {
         case Get(key) => requestHandler.handleGet(key)
-        case Delete(key) => requestHandler.handleDelete(key)
-        case Put(key, body) => requestHandler.handlePut(key, body)
+        case Delete(key) => requestHandler.handleDelete(sequence, timestamp, key)
+        case Put(key, body) => requestHandler.handlePut(sequence, timestamp, key, body)
       }
     } catch {
       case e: RuntimeException =>

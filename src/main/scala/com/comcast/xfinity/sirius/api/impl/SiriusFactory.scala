@@ -21,8 +21,7 @@ import java.net.InetAddress
 import java.util.{HashMap => JHashMap}
 
 import com.comcast.xfinity.sirius.admin.ObjectNameHelper
-import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.api.{RequestHandler, RequestWithMetadataHandler, SiriusConfiguration}
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -57,7 +56,21 @@ object SiriusFactory {
    *
    * @return A SiriusImpl constructed using the parameters
    */
-  def createInstance(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
+  def createInstance(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration): SiriusImpl =
+    createInstance(RequestWithMetadataHandler(requestHandler), siriusConfig)
+
+  /**
+    * SiriusImpl factory method, takes parameters to construct a SiriusImplementation and the dependent
+    * ActorSystem and return the created instance.  Calling shutdown on the produced SiriusImpl will also
+    * shutdown the dependent ActorSystem.
+    *
+    * @param requestHandler the RequestHandler containing callbacks for manipulating the system's state
+    * @param siriusConfig a SiriusConfiguration containing configuration info needed for this node.
+    * @see SiriusConfiguration for info on needed config.
+    *
+    * @return A SiriusImpl constructed using the parameters
+    */
+  def createInstance(requestHandler: RequestWithMetadataHandler, siriusConfig: SiriusConfiguration): SiriusImpl = {
     val uberStoreDir = siriusConfig.getProp[String](SiriusConfiguration.LOG_LOCATION) match {
       case Some(dir) => dir
       case None =>
@@ -94,8 +107,8 @@ object SiriusFactory {
    *
    * @return A SiriusImpl constructed using the parameters
    */
-  private[sirius] def createInstance(requestHandler: RequestHandler, siriusConfig: SiriusConfiguration,
-                   siriusLog: SiriusLog): SiriusImpl = {
+  private[sirius] def createInstance(requestHandler: RequestWithMetadataHandler, siriusConfig: SiriusConfiguration,
+                                     siriusLog: SiriusLog): SiriusImpl = {
 
     val systemName = siriusConfig.getProp(SiriusConfiguration.AKKA_SYSTEM_NAME, "sirius-system")
 

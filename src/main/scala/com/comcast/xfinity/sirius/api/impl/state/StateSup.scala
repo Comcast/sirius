@@ -15,7 +15,7 @@
  */
 package com.comcast.xfinity.sirius.api.impl.state
 
-import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
+import com.comcast.xfinity.sirius.api.{RequestWithMetadataHandler, SiriusConfiguration}
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl._
@@ -33,7 +33,7 @@ object StateSup {
    * @param siriusLog the SiriusLog to persist OrderedEvents to
    * @param config SiriusConfiguration object for configuring children actors.
    */
-  private[state] class ChildProvider(requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration) {
+  private[state] class ChildProvider(requestHandler: RequestWithMetadataHandler, siriusLog: SiriusLog, config: SiriusConfiguration) {
     def createStateActor()(implicit context: ActorContext): ActorRef =
       context.actorOf(SiriusStateActor.props(requestHandler), "state")
 
@@ -52,7 +52,7 @@ object StateSup {
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(requestHandler: RequestHandler,
+  def props(requestHandler: RequestWithMetadataHandler,
             siriusLog: SiriusLog,
             siriusStateAgent: Agent[SiriusState],
             config: SiriusConfiguration): Props = {
@@ -71,7 +71,7 @@ object StateSup {
  * @param config SiriusCOnfiguration object for configuring children actors.
  */
 // TODO rename this StateSupervisor
-class StateSup(requestHandler: RequestHandler,
+class StateSup(requestHandler: RequestWithMetadataHandler,
                siriusLog: SiriusLog,
                siriusStateAgent: Agent[SiriusState],
                childProvider: StateSup.ChildProvider,
@@ -120,8 +120,8 @@ class StateSup(requestHandler: RequestHandler,
       (_, orderedEvent) =>
         try {
           orderedEvent.request match {
-            case Put(key, body) => requestHandler.handlePut(key, body)
-            case Delete(key) => requestHandler.handleDelete(key)
+            case Put(key, body) => requestHandler.handlePut(orderedEvent.sequence, orderedEvent.timestamp, key, body)
+            case Delete(key) => requestHandler.handleDelete(orderedEvent.sequence, orderedEvent.timestamp, key)
           }
         } catch {
           case rte: RuntimeException =>

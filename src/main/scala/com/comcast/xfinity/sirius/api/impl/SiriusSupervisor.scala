@@ -16,25 +16,27 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import bridge.PaxosStateBridge
-import com.comcast.xfinity.sirius.api.impl.membership.{MembershipHelper, MembershipActor}
+import com.comcast.xfinity.sirius.api.impl.membership.{MembershipActor, MembershipHelper}
 import paxos.PaxosMessages.PaxosMessage
 import akka.actor._
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
+
 import scala.concurrent.duration._
 import paxos.PaxosSupervisor
 import state.SiriusPersistenceActor.LogQuery
 import state.StateSup
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import akka.event.Logging
-import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
+import com.comcast.xfinity.sirius.api.{RequestHandler, RequestWithMetadataHandler, SiriusConfiguration}
 import status.StatusWorker
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 import status.StatusWorker.StatusQuery
 import com.comcast.xfinity.sirius.uberstore.CompactionManager
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.CompactionMessage
-import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{ChildProvider, CheckPaxosMembership}
+import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{CheckPaxosMembership, ChildProvider}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.MembershipMessage
+
 import scala.language.postfixOps
 
 object SiriusSupervisor {
@@ -52,7 +54,7 @@ object SiriusSupervisor {
    * @param siriusLog Interface into the Sirius persistent log.
    * @param config the SiriusConfiguration for this node
    */
-  protected[impl] class ChildProvider(requestHandler: RequestHandler, siriusLog: SiriusLog, config: SiriusConfiguration){
+  protected[impl] class ChildProvider(requestHandler: RequestWithMetadataHandler, siriusLog: SiriusLog, config: SiriusConfiguration){
 
     val akkaExternalAddressResolver  = config.getProp[AkkaExternalAddressResolver](SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER).
       getOrElse(throw new IllegalStateException("SiriusConfiguration.AKKA_EXTERNAL_ADDRESS_RESOLVER returned nothing"))
@@ -98,7 +100,7 @@ object SiriusSupervisor {
    * @return  Props for creating this actor, which can then be further configured
    *         (e.g. calling `.withDispatcher()` on it)
    */
-  def props(requestHandler: RequestHandler,
+  def props(requestHandler: RequestWithMetadataHandler,
               siriusLog: SiriusLog,
               config: SiriusConfiguration): Props = {
     Props(classOf[SiriusSupervisor], new ChildProvider(requestHandler, siriusLog, config), config)

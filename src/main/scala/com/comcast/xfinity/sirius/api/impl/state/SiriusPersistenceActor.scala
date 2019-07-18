@@ -121,7 +121,7 @@ class SiriusPersistenceActor(stateActor: ActorRef,
     case event: OrderedEvent =>
       val now = System.currentTimeMillis()
       siriusLog.writeEntry(event)
-      stateActor ! event.request
+      stateActor ! event
 
       val thisWriteTime = System.currentTimeMillis() - now
       numWrites += 1
