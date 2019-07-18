@@ -16,20 +16,21 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import compat.AkkaFutureAdapter
-import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.api.Sirius
+import com.comcast.xfinity.sirius.api.{RequestHandler, RequestWithMetadataHandler, Sirius, SiriusConfiguration, SiriusResult}
 import akka.pattern.ask
 import membership.MembershipActor._
-import com.comcast.xfinity.sirius.api.SiriusResult
 import akka.actor._
 import java.util.concurrent.Future
+
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
+
 import scala.concurrent.{Await, Future => AkkaFuture}
 import akka.util.Timeout
+
 import scala.concurrent.duration._
 import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
+
 import scala.util.Try
 
 object SiriusImpl {
@@ -42,7 +43,7 @@ object SiriusImpl {
    * @param config SiriusConfiguration object full of all kinds of configuration goodies, see SiriusConfiguration
    *            for more information
    */
-  def apply(requestHandler: RequestHandler,
+  def apply(requestHandler: RequestWithMetadataHandler,
             siriusLog: SiriusLog,
             config: SiriusConfiguration)
            (implicit actorSystem: ActorSystem): SiriusImpl = {

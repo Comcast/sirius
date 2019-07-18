@@ -18,22 +18,23 @@ package com.comcast.xfinity.sirius.api.impl.state
 import org.mockito.Matchers
 import org.mockito.Mockito._
 import akka.actor.ActorSystem
-import com.comcast.xfinity.sirius.api.impl.{SiriusState, Delete, Get, Put}
+import com.comcast.xfinity.sirius.api.impl.{Delete, Get, OrderedEvent, Put}
 import com.comcast.xfinity.sirius.NiceTest
-import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
-import akka.testkit.{TestProbe, TestActorRef}
+import com.comcast.xfinity.sirius.api.{RequestWithMetadataHandler, SiriusResult}
+import akka.testkit.{TestActorRef, TestProbe}
 import org.scalatest.BeforeAndAfterAll
+
+import scala.util.Random
 
 class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("SiriusStateActorTest")
 
-  var mockRequestHandler: RequestHandler = _
+  var mockRequestHandler: RequestWithMetadataHandler = _
   var testActor: TestActorRef[SiriusStateActor] = _
 
   before {
-    mockRequestHandler = mock[RequestHandler]
+    mockRequestHandler = mock[RequestWithMetadataHandler]
 
     testActor = TestActorRef(new SiriusStateActor(mockRequestHandler))
   }
@@ -48,15 +49,17 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
       it ("must forward the message to handler and reply with the result " +
           "when it succeeds") {
         val senderProbe = TestProbe()
+        val seq = Random.nextLong()
+        val ts = Random.nextLong()
         val key = "key"
         val body = "value".getBytes
 
         // the following is a little delicate, Array[Byte] are Java jawns, so
         //  we must use the same array for comparing
         doReturn(SiriusResult.some("It's alive!")).when(mockRequestHandler).
-          handlePut(Matchers.eq(key), Matchers.same(body))
+          handlePut(Matchers.eq(seq), Matchers.eq(ts), Matchers.eq(key), Matchers.same(body))
 
-        senderProbe.send(testActor, Put(key, body))
+        senderProbe.send(testActor, OrderedEvent(seq, ts, Put(key, body)))
 
         senderProbe.expectMsg(SiriusResult.some("It's alive!"))
       }
@@ -66,15 +69,17 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         val terminationProbe = TestProbe()
         terminationProbe.watch(testActor)
         val senderProbe = TestProbe()
+        val seq = Random.nextLong()
+        val ts = Random.nextLong()
         val key = "key"
         val body = "value".getBytes
 
         val theException = new RuntimeException("well this sucks")
 
         doThrow(theException).when(mockRequestHandler).
-          handlePut(Matchers.eq(key), Matchers.same(body))
+          handlePut(Matchers.eq(seq), Matchers.eq(ts), Matchers.eq(key), Matchers.same(body))
 
-        senderProbe.send(testActor, Put(key, body))
+        senderProbe.send(testActor, OrderedEvent(seq, ts, Put(key, body)))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
         terminationProbe.expectNoMsg()
@@ -118,12 +123,14 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
       it ("should forward the message to handler and reply with the result when " +
           "it succeeds") {
         val senderProbe = TestProbe()
+        val seq = Random.nextLong()
+        val ts = Random.nextLong()
         val key = "key"
 
         doReturn(SiriusResult.some("I ate too much")).when(mockRequestHandler).
-          handleDelete(Matchers.eq(key))
+          handleDelete(Matchers.eq(seq), Matchers.eq(ts), Matchers.eq(key))
 
-        senderProbe.send(testActor, Delete(key))
+        senderProbe.send(testActor, OrderedEvent(seq, ts, Delete(key)))
 
         senderProbe.expectMsg(SiriusResult.some("I ate too much"))
       }
@@ -131,6 +138,8 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
       it ("must forward the message to the handler and reply with a result " +
           "wrapping the exception when such occurs") {
         val senderProbe = TestProbe()
+        val seq = Random.nextLong()
+        val ts = Random.nextLong()
         val key = "key"
         val terminationProbe = TestProbe()
         terminationProbe.watch(testActor)
@@ -138,9 +147,9 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         val theException = new RuntimeException("well this sucks")
 
         doThrow(theException).when(mockRequestHandler).
-          handleDelete(Matchers.eq(key))
+          handleDelete(Matchers.eq(seq), Matchers.eq(ts), Matchers.eq(key))
 
-        senderProbe.send(testActor, Delete(key))
+        senderProbe.send(testActor, OrderedEvent(seq, ts, Delete(key)))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
         terminationProbe.expectNoMsg()

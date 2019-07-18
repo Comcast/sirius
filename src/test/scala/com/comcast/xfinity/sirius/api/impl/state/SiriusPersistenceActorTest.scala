@@ -80,26 +80,26 @@ class SiriusPersistenceActorTest extends NiceTest {
       senderProbe.expectMsg(500L)
     }
 
-    it ("should forward Put's to the state actor") {
+    it ("should forward Put events to the state actor") {
       when(mockSiriusLog.getNextSeq).thenReturn(0)
 
       val put = Put("key", "body".getBytes)
       val event = OrderedEvent(0L, 0L, put)
 
       underTestActor ! event
-      testStateWorkerProbe.expectMsg(put)
+      testStateWorkerProbe.expectMsg(event)
 
       verify(mockSiriusLog, times(1)).writeEntry(event)
     }
 
-    it ("should forward Delete's to the state actor") {
+    it ("should forward Delete events to the state actor") {
       when(mockSiriusLog.getNextSeq).thenReturn(0)
 
       val delete = Delete("key")
       val event = OrderedEvent(0L, 0L, delete)
 
       underTestActor ! event
-      testStateWorkerProbe.expectMsg(delete)
+      testStateWorkerProbe.expectMsg(event)
 
       verify(mockSiriusLog, times(1)).writeEntry(event)
     }

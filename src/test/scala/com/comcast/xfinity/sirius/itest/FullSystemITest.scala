@@ -34,7 +34,7 @@ import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 
 import annotation.tailrec
-import com.comcast.xfinity.sirius.api.{RequestHandler, SiriusConfiguration, SiriusResult}
+import com.comcast.xfinity.sirius.api.{RequestHandler, RequestWithMetadataHandler, SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.CheckClusterConfig
 import org.slf4j.LoggerFactory
 import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
@@ -89,7 +89,7 @@ class FullSystemITest extends NiceTest with TimedTest {
   // logs
   def makeSirius(port: Int,
                  latchTicks: Int = 3,
-                 handler: Option[RequestHandler] = None,
+                 handler: Option[RequestWithMetadataHandler] = None,
                  wal: Option[SiriusLog] = None,
                  chunkSize: Int = 100,
                  gapRequestFreqSecs: Int = 5,
@@ -97,7 +97,7 @@ class FullSystemITest extends NiceTest with TimedTest {
                  sslEnabled: Boolean = false,
                  maxWindowSize: Int = 1000,
                  membershipPath: String = new JFile(tempDir, "membership").getAbsolutePath):
-                (SiriusImpl, RequestHandler, SiriusLog) = {
+                (SiriusImpl, RequestWithMetadataHandler, SiriusLog) = {
 
     val finalHandler = handler match {
       case Some(requestHandler) => requestHandler
