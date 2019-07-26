@@ -17,8 +17,11 @@ package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import java.io.File
+
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.uberstore.data.UberDataFileHandleFactory
+
 import annotation.tailrec
 import scalax.file.Path
 
@@ -75,7 +78,6 @@ object SegmentedUberStore {
    * @return an instantiated SegmentedUberStore
    */
   def apply(base: String, siriusConfig: SiriusConfiguration = new SiriusConfiguration): SegmentedUberStore = {
-    val MAX_EVENTS_PER_SEGMENT = siriusConfig.getProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 1000000L)
 
     if (!new File(base, versionId).exists) {
       throw new IllegalStateException("Cannot start. Configured to boot with storage: %s, which is not found in %s".format(versionId, base))
@@ -83,9 +85,14 @@ object SegmentedUberStore {
 
     repair(base)
 
-    val segmentedCompactor = SegmentedCompactor(siriusConfig)
+    val MAX_EVENTS_PER_SEGMENT = siriusConfig.getProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 1000000L)
 
-    new SegmentedUberStore(new File(base), MAX_EVENTS_PER_SEGMENT, segmentedCompactor)
+    val fileHandleFactory = UberDataFileHandleFactory(siriusConfig)
+
+    def buildSegment(location: File) = Segment(location, fileHandleFactory)
+    val segmentedCompactor = SegmentedCompactor(siriusConfig, buildSegment)
+
+    new SegmentedUberStore(new File(base), MAX_EVENTS_PER_SEGMENT, segmentedCompactor, buildSegment)
   }
 }
 
@@ -95,7 +102,10 @@ object SegmentedUberStore {
  *
  * @param base directory SegmentedUberStore is based in
  */
-class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long, segmentedCompactor: SegmentedCompactor) extends SiriusLog {
+class SegmentedUberStore private[segmented] (base: File,
+                                             eventsPerSegment: Long,
+                                             segmentedCompactor: SegmentedCompactor,
+                                             buildSegment: File => Segment) extends SiriusLog {
 
   val replaceLock = new Object()
   val compactLock = new Object()
@@ -169,6 +179,8 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
     nextSeq = (liveDir.getNextSeq :: readOnlyDirs.map(_.getNextSeq)).max
   }
 
+  private def buildSegment(base: File, name: String): Segment = buildSegment(new File(base, name))
+
   /**
    * From a list of segments, find the liveDir and the inactiveDirs
    * @param segments all segments (assumed unsorted)
@@ -176,8 +188,8 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
    */
   private def groupSegments(location: File, segments: List[String]): (Segment, List[Segment]) = {
     segments.sortWith(_.toLong > _.toLong) match {
-      case Nil => (Segment(location, "1"), Nil)
-      case hd :: tl => (Segment(location, hd), tl.reverse.map(Segment(location, _)))
+      case Nil => (buildSegment(location, "1"), Nil)
+      case hd :: tl => (buildSegment(location, hd), tl.reverse.map(buildSegment(location, _)))
     }
   }
 
@@ -270,7 +282,7 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
   private def split() = replaceLock.synchronized {
     readOnlyDirs :+= liveDir
     val newDirNum = readOnlyDirs.map(_.name.toLong).max + 1
-    liveDir = Segment(base, newDirNum.toString)
+    liveDir = buildSegment(base, newDirNum.toString)
   }
 
   /**
@@ -312,5 +324,4 @@ class SegmentedUberStore private[segmented] (base: File, eventsPerSegment: Long,
       case elem => elem
     }
   }
-
 }

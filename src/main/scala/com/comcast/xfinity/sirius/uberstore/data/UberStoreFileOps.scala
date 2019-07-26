@@ -15,7 +15,7 @@
  */
 package com.comcast.xfinity.sirius.uberstore.data
 
-import java.io.RandomAccessFile
+import java.io.{DataInputStream, RandomAccessFile}
 
 /**
  * Trait providing low level File operations for an UberStore
@@ -34,7 +34,7 @@ trait UberStoreFileOps {
    *
    * @return offset this object was stored at
    */
-  def put(writeHandle: RandomAccessFile, body: Array[Byte]): Long
+  def put(writeHandle: UberDataFileWriteHandle, body: Array[Byte]): Long
 
   /**
    * Read the next entry out of the file, from the current offset
@@ -47,5 +47,5 @@ trait UberStoreFileOps {
    *
    * @return Some(bytes) or None if EOF encountered
    */
-  def readNext(readHandle: RandomAccessFile): Option[Array[Byte]]
+  def readNext(readHandle: UberDataFileReadHandle): Option[Array[Byte]]
 }

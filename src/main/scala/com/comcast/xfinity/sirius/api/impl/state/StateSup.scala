@@ -115,9 +115,8 @@ class StateSup(requestHandler: RequestHandler,
     val start = System.currentTimeMillis
 
     logger.info("Beginning SiriusLog replay at {}", start)
-    // TODO convert this to foreach
-    siriusLog.foldLeft(())(
-      (_, orderedEvent) =>
+    siriusLog.foreach(
+      orderedEvent =>
         try {
           orderedEvent.request match {
             case Put(key, body) => requestHandler.handlePut(key, body)
