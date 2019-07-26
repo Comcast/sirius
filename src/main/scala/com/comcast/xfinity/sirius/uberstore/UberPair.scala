@@ -16,11 +16,8 @@
 package com.comcast.xfinity.sirius.uberstore
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.uberstore.seqindex.DiskOnlySeqIndex
-import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-
-import data.UberDataFile
-import seqindex.SeqIndex
+import com.comcast.xfinity.sirius.uberstore.data.{UberDataFile, UberDataFileHandleFactory}
+import com.comcast.xfinity.sirius.uberstore.seqindex.{DiskOnlySeqIndex, SeqIndex}
 
 object UberPair {
 
@@ -33,9 +30,9 @@ object UberPair {
    *
    * @return an instantiated UberStoreFilePair
    */
-  def apply(baseDir: String, startingSeq: Long): UberPair = {
+  def apply(baseDir: String, startingSeq: Long, fileHandleFactory: UberDataFileHandleFactory): UberPair = {
     val baseName = "%s/%s".format(baseDir, startingSeq)
-    val dataFile = UberDataFile("%s.data".format(baseName))
+    val dataFile = UberDataFile("%s.data".format(baseName), fileHandleFactory)
     val index = DiskOnlySeqIndex("%s.index".format(baseName))
     repairIndex(index, dataFile)
     new UberPair(dataFile, index)
