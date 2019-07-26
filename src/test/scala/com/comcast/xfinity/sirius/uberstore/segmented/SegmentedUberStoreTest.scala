@@ -24,6 +24,7 @@ import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.uberstore.data.{RandomAccessFileHandleFactory, UberDataFileHandleFactory}
 
 class SegmentedUberStoreTest extends NiceTest {
 
@@ -36,6 +37,9 @@ class SegmentedUberStoreTest extends NiceTest {
     new JFile(tempDirName)
   }
 
+  val siriusConfig = new SiriusConfiguration
+  val fileHandleFactory: UberDataFileHandleFactory = RandomAccessFileHandleFactory
+
   def createSegment(baseDir: JFile, seq: String): JFile = {
     val dir = new JFile(baseDir, seq)
     dir.mkdir
@@ -46,7 +50,7 @@ class SegmentedUberStoreTest extends NiceTest {
   }
 
   def createPopulatedSegment(baseDir: JFile, name: String, events: List[Int], isApplied: Boolean = false) {
-    val segment = Segment(baseDir, name)
+    val segment = buildSegment(baseDir, name)
     segment.setApplied(applied = isApplied)
 
     writeEvents(segment, events.map(_.toLong))
@@ -67,10 +71,15 @@ class SegmentedUberStoreTest extends NiceTest {
     }
   }
 
-  def makeSegment(fullPath: String): Segment = {
+  def buildSegment(fullPath: String): Segment = {
     val file = new JFile(fullPath)
-    Segment(file.getParentFile, file.getName)
+    buildSegment(file.getParentFile, file.getName)
   }
+
+  def buildSegment(base: JFile, name: String): Segment =
+    Segment(base, name, fileHandleFactory)
+
+  def buildSegment(location: JFile): Segment = Segment(location, fileHandleFactory)
 
   def listEvents(segment: Segment) =
     segment.foldLeft(List[String]())((acc, event) => event.request.key :: acc).reverse.mkString(" ")
@@ -150,8 +159,8 @@ class SegmentedUberStoreTest extends NiceTest {
 
     it ("should split after the specified number of events have been written") {
       val siriusConfig = new SiriusConfiguration()
-      val segmentedCompactor = SegmentedCompactor(siriusConfig)
-      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig, buildSegment)
+      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor, buildSegment)
 
       assert("1" === underTest.liveDir.name)
       writeUberStoreEvents(underTest, Range.inclusive(1, 10).toList)
@@ -199,8 +208,8 @@ class SegmentedUberStoreTest extends NiceTest {
   describe("compact") {
     it ("should perform a do-nothing compact of a single Segment, if |readOnlyDirs| == 1") {
       val siriusConfig = new SiriusConfiguration()
-      val segmentedCompactor = SegmentedCompactor(siriusConfig)
-      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig, buildSegment)
+      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor, buildSegment)
 
       writeUberStoreEvents(underTest, Range.inclusive(1, 10).toList)
       underTest.compactAll()
@@ -212,8 +221,8 @@ class SegmentedUberStoreTest extends NiceTest {
 
     it ("should perform a real compact of Segment 1 if Segment 2 is read-only") {
       val siriusConfig = new SiriusConfiguration()
-      val segmentedCompactor = SegmentedCompactor(siriusConfig)
-      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor)
+      val segmentedCompactor = SegmentedCompactor(siriusConfig, buildSegment)
+      val underTest = new SegmentedUberStore(dir, 10L, segmentedCompactor, buildSegment)
 
       writeUberStoreEvents(underTest, Range.inclusive(1, 10).toList)
       writeUberStoreEvents(underTest, Range.inclusive(6, 15).toList)
@@ -226,11 +235,11 @@ class SegmentedUberStoreTest extends NiceTest {
     }
 
     it ("should compact properly if presented with a number of non-compacted Segments") {
-      val first = Segment(dir, "1")
-      val second = Segment(dir, "2")
-      val third = Segment(dir, "3")
+      val first = buildSegment(dir, "1")
+      val second = buildSegment(dir, "2")
+      val third = buildSegment(dir, "3")
       // now we've just split
-      Segment(dir, "4")
+      buildSegment(dir, "4")
 
       val segments = List(first, second, third)
 
@@ -257,8 +266,8 @@ class SegmentedUberStoreTest extends NiceTest {
     }
 
     it ("should internally compact a single segment") {
-      val first = Segment(dir, "1")
-      Segment(dir, "2")
+      val first = buildSegment(dir, "1")
+      buildSegment(dir, "2")
 
       List(
         OrderedEvent(1L, 0L, Delete("1")),
@@ -276,9 +285,9 @@ class SegmentedUberStoreTest extends NiceTest {
       assert(List(1L, 2L, 5L, 6L) === seqs)
     }
     it("should remove both updates if a PUT is masked by a purge-able delete") {
-      val segment = Segment(dir, "1")
-      Segment(dir, "2") // to compact against
-      Segment(dir, "3") // currently active segment
+      val segment = buildSegment(dir, "1")
+      buildSegment(dir, "2") // to compact against
+      buildSegment(dir, "3") // currently active segment
 
       val now = System.currentTimeMillis()
       val twoHoursAgo = now - 2L * 60 * 60 * 1000
@@ -368,22 +377,22 @@ class SegmentedUberStoreTest extends NiceTest {
 
   describe("isMergeable") {
     it("should return false if the left segment has not been applied") {
-      val left = Segment(dir, "1")
-      val right = Segment(dir, "2")
+      val left = buildSegment(dir, "1")
+      val right = buildSegment(dir, "2")
       right.setApplied(applied = true)
 
       assert(false === SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration).isMergeable(left, right))
     }
     it("should return false if the right segment has not been applied") {
-      val left = Segment(dir, "1")
-      val right = Segment(dir, "2")
+      val left = buildSegment(dir, "1")
+      val right = buildSegment(dir, "2")
       left.setApplied(applied = true)
 
       assert(false === SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration).isMergeable(left, right))
     }
     it("should return false if the combined size of the segments > eventsPerSegment") {
-      val left = Segment(dir, "1")
-      val right = Segment(dir, "2")
+      val left = buildSegment(dir, "1")
+      val right = buildSegment(dir, "2")
       left.setApplied(applied = true)
       right.setApplied(applied = true)
 
@@ -396,8 +405,8 @@ class SegmentedUberStoreTest extends NiceTest {
       assert(false === SegmentedUberStore(dir.getAbsolutePath, config).isMergeable(left, right))
     }
     it("should return true if both are applied and combined size < eventsPerSegment") {
-      val left = Segment(dir, "1")
-      val right = Segment(dir, "2")
+      val left = buildSegment(dir, "1")
+      val right = buildSegment(dir, "2")
       left.setApplied(applied = true)
       right.setApplied(applied = true)
 
@@ -410,8 +419,8 @@ class SegmentedUberStoreTest extends NiceTest {
       assert(true === SegmentedUberStore(dir.getAbsolutePath, config).isMergeable(left, right))
     }
     it("should return true if both are applied and combined size == eventsPerSegment") {
-      val left = Segment(dir, "1")
-      val right = Segment(dir, "2")
+      val left = buildSegment(dir, "1")
+      val right = buildSegment(dir, "2")
       left.setApplied(applied = true)
       right.setApplied(applied = true)
 

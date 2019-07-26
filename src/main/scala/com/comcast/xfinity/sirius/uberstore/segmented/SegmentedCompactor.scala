@@ -15,7 +15,6 @@
  */
 package com.comcast.xfinity.sirius.uberstore.segmented
 
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 import java.io.{File => JFile}
 
@@ -23,21 +22,22 @@ import annotation.tailrec
 import java.util
 
 import better.files.File
+import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object SegmentedCompactor {
   val COMPACTING_SUFFIX = ".compacting"
   val TEMP_SUFFIX = ".temp"
 
-  def apply(siriusConfig: SiriusConfiguration) : SegmentedCompactor = {
+  def apply(siriusConfig: SiriusConfiguration, buildSegment: JFile => Segment): SegmentedCompactor = {
+    val MAX_DELETE_AGE_HOURS = siriusConfig.getInt(SiriusConfiguration.COMPACTION_MAX_DELETE_AGE_HOURS, Integer.MAX_VALUE)
 
-    val maxDeleteAgeHours = siriusConfig.getInt(SiriusConfiguration.COMPACTION_MAX_DELETE_AGE_HOURS, Integer.MAX_VALUE)
-    val maxDeleteAgeMillis = 60L * 60 * 1000 * maxDeleteAgeHours
+    val maxDeleteAgeMillis = 60L * 60 * 1000 * MAX_DELETE_AGE_HOURS
 
-    new SegmentedCompactor(maxDeleteAgeMillis)
+    new SegmentedCompactor(maxDeleteAgeMillis, buildSegment)
   }
 }
 
-private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
+private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long, buildSegment: JFile => Segment) {
 
   /**
    * Replaces one Segment file with another, removing the original.
@@ -60,7 +60,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
     replacementPath.moveTo(originalPath)
     tempPath.delete()
 
-    Segment(original.location.getParentFile, original.location.getName)
+    buildSegment(original.location.getParentFile, original.location.getName)
   }
 
   /**
@@ -87,7 +87,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
    * @return location of compacted segment
    */
   def compactInternally(toCompact: Segment): String = {
-    val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + SegmentedCompactor.COMPACTING_SUFFIX)
+    val compactInto = buildSegment(toCompact.location.getParentFile, toCompact.name + SegmentedCompactor.COMPACTING_SUFFIX)
     val keySequenceMap = new util.HashMap[String, Long]
     toCompact.foreach { event =>
       keySequenceMap.put(event.request.key, event.sequence)
@@ -134,7 +134,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
           throw new IllegalStateException("Attempted to compact against a non-internally compacted Segment.")
         }
 
-        val compactInto = Segment(toCompact.location.getParentFile, toCompact.name + SegmentedCompactor.COMPACTING_SUFFIX)
+        val compactInto = buildSegment(toCompact.location.getParentFile, toCompact.name + SegmentedCompactor.COMPACTING_SUFFIX)
         compactSegment(keys, toCompact, compactInto)
 
         compactInto.setApplied(toCompact.isApplied)
@@ -202,7 +202,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
    * @param targetFile location where to write the files. This probably should not already exist.
    */
   def mergeSegments(left: Segment, right: Segment, targetFile: JFile) {
-    val target = Segment(targetFile)
+    val target = buildSegment(targetFile)
     left.foreach(target.writeEntry)
     right.foreach(target.writeEntry)
     target.setApplied(applied = left.isApplied && right.isApplied)
@@ -211,5 +211,6 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long) {
     target.close()
   }
 
+  private def buildSegment(base: JFile, name: String): Segment = buildSegment(new JFile(base, name))
 }
 

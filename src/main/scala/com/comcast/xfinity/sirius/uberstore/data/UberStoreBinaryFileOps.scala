@@ -17,6 +17,7 @@ package com.comcast.xfinity.sirius.uberstore.data
 
 import java.io.RandomAccessFile
 import java.nio.ByteBuffer
+
 import com.comcast.xfinity.sirius.uberstore.common.Checksummer
 
 /**
@@ -32,8 +33,7 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
   /**
    * @inheritdoc
    */
-  def put(writeHandle: RandomAccessFile, body: Array[Byte]): Long = {
-    val offset = writeHandle.getFilePointer
+  def put(writeHandle: UberDataFileWriteHandle, body: Array[Byte]): Long = {
 
     val len: Int = body.length
     val chksum: Long = checksum(body)
@@ -43,43 +43,32 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
     byteBuf.putInt(len).putLong(chksum).put(body)
 
     writeHandle.write(byteBuf.array)
-
-    offset
   }
 
   /**
    * @inheritdoc
    */
-  def readNext(readHandle: RandomAccessFile): Option[Array[Byte]] = {
-    val offset = readHandle.getFilePointer
-
-    if (offset == readHandle.length) { // EOF
+  def readNext(readHandle: UberDataFileReadHandle): Option[Array[Byte]] =
+    if (readHandle.eof()) {
       None
     } else {
-      val (entryLen, chksum) = readHeader(readHandle)
-
-      val body = readBody(readHandle, entryLen)
+      val (bodyLen, chksum) = readHeader(readHandle)
+      val body = readBody(readHandle, bodyLen)
       if (chksum == checksum(body)) {
         Some(body) // [that i used to know | to love]
       } else {
-        throw new IllegalStateException("File corrupted at offset " + offset)
+        throw new IllegalStateException("File corrupted at offset " + readHandle.offset())
       }
     }
-  }
 
 
   // Helper jawns
-  private def readHeader(readHandle: RandomAccessFile): (Int,  Long) = {
-    val entryHeaderBuf = ByteBuffer.allocate(HEADER_SIZE)
-    readHandle.readFully(entryHeaderBuf.array)
+  private def readHeader(readHandle: UberDataFileReadHandle): (Int, Long) =
+    (readHandle.readInt(), readHandle.readLong())
 
-    (entryHeaderBuf.getInt(), entryHeaderBuf.getLong())
-  }
-
-  private def readBody(readHandle: RandomAccessFile, bodyLen: Int): Array[Byte] = {
-    val entryBuf = ByteBuffer.allocate(bodyLen)
-    readHandle.readFully(entryBuf.array)
-
-    entryBuf.array
+  private def readBody(readHandle: UberDataFileReadHandle, bodyLen: Int): Array[Byte] = {
+    val entry = new Array[Byte](bodyLen)
+    readHandle.readFully(entry)
+    entry
   }
 }
