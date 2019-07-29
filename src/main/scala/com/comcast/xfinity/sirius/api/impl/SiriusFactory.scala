@@ -21,8 +21,7 @@ import java.net.InetAddress
 import java.util.{HashMap => JHashMap}
 
 import com.comcast.xfinity.sirius.admin.ObjectNameHelper
-import com.comcast.xfinity.sirius.api.RequestHandler
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import com.comcast.xfinity.sirius.api.{BrainlessRequestHandler, RequestHandler, SiriusConfiguration}
 import com.comcast.xfinity.sirius.info.SiriusInfo
 import com.comcast.xfinity.sirius.writeaheadlog.CachedSiriusLog
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
@@ -80,6 +79,11 @@ object SiriusFactory {
 
     createInstance(requestHandler, siriusConfig, log)
   }
+
+  /**
+    * Helper method for returning the [[BrainlessRequestHandler]] case object instance
+    */
+  def brainlessRequestHandler(): RequestHandler = BrainlessRequestHandler
 
   /**
    * USE ONLY FOR TESTING HOOK WHEN YOU NEED TO MOCK OUT A LOG.

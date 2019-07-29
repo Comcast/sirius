@@ -15,13 +15,13 @@
  */
 package com.comcast.xfinity.sirius.api.impl.state
 
-import com.comcast.xfinity.sirius.api.{SiriusConfiguration, RequestHandler}
+import com.comcast.xfinity.sirius.api.{BrainlessRequestHandler, RequestHandler, SiriusConfiguration}
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl._
 import akka.event.Logging
 import state.SiriusPersistenceActor.LogQuery
-import akka.actor.{ActorContext, Props, ActorRef, Actor}
+import akka.actor.{Actor, ActorContext, ActorRef, Props}
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 object StateSup {
@@ -112,25 +112,32 @@ class StateSup(requestHandler: RequestHandler,
 
   // TODO perhaps this should be pulled out into a BootstrapActor. The StateSup should really only supervise.
   private def bootstrapState() {
-    val start = System.currentTimeMillis
 
-    logger.info("Beginning SiriusLog replay at {}", start)
-    siriusLog.foreach(
-      orderedEvent =>
-        try {
-          orderedEvent.request match {
-            case Put(key, body) => requestHandler.handlePut(key, body)
-            case Delete(key) => requestHandler.handleDelete(key)
-          }
-        } catch {
-          case rte: RuntimeException =>
-            eventReplayFailureCount += 1
-            logger.error("Exception replaying {}: {}", orderedEvent, rte)
-        }
-    )
-    val totalBootstrapTime = System.currentTimeMillis - start
-    bootstrapTime = Some(totalBootstrapTime)
-    logger.info("Replayed SiriusLog in {}ms", totalBootstrapTime)
+    requestHandler match {
+      case BrainlessRequestHandler =>
+        logger.info("Skipping SiriusLog replay")
+        bootstrapTime = Some(0L)
+
+      case _ =>
+        val start = System.currentTimeMillis
+        logger.info("Beginning SiriusLog replay at {}", start)
+        siriusLog.foreach(
+          orderedEvent =>
+            try {
+              orderedEvent.request match {
+                case Put(key, body) => requestHandler.handlePut(key, body)
+                case Delete(key) => requestHandler.handleDelete(key)
+              }
+            } catch {
+              case rte: RuntimeException =>
+                eventReplayFailureCount += 1
+                logger.error("Exception replaying {}: {}", orderedEvent, rte)
+            }
+        )
+        val totalBootstrapTime = System.currentTimeMillis - start
+        bootstrapTime = Some(totalBootstrapTime)
+        logger.info("Replayed SiriusLog in {}ms", totalBootstrapTime)
+    }
   }
 
   trait StateInfoMBean {
