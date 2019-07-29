@@ -15,7 +15,7 @@
 
 name := "sirius"
 
-version := "2.1.1-SNAPSHOT"
+version := "2.2.0"
 
 scalaVersion := "2.12.8"
 crossScalaVersions := Seq("2.11.8", "2.12.8")
