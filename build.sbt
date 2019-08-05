@@ -12,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+import java.lang.{Runtime => JRuntime}
 
 name := "sirius"
 
@@ -117,3 +118,33 @@ scoverage.ScoverageKeys.coverageMinimum := 75
 scoverage.ScoverageKeys.coverageFailOnMinimum := true
 
 scoverage.ScoverageKeys.coverageHighlighting := true
+
+lazy val makeStandalone = taskKey[Unit]("Creates the sirius-standalone package")
+lazy val root = (project in file("."))
+        .withId("sirius")
+        .settings(
+          makeStandalone := {
+            val packageDir = file("target/sirius-standalone")
+            val libDir = packageDir / "lib"
+            val binDir = packageDir / "bin"
+
+            // Move artifact and dependencies into lib directory in test package
+            val compilePackageBin = (packageBin in Compile).value
+            val compileDependencyClasspath = (dependencyClasspath in Compile).value
+            val files = compilePackageBin +: (for (dep <- compileDependencyClasspath) yield dep.data)
+            for (file <- files) {
+              IO.copyFile(file, libDir / file.getName)
+            }
+
+            // Move startup scripts into bin directory in test package
+            IO.copyDirectory(file(".") / "src/main/bin", binDir)
+            (binDir ** "*.sh").getPaths.foreach(
+              (binFile) =>
+                JRuntime.getRuntime.exec("chmod 755 " + binFile)
+            )
+            JRuntime.getRuntime.exec("chmod 755 " + (binDir / "waltool").getPath)
+            JRuntime.getRuntime.exec("chmod 755 " + (binDir / "nodetool").getPath)
+
+            JRuntime.getRuntime.exec("tar -C target -czf target/sirius-standalone.tgz sirius-standalone")
+          }
+        )
