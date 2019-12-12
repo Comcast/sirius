@@ -39,7 +39,7 @@ libraryDependencies ++= {
     "com.typesafe.akka"             %% "akka-slf4j"                     % akkaV,
     "com.typesafe.akka"             %% "akka-agent"                     % akkaV,
     "org.slf4j"                     %  "slf4j-api"                      % "1.7.7",
-    "com.github.pathikrit"          %% "better-files"                   % "3.7.0", 
+    "com.github.pathikrit"          %% "better-files"                   % "3.8.0",
     "org.scalatest"                 %% "scalatest"                      % "3.0.5"   % "test",
     "org.mockito"                   %  "mockito-core"                   % "1.10.19" % "test",
     "junit"                         %  "junit"                          % "4.12"    % "test",
