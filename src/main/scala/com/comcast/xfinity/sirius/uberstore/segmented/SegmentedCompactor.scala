@@ -16,8 +16,7 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
-import java.io.{IOException, File => JFile}
-import java.nio.file.{Files, Path}
+import java.io.{File => JFile}
 
 import annotation.tailrec
 import java.util
@@ -59,26 +58,9 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long, buildSegm
 
     originalPath.moveTo(tempPath)
     replacementPath.moveTo(originalPath)
-    // do not use tempPath.delete(), this calls Files.list() which leaks read handles
-    deleteRecursively(tempPath.path)
+    tempPath.delete()
 
     buildSegment(original.location.getParentFile, original.location.getName)
-  }
-
-  private def deleteRecursively(path: Path): Unit = {
-    try {
-      if (Files.isDirectory(path)) {
-        Option(path.toFile.listFiles()) match {
-          case Some(children) => children
-            .map { _.toPath }
-            .foreach { deleteRecursively }
-          case _ =>
-        }
-      }
-      Files.delete(path)
-    } catch {
-      case e: IOException => e.printStackTrace(System.out)
-    }
   }
 
   /**
