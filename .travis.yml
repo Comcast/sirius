@@ -3,6 +3,17 @@ language: scala
 scala:
    - 2.12.8
    - 2.11.8
-sudo: false
 jdk:
   - oraclejdk8
+stages:
+  - name: test
+  - name: release
+    if: ((branch = master AND type = push) OR (tag IS present)) AND NOT fork
+jobs:
+  include:
+    # stage="test" if no stage is specified
+    - name: compile
+      script: sbt ++$TRAVIS_SCALA_VERSION compile
+    # run ci-release only if previous stages passed
+    - stage: release
+      script: sbt ++$TRAVIS_SCALA_VERSION publishSigned
