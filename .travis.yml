@@ -12,8 +12,8 @@ stages:
 jobs:
   include:
     # stage="test" if no stage is specified
-    - name: compile
-      script: sbt ++$TRAVIS_SCALA_VERSION compile
+    - name: test
+      script: sbt ++$TRAVIS_SCALA_VERSION test
     # run ci-release only if previous stages passed
     - stage: release
       script: sbt ++$TRAVIS_SCALA_VERSION publishSigned
