@@ -1,0 +1,3 @@
+# protect against accidental check it that's not encrypted
+secret-key.asc
+*.asc$
