@@ -24,9 +24,9 @@ crossScalaVersions := Seq("2.11.8", "2.12.8")
 organization := "com.comcast"
 
 //bintray seems to be more reliable and much faster than maven central
-resolvers += "Bintray" at "http://jcenter.bintray.com"
+resolvers += Resolver.bintrayIvyRepo("sbt", "sbt-plugin-releases")
 
-resolvers += "Typesafe Public Repo" at "http://repo.typesafe.com/typesafe/releases"
+resolvers += "Typesafe Public Repo" at "https://repo.typesafe.com/typesafe/releases"
 
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
