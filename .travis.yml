@@ -12,8 +12,6 @@ stages:
 jobs:
   include:
     - stage: release
-    - scala: "2.12.8"
-      script: .travis/publish.sh
     - scala: "2.11.8"
       script: .travis/publish.sh
 
