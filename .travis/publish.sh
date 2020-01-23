@@ -10,6 +10,6 @@ echo "Releasing $tagVer with Scala $TRAVIS_SCALA_VERSION"
 
 echo "$PGP_PASSPHRASE" | gpg --passphrase-fd 0 --batch --yes --import .travis/secret-key.asc
 
-sbt "$publishVersion" "+publishSigned"
+sbt "++${TRAVIS_SCALA_VERSION}" "$publishVersion" publishSigned
 
 
