@@ -76,6 +76,17 @@ scalacOptions in (Compile,doc) ++= Seq("-doc-footer",
 scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources/overview.txt")
 
 parallelExecution := false
+
+
+// POM settings for Sonatype
+organization := "com.comcast"
+homepage := Some(url("https://github.com/Comcast/sirius"))
+scmInfo := Some(ScmInfo(url("https://github.com/Comcast/sirius"), "git@github.com:Comcast/sirius.git"))
+developers := List(Developer("jryan128",
+  "Jonathan Ryan",
+  "jonathan_ryan@comcast.com",
+  url("https://github.com/jryan128")))
+licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 publishMavenStyle := true
 
 publishTo := {
@@ -87,29 +98,6 @@ publishTo := {
 }
 
 pomIncludeRepository := { _ => false }
-
-pomExtra := (
-  <url>https://github.com/Comcast/sirius</url>
-    <licenses>
-      <license>
-        <name>The Apache Software License, Version 2.0</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        <distribution>repo</distribution>
-      </license>
-    </licenses>
-    <scm>
-      <url>git@github.com:Comcast/sirius.git</url>
-      <connection>scm:git@github.com:Comcast/sirius.git</connection>
-      <developerConnection>scm:git@github.com:Comcast/sirius.git</developerConnection>
-    </scm>
-    <developers>
-      <developer>
-        <id>Comcast</id>
-        <name>Comcast</name>
-        <email>...</email>
-      </developer>
-    </developers>
-  )
 
 publishArtifact in Test := false
 
