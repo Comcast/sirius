@@ -86,6 +86,8 @@ developers := List(Developer("jryan128",
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 publishMavenStyle := true
 
+usePgpKeyHex("9787EE9D6E7FB77E24EAEF0A0F75392379B78332")
+
 publishTo := {
   val nexus = "https://oss.sonatype.org/"
   if (isSnapshot.value)
