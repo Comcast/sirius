@@ -14,12 +14,9 @@
 // limitations under the License.
 import java.lang.{Runtime => JRuntime}
 
-addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.8.1")
-addSbtPlugin("com.jsuereth" % "sbt-pgp" % "2.0.1")
-
 name := "sirius"
 
-version := "2.2.0"
+version := "2.2.1-SNAPSHOT"
 
 scalaVersion := "2.12.8"
 crossScalaVersions := Seq("2.11.8", "2.12.8")
