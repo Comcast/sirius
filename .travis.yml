@@ -11,9 +11,6 @@ stages:
     if: ((branch = master AND type = push) OR (tag IS present)) AND NOT fork
 jobs:
   include:
-    # stage="test" if no stage is specified
-    - name: compile
-      script: sbt ++$TRAVIS_SCALA_VERSION compile
     # run ci-release only if previous stages passed
     - stage: release
       script: sbt ++$TRAVIS_SCALA_VERSION publishSigned
