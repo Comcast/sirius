@@ -1,18 +1,22 @@
 dist: trusty
 language: scala
 scala:
-- 2.12.8
-- 2.11.8
+  - 2.12.8
+  - 2.11.8
 jdk:
-- oraclejdk8
+  - oraclejdk8
 stages:
-- name: test
-- name: release
-  if: "((branch = master AND type = push) OR (tag IS present)) AND NOT fork"
+  - name: test
+  - name: release
+    if: "((branch = master AND type = push) OR (tag IS present)) AND NOT fork"
 jobs:
   include:
-  - stage: release
-    script: .travis/publish.sh
+    - stage: release
+    - scala: "2.12.8"
+      script: .travis/publish.sh
+    - scala: "2.11.8"
+      script: .travis/publish.sh
+
 before_install:
-- openssl aes-256-cbc -K $encrypted_400f46935129_key -iv $encrypted_400f46935129_iv
-  -in .travis/secret-key.asc.enc -out .travis/secret-key.asc -d
+  - openssl aes-256-cbc -K $encrypted_400f46935129_key -iv $encrypted_400f46935129_iv
+    -in .travis/secret-key.asc.enc -out .travis/secret-key.asc -d
