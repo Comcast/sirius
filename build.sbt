@@ -14,6 +14,9 @@
 // limitations under the License.
 import java.lang.{Runtime => JRuntime}
 
+addSbtPlugin("org.xerial.sbt" % "sbt-sonatype" % "3.8.1")
+addSbtPlugin("com.jsuereth" % "sbt-pgp" % "2.0.1")
+
 name := "sirius"
 
 version := "2.2.0"
@@ -73,7 +76,6 @@ scalacOptions in (Compile,doc) ++= Seq("-doc-footer",
 scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources/overview.txt")
 
 parallelExecution := false
-
 publishMavenStyle := true
 
 publishTo := {
