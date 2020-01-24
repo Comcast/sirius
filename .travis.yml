@@ -7,7 +7,7 @@ scala:
 stages:
   - name: test
   - name: release
-    if: "((branch = master AND type = push) OR (tag IS present)) AND NOT fork"
+    if: "(branch = master AND type = push AND tag IS present) AND NOT fork"
 jobs:
   include:
     - stage: release
