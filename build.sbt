@@ -16,18 +16,16 @@ import java.lang.{Runtime => JRuntime}
 
 name := "sirius"
 
-version := "2.2.0"
+version := "2.2.1"
 
 scalaVersion := "2.12.8"
-crossScalaVersions := Seq("2.11.8", "2.12.8")
+crossScalaVersions := Seq("2.11.8", "2.12.8") // NOTE: keep sync'd with .travis.yml
 
 organization := "com.comcast"
 
 //bintray seems to be more reliable and much faster than maven central
-resolvers += "Bintray" at "http://jcenter.bintray.com"
-
-resolvers += "Typesafe Public Repo" at "http://repo.typesafe.com/typesafe/releases"
-
+resolvers += Resolver.bintrayIvyRepo("sbt", "sbt-plugin-releases")
+resolvers += "Typesafe Public Repo" at "https://repo.typesafe.com/typesafe/releases"
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= {
@@ -74,40 +72,25 @@ scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources
 
 parallelExecution := false
 
+
+// POM settings for Sonatype
+organization := "com.comcast"
+homepage := Some(url("https://github.com/Comcast/sirius"))
+scmInfo := Some(ScmInfo(url("https://github.com/Comcast/sirius"), "git@github.com:Comcast/sirius.git"))
+developers := List(Developer("jryan128",
+  "Jonathan Ryan",
+  "jonathan_ryan@comcast.com",
+  url("https://github.com/jryan128")))
+licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 publishMavenStyle := true
 
-publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases"  at nexus + "service/local/staging/deploy/maven2")
-}
+usePgpKeyHex("9787EE9D6E7FB77E24EAEF0A0F75392379B78332")
+
+sonatypeSessionName := s"[sbt-sonatype] ${name.value}-${scalaBinaryVersion.value}-${version.value}"
+
+publishTo := sonatypePublishToBundle.value
 
 pomIncludeRepository := { _ => false }
-
-pomExtra := (
-  <url>https://github.com/Comcast/sirius</url>
-    <licenses>
-      <license>
-        <name>The Apache Software License, Version 2.0</name>
-        <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
-        <distribution>repo</distribution>
-      </license>
-    </licenses>
-    <scm>
-      <url>git@github.com:Comcast/sirius.git</url>
-      <connection>scm:git@github.com:Comcast/sirius.git</connection>
-      <developerConnection>scm:git@github.com:Comcast/sirius.git</developerConnection>
-    </scm>
-    <developers>
-      <developer>
-        <id>Comcast</id>
-        <name>Comcast</name>
-        <email>...</email>
-      </developer>
-    </developers>
-  )
 
 publishArtifact in Test := false
 
