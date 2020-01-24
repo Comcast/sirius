@@ -16,7 +16,7 @@ import java.lang.{Runtime => JRuntime}
 
 name := "sirius"
 
-version := "2.2.1-SNAPSHOT"
+version := "2.2.1"
 
 scalaVersion := "2.12.8"
 crossScalaVersions := Seq("2.11.8", "2.12.8")
