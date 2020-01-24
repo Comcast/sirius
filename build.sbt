@@ -14,6 +14,8 @@
 // limitations under the License.
 import java.lang.{Runtime => JRuntime}
 
+logLevel := Level.Debug
+
 name := "sirius"
 version := "2.2.1"
 scalaVersion := "2.12.8"
