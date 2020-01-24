@@ -14,12 +14,19 @@
 // limitations under the License.
 import java.lang.{Runtime => JRuntime}
 
-logLevel := Level.Debug
-
 name := "sirius"
+
 version := "2.2.1"
+
 scalaVersion := "2.12.8"
+crossScalaVersions := Seq("2.11.8", "2.12.8")
+
 organization := "com.comcast"
+
+//bintray seems to be more reliable and much faster than maven central
+resolvers += Resolver.bintrayIvyRepo("sbt", "sbt-plugin-releases")
+resolvers += "Typesafe Public Repo" at "https://repo.typesafe.com/typesafe/releases"
+resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= {
   val akkaV = "2.4.20"
