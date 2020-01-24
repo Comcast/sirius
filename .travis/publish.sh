@@ -9,4 +9,4 @@ java -version
 
 echo "$PGP_PASSPHRASE" | gpg --passphrase-fd 0 --batch --yes --import .travis/secret-key.asc
 
-sbt + "$publishVersion" publishSigned sonatypeBundleRelease
+sbt "$publishVersion" + publishSigned + sonatypeBundleRelease
