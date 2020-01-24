@@ -86,6 +86,8 @@ publishMavenStyle := true
 
 usePgpKeyHex("9787EE9D6E7FB77E24EAEF0A0F75392379B78332")
 
+sonatypeSessionName := "[sbt-sonatype] ${name.value}-${scalaBinaryVersion.value}-${version.value}"
+
 publishTo := sonatypePublishToBundle.value
 
 pomIncludeRepository := { _ => false }
