@@ -18,16 +18,21 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import com.comcast.xfinity.sirius.NiceTest
 import akka.agent.Agent
 import akka.actor.{ActorRef, ActorSystem}
-import com.comcast.xfinity.sirius.api.impl.{Delete, Put, NonCommutativeSiriusRequest}
+import com.comcast.xfinity.sirius.api.impl.{Delete, NonCommutativeSiriusRequest, Put}
+
 import scala.concurrent.duration._
 import org.scalatest.BeforeAndAfterAll
 import akka.testkit.{TestLatch, TestProbe}
+
 import scala.concurrent.Await
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+
+import scala.language.postfixOps
 
 
 object PaxosITest {

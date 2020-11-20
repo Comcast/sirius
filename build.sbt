@@ -18,8 +18,8 @@ name := "sirius"
 
 version := "2.3.0"
 
-scalaVersion := "2.12.12"
-crossScalaVersions := Seq("2.11.12", "2.12.12", "2.13.4") // NOTE: keep sync'd with .travis.yml
+scalaVersion := "2.13.4"
+crossScalaVersions := Seq("2.12.12", "2.13.4") // NOTE: keep sync'd with .travis.yml
 
 organization := "com.comcast"
 
@@ -29,19 +29,19 @@ resolvers += "Typesafe Public Repo" at "https://repo.typesafe.com/typesafe/relea
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= {
-  val akkaV = "2.5.32"
+  val akkaV = "2.6.10"
 
   Seq(
     "com.typesafe.akka"             %% "akka-actor"                     % akkaV,
     "com.typesafe.akka"             %% "akka-remote"                    % akkaV,
     "com.typesafe.akka"             %% "akka-slf4j"                     % akkaV,
-    "com.typesafe.akka"             %% "akka-agent"                     % akkaV,
+    "org.scala-stm"                 %% "scala-stm"                      % "0.11.0",
     "org.slf4j"                     %  "slf4j-api"                      % "1.7.30",
     "com.github.pathikrit"          %% "better-files"                   % "3.9.1",
-    "org.scalatest"                 %% "scalatest"                      % "3.0.5"   % "test",
+    "org.scalatest"                 %% "scalatest"                      % "3.0.8"   % "test",
     "org.mockito"                   %  "mockito-core"                   % "1.10.19" % "test",
     "junit"                         %  "junit"                          % "4.12"    % "test",
-    "org.slf4j"                     %  "slf4j-log4j12"                  % "1.7.30"   % "test",
+    "org.slf4j"                     %  "slf4j-log4j12"                  % "1.7.30"  % "test",
     "log4j"                         %  "log4j"                          % "1.2.17"  % "test",
     "com.typesafe.akka"             %% "akka-testkit"                   % akkaV     % "test"
   )

@@ -35,6 +35,7 @@ import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{EmptySu
 class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTest {
 
   implicit val actorSystem = ActorSystem("PaxosStateBridgeTest")
+  import scala.language.postfixOps
 
   val config = new SiriusConfiguration
   val defaultMockMembershipHelper = mock[MembershipHelper]

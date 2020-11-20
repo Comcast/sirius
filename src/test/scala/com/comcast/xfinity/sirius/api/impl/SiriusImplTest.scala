@@ -37,6 +37,8 @@ import com.comcast.xfinity.sirius.api.impl.SiriusImplTestCompanion.ProbeWrapper
 
 import scala.concurrent.Await
 
+import scala.language.postfixOps
+
 object SiriusImplTestCompanion {
 
   object ProbeWrapper{
