@@ -3,7 +3,7 @@ jdk: oraclejdk8
 language: scala
 scala:
   - 2.13.4 # keep build.sbt crossScalaVersions synced with these versions, top version should be newest
-  - 2.12.12 # keep build.sbt crossScalaVersions synced with these versions, top version should be newest
+  - 2.12.12
   - 2.11.12
 stages:
   - name: test
