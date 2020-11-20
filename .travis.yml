@@ -4,7 +4,6 @@ language: scala
 scala:
   - 2.13.4 # keep build.sbt crossScalaVersions synced with these versions, top version should be newest
   - 2.12.12
-  - 2.11.12
 stages:
   - name: test
   - name: release
@@ -13,7 +12,7 @@ jobs:
   include:
     - stage: release
       script: .travis/publish.sh
-    - scala: "2.11.12"
+    - scala: "2.12.12"
       script: .travis/publish.sh
 
 before_install:
