@@ -155,10 +155,10 @@ object SiriusFactory {
   private def createHostPortConfig(siriusConfig: SiriusConfiguration): Config = {
     val configMap = new JHashMap[String, Any]()
     val sslEnabled = siriusConfig.getProp(SiriusConfiguration.ENABLE_SSL, false)
-    val transportPrefix = if (sslEnabled) "akka.remote.netty.ssl" else "akka.remote.netty.tcp"
+    val transportPrefix = if (sslEnabled) "akka.remote.classic.netty.ssl" else "akka.remote.classic.netty.tcp"
     traceLog.info(s"AKKA using transport: $transportPrefix")
 
-    configMap.put("akka.remote.enabled-transports", List(transportPrefix).asJava)
+    configMap.put("akka.remote.classic.enabled-transports", List(transportPrefix).asJava)
     configMap.put(s"$transportPrefix.hostname",
       siriusConfig.getProp(SiriusConfiguration.HOST, InetAddress.getLocalHost.getHostName))
     configMap.put(s"$transportPrefix.port", siriusConfig.getProp(SiriusConfiguration.PORT, 2552))

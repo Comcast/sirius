@@ -19,7 +19,7 @@ name := "sirius"
 version := "2.3.0"
 
 scalaVersion := "2.13.4"
-crossScalaVersions := Seq("2.12.12", "2.13.4") // NOTE: keep sync'd with .travis.yml
+crossScalaVersions := Seq("2.12.13", "2.13.4") // NOTE: keep sync'd with .travis.yml
 
 organization := "com.comcast"
 
@@ -29,12 +29,14 @@ resolvers += "Typesafe Public Repo" at "https://repo.typesafe.com/typesafe/relea
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= {
-  val akkaV = "2.6.10"
+  val akkaV = "2.6.11"
 
   Seq(
     "com.typesafe.akka"             %% "akka-actor"                     % akkaV,
     "com.typesafe.akka"             %% "akka-remote"                    % akkaV,
+    "com.typesafe.akka"             %% "akka-cluster"                   % akkaV,
     "com.typesafe.akka"             %% "akka-slf4j"                     % akkaV,
+    "io.netty"                      %  "netty"                          % "3.10.6.Final",
     "org.scala-stm"                 %% "scala-stm"                      % "0.11.0",
     "org.slf4j"                     %  "slf4j-api"                      % "1.7.30",
     "com.github.pathikrit"          %% "better-files"                   % "3.9.1",

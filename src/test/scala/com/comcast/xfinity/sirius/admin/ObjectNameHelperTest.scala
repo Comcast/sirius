@@ -76,8 +76,10 @@ class ObjectNameHelperTest extends NiceTest with BeforeAndAfterAll {
     val configMap = new JHashMap[String, Any]()
     configMap.put("akka.actor.provider", "akka.remote.RemoteActorRefProvider")
     configMap.put("akka.remote.transport", "akka.remote.netty.NettyRemoteTransport")
-    configMap.put("akka.remote.netty.tcp.hostname", "127.0.0.1")
-    configMap.put("akka.remote.netty.tcp.port", 2556)
+    configMap.put("akka.remote.artery.enabled", "false")
+    configMap.put("akka.remote.classic.transport", "akka.remote.netty.NettyRemoteTransport")
+    configMap.put("akka.remote.classic.netty.tcp.hostname", "127.0.0.1")
+    configMap.put("akka.remote.classic.netty.tcp.port", 2556)
     // this makes intellij not get mad
     val akkaConfig = configMap.asInstanceOf[java.util.Map[String, _ <: AnyRef]]
     implicit val actorSystem = ActorSystem("test-system", ConfigFactory.parseMap(akkaConfig))

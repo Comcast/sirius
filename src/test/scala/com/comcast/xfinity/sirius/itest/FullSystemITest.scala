@@ -43,7 +43,7 @@ object FullSystemITest {
 
   def getProtocol(sslEnabled: Boolean): String =
     sslEnabled match {
-      case true => "akka.ssl.tcp"
+      case true => "akka.ssl"
       case false => "akka.tcp"
     }
 
