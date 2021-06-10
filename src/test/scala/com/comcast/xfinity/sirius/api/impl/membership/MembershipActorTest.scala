@@ -16,21 +16,24 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import java.util.Date
-
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import org.mockito.Mockito._
 import akka.agent.Agent
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import org.mockito.Matchers._
-import akka.actor.{ActorSystem, ActorRef}
-import akka.testkit.{TestProbe, TestActorRef}
+import akka.actor.{ActorRef, ActorSystem}
+import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor._
-import javax.management.{ObjectName, MBeanServer}
+
+import javax.management.{MBeanServer, ObjectName}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import org.mockito.ArgumentCaptor
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{CheckMembershipHealth, MembershipInfoMBean}
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+import org.mockito.ArgumentMatchers.any
+
+import scala.language.postfixOps
 
 class MembershipActorTest extends NiceTest with TimedTest {
 

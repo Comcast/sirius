@@ -86,12 +86,12 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
 
       val acceptor1sPValues = Set(PValue(Ballot(0, "a"), 1, Command(null, 1, Delete("2"))))
       scout ! Phase1B(anAcceptorProbe1.ref, ballot, acceptor1sPValues)
-      leaderProbe.expectNoMsg()
+      leaderProbe.expectNoMessage()
       assert(acceptor1sPValues == scout.underlyingActor.pvalues)
 
       val acceptor2sPValues = Set(PValue(Ballot(0, "b"), 2, Command(null, 1, Delete("2"))))
       scout ! Phase1B(anAcceptorProbe2.ref, ballot, acceptor2sPValues)
-      leaderProbe.expectNoMsg()
+      leaderProbe.expectNoMessage()
 
       scout ! Phase1B(anAcceptorProbe3.ref, ballot, Set[PValue]())
       leaderProbe.expectMsg(Adopted(ballot, acceptor1sPValues ++ acceptor2sPValues))

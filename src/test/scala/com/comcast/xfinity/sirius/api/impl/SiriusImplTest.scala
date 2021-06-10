@@ -24,9 +24,8 @@ import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
 import akka.actor._
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
-import java.util.concurrent.TimeUnit
 
+import java.util.concurrent.TimeUnit
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor._
 import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
@@ -34,8 +33,10 @@ import status.NodeStats.FullNodeStatus
 import status.StatusWorker._
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.{IsInitializedRequest, IsInitializedResponse}
 import com.comcast.xfinity.sirius.api.impl.SiriusImplTestCompanion.ProbeWrapper
+import org.scalatestplus.junit.JUnitRunner
 
 import scala.concurrent.Await
+import scala.language.postfixOps
 
 object SiriusImplTestCompanion {
 

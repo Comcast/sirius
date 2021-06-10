@@ -17,7 +17,7 @@ package com.comcast.xfinity.sirius.uberstore.data
 
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
-import org.mockito.Matchers.{any, same, eq => argEq}
+import org.mockito.ArgumentMatchers.{any, same, eq => argEq}
 import org.mockito.Mockito._
 
 import scala.util.Random
@@ -65,15 +65,15 @@ class UberDataFileTest extends NiceTest {
 
       // Need to simulate 3 successful reads from the handle, followed by None indicating we hit the end
       val dummyBytes = "dummy".getBytes
-      doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(None).
+      doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes), Nil: _*).doReturn(Some(dummyBytes), Nil: _*).doReturn(None, Nil: _*).
         when(mockFileOps).readNext(any[UberDataFileReadHandle])
-      doReturn(0L).doReturn(10L).doReturn(20L).doReturn(30L).when(mockReadHandle).offset()
+      doReturn(0L).doReturn(10L, Nil: _*).doReturn(20L, Nil: _*).doReturn(30L, Nil: _*).when(mockReadHandle).offset()
 
       // Need to simulate the conversion of the events from above becoming OrderedEvents
       val event1 = OrderedEvent(1, 2, Delete("a"))
       val event2 = OrderedEvent(2, 3, Delete("b"))
       val event3 = OrderedEvent(3, 4, Delete("c"))
-      doReturn(event1).doReturn(event2).doReturn(event3).
+      doReturn(event1).doReturn(event2, Nil: _*).doReturn(event3, Nil: _*).
         when(mockCodec).deserialize(any[Array[Byte]])
 
       val result = underTest.foldLeft(List[(Long, OrderedEvent)]())(
@@ -106,19 +106,19 @@ class UberDataFileTest extends NiceTest {
 
       // we will pretend we are starting at a later offset, and read a few events until we hit the end
       //  offset
-      doReturn(100L).doReturn(110L).doReturn(120L).doReturn(130L).
+      doReturn(100L).doReturn(110L, Nil: _*).doReturn(120L, Nil: _*).doReturn(130L, Nil: _*).
         when(mockReadHandle).offset()
 
       // Need to simulate 3 successful reads from the handle, corresponding with the offsets above
       val dummyBytes = "dummy".getBytes
-      doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes)).
+      doReturn(Some(dummyBytes)).doReturn(Some(dummyBytes), Nil: _*).doReturn(Some(dummyBytes), Nil: _*).
         when(mockFileOps).readNext(any[UberDataFileReadHandle])
 
       // Need to simulate the conversion of the events from above becoming OrderedEvents
       val event1 = OrderedEvent(1, 2, Delete("a"))
       val event2 = OrderedEvent(2, 3, Delete("b"))
       val event3 = OrderedEvent(3, 4, Delete("c"))
-      doReturn(event1).doReturn(event2).doReturn(event3).
+      doReturn(event1).doReturn(event2, Nil: _*).doReturn(event3, Nil: _*).
         when(mockCodec).deserialize(any[Array[Byte]])
 
       val result = underTest.foldLeftRange(100L, 120L)(List[(Long, OrderedEvent)]())(

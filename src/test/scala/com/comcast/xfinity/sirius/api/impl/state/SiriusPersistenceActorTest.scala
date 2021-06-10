@@ -25,7 +25,7 @@ import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Put, Delete}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
-import org.mockito.Matchers.{any, eq => meq, anyLong}
+import org.mockito.ArgumentMatchers.{any, eq => meq, anyLong}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class SiriusPersistenceActorTest extends NiceTest {

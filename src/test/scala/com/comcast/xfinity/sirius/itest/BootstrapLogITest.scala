@@ -18,17 +18,16 @@ package com.comcast.xfinity.sirius.itest
 
 import akka.actor.ActorSystem
 import org.junit.rules.TemporaryFolder
-import com.comcast.xfinity.sirius.writeaheadlog._
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Put, SiriusImpl}
 import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.uberstore.UberStore
-import java.io.{File => JFile}
 
+import java.io.{File => JFile}
 import better.files.File
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+import org.scalatestplus.junit.JUnitRunner
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration

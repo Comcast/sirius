@@ -16,15 +16,14 @@
 package com.comcast.xfinity.sirius.admin
 
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import javax.management.{ObjectName, MBeanServer}
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+
+import javax.management.{MBeanServer, ObjectName}
+import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import org.mockito.Mockito._
-import org.mockito.Matchers.{eq => meq, _}
 import akka.testkit.TestActorRef
-import java.util.{HashMap => JHashMap, Hashtable => JHashtable}
-import com.typesafe.config.ConfigFactory
-import akka.actor.{ActorRef, ActorSystem, Actor}
+import akka.actor.{Actor, ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+import org.mockito.ArgumentMatchers.{any, eq => meq}
 
 object MonitoringHooksTest {
 

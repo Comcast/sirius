@@ -24,7 +24,8 @@ import com.comcast.xfinity.sirius.api.impl.{Delete, Get, OrderedEvent, SiriusSta
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.api.{BrainlessRequestHandler, RequestHandler, SiriusConfiguration}
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
-import org.mockito.{Matchers, Mockito}
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito
 
 object StateSupTest {
   def makeMockedUpChildProvider(implicit actorSystem: ActorSystem): (TestProbe, TestProbe, StateSup.ChildProvider) = {
@@ -113,7 +114,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
       val stateSup = TestActorRef(new StateSup(requestHandler, mockLog, mockStateAgent, mockChildProvider, new SiriusConfiguration))
 
-      Mockito.verify(mockLog, Mockito.never()).foreach(Matchers.any())
+      Mockito.verify(mockLog, Mockito.never()).foreach(any())
     }
   }
 }

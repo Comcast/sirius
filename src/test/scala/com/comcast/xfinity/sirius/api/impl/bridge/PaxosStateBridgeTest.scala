@@ -16,10 +16,11 @@
 package com.comcast.xfinity.sirius.api.impl.bridge
 
 import org.scalatest.BeforeAndAfterAll
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.ChildProvider
+
 import scala.concurrent.duration._
 import akka.actor._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
@@ -29,8 +30,11 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
+
 import scala.util.Success
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{EmptySubrange, PartialSubrange, CompleteSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{CompleteSubrange, EmptySubrange, PartialSubrange}
+
+import scala.language.postfixOps
 
 class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTest {
 
@@ -71,8 +75,8 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
       val stateBridge = makeStateBridge(10, stateSupActor = stateProbe.ref)
 
       stateBridge ! Decision(9, Command(clientProbe.ref, 1, Delete("z")))
-      clientProbe.expectNoMsg(100 millis)
-      stateProbe.expectNoMsg(100 millis)
+      clientProbe.expectNoMessage(100 millis)
+      stateProbe.expectNoMessage(100 millis)
     }
 
     it("must, in the presence of multiple Decisions for a slot, " +
@@ -89,8 +93,8 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
       stateProbe.expectMsg(OrderedEvent(10, 1, Delete("z")))
 
       stateBridge ! theDecision
-      clientProbe.expectNoMsg(100 millis)
-      stateProbe.expectNoMsg(100 millis)
+      clientProbe.expectNoMessage(100 millis)
+      stateProbe.expectNoMessage(100 millis)
     }
 
     it ("should drop already seen decisions on the floor") {
@@ -100,13 +104,13 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
       val stateBridge = makeStateBridge(10, stateSupActor = stateProbe.ref)
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
-      stateProbe.expectNoMsg(100 millis)
+      stateProbe.expectNoMessage(100 millis)
       clientProbe.expectMsg(SiriusResult.none())
       assert(1 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
-      stateProbe.expectNoMsg(100 millis)
-      clientProbe.expectNoMsg(100 millis)
+      stateProbe.expectNoMessage(100 millis)
+      clientProbe.expectNoMessage(100 millis)
       assert(1 === stateBridge.underlyingActor.eventBuffer.size)
     }
 
@@ -118,12 +122,12 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
 
       stateBridge ! Decision(11, Command(clientProbe.ref, 1, Delete("a")))
       clientProbe.expectMsg(SiriusResult.none())
-      stateProbe.expectNoMsg(100 millis)
+      stateProbe.expectNoMessage(100 millis)
       assert(1 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! Decision(13, Command(clientProbe.ref, 2, Delete("b")))
       clientProbe.expectMsg(SiriusResult.none())
-      stateProbe.expectNoMsg(100 millis)
+      stateProbe.expectNoMessage(100 millis)
       assert(2 === stateBridge.underlyingActor.eventBuffer.size)
 
       stateBridge ! Decision(10, Command(clientProbe.ref, 3, Delete("c")))

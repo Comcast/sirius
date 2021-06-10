@@ -17,15 +17,16 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import akka.actor.ActorSystem
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import akka.testkit.{ TestProbe, TestActorRef }
+import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.impl.Delete
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import com.comcast.xfinity.sirius.NiceTest
 import org.scalatest.BeforeAndAfterAll
+
 import java.util.{TreeMap => JTreeMap}
 import com.comcast.xfinity.sirius.util.RichJTreeMap
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import org.scalatestplus.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class AcceptorTest extends NiceTest with BeforeAndAfterAll {

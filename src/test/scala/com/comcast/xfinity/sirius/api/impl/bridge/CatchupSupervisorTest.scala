@@ -154,7 +154,7 @@ class CatchupSupervisorTest extends NiceTest {
         underTest ! InitiateCatchup(1L)
         underTest ! CatchupRequestFailed
 
-        parentProbe.expectNoMsg()
+        parentProbe.expectNoMessage()
       }
       it("should reduce window and ssthresh") {
         val underTest = makeMockCatchupSupervisor()
@@ -187,7 +187,7 @@ class CatchupSupervisorTest extends NiceTest {
 
       underTest ! InitiateCatchup(1L)
 
-      remote.expectNoMsg()
+      remote.expectNoMessage()
     }
     it("should leave catchup mode and then be able to re-initiate catchup mode after receiving a StopCatchup") {
       val remote = TestProbe()

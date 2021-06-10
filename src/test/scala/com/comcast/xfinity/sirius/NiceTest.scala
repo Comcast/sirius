@@ -16,12 +16,17 @@
 
 package com.comcast.xfinity.sirius
 
-import org.scalatest.{FunSpec, BeforeAndAfter}
-import org.scalatest.mock.MockitoSugar
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
+import org.mockito.Mockito
+import org.mockito.stubbing.Stubber
+import org.scalatest.BeforeAndAfter
+import org.scalatest.funspec.AnyFunSpec
+import org.scalatestplus.junit.JUnitRunner
+import org.scalatestplus.mockito.MockitoSugar
 
 @RunWith(classOf[JUnitRunner])
-abstract class NiceTest extends FunSpec with BeforeAndAfter with MockitoSugar {
-
+abstract class NiceTest extends AnyFunSpec with BeforeAndAfter with MockitoSugar {
+  def doReturn(toBeReturned: Any): Stubber = {
+    Mockito.doReturn(toBeReturned, Nil: _*)
+  }
 }

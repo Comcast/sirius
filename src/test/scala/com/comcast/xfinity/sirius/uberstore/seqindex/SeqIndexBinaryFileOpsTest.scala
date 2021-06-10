@@ -24,11 +24,11 @@ import org.mockito.ArgumentCaptor
 import org.mockito.Mockito._
 import java.nio.{ByteOrder, ByteBuffer}
 import java.util.Arrays
-import org.mockito.Matchers.{any, anyInt}
+import org.mockito.ArgumentMatchers.any
 import collection.immutable.SortedMap
 import java.util.{TreeMap => JTreeMap}
-import collection.JavaConversions._
 import com.comcast.xfinity.sirius.uberstore.common.Checksummer
+import collection.JavaConverters._
 
 object SeqIndexBinaryFileOpsTest {
 
@@ -59,7 +59,7 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
       val mockHandle = mock[RandomAccessFile]
       doReturn(dummyChecksum).when(mockChecksummer).checksum(any[Array[Byte]])
 
-      val captor = ArgumentCaptor.forClass(classOf[Array[Byte]])
+      val captor: ArgumentCaptor[Array[Byte]] = ArgumentCaptor.forClass(classOf[Array[Byte]])
 
       underTest.put(mockHandle, theSeq, theOffset)
 
@@ -95,7 +95,7 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
       doAnswer(chunkAnswer).when(mockHandle).read(any[Array[Byte]])
 
       val actual = underTest.loadIndex(mockHandle)
-      val expected = new JTreeMap[Long, Long](SortedMap(1L -> 2L, 2L -> 3L))
+      val expected = new JTreeMap[Long, Long](SortedMap(1L -> 2L, 2L -> 3L).toMap.asJava)
 
       assert(actual === expected)
     }
@@ -145,7 +145,7 @@ class SeqIndexBinaryFileOpsTest extends NiceTest {
       doAnswer(chunk1Answer).doAnswer(chunk2Answer).when(mockHandle).read(any[Array[Byte]])
 
       val actual = underTest.loadIndex(mockHandle)
-      val expected = new JTreeMap[Long, Long](SortedMap(1L -> 2L, 2L -> 3L, 3L -> 4L))
+      val expected = new JTreeMap[Long, Long](SortedMap(1L -> 2L, 2L -> 3L, 3L -> 4L).toMap.asJava)
 
       assert(actual === expected)
     }

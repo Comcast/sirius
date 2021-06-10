@@ -15,8 +15,8 @@
  */
 package com.comcast.xfinity.sirius
 
-import akka.actor.{Actor, Props, ActorRef, ActorSystem}
-import org.scalatest.mock.MockitoSugar
+import akka.actor.{Actor, ActorRef, ActorSystem, Props}
+import org.scalatestplus.mockito.MockitoSugar
 
 object Helper extends MockitoSugar {
   /**
