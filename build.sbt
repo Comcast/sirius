@@ -66,7 +66,7 @@ crossPaths := true
 // compiler options
 javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 
-scalacOptions ++= Seq("-deprecation", "-unchecked")
+scalacOptions ++= Seq("-target:jvm-1.8", "-deprecation", "-unchecked")
 
 scalacOptions in (Compile,doc) ++= Seq("-doc-footer",
   "Copyright 2013-2014 Comcast Cable Communications Management, LLC", "-doc-title", "Sirius")
