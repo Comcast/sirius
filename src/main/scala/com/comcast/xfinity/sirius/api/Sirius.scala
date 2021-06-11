@@ -15,24 +15,24 @@
  */
 package com.comcast.xfinity.sirius.api
 
-import java.util.concurrent.Future
+import java.util.concurrent.CompletableFuture
 
 trait Sirius {
   
   /**
    * Enqueue a GET for processing
    */
-  def enqueueGet(key: String): Future[SiriusResult]
+  def enqueueGet(key: String): CompletableFuture[SiriusResult]
   
   /**
    * Enqueue a PUT for processing
    */
-  def enqueuePut(key: String, body: Array[Byte]): Future[SiriusResult]
+  def enqueuePut(key: String, body: Array[Byte]): CompletableFuture[SiriusResult]
 
   /**
    * Enqueue a DELETE for processing
    */
-  def enqueueDelete(key: String): Future[SiriusResult]
+  def enqueueDelete(key: String): CompletableFuture[SiriusResult]
 
   /**
    * Is the system ready to handle requests?
