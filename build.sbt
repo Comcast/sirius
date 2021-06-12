@@ -64,14 +64,14 @@ artifactName := { (scalaVersion: ScalaVersion, module: ModuleID, artifact: Artif
 crossPaths := true
 
 // compiler options
-javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
+javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 
-scalacOptions ++= Seq("-target:jvm-1.8", "-deprecation", "-unchecked")
+scalacOptions ++= Seq("-target:jvm-1.8", "-deprecation", "-unchecked", "-Xlint")
 
-scalacOptions in (Compile,doc) ++= Seq("-doc-footer",
-  "Copyright 2013-2014 Comcast Cable Communications Management, LLC", "-doc-title", "Sirius")
-
-scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources/overview.txt")
+Compile / doc / scalacOptions ++= Seq(
+  "-doc-footer", "Copyright 2013-2014 Comcast Cable Communications Management, LLC",
+  "-doc-title", "Sirius",
+  "-doc-root-content", "src/main/resources/overview.txt")
 
 parallelExecution := false
 
