@@ -362,7 +362,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     waitForMembership(sirii, 2)
   }
 
-  it("should be able to make progress with SSL turned on") {
+  it("should be able to make progress with SSL turned on")(pending) {
     writeClusterConfig(List(42289, 42290, 42291), sslEnabled = true)
     val (sirius1, _, log1) = makeSirius(42289, sslEnabled = true)
     val (sirius2, _, log2) = makeSirius(42290, sslEnabled = true)
