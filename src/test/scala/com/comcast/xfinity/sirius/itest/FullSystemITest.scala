@@ -18,8 +18,8 @@ package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.{LatchedRequestHandler, NiceTest, TimedTest}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import java.io.{File => JFile}
 
+import java.io.{File => JFile}
 import com.comcast.xfinity.sirius.api.impl._
 
 import util.Random
@@ -28,7 +28,6 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import scala.Some
 import scala.Tuple2
 import java.util.UUID
-
 import better.files.File
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
@@ -362,7 +361,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     waitForMembership(sirii, 2)
   }
 
-  it("should be able to make progress with SSL turned on")(pending) {
+  ignore("should be able to make progress with SSL turned on") {
     writeClusterConfig(List(42289, 42290, 42291), sslEnabled = true)
     val (sirius1, _, log1) = makeSirius(42289, sslEnabled = true)
     val (sirius2, _, log2) = makeSirius(42290, sslEnabled = true)
