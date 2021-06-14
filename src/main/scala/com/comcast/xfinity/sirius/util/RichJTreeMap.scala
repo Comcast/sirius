@@ -15,8 +15,9 @@
  */
 package com.comcast.xfinity.sirius.util
 
-import collection.JavaConversions.asScalaIterator
 import java.util.{TreeMap => JTreeMap}
+
+import scala.collection.JavaConverters._
 import scala.util.control.Breaks._
 
 object RichJTreeMap {
@@ -58,7 +59,7 @@ class RichJTreeMap[K, V] private extends JTreeMap[K, V] {
    * @param fun function to execute on each entry
    */
   def foreach(fun: (K, V) => Unit) {
-    asScalaIterator(entrySet.iterator).foreach(
+    entrySet.iterator.asScala.foreach(
       entry => fun(entry.getKey, entry.getValue)
     )
   }

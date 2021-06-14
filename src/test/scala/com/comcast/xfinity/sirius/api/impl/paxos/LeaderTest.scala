@@ -17,13 +17,12 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
-import akka.testkit.{TestProbe, TestActorRef}
+import akka.testkit.{TestActorRef, TestProbe}
 import org.mockito.Mockito._
-import org.mockito.Matchers._
 import akka.actor._
+
 import collection.immutable.SortedMap
 import java.util.{TreeMap => JTreeMap}
-import scala.collection.JavaConversions._
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 import com.comcast.xfinity.sirius.api.impl.Delete
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{Close, LeaderGone}
@@ -32,7 +31,10 @@ import com.comcast.xfinity.sirius.api.impl.paxos.Leader._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper.ClusterInfo
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
+import org.mockito.ArgumentMatchers.any
+
 import scala.concurrent.duration.FiniteDuration
+import collection.JavaConverters._
 
 
 class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
@@ -204,7 +206,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         leader ! Propose(slotNum, command)
 
-        assert(new JTreeMap[Long, Command](SortedMap(slotNum -> command)) === leader.underlyingActor.proposals)
+        assert(new JTreeMap[Long, Command](SortedMap(slotNum -> command).toMap.asJava) === leader.underlyingActor.proposals)
         assert(false === commanderStarted)
       }
 
@@ -252,7 +254,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
 
         leader ! Propose(slotNum, command)
 
-        assert(new JTreeMap[Long, Command](SortedMap(slotNum -> command)) === leader.underlyingActor.proposals)
+        assert(new JTreeMap[Long, Command](SortedMap(slotNum -> command).toMap.asJava) === leader.underlyingActor.proposals)
         assert(true === commanderStarted)
       }
     }
@@ -301,7 +303,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
         otherLeader.expectMsg(Propose(1, command))
 
         underTest ! Preempted(ballot)
-        otherLeader.expectNoMsg()
+        otherLeader.expectNoMessage()
       }
 
       it ("must ignore such if the attached Ballot is outdated") {

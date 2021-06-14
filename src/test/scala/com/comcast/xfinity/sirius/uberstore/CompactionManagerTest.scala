@@ -29,7 +29,7 @@ import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.uberstore.CompactionActor.CompactionComplete
 import org.mockito.ArgumentCaptor
 import org.mockito.Mockito._
-import org.mockito.Matchers._
+import org.mockito.ArgumentMatchers._
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.{ChildProvider, CompactionManagerInfoMBean, Compact}
 import akka.util.Timeout
 import scala.Some
@@ -116,9 +116,9 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll with TimedTe
         val senderProbe = TestProbe()
 
         senderProbe.send(underTest, Compact)
-        senderProbe.expectNoMsg(50.milliseconds)
+        senderProbe.expectNoMessage(50.milliseconds)
 
-        newCompactionActor.expectNoMsg()
+        newCompactionActor.expectNoMessage()
       }
     }
 

@@ -18,8 +18,8 @@ package com.comcast.xfinity.sirius.itest
 
 import com.comcast.xfinity.sirius.{LatchedRequestHandler, NiceTest, TimedTest}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-import java.io.{File => JFile}
 
+import java.io.{File => JFile}
 import com.comcast.xfinity.sirius.api.impl._
 
 import util.Random
@@ -28,7 +28,6 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import scala.Some
 import scala.Tuple2
 import java.util.UUID
-
 import better.files.File
 import com.comcast.xfinity.sirius.uberstore.UberStore
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership

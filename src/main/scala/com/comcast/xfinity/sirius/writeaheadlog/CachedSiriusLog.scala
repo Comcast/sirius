@@ -16,7 +16,7 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import java.util.{TreeMap => JTreeMap}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
@@ -105,7 +105,8 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
    */
   private def foldLeftRangeCached[T](startSeq: Long, endSeq: Long)
                                      (acc0: T)(foldFun: (T, OrderedEvent) => T): T = writeCache.synchronized {
-    writeCache.subMap(startSeq, true, endSeq, true).values.foldLeft(acc0)(foldFun)
+    writeCache.subMap(startSeq, true, endSeq, true)
+      .values.asScala.foldLeft(acc0)(foldFun)
   }
 
   def getNextSeq = log.getNextSeq

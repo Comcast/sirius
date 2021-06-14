@@ -1,9 +1,10 @@
 dist: trusty
-jdk: oraclejdk8
+jdk: openjdk11
 language: scala
 scala:
-  - 2.12.8 # keep build.sbt crossScalaVersions synced with these versions, top version should be newest
-  - 2.11.8
+  - 2.13.6 # keep build.sbt crossScalaVersions synced with these versions, top version should be newest
+  - 2.12.14
+  - 2.11.12
 stages:
   - name: test
   - name: release
@@ -12,7 +13,7 @@ jobs:
   include:
     - stage: release
       script: .travis/publish.sh
-    - scala: "2.11.8"
+    - scala: "2.11.12"
       script: .travis/publish.sh
 
 before_install:

@@ -14,16 +14,15 @@
  *  limitations under the License.
  */
 
-package com.comcast.xfinity.sirius.uberstore
+package com.comcast.xfinity.sirius.uberstore.data
 
 import java.nio.{ByteBuffer, ByteOrder}
 import java.util.Arrays
 
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.uberstore.common.Checksummer
-import com.comcast.xfinity.sirius.uberstore.data.{UberDataFileReadHandle, UberDataFileWriteHandle, UberStoreBinaryFileOps}
 import org.mockito.ArgumentCaptor
-import org.mockito.Matchers.any
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.Answer

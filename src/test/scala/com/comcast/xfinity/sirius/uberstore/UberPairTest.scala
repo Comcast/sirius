@@ -20,7 +20,7 @@ import com.comcast.xfinity.sirius.NiceTest
 import data.UberDataFile
 import seqindex.SeqIndex
 import org.mockito.Mockito._
-import org.mockito.Matchers.{any, eq => meq, anyLong}
+import org.mockito.ArgumentMatchers.{any, eq => meq, anyLong}
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent}
 
 object UberPairTest {

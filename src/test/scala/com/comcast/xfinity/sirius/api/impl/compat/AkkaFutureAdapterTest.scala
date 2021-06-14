@@ -36,13 +36,6 @@ class AkkaFutureAdapterTest extends NiceTest with BeforeAndAfterAll {
   }
 
   describe("AkkaFutureAdapter") {
-    it("must throw an IllegalStateException when cancel is called") {
-      intercept[IllegalStateException] {
-        val akkaFuture = AkkaFuture { "foo" }
-        new AkkaFutureAdapter[String](akkaFuture).cancel(true)
-      }
-    }
-
     it("must return the value expected on get") {
       assertResult("foo") {
         val akkaFuture = AkkaFuture { "foo" }
@@ -57,7 +50,7 @@ class AkkaFutureAdapterTest extends NiceTest with BeforeAndAfterAll {
       }
     }
 
-    it("must propogate an exception as an ExecutionException") {
+    it("must propagate an exception as an ExecutionException") {
       intercept[ExecutionException] {
         val akkaFuture = AkkaFuture { throw new IOException("Boom") }
         new AkkaFutureAdapter[String](akkaFuture).get()

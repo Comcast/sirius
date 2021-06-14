@@ -24,13 +24,12 @@ import com.comcast.xfinity.sirius.NiceTest
 
 import akka.actor.ActorRef
 import akka.actor.ActorSystem
-import akka.agent.Agent
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
-import scala.collection.JavaConversions._
 import collection.SortedMap
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica.Reap
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import collection.JavaConverters._
 
 class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
@@ -119,14 +118,14 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         assert(2 === replica.underlyingActor.nextAvailableSlotNum)
 
         // make sure we didn't crash
-        wasRestartedProbe.expectNoMsg()
+        wasRestartedProbe.expectNoMessage()
 
         // and our state is still cool
         replica ! Decision(2, Command(null, 1, Delete("1234")))
         assert(3 === replica.underlyingActor.nextAvailableSlotNum)
 
         // and do it again
-        wasRestartedProbe.expectNoMsg()
+        wasRestartedProbe.expectNoMessage()
       }
 
       it("must repropose a command if a different decision using the command's " +
@@ -157,7 +156,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
         replica ! Decision(1, Command(null, 1, Delete("ThisOtherThing")))
         assert(1 === replica.underlyingActor.outstandingProposals.size)
-        localLeader.expectNoMsg()
+        localLeader.expectNoMessage()
       }
     }
 
@@ -168,7 +167,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
         replica ! DecisionHint(2)
 
         assert(5 === replica.underlyingActor.slotNum)
-        localLeader.expectNoMsg()
+        localLeader.expectNoMessage()
       }
       it("updates the slotNum") {
         val localLeader = TestProbe()
@@ -228,7 +227,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
           1L -> Command(null, now - 15000, Delete("1")),
           2L -> Command(null, now, Delete("2")),
           3L -> Command(null, now - 12000, Delete("3"))
-        ))
+        ).toMap.asJava)
 
         replica ! Reap
 

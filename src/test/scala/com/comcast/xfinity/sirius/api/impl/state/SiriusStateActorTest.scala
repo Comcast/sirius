@@ -15,14 +15,13 @@
  */
 package com.comcast.xfinity.sirius.api.impl.state
 
-import org.mockito.Matchers
 import org.mockito.Mockito._
 import akka.actor.ActorSystem
-import com.comcast.xfinity.sirius.api.impl.{SiriusState, Delete, Get, Put}
+import com.comcast.xfinity.sirius.api.impl.{Delete, Get, Put}
 import com.comcast.xfinity.sirius.NiceTest
-import akka.agent.Agent
-import com.comcast.xfinity.sirius.api.{SiriusResult, RequestHandler}
-import akka.testkit.{TestProbe, TestActorRef}
+import com.comcast.xfinity.sirius.api.{RequestHandler, SiriusResult}
+import akka.testkit.{TestActorRef, TestProbe}
+import org.mockito.ArgumentMatchers.{same, eq => meq}
 import org.scalatest.BeforeAndAfterAll
 
 class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
@@ -54,7 +53,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         // the following is a little delicate, Array[Byte] are Java jawns, so
         //  we must use the same array for comparing
         doReturn(SiriusResult.some("It's alive!")).when(mockRequestHandler).
-          handlePut(Matchers.eq(key), Matchers.same(body))
+          handlePut(meq(key), same(body))
 
         senderProbe.send(testActor, Put(key, body))
 
@@ -72,12 +71,12 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         val theException = new RuntimeException("well this sucks")
 
         doThrow(theException).when(mockRequestHandler).
-          handlePut(Matchers.eq(key), Matchers.same(body))
+          handlePut(meq(key), same(body))
 
         senderProbe.send(testActor, Put(key, body))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
-        terminationProbe.expectNoMsg()
+        terminationProbe.expectNoMessage()
       }
     }
 
@@ -88,7 +87,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         val key = "key"
 
         doReturn(SiriusResult.some("It really works!")).when(mockRequestHandler).
-          handleGet(Matchers.eq(key))
+          handleGet(meq(key))
 
         senderProbe.send(testActor, Get(key))
 
@@ -105,12 +104,12 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         val theException = new RuntimeException("well this sucks")
 
         doThrow(theException).when(mockRequestHandler).
-          handleGet(Matchers.eq(key))
+          handleGet(meq(key))
 
         senderProbe.send(testActor, Get(key))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
-        terminationProbe.expectNoMsg()
+        terminationProbe.expectNoMessage()
       }
     }
 
@@ -121,7 +120,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         val key = "key"
 
         doReturn(SiriusResult.some("I ate too much")).when(mockRequestHandler).
-          handleDelete(Matchers.eq(key))
+          handleDelete(meq(key))
 
         senderProbe.send(testActor, Delete(key))
 
@@ -138,12 +137,12 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
         val theException = new RuntimeException("well this sucks")
 
         doThrow(theException).when(mockRequestHandler).
-          handleDelete(Matchers.eq(key))
+          handleDelete(meq(key))
 
         senderProbe.send(testActor, Delete(key))
 
         senderProbe.expectMsg(SiriusResult.error(theException))
-        terminationProbe.expectNoMsg()
+        terminationProbe.expectNoMessage()
       }
     }
 

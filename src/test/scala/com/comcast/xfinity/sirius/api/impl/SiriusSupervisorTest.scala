@@ -16,20 +16,20 @@
 package com.comcast.xfinity.sirius.api.impl
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
-import akka.testkit.{TestProbe, TestActorRef}
+import akka.testkit.{TestActorRef, TestProbe}
 import org.junit.runner.RunWith
-import org.scalatest.junit.JUnitRunner
 import akka.agent.Agent
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
+import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import org.scalatest.BeforeAndAfterAll
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
-import com.comcast.xfinity.sirius.uberstore.CompactionManager.{CompactionMessage, Compact}
+import com.comcast.xfinity.sirius.uberstore.CompactionManager.{Compact, CompactionMessage}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{GetMembershipData, MembershipMessage}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+import org.scalatestplus.junit.JUnitRunner
 
 @RunWith(classOf[JUnitRunner])
 class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTest {

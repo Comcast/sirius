@@ -18,12 +18,15 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
-import akka.actor.{ActorRef, ActorContext, Props, ActorSystem}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
+
 import scala.concurrent.duration._
-import com.comcast.xfinity.sirius.api.impl.{Put, Delete}
+import com.comcast.xfinity.sirius.api.impl.{Delete, Put}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
+
+import scala.language.postfixOps
 
 class PaxosSupervisorTest extends NiceTest with BeforeAndAfterAll {
 

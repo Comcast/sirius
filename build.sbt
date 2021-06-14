@@ -16,10 +16,10 @@ import java.lang.{Runtime => JRuntime}
 
 name := "sirius"
 
-version := "2.2.1"
+version := "2.3.0"
 
-scalaVersion := "2.12.8"
-crossScalaVersions := Seq("2.11.8", "2.12.8") // NOTE: keep sync'd with .travis.yml
+scalaVersion := "2.13.6"
+crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6") // NOTE: keep sync'd with .travis.yml
 
 organization := "com.comcast"
 
@@ -29,21 +29,24 @@ resolvers += "Typesafe Public Repo" at "https://repo.typesafe.com/typesafe/relea
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 libraryDependencies ++= {
-  val akkaV = "2.4.20"
+  val akkaV = "2.5.32"
+  val scalaTestV = "3.2.9"
 
   Seq(
     "com.typesafe.akka"             %% "akka-actor"                     % akkaV,
     "com.typesafe.akka"             %% "akka-remote"                    % akkaV,
     "com.typesafe.akka"             %% "akka-slf4j"                     % akkaV,
     "com.typesafe.akka"             %% "akka-agent"                     % akkaV,
-    "org.slf4j"                     %  "slf4j-api"                      % "1.7.7",
-    "com.github.pathikrit"          %% "better-files"                   % "3.8.0",
-    "org.scalatest"                 %% "scalatest"                      % "3.0.5"   % "test",
-    "org.mockito"                   %  "mockito-core"                   % "1.10.19" % "test",
-    "junit"                         %  "junit"                          % "4.12"    % "test",
-    "org.slf4j"                     %  "slf4j-log4j12"                  % "1.7.7"   % "test",
-    "log4j"                         %  "log4j"                          % "1.2.17"  % "test",
-    "com.typesafe.akka"             %% "akka-testkit"                   % akkaV     % "test"
+    "org.slf4j"                     %  "slf4j-api"                      % "1.7.30",
+    "com.github.pathikrit"          %% "better-files"                   % "3.9.1",
+    "org.scalatest"                 %% "scalatest"                      % scalaTestV  % Test,
+    "org.scalatest"                 %% "scalatest-funspec"              % scalaTestV  % Test,
+    "org.scalatestplus"             %% "junit-4-13"                     % "3.2.2.0"   % Test,
+    "org.scalatestplus"             %% "mockito-3-3"                    % "3.2.2.0"   % Test,
+    "junit"                         %  "junit"                          % "4.13"      % Test,
+    "org.slf4j"                     %  "slf4j-log4j12"                  % "1.7.30"    % Test,
+    "log4j"                         %  "log4j"                          % "1.2.17"    % Test,
+    "com.typesafe.akka"             %% "akka-testkit"                   % akkaV       % Test
   )
 }
 
@@ -61,14 +64,14 @@ artifactName := { (scalaVersion: ScalaVersion, module: ModuleID, artifact: Artif
 crossPaths := true
 
 // compiler options
-javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
+javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 
-scalacOptions ++= Seq("-deprecation", "-unchecked")
+scalacOptions ++= Seq("-target:jvm-1.8", "-deprecation", "-unchecked", "-Xlint")
 
-scalacOptions in (Compile,doc) ++= Seq("-doc-footer",
-  "Copyright 2013-2014 Comcast Cable Communications Management, LLC", "-doc-title", "Sirius")
-
-scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", "src/main/resources/overview.txt")
+Compile / doc / scalacOptions ++= Seq(
+  "-doc-footer", "Copyright 2013-2014 Comcast Cable Communications Management, LLC",
+  "-doc-title", "Sirius",
+  "-doc-root-content", "src/main/resources/overview.txt")
 
 parallelExecution := false
 

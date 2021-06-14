@@ -119,7 +119,7 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
       val chunk = decodeChunk(byteBuf, bytesRead)
       chunk.foreach((seqOff) => soFar.put(seqOff._1, seqOff._2))
 
-      if (bytesRead == byteBuf.limit) {
+      if (bytesRead == byteBuf.limit()) {
         readIndex(indexFileHandle, byteBuf, soFar)
       } else {
         soFar
@@ -135,7 +135,7 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
 
     val entryBuf = ByteBuffer.allocate(24)
 
-    while (byteBuf.position != chunkSize) {
+    while (byteBuf.position() != chunkSize) {
       byteBuf.get(entryBuf.array)
       val (seq, offset) = readEntry(entryBuf)
       chunk ::= (seq, offset)
