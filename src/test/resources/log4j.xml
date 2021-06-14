@@ -11,7 +11,7 @@
 
 	<!-- Root Logger -->
 	<root>
-		<priority value="off" />
+		<priority value="trace" />
 		<appender-ref ref="console" />
 	</root>
 	
