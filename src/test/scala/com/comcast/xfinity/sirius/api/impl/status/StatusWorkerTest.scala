@@ -21,9 +21,11 @@ import akka.actor.ActorSystem
 import com.comcast.xfinity.sirius.admin.SiriusMonitorReader
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import org.mockito.Mockito._
-import akka.testkit.{TestProbe, TestActorRef}
-import com.comcast.xfinity.sirius.api.impl.status.NodeStats.{NodeConfig, MonitorStats, MemoryUsage, FullNodeStatus}
+import akka.testkit.{TestActorRef, TestProbe}
+import com.comcast.xfinity.sirius.api.impl.status.NodeStats.{FullNodeStatus, MemoryUsage, MonitorStats, NodeConfig}
+
 import scala.concurrent.duration._
+import scala.language.postfixOps
 
 class StatusWorkerTest extends NiceTest with BeforeAndAfterAll {
 

@@ -16,7 +16,7 @@
 package com.comcast.xfinity.sirius.admin
 
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import collection.JavaConversions.asScalaSet
+import scala.collection.JavaConverters._
 import javax.management.{ObjectName, MBeanServer}
 
 /**
@@ -54,7 +54,7 @@ class SiriusMonitorReader {
   }
 
   private def readMonitors(mBeanServer: MBeanServer) = {
-    val objectNames = asScalaSet(mBeanServer.queryNames(siriusDomainQuery, null))
+    val objectNames = mBeanServer.queryNames(siriusDomainQuery, null).asScala
 
     objectNames.foldLeft(Map[String, Map[String, Any]]()) (
       (monitorsMap, objectName) =>

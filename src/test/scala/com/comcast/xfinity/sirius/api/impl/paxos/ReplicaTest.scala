@@ -27,10 +27,10 @@ import akka.actor.ActorSystem
 import akka.agent.Agent
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
-import scala.collection.JavaConversions._
 import collection.SortedMap
 import com.comcast.xfinity.sirius.api.impl.paxos.Replica.Reap
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+import scala.collection.JavaConverters._
 
 class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
@@ -228,7 +228,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
           1L -> Command(null, now - 15000, Delete("1")),
           2L -> Command(null, now, Delete("2")),
           3L -> Command(null, now - 12000, Delete("3"))
-        ))
+        ).toMap.asJava)
 
         replica ! Reap
 

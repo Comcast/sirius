@@ -32,6 +32,8 @@ import org.mockito.ArgumentCaptor
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{CheckMembershipHealth, MembershipInfoMBean}
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
+import scala.language.postfixOps
+
 class MembershipActorTest extends NiceTest with TimedTest {
 
   val pingInterval = 120 seconds

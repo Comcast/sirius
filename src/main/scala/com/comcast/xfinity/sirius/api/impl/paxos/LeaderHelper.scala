@@ -54,7 +54,7 @@ class LeaderHelper {
       pvals => pvals.maxBy(_.ballot)
     )
 
-    val slotsToCommands = maxPValBySlot.mapValues(_.proposedCommand)
+    val slotsToCommands = maxPValBySlot.mapValues(_.proposedCommand).toMap
 
     RichJTreeMap(slotsToCommands)
   }
