@@ -57,7 +57,7 @@ object ActorSystemHelper {
    * Shut down the singleton ActorSystem contained within if it was
    * created.
    */
-  def shutDownActorSystem() {
+  def shutDownActorSystem(): Unit = {
     actorSystemOpt match {
       case Some(as) => Await.ready(as.terminate(), Duration.Inf)
       case None => // no-op

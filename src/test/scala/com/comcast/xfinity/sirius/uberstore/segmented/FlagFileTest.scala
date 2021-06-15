@@ -33,7 +33,7 @@ class FlagFileTest extends NiceTest with BeforeAndAfterAll {
     dir
   }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     File(tempDir.getAbsolutePath).delete()
   }
 

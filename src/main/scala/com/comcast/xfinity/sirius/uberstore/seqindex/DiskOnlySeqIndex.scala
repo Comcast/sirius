@@ -16,7 +16,6 @@
 package com.comcast.xfinity.sirius.uberstore.seqindex
 
 import java.io.RandomAccessFile
-import com.comcast.xfinity.sirius.uberstore.common.Fnv1aChecksummer
 import scala.annotation.tailrec
 
 object DiskOnlySeqIndex {
@@ -91,7 +90,7 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
   /**
    * {@inheritdoc}
    */
-  def getMaxSeq(): Option[Long] = maxSeq
+  def getMaxSeq: Option[Long] = maxSeq
 
   /**
    * {@inheritdoc}

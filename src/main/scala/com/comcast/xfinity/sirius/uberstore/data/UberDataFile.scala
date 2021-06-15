@@ -127,14 +127,14 @@ private[uberstore] class UberDataFile(dataFileName: String,
    * Close open file handles.  Only touching writeHandle here, since readHandles are opened and then
    * closed in a finally of the same block.  This UberDataFile should not be used after close is called.
    */
-  def close() {
+  def close(): Unit = {
     if (!isClosed) {
       writeHandle.close()
       isClosed = true
     }
   }
 
-  override def finalize() {
+  override def finalize(): Unit = {
     close()
   }
 }

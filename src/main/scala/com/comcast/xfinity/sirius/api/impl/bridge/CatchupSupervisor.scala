@@ -119,17 +119,17 @@ private[bridge] class CatchupSupervisor(membershipHelper: MembershipHelper,
       context.unbecome()
   }
 
-  def requestSubrange(fromSeq: Long, window: Int, source: ActorRef) {
+  def requestSubrange(fromSeq: Long, window: Int, source: ActorRef): Unit = {
     source.ask(GetLogSubrange(fromSeq, fromSeq + window))(timeout()).onComplete {
       case Success(logSubrange: LogSubrange) => self ! CatchupRequestSucceeded(logSubrange)
       case _ => self ! CatchupRequestFailed
     }
   }
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new CatchupSupervisorInfo(), config)
   }
-  override def postStop() {
+  override def postStop(): Unit = {
     unregisterMonitors(config)
   }
 

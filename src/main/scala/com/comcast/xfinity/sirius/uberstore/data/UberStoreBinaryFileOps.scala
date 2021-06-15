@@ -15,7 +15,6 @@
  */
 package com.comcast.xfinity.sirius.uberstore.data
 
-import java.io.RandomAccessFile
 import java.nio.ByteBuffer
 
 import com.comcast.xfinity.sirius.uberstore.common.Checksummer

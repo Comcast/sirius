@@ -24,7 +24,6 @@ import com.comcast.xfinity.sirius.api.impl.bridge.PaxosStateBridge.ChildProvider
 import scala.concurrent.duration._
 import akka.actor._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
-import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
 import com.comcast.xfinity.sirius.api.impl.Delete
@@ -59,12 +58,12 @@ class PaxosStateBridgeTest extends NiceTest with BeforeAndAfterAll with TimedTes
     }
 
     TestActorRef(new PaxosStateBridge(startingSeq, stateSupActor, siriusSupActor, childProvider, 2.minutes, config) {
-      override def preStart() {}
-      override def postStop() {}
+      override def preStart(): Unit = {}
+      override def postStop(): Unit = {}
     })
   }
 
-  override def afterAll {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

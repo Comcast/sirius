@@ -94,11 +94,11 @@ class SiriusPersistenceActor(stateActor: ActorRef,
   var cummWeightedAvg = 0L
   var lastWriteTime = 0L
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new SiriusPersistenceActorInfo, config)
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     unregisterMonitors(config)
   }
 

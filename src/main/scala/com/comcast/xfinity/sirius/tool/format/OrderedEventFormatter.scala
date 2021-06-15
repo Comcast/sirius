@@ -27,7 +27,7 @@ object OrderedEventFormatter {
     clazz.newInstance().asInstanceOf[OrderedEventFormatter]
   }
 
-  def printEvent(evt: OrderedEvent) {
+  def printEvent(evt: OrderedEvent): Unit = {
     println(formatter.format(evt))
   }
 }

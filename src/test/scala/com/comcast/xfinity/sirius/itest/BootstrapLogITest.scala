@@ -45,17 +45,17 @@ class BootstrapLogITest extends NiceTest with TimedTest {
   var stringRequestHandler: StringRequestHandler = _
   var clusterConfigPath: File = _
 
-  private def stageFiles() {
+  private def stageFiles(): Unit = {
     tempFolder.create()
     stageLogFile()
     stageClusterConfigFile()
   }
-  private def stageLogFile() {
+  private def stageLogFile(): Unit = {
     logDir = tempFolder.newFolder("uberstore")
     logDir.mkdirs()
   }
 
-  private def stageClusterConfigFile() {
+  private def stageClusterConfigFile(): Unit = {
     val clusterConfigFileName = tempFolder.newFile("cluster.conf").getAbsolutePath
     clusterConfigPath = File(clusterConfigFileName)
     clusterConfigPath.append("host1:2552\n")

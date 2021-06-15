@@ -44,7 +44,7 @@ private[segmented] class FlagFile(location: File) {
    * Set the value of the flag.
    * @param value new value
    */
-  def set(value: Boolean) {
+  def set(value: Boolean): Unit = {
     value match {
       case true =>
         location.createNewFile()

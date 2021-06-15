@@ -70,7 +70,7 @@ object Segment {
    * @param index the SeqIndex to update
    * @param dataFile the UberDataFile to update
    */
-  private[segmented] def repairIndex(index: SeqIndex, dataFile: UberDataFile) {
+  private[segmented] def repairIndex(index: SeqIndex, dataFile: UberDataFile): Unit = {
     val (includeFirst, lastOffset) = index.getMaxSeq match {
       case None => (true, 0L)
       case Some(seq) => (false, index.getOffsetFor(seq).get) // has to exist
@@ -115,7 +115,7 @@ class Segment private[uberstore](val location: File,
    *
    * @param event the {@link OrderedEvent} to write
    */
-  def writeEntry(event: OrderedEvent) {
+  def writeEntry(event: OrderedEvent): Unit = {
     if (isClosed) {
       throw new IllegalStateException("Attempting to write to closed Segment")
     }
@@ -144,7 +144,7 @@ class Segment private[uberstore](val location: File,
     case Some(seq) => seq + 1
   }
 
-  def foreach[T](fun: OrderedEvent => T) {
+  def foreach[T](fun: OrderedEvent => T): Unit = {
     foldLeft(())((_, evt) => fun(evt))
   }
 
@@ -171,7 +171,7 @@ class Segment private[uberstore](val location: File,
    * Close underlying file handles or connections.  This Segment should not be used after
    * close is called.
    */
-  def close() {
+  def close(): Unit = {
     if (!dataFile.isClosed) {
       dataFile.close()
     }
@@ -198,7 +198,7 @@ class Segment private[uberstore](val location: File,
    * Set the keys-applied flag.
    * @param applied the value of the flag
    */
-  def setApplied(applied: Boolean) {
+  def setApplied(applied: Boolean): Unit = {
     compactionFlag.set(value = applied)
   }
 
@@ -214,7 +214,7 @@ class Segment private[uberstore](val location: File,
    *
    * @param compacted the value of the flag
    */
-  def setInternallyCompacted(compacted: Boolean) {
+  def setInternallyCompacted(compacted: Boolean): Unit = {
     internalCompactionFlag.set(compacted)
   }
 }

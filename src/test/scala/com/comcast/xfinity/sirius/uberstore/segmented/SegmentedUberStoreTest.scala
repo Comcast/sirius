@@ -49,7 +49,7 @@ class SegmentedUberStoreTest extends NiceTest {
     dir
   }
 
-  def createPopulatedSegment(baseDir: JFile, name: String, events: List[Int], isApplied: Boolean = false) {
+  def createPopulatedSegment(baseDir: JFile, name: String, events: List[Int], isApplied: Boolean = false): Unit = {
     val segment = buildSegment(baseDir, name)
     segment.setApplied(applied = isApplied)
 
@@ -59,13 +59,13 @@ class SegmentedUberStoreTest extends NiceTest {
   def findSegment(name: String, segments: List[Segment]) =
     segments.find(_.name == name).get
 
-  def writeUberStoreEvents(target: SegmentedUberStore, keys: List[Int]) {
+  def writeUberStoreEvents(target: SegmentedUberStore, keys: List[Int]): Unit = {
     for (key <- keys) {
       target.writeEntry(OrderedEvent(target.nextSeq, 0L, Delete(key.toString)))
     }
   }
 
-  def writeEvents(segment: Segment, events: List[Long]) {
+  def writeEvents(segment: Segment, events: List[Long]): Unit = {
     for (i <- events) {
       segment.writeEntry(OrderedEvent(i, 0L, Delete(i.toString)))
     }

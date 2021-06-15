@@ -64,7 +64,7 @@ class SiriusPersistenceActorTest extends NiceTest {
 
   def anyFoldFun = any[(Symbol, OrderedEvent) => Symbol]()
 
-  def verifyFoldLeftRanged(siriusLog: SiriusLog, start: Long, end: Long) {
+  def verifyFoldLeftRanged(siriusLog: SiriusLog, start: Long, end: Long): Unit = {
     verify(siriusLog).foldLeftRange(meq(start), meq(end))(meq(List[OrderedEvent]()))(any[(List[OrderedEvent], OrderedEvent) => List[OrderedEvent]]())
   }
 

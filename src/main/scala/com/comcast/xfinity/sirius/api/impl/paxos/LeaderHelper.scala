@@ -16,7 +16,6 @@
 package com.comcast.xfinity.sirius.api.impl.paxos
 
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
-import collection.immutable.SortedMap
 import com.comcast.xfinity.sirius.util.RichJTreeMap
 
 /**

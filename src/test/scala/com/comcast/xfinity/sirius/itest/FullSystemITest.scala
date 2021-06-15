@@ -163,7 +163,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     File(tempDir.getPath).delete()
   }
 
-  def writeClusterConfig(ports: List[Int], sslEnabled: Boolean = false) {
+  def writeClusterConfig(ports: List[Int], sslEnabled: Boolean = false): Unit = {
     val protocol = FullSystemITest.getProtocol(sslEnabled)
     val config = ports.map(port => "%s://sirius-%s@localhost:%s/user/sirius\n".format(protocol, port, port))
                       .foldLeft("")(_ + _)
@@ -174,7 +174,7 @@ class FullSystemITest extends NiceTest with TimedTest {
     File(membershipPath).append(config)
   }
 
-  def waitForMembership(sirii: List[SiriusImpl], membersExpected: Int) {
+  def waitForMembership(sirii: List[SiriusImpl], membersExpected: Int): Unit = {
     assert(waitForTrue({
       sirii.foreach(_.supervisor ! CheckClusterConfig)
       sirii.forall(_.getMembership.get.values.flatten.size == membersExpected)

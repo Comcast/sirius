@@ -85,11 +85,11 @@ class CompactionManager(childProvider: ChildProvider,
     actor
   }
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new CompactionManagerInfo, config)
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     unregisterMonitors(config)
     compactionCancellable match {
       case Some(cancellable) => cancellable.cancel()

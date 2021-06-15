@@ -19,14 +19,13 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
 
 import scala.concurrent.duration._
-import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.{Ping, Pong}
+import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.Ping
 import akka.actor._
-import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{DifferentLeader, LeaderGone, LeaderPong}
+import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.LeaderGone
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.LeaderPong
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.DifferentLeader
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderPinger.Pong
 
-import scala.Some
 import scala.language.postfixOps
 
 class LeaderPingerTest extends NiceTest {

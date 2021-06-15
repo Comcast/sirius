@@ -61,7 +61,7 @@ class SeqIndexBinaryFileOps private[seqindex](checksummer: Checksummer,
    * @param seq the sequence number to store
    * @param offset the offset associated with seq
    */
-  def put(writeHandle: RandomAccessFile, seq: Long, offset: Long) {
+  def put(writeHandle: RandomAccessFile, seq: Long, offset: Long): Unit = {
     val byteBuf = ByteBuffer.allocate(24)
     byteBuf.putLong(8, seq).putLong(16, offset)
 

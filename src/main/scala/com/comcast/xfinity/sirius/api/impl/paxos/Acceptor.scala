@@ -55,10 +55,10 @@ class Acceptor(startingSeqNum: Long,
   val reapCancellable =
     context.system.scheduler.schedule(reapFreqSecs seconds, reapFreqSecs seconds, self, Reap)
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new AcceptorInfo, config)
   }
-  override def postStop() {
+  override def postStop(): Unit = {
     unregisterMonitors(config)
     reapCancellable.cancel()
   }
@@ -129,7 +129,7 @@ class Acceptor(startingSeqNum: Long,
    *
    * Note: this method has the side-effect of modifying toReap.
    */
-  private def cleanOldAccepted() {
+  private def cleanOldAccepted(): Unit = {
     var highestReapedSlot: Long = lowestAcceptableSlotNumber - 1
     val reapBeforeTs = System.currentTimeMillis - reapWindow
     accepted.dropWhile {

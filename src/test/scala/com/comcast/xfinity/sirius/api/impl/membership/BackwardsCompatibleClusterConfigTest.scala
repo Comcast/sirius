@@ -16,7 +16,6 @@
 package com.comcast.xfinity.sirius.api.impl.membership
 
 import com.comcast.xfinity.sirius.NiceTest
-import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 class BackwardsCompatibleClusterConfigTest extends NiceTest {

@@ -18,7 +18,6 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import akka.testkit.{TestActorRef, TestProbe}
-import org.mockito.Mockito._
 import akka.actor._
 
 import collection.immutable.SortedMap
@@ -80,7 +79,7 @@ class LeaderTest extends NiceTest with TimedTest with BeforeAndAfterAll {
     defaultWatcher = TestProbe()
   }
 
-  override def afterAll {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

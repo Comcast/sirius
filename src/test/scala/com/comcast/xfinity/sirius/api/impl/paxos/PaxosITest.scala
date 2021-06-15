@@ -60,7 +60,7 @@ class PaxosITest extends NiceTest with BeforeAndAfterAll {
 
   implicit val as = ActorSystem("PaxosITest")
 
-  override def afterAll {
+  override def afterAll(): Unit = {
     Await.ready(as.terminate(), Duration.Inf)
   }
 

@@ -52,7 +52,7 @@ class Slf4jEventHandlerWithRemotingSilencer extends Slf4jLogger {
     case _ => false
   }
 
-  private[util] def passThru(event: Any) {
+  private[util] def passThru(event: Any): Unit = {
     super.receive(event)
   }
 }

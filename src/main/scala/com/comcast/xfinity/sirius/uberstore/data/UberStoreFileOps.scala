@@ -15,8 +15,6 @@
  */
 package com.comcast.xfinity.sirius.uberstore.data
 
-import java.io.{DataInputStream, RandomAccessFile}
-
 /**
  * Trait providing low level File operations for an UberStore
  */

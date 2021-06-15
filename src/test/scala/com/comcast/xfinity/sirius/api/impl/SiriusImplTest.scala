@@ -20,7 +20,6 @@ import akka.util.Timeout.durationToTimeout
 
 import scala.concurrent.duration._
 import akka.util.Timeout
-import com.typesafe.config.ConfigFactory
 import akka.testkit.TestActor
 import akka.actor._
 import org.junit.runner.RunWith

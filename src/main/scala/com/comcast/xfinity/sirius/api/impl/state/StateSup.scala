@@ -88,13 +88,13 @@ class StateSup(requestHandler: RequestHandler,
   // it would be cool to be able to observe this during boot...
   var bootstrapTime: Option[Long] = None
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new StateInfo, config)
     bootstrapState()
     siriusStateAgent send (_.copy(stateInitialized = true))
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     unregisterMonitors(config)
   }
 
@@ -111,7 +111,7 @@ class StateSup(requestHandler: RequestHandler,
   }
 
   // TODO perhaps this should be pulled out into a BootstrapActor. The StateSup should really only supervise.
-  private def bootstrapState() {
+  private def bootstrapState(): Unit = {
 
     requestHandler match {
       case BrainlessRequestHandler =>

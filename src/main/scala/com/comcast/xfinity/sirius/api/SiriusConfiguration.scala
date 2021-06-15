@@ -334,7 +334,7 @@ class SiriusConfiguration {
    * @param name name of the property
    * @param value value to associate with name
    */
-  def setProp(name: String, value: Any) {
+  def setProp(name: String, value: Any): Unit = {
     conf += (name -> value)
   }
 

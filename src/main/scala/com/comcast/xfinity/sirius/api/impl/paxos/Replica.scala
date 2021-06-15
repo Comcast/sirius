@@ -85,11 +85,11 @@ class Replica(localLeader: ActorRef,
   val reapCancellable =
     context.system.scheduler.schedule(reapFreqSecs seconds, reapFreqSecs seconds, self, Reap)
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new ReplicaInfo, config)
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     unregisterMonitors(config)
     reapCancellable.cancel()
   }
@@ -144,7 +144,7 @@ class Replica(localLeader: ActorRef,
    * Has side-effect of adding proposal to proposals map.
    * @param command Command to be proposed
    */
-  private def propose(command: Command) {
+  private def propose(command: Command): Unit = {
     val nextSlotNum = nextAvailableSlotNum
 
     localLeader ! Propose(nextSlotNum, command)
@@ -174,7 +174,7 @@ class Replica(localLeader: ActorRef,
    * @param decisionCommand command that has been decided for the slot number
    * @return
    */
-  private def reproposeIfClobbered(slot: Long, decisionCommand: Command) {
+  private def reproposeIfClobbered(slot: Long, decisionCommand: Command): Unit = {
     outstandingProposals.remove(slot) match {
       case proposalCommand: Command if decisionCommand != proposalCommand =>
         traceLogger.debug("Must repropose, slot {} conflict.  decisionCommand: {}, proposalCommand: {}", slot, decisionCommand.op, proposalCommand.op)
@@ -183,13 +183,13 @@ class Replica(localLeader: ActorRef,
     }
   }
 
-  private def logProposal(nextSlotNum: Long, command: PaxosMessages.Command) {
+  private def logProposal(nextSlotNum: Long, command: PaxosMessages.Command): Unit = {
     numProposed += 1
     lastProposed = "Proposing slot %s for %s".format(nextSlotNum, command)
     traceLogger.debug(lastProposed)
   }
 
-  private def reapStagnantProposals() {
+  private def reapStagnantProposals(): Unit = {
     val cutoff = System.currentTimeMillis() - reproposalWindowSecs * 1000
     outstandingProposals.filter((_, v) => v.ts >= cutoff)
   }

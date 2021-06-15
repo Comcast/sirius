@@ -58,7 +58,7 @@ class RichJTreeMap[K, V] private extends JTreeMap[K, V] {
    *
    * @param fun function to execute on each entry
    */
-  def foreach(fun: (K, V) => Unit) {
+  def foreach(fun: (K, V) => Unit): Unit = {
     entrySet.iterator.asScala.foreach(
       entry => fun(entry.getKey, entry.getValue)
     )
@@ -73,7 +73,7 @@ class RichJTreeMap[K, V] private extends JTreeMap[K, V] {
    *        for which this function evaluates to true are
    *        retained
    */
-  def filter(predicate: (K, V) => Boolean) {
+  def filter(predicate: (K, V) => Boolean): Unit = {
     var toDelete = List[K]()
     foreach(
       (k, v) =>
@@ -93,7 +93,7 @@ class RichJTreeMap[K, V] private extends JTreeMap[K, V] {
    *        the first element (not inclusive) for which
    *        it returns false are removed.
    */
-  def dropWhile(predicate: (K, V) => Boolean) {
+  def dropWhile(predicate: (K, V) => Boolean): Unit = {
     var toDelete = List[K]()
     breakable {
       foreach(

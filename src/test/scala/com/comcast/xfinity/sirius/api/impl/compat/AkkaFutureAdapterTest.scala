@@ -31,7 +31,7 @@ class AkkaFutureAdapterTest extends NiceTest with BeforeAndAfterAll {
   implicit val as = ActorSystem("AkkaFutureAdapterTest")
   implicit val ec = ExecutionContexts.global()
 
-  override def afterAll {
+  override def afterAll(): Unit = {
     Await.ready(as.terminate(), Duration.Inf)
   }
 

@@ -17,7 +17,6 @@
 package com.comcast.xfinity.sirius.uberstore.data
 
 import com.comcast.xfinity.sirius.NiceTest
-import java.lang.Object
 import java.util.Arrays
 import com.comcast.xfinity.sirius.api.impl.{Delete, Put, OrderedEvent}
 import java.nio.{ByteOrder, ByteBuffer}

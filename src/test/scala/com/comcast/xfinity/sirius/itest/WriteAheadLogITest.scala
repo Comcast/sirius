@@ -21,8 +21,7 @@ import com.comcast.xfinity.sirius.writeaheadlog._
 
 import com.comcast.xfinity.sirius.api.impl._
 
-import com.comcast.xfinity.sirius.{TimedTest, NiceTest}
-import java.io.File
+import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.uberstore.UberStore
 
 object WriteAheadLogITest {

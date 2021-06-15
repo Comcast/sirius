@@ -22,7 +22,7 @@ import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 class DoNothingSiriusLog extends SiriusLog {
   private val logger = LoggerFactory.getLogger(classOf[DoNothingSiriusLog])
 
-  override def writeEntry(entry: OrderedEvent) {
+  override def writeEntry(entry: OrderedEvent): Unit = {
     logger.info("Writing entry for {}", entry)
   }
 
@@ -34,7 +34,7 @@ class DoNothingSiriusLog extends SiriusLog {
 
   override def getNextSeq = 1L
 
-  override def compact() {}
+  override def compact(): Unit = {}
 
   override def size = 0L
 }
