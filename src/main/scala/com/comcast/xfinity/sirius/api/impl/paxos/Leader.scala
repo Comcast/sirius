@@ -124,11 +124,11 @@ class Leader(membership: MembershipHelper,
 
   startScout()
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new LeaderInfo, config)
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     unregisterMonitors(config)
     leaderStateCheck.cancel()
   }
@@ -243,7 +243,7 @@ class Leader(membership: MembershipHelper,
 
   }
 
-  private def handleLeaderChange(newLeaderBallot: Ballot) {
+  private def handleLeaderChange(newLeaderBallot: Ballot): Unit = {
     stopLeaderWatcher()
 
     context.actorSelection(newLeaderBallot.leaderId).resolveOne(1 seconds) onComplete {
@@ -261,15 +261,15 @@ class Leader(membership: MembershipHelper,
     }
   }
 
-  private def startScout() {
+  private def startScout(): Unit = {
     childProvider.createScout(self, membership.getClusterInfo, myBallot, latestDecidedSlot)
   }
 
-  private def startCommander(pVal: PValue, ticks: Int = defaultRetries) {
+  private def startCommander(pVal: PValue, ticks: Int = defaultRetries): Unit = {
     childProvider.createCommander(self, membership.getClusterInfo, pVal, ticks)
   }
 
-  private def seekLeadership(ballotToTrump: Ballot) {
+  private def seekLeadership(ballotToTrump: Ballot): Unit = {
     myBallot = Ballot(ballotToTrump.seq + 1, myLeaderId)
     electedLeader = Unknown
 
@@ -277,7 +277,7 @@ class Leader(membership: MembershipHelper,
     startScout()
   }
 
-  private def stopLeaderWatcher() {
+  private def stopLeaderWatcher(): Unit = {
     currentLeaderWatcher match {
       case Some(ref) => ref ! Close
       case _ => // no-op
@@ -285,7 +285,7 @@ class Leader(membership: MembershipHelper,
     currentLeaderWatcher = None
   }
 
-  private def startLeaderWatcher() {
+  private def startLeaderWatcher(): Unit = {
     stopLeaderWatcher()
     electedLeader match {
       case Remote(ref, ballot) =>
@@ -297,7 +297,7 @@ class Leader(membership: MembershipHelper,
   }
 
   // drops all proposals held locally whose slot is <= latestDecidedSlot
-  private def reapProposals() {
+  private def reapProposals(): Unit = {
     val start = System.currentTimeMillis
     proposals.dropWhile(
       (slot, _) => slot <= latestDecidedSlot

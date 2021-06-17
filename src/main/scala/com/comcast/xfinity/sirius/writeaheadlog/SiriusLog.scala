@@ -27,7 +27,7 @@ trait SiriusLog {
    *
    * @param entry the OrderedEvent to write to the log
    */
-  def writeEntry(entry: OrderedEvent)
+  def writeEntry(entry: OrderedEvent): Unit
 
   /**
    * Apply fun to each entry in the log in order
@@ -57,7 +57,7 @@ trait SiriusLog {
    */
   def getNextSeq: Long
 
-  def compact()
+  def compact(): Unit
 
   /**
    * Calculates size of the SiriusLog.

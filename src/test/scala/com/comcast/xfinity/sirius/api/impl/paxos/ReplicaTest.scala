@@ -35,7 +35,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("ReplicaTest")
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 
@@ -108,7 +108,7 @@ class ReplicaTest extends NiceTest with BeforeAndAfterAll {
             // this is weird, if the actor terminates, it is restarted
             //  asynchronously, so we need to propogate the failure in
             //  some other way
-            override def preRestart(e: Throwable, m: Option[Any]) {
+            override def preRestart(e: Throwable, m: Option[Any]): Unit = {
               wasRestartedProbe.ref ! 'brokenaxle
             }
           }

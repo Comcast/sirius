@@ -26,7 +26,7 @@ class MembershipHelperTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val as = ActorSystem("MembershipHelperTest")
 
-  override def afterAll {
+  override def afterAll(): Unit = {
     as.terminate()
   }
 

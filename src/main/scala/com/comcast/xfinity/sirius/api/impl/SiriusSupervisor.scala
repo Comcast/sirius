@@ -136,7 +136,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
   val membershipCheckSchedule = context.system.scheduler.
     schedule(0 seconds, checkIntervalSecs seconds, self, CheckPaxosMembership)
 
-  override def postStop() {
+  override def postStop(): Unit = {
     membershipCheckSchedule.cancel()
   }
 
@@ -198,7 +198,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
     case unknown: AnyRef => logger.warning("SiriusSupervisor Actor received unrecognized message {}", unknown)
   }
 
-  def ensureOrderingActorRunning() {
+  def ensureOrderingActorRunning(): Unit = {
     orderingActor match {
       case Some(actorRef) =>
         // do nothing, already alive and kicking
@@ -209,7 +209,7 @@ private[impl] class SiriusSupervisor(childProvider: ChildProvider, config: Siriu
     }
   }
 
-  def ensureOrderingActorStopped() {
+  def ensureOrderingActorStopped(): Unit = {
     orderingActor match {
       case Some(actorRef) =>
         context.stop(actorRef)

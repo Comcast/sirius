@@ -40,7 +40,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
 
   def fileHandleFactory: UberDataFileHandleFactory = RandomAccessFileHandleFactory
 
-  def writeEvents(segment: Segment, events: List[Long], timestamp: Long = 0L) {
+  def writeEvents(segment: Segment, events: List[Long], timestamp: Long = 0L): Unit = {
     for (i <- events) {
       segment.writeEntry(OrderedEvent(i, timestamp, Delete(i.toString)))
     }

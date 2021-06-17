@@ -18,7 +18,7 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.NiceTest
 import akka.testkit.{TestActorRef, TestProbe}
-import akka.actor.{ActorContext, ActorRef, ActorSystem, Props}
+import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages._
 
 import scala.concurrent.duration._
@@ -46,7 +46,7 @@ class PaxosSupervisorTest extends NiceTest with BeforeAndAfterAll {
     TestActorRef(new PaxosSupervisor(childProvider))
   }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

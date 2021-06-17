@@ -37,7 +37,7 @@ class SiriusStateActorTest extends NiceTest with BeforeAndAfterAll {
     testActor = TestActorRef(new SiriusStateActor(mockRequestHandler))
   }
 
-  override def afterAll {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

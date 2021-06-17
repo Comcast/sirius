@@ -27,7 +27,7 @@ class Slf4jEventHandlerWithRemotingSilencerTest extends NiceTest with BeforeAndA
 
   implicit val actorSystem = ActorSystem("Slf4jEventHandlerWithRemotingSilencerTest")
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 
@@ -35,7 +35,7 @@ class Slf4jEventHandlerWithRemotingSilencerTest extends NiceTest with BeforeAndA
       "'REMOTE: RemoteServer' and allow all others to pass through") {
 
     val handler = TestActorRef(new Slf4jEventHandlerWithRemotingSilencer {
-      override def passThru(event: Any) {
+      override def passThru(event: Any): Unit = {
         throw new FileNotFoundException("Because really, who's expecting that one?")
       }
     })

@@ -17,6 +17,7 @@ package com.comcast.xfinity.sirius.api.impl.compat
 
 import java.util.concurrent.CompletableFuture
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 /**
  * Class encapsulating a {@link scala.concurrent.Future} in a
@@ -25,5 +26,8 @@ import scala.concurrent.{ExecutionContext, Future}
  * @param akkaFuture the {@see scala.concurrent.Future} to wrap
  */
 class AkkaFutureAdapter[T](akkaFuture: Future[T])(implicit ec: ExecutionContext) extends CompletableFuture[T] {
-  akkaFuture.onComplete( _.fold(completeExceptionally, complete))
+  akkaFuture.onComplete {
+    case Success(value) => complete(value)
+    case Failure(exception) => completeExceptionally(exception)
+  }
 }

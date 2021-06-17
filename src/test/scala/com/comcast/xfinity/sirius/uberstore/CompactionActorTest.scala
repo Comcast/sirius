@@ -33,7 +33,7 @@ class CompactionActorTest extends NiceTest with BeforeAndAfterAll {
     new CompactionActor(siriusLog)
   )
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

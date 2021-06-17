@@ -20,7 +20,6 @@ import akka.testkit.{TestProbe, TestActorRef}
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.util.Helpers.base64
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
-import org.mockito.Mockito._
 import scala.util.{Try, Success}
 import java.util.concurrent.atomic.AtomicLong
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._

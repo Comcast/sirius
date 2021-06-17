@@ -20,7 +20,6 @@ import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.ActorSystem
 import com.comcast.xfinity.sirius.admin.SiriusMonitorReader
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
-import org.mockito.Mockito._
 import akka.testkit.{TestActorRef, TestProbe}
 import com.comcast.xfinity.sirius.api.impl.status.NodeStats.{FullNodeStatus, MemoryUsage, MonitorStats, NodeConfig}
 
@@ -31,7 +30,7 @@ class StatusWorkerTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("StatusWorkerTest")
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

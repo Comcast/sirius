@@ -15,8 +15,6 @@
  */
 package com.comcast.xfinity.sirius.uberstore.data
 
-import java.io.EOFException
-
 /**
   * Trait providing abstraction of low level read operations to an Uberstore
   */
@@ -36,21 +34,21 @@ trait UberDataFileReadHandle extends AutoCloseable {
   /**
     * Reads the next 32-bit Integer from the file
     * @return the 32-bit Integer
-    * @throws EOFException if EOF
+    * @throws java.io.EOFException if EOF
     */
   def readInt(): Int
 
   /**
     * Reads the next 64-bit Long from the file
     * @return the 64-bit Long
-    * @throws EOFException if EOF
+    * @throws java.io.EOFException if EOF
     */
   def readLong(): Long
 
   /**
     * Populates the entire array with the next bytes from the file
     * @param array to populate
-    * @throws EOFException if EOF
+    * @throws java.io.EOFException if EOF
     */
   def readFully(array: Array[Byte]): Unit
 }

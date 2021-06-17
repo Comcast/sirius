@@ -28,7 +28,6 @@ import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.DecisionHint
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Decision
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.CompleteSubrange
 import com.comcast.xfinity.sirius.api.impl.paxos.PaxosMessages.Command
-import scala.language.postfixOps
 import scala.concurrent.duration._
 
 object PaxosStateBridge {
@@ -117,10 +116,10 @@ class PaxosStateBridge(startingSeq: Long,
   var startupCatchupDuration: Option[Long] = None
   val startupTimestamp = System.currentTimeMillis()
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new PaxosStateBridgeInfo, config)
   }
-  override def postStop() {
+  override def postStop(): Unit = {
     catchupSchedule.cancel()
     unregisterMonitors(config)
   }
@@ -154,13 +153,13 @@ class PaxosStateBridge(startingSeq: Long,
 
   }
 
-  private def updateCatchupDuration() {
+  private def updateCatchupDuration(): Unit = {
     if (startupCatchupDuration.isEmpty) { // some accounting: speed of our first catchup
       startupCatchupDuration = Some(System.currentTimeMillis() - startupTimestamp)
     }
   }
 
-  private def applySubrange(subrange: PopulatedSubrange) {
+  private def applySubrange(subrange: PopulatedSubrange): Unit = {
     // for each useful event, send it to the stateSupervisor
     subrange.events.dropWhile(_.sequence < nextSeq).foreach {
       case event =>

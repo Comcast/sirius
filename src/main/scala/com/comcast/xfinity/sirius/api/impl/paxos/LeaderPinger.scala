@@ -18,8 +18,6 @@ package com.comcast.xfinity.sirius.api.impl.paxos
 import akka.actor.{Props, ReceiveTimeout, ActorRef, Actor}
 import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.paxos.LeaderWatcher.{LeaderPong, DifferentLeader, LeaderGone}
-import scala.concurrent.ExecutionContext
-import scala.util.{Failure, Success}
 import scala.language.postfixOps
 
 object LeaderPinger {

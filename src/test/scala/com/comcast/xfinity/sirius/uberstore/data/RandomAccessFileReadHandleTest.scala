@@ -16,13 +16,9 @@
 
 package com.comcast.xfinity.sirius.uberstore.data
 
-import java.io.{EOFException, InputStream, OutputStream, RandomAccessFile}
-import java.nio.ByteBuffer
-import java.nio.file.{Files, Path, StandardOpenOption}
+import java.io.{EOFException, RandomAccessFile}
 
-import com.comcast.xfinity.sirius.NiceTest
 import org.mockito.Mockito._
-import org.scalatest.BeforeAndAfter
 
 import scala.util.Random
 

@@ -18,7 +18,6 @@ package com.comcast.xfinity.sirius.uberstore
 
 import org.scalatest.BeforeAndAfterAll
 import com.comcast.xfinity.sirius.TimedTest
-import akka.actor._
 import com.comcast.xfinity.sirius.NiceTest
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import scala.concurrent.duration._
@@ -32,7 +31,6 @@ import org.mockito.Mockito._
 import org.mockito.ArgumentMatchers._
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.{ChildProvider, CompactionManagerInfoMBean, Compact}
 import akka.util.Timeout
-import scala.Some
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 
 class CompactionManagerTest extends NiceTest with BeforeAndAfterAll with TimedTest {
@@ -124,7 +122,7 @@ class CompactionManagerTest extends NiceTest with BeforeAndAfterAll with TimedTe
 
   }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 }

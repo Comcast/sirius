@@ -45,7 +45,7 @@ class StateSupTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("StateSupTest")
 
-  override def afterAll {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

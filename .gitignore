@@ -19,3 +19,6 @@ atlassian-ide-plugin.xml
 .pydevproject
 *.pyc
 *.dvi
+/.bsp/
+/.metals/
+/.history

@@ -38,11 +38,11 @@ class LatchedRequestHandler(expectedTicks: Int) extends RequestHandler {
     SiriusResult.none()
   }
 
-  def await(timeout: Long, timeUnit: TimeUnit) {
+  def await(timeout: Long, timeUnit: TimeUnit): Unit = {
     latch.await(timeout, timeUnit)
   }
 
-  def resetLatch(newExpectedTicks: Int) {
+  def resetLatch(newExpectedTicks: Int): Unit = {
     latch = new CountDownLatch(newExpectedTicks)
   }
 }

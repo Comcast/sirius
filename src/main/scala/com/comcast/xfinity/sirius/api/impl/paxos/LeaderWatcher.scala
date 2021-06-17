@@ -106,11 +106,11 @@ class LeaderWatcher(replyTo: ActorRef, childProvider: ChildProvider,
       context.stop(self)
   }
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new LeaderWatcherInfo, config)
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     unregisterMonitors(config)
     checkCancellable.cancel()
   }

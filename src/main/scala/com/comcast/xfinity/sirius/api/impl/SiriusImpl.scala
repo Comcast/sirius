@@ -85,7 +85,7 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
    */
   def isOnline: Boolean = !isTerminated && askIfInitialized(supervisor)
 
-  def checkClusterConfig() {
+  def checkClusterConfig(): Unit = {
     supervisor ! CheckClusterConfig
   }
 
@@ -128,14 +128,14 @@ class SiriusImpl(config: SiriusConfiguration, supProps: Props)(implicit val acto
    *
    * @param shutdownHook call by name code to execute
    */
-  def onShutdown(shutdownHook: => Unit) {
+  def onShutdown(shutdownHook: => Unit): Unit = {
     onShutdownHook = Some(() => shutdownHook)
   }
 
   /**
    * Terminate this instance.  Shuts down all associated Actors.
    */
-  def shutdown() {
+  def shutdown(): Unit = {
     actorSystem.stop(supervisor)
     isTerminated = true
     onShutdownHook match {

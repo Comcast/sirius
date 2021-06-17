@@ -26,7 +26,7 @@ import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
 
 object UberToolTest {
   class DummySiriusLog(var events: List[OrderedEvent]) extends SiriusLog {
-    def writeEntry(event: OrderedEvent) {
+    def writeEntry(event: OrderedEvent): Unit = {
       // terribly inefficient, I know, but this is for a test so who cares
       events = events :+ event
     }
@@ -37,12 +37,12 @@ object UberToolTest {
     def getNextSeq: Long =
       throw new IllegalStateException("not implemented")
 
-    def compact {}
+    def compact(): Unit = {}
 
     def size = 0L
   }
 
-  def createTempDir = {
+  def createTempDir: JFile = {
     val tempDirName = "%s/ubertool-test-%s".format(
       System.getProperty("java.io.tmpdir"),
       System.currentTimeMillis()

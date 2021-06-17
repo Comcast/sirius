@@ -45,7 +45,7 @@ trait SeqIndex {
    * @param seq sequence number
    * @param offset offset
    */
-  def put(seq: Long, offset: Long)
+  def put(seq: Long, offset: Long): Unit
 
   /**
    * Get the range of offsets for entries for sequence numbers between
@@ -77,6 +77,6 @@ trait SeqIndex {
    * Close open file handles. This SeqIndex should not be used after
    * close is called.
    */
-  def close()
+  def close(): Unit
 }
 

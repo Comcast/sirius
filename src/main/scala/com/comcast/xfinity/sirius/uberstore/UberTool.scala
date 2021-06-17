@@ -40,7 +40,7 @@ object UberTool {
    *          not modified
    * @param outLog the SiriusLog to copy data into
    */
-  def copyLog(inLog: SiriusLog, outLog: SiriusLog) {
+  def copyLog(inLog: SiriusLog, outLog: SiriusLog): Unit = {
     inLog.foldLeft(())(
       (_, evt) => outLog.writeEntry(evt)
     )
@@ -63,7 +63,7 @@ object UberTool {
    *          to 0, meaning any deletes from 12AM Jan 1, 1970 or
    *          before are completely removed from the log
    */
-  def compact(inLog: SiriusLog, outLog: SiriusLog, deleteCutoff: Long = 0) {
+  def compact(inLog: SiriusLog, outLog: SiriusLog, deleteCutoff: Long = 0): Unit = {
     val toKeep = new MutableHashMap[WrappedArray[Byte], OrderedEvent]
 
     inLog.foldLeft(()) {
@@ -96,7 +96,7 @@ object UberTool {
    *          to 0, meaning any deletes from 12AM Jan 1, 1970 or
    *          before are completely removed from the log
    */
-  def twoPassCompact(inLog: SiriusLog, outLog: SiriusLog, deleteCutoff: Long = 0) {
+  def twoPassCompact(inLog: SiriusLog, outLog: SiriusLog, deleteCutoff: Long = 0): Unit = {
     // Pass 1: get offsets of all keepable events (ie: last delete/put per key)
     val keepableOffsetIterator = gatherKeepableEventOffsets(inLog, deleteCutoff).iterator
 
@@ -134,7 +134,7 @@ object UberTool {
   }
 
   // don't call with an empty iterator- you will have a bad time
-  private def writeKeepableEvents(inLog: SiriusLog, outLog: SiriusLog, toWriteIterator: Iterator[Long]) {
+  private def writeKeepableEvents(inLog: SiriusLog, outLog: SiriusLog, toWriteIterator: Iterator[Long]): Unit = {
     var nextWrite = toWriteIterator.next()
 
     // write events whose positions appear in toWriteIterator

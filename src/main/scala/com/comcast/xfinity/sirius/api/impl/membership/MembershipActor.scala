@@ -104,12 +104,12 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
   var lastResolutionPaths = List[String]()
   var resolutionFailures = 0L
 
-  override def preStart() {
+  override def preStart(): Unit = {
     registerMonitor(new MembershipInfo, config)
     updateMembership()
   }
 
-  override def postStop() {
+  override def postStop(): Unit = {
     configCheckSchedule.cancel()
     unregisterMonitors(config)
   }
@@ -138,7 +138,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
       membershipAgent send (_ + (terminated.path.toString -> None))
   }
 
-  private[membership] def pruneDeadMembers() {
+  private[membership] def pruneDeadMembers(): Unit = {
     val lastPingThreshold = allowedPingFailures * pingInterval.toMillis + pingInterval.toMillis / 2
 
     val expired = lastLivenessDetectedMap.filter { case (_, time) =>
@@ -158,7 +158,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
   /**
    * Creates a MembershipMap from the contents of the clusterConfigPath file.
    */
-  private[membership] def updateMembership() {
+  private[membership] def updateMembership(): Unit = {
     val actorPaths = clusterConfig.members
 
     removeMissingPaths(actorPaths)
@@ -171,7 +171,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
    *
    * @param actorPaths paths for local and remote sirius actors in the cluster
    */
-  def removeMissingPaths(actorPaths: List[String]) {
+  def removeMissingPaths(actorPaths: List[String]): Unit = {
     membershipAgent.get().keys.foreach {
       case key if !actorPaths.contains(key) => membershipAgent send (_ - key)
       case _ =>
@@ -185,7 +185,7 @@ class MembershipActor(membershipAgent: Agent[Map[String, Option[ActorRef]]],
    *
    * @param actorPaths list of actor paths to attempt to resolve
    */
-  def updateActorRefs(actorPaths: List[String]) {
+  def updateActorRefs(actorPaths: List[String]): Unit = {
     val membership = membershipAgent.get()
     val pathsToResolve =  actorPaths.filter(path => !membership.isDefinedAt(path) || membership(path) == None)
     lastResolutionPaths = pathsToResolve

@@ -31,7 +31,7 @@ object UberStoreBinaryFileOpsTest {
   trait FauxChecksummer extends Checksummer {
     var nextChecksum: Long = 0L
 
-    def setNextChecksum(chksum: Long) {
+    def setNextChecksum(chksum: Long): Unit = {
       nextChecksum = chksum
     }
 

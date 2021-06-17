@@ -21,7 +21,6 @@ import org.junit.runner.RunWith
 import akka.agent.Agent
 import com.comcast.xfinity.sirius.{NiceTest, TimedTest}
 import org.scalatest.BeforeAndAfterAll
-import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.api.impl.SiriusSupervisor.CheckPaxosMembership
 import com.comcast.xfinity.sirius.uberstore.CompactionManager.{Compact, CompactionMessage}
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipActor.{GetMembershipData, MembershipMessage}
@@ -74,7 +73,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
 
   var supervisor: TestActorRef[SiriusSupervisor] = _
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 
@@ -97,7 +96,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
     doReturn(Map()).when(mockMembershipAgent).get()
   }
 
-  def initializeSupervisor(supervisor: TestActorRef[SiriusSupervisor]) {
+  def initializeSupervisor(supervisor: TestActorRef[SiriusSupervisor]): Unit = {
     val siriusStateAgent = supervisor.underlyingActor.siriusStateAgent
     siriusStateAgent send SiriusState(supervisorInitialized = false, stateInitialized = true)
     // wait for agent to get updated, just in case
@@ -148,7 +147,7 @@ class SiriusSupervisorTest extends NiceTest with BeforeAndAfterAll with TimedTes
       paxosProbe.expectMsg(delete)
     }
 
-    def initializeOrdering(supervisor: TestActorRef[SiriusSupervisor], expectedActor: Option[ActorRef]) {
+    def initializeOrdering(supervisor: TestActorRef[SiriusSupervisor], expectedActor: Option[ActorRef]): Unit = {
       supervisor ! CheckPaxosMembership
       waitForTrue(supervisor.underlyingActor.orderingActor == expectedActor, 1000, 100)
     }

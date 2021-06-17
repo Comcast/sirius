@@ -48,7 +48,7 @@ class LeaderWatcherTest extends NiceTest with BeforeAndAfterAll {
     TestActorRef(new LeaderWatcher(replyTo, childProvider, new SiriusConfiguration))
   }
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

@@ -18,7 +18,6 @@ package com.comcast.xfinity.sirius.writeaheadlog
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import scala.collection.JavaConverters._
 import java.util.{TreeMap => JTreeMap}
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 object CachedSiriusLog {
   /**
@@ -55,7 +54,7 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
    *
    * @param entry OrderedEvent to write
    */
-  override def writeEntry(entry: OrderedEvent) {
+  override def writeEntry(entry: OrderedEvent): Unit = {
     writeCache.synchronized {
       log.writeEntry(entry)
 
@@ -70,7 +69,7 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
   }
 
   // set seq counters that we use to avoid synchronizing for flow control
-  private def updateSeq(entry: OrderedEvent) {
+  private def updateSeq(entry: OrderedEvent): Unit = {
     if (firstSeq == -1L) {
       firstSeq = entry.sequence
     }
@@ -111,11 +110,11 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
 
   def getNextSeq = log.getNextSeq
 
-  def compact() {
+  def compact(): Unit = {
     log.compact()
   }
 
-  def size() : Long = {
+  def size : Long = {
     log.size
   }
 }

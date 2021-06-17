@@ -39,7 +39,7 @@ object NodeTool {
   // TODO: make configurable via system property
   implicit val timeout: Timeout = 5 seconds
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     try {
       doMain(args)
     } finally {
@@ -48,7 +48,7 @@ object NodeTool {
   }
 
   // put main here to avoid excessive nesting
-  private def doMain(args: Array[String]) {
+  private def doMain(args: Array[String]): Unit = {
     args match {
       case Array("next-seq", nodeId) =>
         val ref = getNodeRef(nodeId)
@@ -140,7 +140,7 @@ object NodeTool {
   }
 
 
-  private def printUsage() {
+  private def printUsage(): Unit = {
     Console.err.println("Usage:")
     Console.err.println("   next-seq <nodeId>")
     Console.err.println("       Get the next sequence number of node identified by nodeId")

@@ -17,7 +17,6 @@ package com.comcast.xfinity.sirius.info
 
 import com.comcast.xfinity.sirius.util.AkkaExternalAddressResolver
 import akka.actor.{ActorSystem, ActorRef}
-import com.comcast.xfinity.sirius.api.SiriusConfiguration
 
 /**
  * Implementation of SiriusInfoMBean

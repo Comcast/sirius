@@ -28,7 +28,7 @@ class ScoutTest extends NiceTest with BeforeAndAfterAll {
 
   implicit val actorSystem = ActorSystem("ScoutTest")
 
-  override def afterAll {
+  override def afterAll(): Unit = {
     actorSystem.terminate()
   }
 

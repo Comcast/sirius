@@ -29,7 +29,7 @@ object SegmentedUberStore {
 
   def versionId: String = "SEGMENTED-1.0"
 
-  def init(location: String) {
+  def init(location: String): Unit = {
     val dir = new JFile(location)
     dir.mkdirs()
 
@@ -42,7 +42,7 @@ object SegmentedUberStore {
    *
    * @param location location of SegmentedUberStore
    */
-  def repair(location: String) {
+  def repair(location: String): Unit = {
     val dir = new JFile(location)
 
     val baseNames = dir.listFiles.filter(_.getName.contains(".")).foldLeft(Set[String]())(
@@ -119,7 +119,7 @@ class SegmentedUberStore private[segmented] (base: JFile,
   /**
    * @inheritdoc
    */
-  def writeEntry(event: OrderedEvent) {
+  def writeEntry(event: OrderedEvent): Unit = {
     if (event.sequence < nextSeq) {
       throw new IllegalArgumentException("May not write event out of order, expected sequence " + nextSeq + " but received " + event.sequence)
     }
@@ -151,7 +151,7 @@ class SegmentedUberStore private[segmented] (base: JFile,
    * Close underlying file handles or connections.  This SegmentedUberStore should not be used after
    * close is called.
    */
-  def close() {
+  def close(): Unit = {
     liveDir.close()
     readOnlyDirs.foreach(_.close())
   }
@@ -166,7 +166,7 @@ class SegmentedUberStore private[segmented] (base: JFile,
   /**
    * Initialize liveDir, readOnlyDir, and nextSeq
    */
-  private def init() {
+  private def init(): Unit = {
     val segments = listSegments(base)
 
     groupSegments(base, segments) match {
@@ -231,7 +231,7 @@ class SegmentedUberStore private[segmented] (base: JFile,
   /**
    * Compact readOnlyDirs until they can be compacted no longer.
    */
-  private[segmented] def compactAll() {
+  private[segmented] def compactAll(): Unit = {
     for (toCompact <- segmentedCompactor.findInternalCompactionCandidates(readOnlyDirs)) {
       val compactedLocation = segmentedCompactor.compactInternally(toCompact)
       replaceSegment(toCompact, compactedLocation) // mutates readOnlyDirs
@@ -258,7 +258,7 @@ class SegmentedUberStore private[segmented] (base: JFile,
    * Merge readOnlyDirs until they can be merged no longer.
    */
   @tailrec
-  private[segmented] final def merge() {
+  private[segmented] final def merge(): Unit = {
     segmentedCompactor.findNextMergeableSegments(readOnlyDirs, isMergeable) match {
       case Some((left, right)) =>
         val merged = new JFile(base, "%s-%s.merged".format(left.name, right.name))

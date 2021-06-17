@@ -61,7 +61,7 @@ import scala.language.postfixOps
  */
 object WalTool {
 
-  private def printUsage() {
+  private def printUsage(): Unit = {
     Console.err.println("Usage:")
     Console.err.println("   compact [two-pass] <inWalDir> <outWalDir>")
     Console.err.println("       Compact UberStore in inWalDir into new UberStore in outWalDir")
@@ -128,7 +128,7 @@ object WalTool {
     Console.err.println("       space and marks it appropriately.")
   }
 
-  def main(args: Array[String]) {
+  def main(args: Array[String]): Unit = {
     args match {
       case Array("compact", inWalDirName, outWalDirName) =>
         compact(inWalDirName, outWalDirName, false)
@@ -209,7 +209,7 @@ object WalTool {
    *
    * @param walDirName directory of the segmented uberstore
    */
-  private def compactSegmented(walDirName: String) {
+  private def compactSegmented(walDirName: String): Unit = {
     val uberstore = SegmentedUberStore(walDirName)
     uberstore.compact()
   }
@@ -222,7 +222,7 @@ object WalTool {
    * @param twoPass true to use slower, more memory efficient twoPass algorithm,
    *          false to use faster, more memory intensive algorithm
    */
-  private def compact(inWalDirName: String, outWalDirName: String, twoPass: Boolean) {
+  private def compact(inWalDirName: String, outWalDirName: String, twoPass: Boolean): Unit = {
     // create dir first because UberStore instantiation can take some time
     createFreshDir(outWalDirName)
 
@@ -237,7 +237,7 @@ object WalTool {
    *
    * Compact inWal into outWal using twoPass algorithm if specified
    */
-  private def doCompact(inWal: SiriusLog, outWal: SiriusLog, twoPass: Boolean) {
+  private def doCompact(inWal: SiriusLog, outWal: SiriusLog, twoPass: Boolean): Unit = {
     val cutoff = {
       // unofficial hidden feature, just in case there is some situation we don't
       // want to not compact away old deletes without recompiling
@@ -258,7 +258,7 @@ object WalTool {
    * Create a directory only if it does not exist, throw
    * an Exception otherwise
    */
-  private def createFreshDir(dirName: String) {
+  private def createFreshDir(dirName: String): Unit = {
     val dir = new File(dirName)
     if (dir.exists()) {
       throw new Exception(dirName + " already exists")
@@ -275,7 +275,7 @@ object WalTool {
    * @param inDirName location of UberStore
    * @param number number of lines to print, default 20
    */
-  private def tailUber(inDirName: String, number: Int = 20) {
+  private def tailUber(inDirName: String, number: Int = 20): Unit = {
     val wal = siriusLog(inDirName)
     val seq = wal.getNextSeq - 1
 
@@ -289,7 +289,7 @@ object WalTool {
    * @param first first seq to print
    * @param last last seq to print
    */
-  private def printSeq(wal: SiriusLog, first: Long, last: Long) {
+  private def printSeq(wal: SiriusLog, first: Long, last: Long): Unit = {
     wal.foldLeftRange(first, last)(())((_, event) =>
       OrderedEventFormatter.printEvent(event)
     )
@@ -321,7 +321,7 @@ object WalTool {
     }
   }
 
-  private def keyList(inWal:String, outFile:String){
+  private def keyList(inWal:String, outFile:String): Unit = {
     val wal: SiriusLog = siriusLog(inWal)
     val keySet = Set[WrappedArray[Byte]]()
     wal.foreach(_.request match {
@@ -341,7 +341,7 @@ object WalTool {
 
    }
 
-  private def keyListFilter(inWal:String, outFile:String, pred: OrderedEvent => Boolean){
+  private def keyListFilter(inWal:String, outFile:String, pred: OrderedEvent => Boolean): Unit = {
     val wal  = siriusLog(inWal)
     val keySet = scala.collection.mutable.Set[WrappedArray[Byte]]()
     wal.foreach( _ match {
@@ -370,7 +370,7 @@ object WalTool {
    * @param inUberDir input UberStore directory
    * @param outUberDir output UberStore directory
    */
-  private def filterDeletesOlderThan(inUberDir: String, outUberDir: String, earliestTimestamp: Long) {
+  private def filterDeletesOlderThan(inUberDir: String, outUberDir: String, earliestTimestamp: Long): Unit = {
     createFreshDir(outUberDir)
 
     val inWal = siriusLog(inUberDir)
@@ -406,7 +406,7 @@ object WalTool {
    * @param pred function taking an OrderedEvent and returning true if
    *          it should be included, false if not
    */
-  private def filter(inUberDir: String, outUberDir: String, pred: OrderedEvent => Boolean) {
+  private def filter(inUberDir: String, outUberDir: String, pred: OrderedEvent => Boolean): Unit = {
     createFreshDir(outUberDir)
 
     val inWal = siriusLog(inUberDir)
@@ -430,7 +430,7 @@ object WalTool {
    * @param pred function taking an OrderedEvent and returning true if
    *          it should be included, false if not
    */
-  private def filter(inWal: SiriusLog, outWal: SiriusLog, pred: OrderedEvent => Boolean) {
+  private def filter(inWal: SiriusLog, outWal: SiriusLog, pred: OrderedEvent => Boolean): Unit = {
     inWal.foreach {
       case evt if pred(evt) => outWal.writeEntry(evt)
       case _ =>
@@ -444,7 +444,7 @@ object WalTool {
    * @param outLoc location of output (Segmented) WAL
    * @param segmentSize number of entries per WAL segment
    */
-  private def convertToSegmented(inLoc: String, outLoc: String, segmentSize: Long) {
+  private def convertToSegmented(inLoc: String, outLoc: String, segmentSize: Long): Unit = {
     val config = new SiriusConfiguration
     config.setProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, segmentSize)
 
@@ -462,7 +462,7 @@ object WalTool {
    * @param inLoc location of input (Segmented) WAL
    * @param outLoc location of output (Legacy) WAL
    */
-  private def convertToLegacy(inLoc: String, outLoc: String) {
+  private def convertToLegacy(inLoc: String, outLoc: String): Unit = {
     val in = SegmentedUberStore(inLoc)
     val out = UberStore(outLoc)
 
@@ -474,7 +474,7 @@ object WalTool {
    *
    * @param walLoc location of new WAL
    */
-  private def initSegmented(walLoc: String) {
+  private def initSegmented(walLoc: String): Unit = {
     SegmentedUberStore.init(walLoc)
   }
 
@@ -490,7 +490,7 @@ object WalTool {
    * @param concurrency approximate concurrency desired
    */
   // TODO pull parts of this out into UberTool
-  private def replay(inWalDir: String, host: String, concurrency: Int) {
+  private def replay(inWalDir: String, host: String, concurrency: Int): Unit = {
     Console.err.println("Initializing with " + concurrency + " Actors")
     val confString = """
                 akka.actor.default-dispatcher{
@@ -515,7 +515,7 @@ object WalTool {
 
     val walAccumulator = inWal.foldLeft(WalAccumulator(0, List[Future[(Result)]]())) {
       case (acc: WalAccumulator, evt) => {
-        def printResultsByErrorCode(cntByStatusCodeMap: Map[Int, Int], out: OutputStream) {
+        def printResultsByErrorCode(cntByStatusCodeMap: Map[Int, Int], out: OutputStream): Unit = {
           Console.err.println
           if (!cntByStatusCodeMap.isEmpty) {
             Console.err.println("Response Counts by Code")

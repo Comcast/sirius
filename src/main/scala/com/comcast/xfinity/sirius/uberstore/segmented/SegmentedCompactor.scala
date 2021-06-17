@@ -153,7 +153,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long, buildSegm
    * @param source source segment, to be GC'ed
    * @param dest destination segment, empty, will be populated
    */
-  private def compactSegment(keys: Set[String], source: Segment, dest: Segment) {
+  private def compactSegment(keys: Set[String], source: Segment, dest: Segment): Unit = {
 
     // The earliest timestamp for a Delete to remain.  Deletes with an earlier timestamp will be purged.
     // By default maxDeleteAgeMillis is really big so no Deletes will be purged.
@@ -189,7 +189,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long, buildSegm
    *
    * @param segment segment to permanently delete
    */
-  def delete(segment: Segment) {
+  def delete(segment: Segment): Unit = {
     segment.close()
     File(segment.location.getAbsolutePath).delete()
   }
@@ -201,7 +201,7 @@ private [segmented] class SegmentedCompactor(maxDeleteAgeMillis: Long, buildSegm
    * @param right second source segment
    * @param targetFile location where to write the files. This probably should not already exist.
    */
-  def mergeSegments(left: Segment, right: Segment, targetFile: JFile) {
+  def mergeSegments(left: Segment, right: Segment, targetFile: JFile): Unit = {
     val target = buildSegment(targetFile)
     left.foreach(target.writeEntry)
     right.foreach(target.writeEntry)

@@ -49,7 +49,7 @@ object UberPair {
    * @param index the SeqIndex to update
    * @param dataFile the UberDataFile to update
    */
-  private[uberstore] def repairIndex(index: SeqIndex, dataFile: UberDataFile) {
+  private[uberstore] def repairIndex(index: SeqIndex, dataFile: UberDataFile): Unit = {
     val (includeFirst, lastOffset) = index.getMaxSeq match {
       case None => (true, 0L)
       case Some(seq) => (false, index.getOffsetFor(seq).get) // has to exist
@@ -81,7 +81,7 @@ object UberPair {
  */
 class UberPair(dataFile: UberDataFile, index: SeqIndex) {
 
-  def writeEntry(event: OrderedEvent) {
+  def writeEntry(event: OrderedEvent): Unit = {
     if (isClosed) {
       throw new IllegalStateException("Attempting to write to closed UberStoreFilePair")
     }
@@ -111,7 +111,7 @@ class UberPair(dataFile: UberDataFile, index: SeqIndex) {
    * Close underlying file handles or connections.  This UberStoreFilePair should not be used after
    * close is called.
    */
-  def close() {
+  def close(): Unit = {
     if (!dataFile.isClosed) {
       dataFile.close()
     }
@@ -129,7 +129,7 @@ class UberPair(dataFile: UberDataFile, index: SeqIndex) {
   def isClosed =
     dataFile.isClosed || index.isClosed
 
-  override def finalize() {
+  override def finalize(): Unit = {
     close()
   }
 }

@@ -67,7 +67,7 @@ class UberStore private[uberstore] (baseDir: String, uberpair: UberPair) extends
   /**
    * @inheritdoc
    */
-  def writeEntry(event: OrderedEvent) {
+  def writeEntry(event: OrderedEvent): Unit = {
     uberpair.writeEntry(event)
   }
 
@@ -86,7 +86,7 @@ class UberStore private[uberstore] (baseDir: String, uberpair: UberPair) extends
    * Close underlying file handles or connections.  This UberStore should not be used after
    * close is called.
    */
-  def close() {
+  def close(): Unit = {
     uberpair.close()
   }
 
@@ -98,7 +98,7 @@ class UberStore private[uberstore] (baseDir: String, uberpair: UberPair) extends
    */
   def isClosed = uberpair.isClosed
 
-  def compact() {
+  def compact(): Unit = {
     // do nothing, don't use compact() on legacy uberstore
   }
 

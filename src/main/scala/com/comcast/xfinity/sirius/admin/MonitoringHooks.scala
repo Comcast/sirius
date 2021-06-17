@@ -46,7 +46,7 @@ trait MonitoringHooks {
    * @param context the ActorContext this is run from, note it is necessary that this
    *          is run within an Actor for this to be available
    */
-  def registerMonitor(mbean: => Any, siriusConfig: SiriusConfiguration)(implicit context: ActorContext) {
+  def registerMonitor(mbean: => Any, siriusConfig: SiriusConfiguration)(implicit context: ActorContext): Unit = {
     siriusConfig.getProp[MBeanServer](SiriusConfiguration.MBEAN_SERVER) match {
       case Some(mbeanServer) =>
         val objectName = objectNameHelper.getObjectName(mbean, context.self, context.system)(siriusConfig)
@@ -62,7 +62,7 @@ trait MonitoringHooks {
    * @param siriusConfig Sirius's configuration, from which it is decided
    *          if mbean should be registered as an MBean
    */
-  def unregisterMonitors(siriusConfig: SiriusConfiguration) {
+  def unregisterMonitors(siriusConfig: SiriusConfiguration): Unit = {
     siriusConfig.getProp[MBeanServer]("sirius.monitoring.mbean-server") match {
       case Some(mbeanServer) =>
         objectNames.foreach(mbeanServer.unregisterMBean(_))

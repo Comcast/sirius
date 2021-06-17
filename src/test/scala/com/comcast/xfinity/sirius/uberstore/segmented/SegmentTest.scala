@@ -60,7 +60,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   def buildSegment(base: JFile, name: String) =
     Segment(base, name, fileHandleFactory)
 
-  override def afterAll() {
+  override def afterAll(): Unit = {
     File(tempDir.getPath).delete()
   }
   describe("writeEntry") {
