@@ -82,7 +82,7 @@ homepage := Some(url("https://github.com/Comcast/sirius"))
 scmInfo := Some(ScmInfo(url("https://github.com/Comcast/sirius"), "git@github.com:Comcast/sirius.git"))
 developers := List(Developer("jryan128",
   "Jonathan Ryan",
-  "jonathan_ryan@comcast.com",
+  "jonathan.ryan@jryan.io",
   url("https://github.com/jryan128")))
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 publishMavenStyle := true
