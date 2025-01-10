@@ -17,12 +17,12 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         scala: [2.13.15, 2.12.20, 2.11.12]
-        java: [adopt@1.21, adopt@1.17, adopt@1.11, adopt@1.8]
+        java: [adopt@1.11, adopt@1.8]
         experimental: [false]
         include:
           - os: ubuntu-latest
             scala: 2.13.15
-            java: adopt@1.21
+            java: adopt@1.11
             experimental: true
     runs-on: ${{ matrix.os }}
     steps:
