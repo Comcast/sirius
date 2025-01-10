@@ -95,11 +95,11 @@ publishTo := sonatypePublishToBundle.value
 
 pomIncludeRepository := { _ => false }
 
-publishArtifact in Test := false
+Test / publishArtifact := false
 
-testOptions in Test += Tests.Argument("-oD")
+Test / testOptions += Tests.Argument("-oD")
 
-scoverage.ScoverageKeys.coverageMinimum := 75
+scoverage.ScoverageKeys.coverageMinimumStmtTotal := 75
 
 scoverage.ScoverageKeys.coverageFailOnMinimum := true
 
@@ -115,8 +115,8 @@ lazy val root = (project in file("."))
             val binDir = packageDir / "bin"
 
             // Move artifact and dependencies into lib directory in test package
-            val compilePackageBin = (packageBin in Compile).value
-            val compileDependencyClasspath = (dependencyClasspath in Compile).value
+            val compilePackageBin = (Compile / packageBin).value
+            val compileDependencyClasspath = (Compile / dependencyClasspath).value
             val files = compilePackageBin +: (for (dep <- compileDependencyClasspath) yield dep.data)
             for (file <- files) {
               IO.copyFile(file, libDir / file.getName)
