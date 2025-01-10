@@ -121,12 +121,13 @@ class StateSup(requestHandler: RequestHandler,
       case _ =>
         val start = System.currentTimeMillis
         logger.info("Beginning SiriusLog replay at {}", start)
+        requestHandler.onBootstrapStarting()
         siriusLog.foreach(
           orderedEvent =>
             try {
               orderedEvent.request match {
-                case Put(key, body) => requestHandler.handlePut(key, body)
-                case Delete(key) => requestHandler.handleDelete(key)
+                case Put(key, body) => requestHandler.handlePut(orderedEvent.sequence, key, body)
+                case Delete(key) => requestHandler.handleDelete(orderedEvent.sequence, key)
               }
             } catch {
               case rte: RuntimeException =>
@@ -134,6 +135,7 @@ class StateSup(requestHandler: RequestHandler,
                 logger.error("Exception replaying {}: {}", orderedEvent, rte)
             }
         )
+        requestHandler.onBootstrapComplete()
         val totalBootstrapTime = System.currentTimeMillis - start
         bootstrapTime = Some(totalBootstrapTime)
         logger.info("Replayed SiriusLog in {}ms", totalBootstrapTime)

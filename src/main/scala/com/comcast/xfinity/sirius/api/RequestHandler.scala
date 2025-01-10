@@ -53,6 +53,21 @@ trait RequestHandler {
   def handlePut(key: String, body: Array[Byte]): SiriusResult
 
   /**
+   * Handle a PUT request
+   *
+   * @param sequence the sequence number of the event
+   * @param key unique identifier for the item to which the
+   *          operation is being applied
+   * @param body data passed in along with this request used
+   *          for modifying the state at key
+   *
+   * @return a SiriusResult wrapping the result of the operation.
+   *          This should almost always be SiriusResult.none().
+   *          In the future the API may be modified to return void.
+   */
+  def handlePut(sequence: Long, key: String, body: Array[Byte]): SiriusResult = handlePut(key, body)
+
+  /**
    * Handle a DELETE request
    *
    * @param key unique identifier for the item to which the
@@ -64,4 +79,26 @@ trait RequestHandler {
    */
   def handleDelete(key: String): SiriusResult
 
+  /**
+   * Handle a DELETE request
+   *
+   * @param sequence the sequence number of the event
+   * @param key unique identifier for the item to which the
+   *          operation is being applied
+   *
+   * @return a SiriusResult wrapping the result of the operation.
+   *          This should almost always be SiriusResult.none().
+   *          In the future the API may be modified to return void.
+   */
+  def handleDelete(sequence: Long, key: String): SiriusResult = handleDelete(key)
+
+  /**
+   * Indicates that the Sirius bootstrap from the Uberstore is starting
+   */
+  def onBootstrapStarting(): Unit = { }
+
+  /**
+   * Indicates that the Sirius bootstrap from Uberstore has completed
+   */
+  def onBootstrapComplete(): Unit = { }
 }
