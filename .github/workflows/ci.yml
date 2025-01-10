@@ -17,7 +17,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         scala: [2.13.15, 2.12.20, 2.11.12]
-        java: [temurin@1.21, temurin@1.17, temurin@1.11, temurin@1.8]
+        java: [amazon-corretto@1.21, amazon-corretto@1.17, amazon-corretto@1.11, amazon-corretto@1.8]
         experimental: [false]
         include:
           - os: ubuntu-latest
