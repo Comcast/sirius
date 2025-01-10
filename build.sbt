@@ -16,10 +16,10 @@ import java.lang.{Runtime => JRuntime}
 
 name := "sirius"
 
-version := "2.3.0"
+version := "2.4.0"
 
-scalaVersion := "2.13.6"
-crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6") // NOTE: keep sync'd with .travis.yml
+scalaVersion := "2.13.15"
+crossScalaVersions := Seq("2.11.12", "2.12.20", "2.13.15") // NOTE: keep sync'd with .travis.yml
 
 organization := "com.comcast"
 
