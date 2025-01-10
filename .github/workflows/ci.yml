@@ -17,12 +17,12 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         scala: [2.13.15, 2.12.20, 2.11.12]
-        java: [adopt@1.11, adopt@1.8]
+        java: [temurin@1.21, temurin@1.17, temurin@1.11, temurin@1.8]
         experimental: [false]
         include:
           - os: ubuntu-latest
             scala: 2.13.15
-            java: adopt@1.16
+            java: adopt@1.21
             experimental: true
     runs-on: ${{ matrix.os }}
     steps:
@@ -32,7 +32,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Java and Scala
-        uses: olafurpg/setup-scala@v12
+        uses: olafurpg/setup-scala@v14
         with:
           java-version: ${{ matrix.java }}
 
