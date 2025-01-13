@@ -18,8 +18,8 @@ name := "sirius"
 
 version := "2.3.0"
 
-scalaVersion := "2.13.6"
-crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6") // NOTE: keep sync'd with .travis.yml
+scalaVersion := "2.13.15"
+crossScalaVersions := Seq("2.11.12", "2.12.20", "2.13.15") // NOTE: keep sync'd with .ci.yml
 
 organization := "com.comcast"
 
@@ -95,11 +95,11 @@ publishTo := sonatypePublishToBundle.value
 
 pomIncludeRepository := { _ => false }
 
-publishArtifact in Test := false
+Test / publishArtifact := false
 
-testOptions in Test += Tests.Argument("-oD")
+Test / testOptions += Tests.Argument("-oD")
 
-scoverage.ScoverageKeys.coverageMinimum := 75
+scoverage.ScoverageKeys.coverageMinimumStmtTotal := 75
 
 scoverage.ScoverageKeys.coverageFailOnMinimum := true
 
@@ -115,8 +115,8 @@ lazy val root = (project in file("."))
             val binDir = packageDir / "bin"
 
             // Move artifact and dependencies into lib directory in test package
-            val compilePackageBin = (packageBin in Compile).value
-            val compileDependencyClasspath = (dependencyClasspath in Compile).value
+            val compilePackageBin = (Compile / packageBin).value
+            val compileDependencyClasspath = (Compile / dependencyClasspath).value
             val files = compilePackageBin +: (for (dep <- compileDependencyClasspath) yield dep.data)
             for (file <- files) {
               IO.copyFile(file, libDir / file.getName)
