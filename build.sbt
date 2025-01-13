@@ -19,7 +19,7 @@ name := "sirius"
 version := "2.3.0"
 
 scalaVersion := "2.13.15"
-crossScalaVersions := Seq("2.11.12", "2.12.20", "2.13.15") // NOTE: keep sync'd with .ci.yml
+crossScalaVersions := Seq("2.12.20", "2.13.15") // NOTE: keep sync'd with .ci.yml
 
 organization := "com.comcast"
 
