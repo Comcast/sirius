@@ -16,25 +16,25 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        scala: [2.13.6, 2.12.14, 2.11.12]
-        java: [adopt@1.11, adopt@1.8]
+        scala: [2.13.16, 2.12.20]
+        java: [8, 11, 17, 21]
         experimental: [false]
-        include:
-          - os: ubuntu-latest
-            scala: 2.13.6
-            java: adopt@1.16
-            experimental: true
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout current branch (full)
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Setup Java and Scala
-        uses: olafurpg/setup-scala@v12
+      - name: Setup JDK
+        uses: actions/setup-java@v4
         with:
+          distribution: temurin
           java-version: ${{ matrix.java }}
+
+      - name: Setup sbt launcher
+        uses: sbt/setup-sbt@v1
 
       - name: Cache ivy2
         uses: actions/cache@v1
@@ -55,11 +55,12 @@ jobs:
           key: ${{ runner.os }}-sbt-cache-${{ hashFiles('**/*.sbt') }}-${{ hashFiles('project/build.properties') }}
 
       - name: Run tests
-        run: sbt clean coverage test coverageReport
+        run: sbt '++ ${{ matrix.scala }}' clean coverage test coverageReport
+
       - name: Coverage Aggregate
         run: sbt coverageAggregate
 
       - name: Codecov
         uses: codecov/codecov-action@v1
         with:
-          fail_ci_if_error: true
+          fail_ci_if_error: false
