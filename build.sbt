@@ -18,7 +18,7 @@ name := "sirius"
 
 version := "2.4.0"
 
-scalaVersion := "2.13.6"
+scalaVersion := "2.12.14"
 crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6") // NOTE: keep sync'd with .travis.yml
 
 organization := "com.comcast"
@@ -48,6 +48,15 @@ libraryDependencies ++= {
     "log4j"                         %  "log4j"                          % "1.2.17"    % Test,
     "com.typesafe.akka"             %% "akka-testkit"                   % akkaV       % Test
   )
+}
+
+libraryDependencies ++= {
+  CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, major)) if major <= 12 =>
+      Seq("org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0")
+    case _ =>
+      Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4")
+  }
 }
 
 // Set the artifact names.

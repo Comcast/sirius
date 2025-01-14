@@ -34,7 +34,15 @@ trait SiriusLog {
    *
    * @param fun function to apply
    */
-  def foreach[T](fun: OrderedEvent => T): Unit = foldLeft(())((_, e) => fun(e))
+  def foreach[T](fun: OrderedEvent => T): Unit = foreach[T](parallel = false, fun)
+
+  /**
+   * Apply fun to each entry in the log, optionally parallel and out of order
+   *
+   * @param parallel scan in parallel and out of order
+   * @param fun function to apply
+   */
+  def foreach[T](parallel: Boolean, fun: OrderedEvent => T): Unit = foldLeft(())((_, e) => fun(e))
 
   /**
    * Fold left across the log entries

@@ -16,7 +16,6 @@
 package com.comcast.xfinity.sirius.uberstore.segmented
 
 import java.io.{File => JFile}
-
 import better.files.File
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
@@ -135,6 +134,15 @@ class SegmentedUberStore private[segmented] (base: JFile,
    * @inheritdoc
    */
   def getNextSeq = nextSeq
+
+  override def foreach[T](parallel: Boolean, fun: OrderedEvent => T): Unit =
+    if (parallel) parallelForeach(fun) else foldLeft(())((_, e) => fun(e))
+
+  private def parallelForeach[T](fun: OrderedEvent => T): Unit = {
+    ParallelHelpers.parallelize(liveDir :: readOnlyDirs).foldLeft(())(
+      (_, dir) => dir.foldLeftRange(0, Long.MaxValue)(())((_, e) => fun(e))
+    )
+  }
 
   /**
    * @inheritdoc
