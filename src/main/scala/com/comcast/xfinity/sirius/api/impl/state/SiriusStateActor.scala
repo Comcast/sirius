@@ -48,24 +48,31 @@ class SiriusStateActor(requestHandler: RequestHandler) extends Actor {
   val logger = Logging(context.system, "Sirius")
   
   def receive = {
-    case req: SiriusRequest =>
+    case orderedEvent: OrderedEvent =>
+      sender ! processSafely(orderedEvent.request) {
+        orderedEvent.request match {
+          case Put(key, body) => requestHandler.handlePut(orderedEvent.sequence, key, body)
+          case Delete(key) => requestHandler.handleDelete(orderedEvent.sequence, key)
+        }
+      }
+    case request: SiriusRequest =>
       // XXX: With the way things work now, we probably shouldn't
       //      be responding to Puts and Deletes...  These are
       //      responded to when an order has been decided on
-      sender ! processSiriusRequestSafely(req)
+      sender ! processSafely(request) {
+        request match {
+          case Get(key) => requestHandler.handleGet(key)
+          case Put(key, body) => requestHandler.handlePut(key, body)
+          case Delete(key) => requestHandler.handleDelete(key)
+        }
+      }
   }
 
-  private def processSiriusRequestSafely(req: SiriusRequest): SiriusResult = {
-    try {
-      req match {
-        case Get(key) => requestHandler.handleGet(key)
-        case Delete(key) => requestHandler.handleDelete(key)
-        case Put(key, body) => requestHandler.handlePut(key, body)
-      }
-    } catch {
-      case e: RuntimeException =>
-        logger.warning("Unhandled exception in handling {}: {}", req, e)
-        SiriusResult.error(e)
-    }
+  private def processSafely(req: SiriusRequest)(f: => SiriusResult) = try {
+    f
+  } catch {
+    case e: RuntimeException =>
+      logger.warning("Unhandled exception in handling {}: {}", req, e)
+      SiriusResult.error(e)
   }
 }
