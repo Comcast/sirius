@@ -135,11 +135,8 @@ class SegmentedUberStore private[segmented] (base: JFile,
    */
   def getNextSeq = nextSeq
 
-  override def foreach[T](parallel: Boolean, fun: OrderedEvent => T): Unit =
-    if (parallel) parallelForeach(fun) else foldLeft(())((_, e) => fun(e))
-
-  private def parallelForeach[T](fun: OrderedEvent => T): Unit = {
-    ParallelHelpers.parallelize(liveDir :: readOnlyDirs).foldLeft(())(
+  override def parallelForeach[T](fun: OrderedEvent => T): Unit = {
+    ParallelHelpers.parallelize(readOnlyDirs ::: liveDir :: Nil).foldLeft(())(
       (_, dir) => dir.foldLeftRange(0, Long.MaxValue)(())((_, e) => fun(e))
     )
   }
