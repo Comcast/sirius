@@ -18,7 +18,7 @@ name := "sirius"
 
 version := "2.4.0"
 
-scalaVersion := "2.12.14"
+scalaVersion := "2.13.6"
 crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6") // NOTE: keep sync'd with .travis.yml
 
 organization := "com.comcast"
@@ -53,7 +53,7 @@ libraryDependencies ++= {
 libraryDependencies ++= {
   CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, major)) if major <= 12 =>
-      Seq("org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0")
+      Seq()
     case _ =>
       Seq("org.scala-lang.modules" %% "scala-parallel-collections" % "1.0.4")
   }
