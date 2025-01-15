@@ -86,8 +86,10 @@ object SegmentedUberStore {
     val MAX_EVENTS_PER_SEGMENT = siriusConfig.getProp(SiriusConfiguration.LOG_EVENTS_PER_SEGMENT, 1000000L)
 
     val fileHandleFactory = UberDataFileHandleFactory(siriusConfig)
+    val skipChecksumValidation = siriusConfig.getProp(SiriusConfiguration.LOG_SKIP_CHECKSUM_VALIDATION, false)
+    val validateChecksum = !skipChecksumValidation
 
-    def buildSegment(location: JFile) = Segment(location, fileHandleFactory)
+    def buildSegment(location: JFile) = Segment(location, fileHandleFactory, validateChecksum)
     val segmentedCompactor = SegmentedCompactor(siriusConfig, buildSegment)
 
     new SegmentedUberStore(new JFile(base), MAX_EVENTS_PER_SEGMENT, segmentedCompactor, buildSegment)

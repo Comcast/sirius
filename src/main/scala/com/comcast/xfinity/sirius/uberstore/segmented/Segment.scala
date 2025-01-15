@@ -30,8 +30,8 @@ object Segment {
    *
    * @return an Segment instance, fully repaired and usable
    */
-  def apply(base: File, name: String, fileHandleFactory: UberDataFileHandleFactory): Segment = {
-    apply(new File(base, name), fileHandleFactory)
+  def apply(base: File, name: String, fileHandleFactory: UberDataFileHandleFactory, validateChecksum: Boolean = true): Segment = {
+    apply(new File(base, name), fileHandleFactory, validateChecksum)
   }
 
   /**
@@ -42,7 +42,7 @@ object Segment {
    *
    * @return an Segment instance, fully repaired and usable
    */
-  def apply(location: File, fileHandleFactory: UberDataFileHandleFactory): Segment = {
+  def apply(location: File, fileHandleFactory: UberDataFileHandleFactory, validateChecksum: Boolean = true): Segment = {
     location.mkdirs()
 
     val dataFile = new File(location, "data")
@@ -50,7 +50,7 @@ object Segment {
     val compactionFlagFile = new File(location, "keys-collected")
     val internalCompactionFlagFile = new File(location, "internally-compacted")
 
-    val data = UberDataFile(dataFile.getAbsolutePath, fileHandleFactory)
+    val data = UberDataFile(dataFile.getAbsolutePath, fileHandleFactory, validateChecksum)
     val index = DiskOnlySeqIndex(indexFile.getAbsolutePath)
     val compactionFlag = FlagFile(compactionFlagFile.getAbsolutePath)
     val internalCompactionFlag = FlagFile(internalCompactionFlagFile.getAbsolutePath)

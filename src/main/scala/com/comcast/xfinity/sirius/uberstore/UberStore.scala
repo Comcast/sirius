@@ -39,8 +39,10 @@ object UberStore {
     }
 
     val fileHandleFactory = UberDataFileHandleFactory(siriusConfig)
+    val skipChecksumValidation = siriusConfig.getProp(SiriusConfiguration.LOG_SKIP_CHECKSUM_VALIDATION, false)
+    val validateChecksum = !skipChecksumValidation
 
-    new UberStore(baseDir, UberPair(baseDir, 1L, fileHandleFactory))
+    new UberStore(baseDir, UberPair(baseDir, 1L, fileHandleFactory, validateChecksum))
   }
 
   /**

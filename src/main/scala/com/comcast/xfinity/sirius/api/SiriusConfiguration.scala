@@ -313,6 +313,11 @@ object SiriusConfiguration {
    * Whether or not to bootstrap the log in parallel, only applies to segmented uberstores
    */
   final val LOG_PARALLEL_ENABLED = "sirius.log.parallel-enabled"
+
+  /**
+   * Whether to skip checksum validation when reading events from the log
+   */
+  final val LOG_SKIP_CHECKSUM_VALIDATION = "sirius.log.skip-checksum-validation"
 }
 
 /**

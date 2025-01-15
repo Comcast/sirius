@@ -16,7 +16,7 @@
 package com.comcast.xfinity.sirius.uberstore.data
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
-import com.comcast.xfinity.sirius.uberstore.common.Fnv1aChecksummer
+import com.comcast.xfinity.sirius.uberstore.common.{Fnv1aChecksummer, SkipValidationChecksummer}
 
 import scala.annotation.tailrec
 
@@ -35,8 +35,11 @@ object UberDataFile {
    *
    * @return fully constructed UberDataFile
    */
-  def apply(dataFileName: String, fileHandleFactory: UberDataFileHandleFactory): UberDataFile = {
-    val fileOps = new UberStoreBinaryFileOps with Fnv1aChecksummer
+  def apply(dataFileName: String, fileHandleFactory: UberDataFileHandleFactory, validateChecksum: Boolean): UberDataFile = {
+    val fileOps = if (validateChecksum)
+      new UberStoreBinaryFileOps with Fnv1aChecksummer
+    else
+      new UberStoreBinaryFileOps with Fnv1aChecksummer with SkipValidationChecksummer
     val codec = new BinaryEventCodec
     new UberDataFile(dataFileName, fileHandleFactory, fileOps, codec)
   }

@@ -53,7 +53,7 @@ class UberStoreBinaryFileOps extends UberStoreFileOps {
     } else {
       val (bodyLen, chksum) = readHeader(readHandle)
       val body = readBody(readHandle, bodyLen)
-      if (chksum == checksum(body)) {
+      if (validate(body, chksum)) {
         Some(body) // [that i used to know | to love]
       } else {
         throw new IllegalStateException("File corrupted at offset " + readHandle.offset())
