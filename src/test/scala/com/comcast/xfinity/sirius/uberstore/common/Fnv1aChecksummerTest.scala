@@ -32,4 +32,9 @@ class Fnv1aChecksummerTest extends NiceTest {
     val referenceBytes = "http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash".getBytes
     assert(-2758076559093427003L === underTest.checksum(referenceBytes))
   }
+
+  it ("validates the checksum") {
+    val referenceBytes = "http://en.wikipedia.org/wiki/Fowler_Noll_Vo_hash".getBytes
+    assert(true === underTest.validate(referenceBytes, -2758076559093427003L))
+  }
 }

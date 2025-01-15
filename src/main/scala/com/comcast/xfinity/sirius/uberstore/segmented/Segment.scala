@@ -23,18 +23,6 @@ import java.io.File
 object Segment {
 
   /**
-   * Create an Segment based in baseDir named "name".
-   *
-   * @param base directory containing the Segment
-   * @param name the name of this dir
-   *
-   * @return an Segment instance, fully repaired and usable
-   */
-  def apply(base: File, name: String, fileHandleFactory: UberDataFileHandleFactory): Segment = {
-    apply(new File(base, name), fileHandleFactory)
-  }
-
-  /**
    * Create an Segment at the specified location.
    *
    * @param location location of segment. must be inside a segmented uberstore's base
@@ -42,7 +30,7 @@ object Segment {
    *
    * @return an Segment instance, fully repaired and usable
    */
-  def apply(location: File, fileHandleFactory: UberDataFileHandleFactory): Segment = {
+  def apply(location: File, fileHandleFactory: UberDataFileHandleFactory, validateChecksum: Boolean = true): Segment = {
     location.mkdirs()
 
     val dataFile = new File(location, "data")
@@ -50,7 +38,7 @@ object Segment {
     val compactionFlagFile = new File(location, "keys-collected")
     val internalCompactionFlagFile = new File(location, "internally-compacted")
 
-    val data = UberDataFile(dataFile.getAbsolutePath, fileHandleFactory)
+    val data = UberDataFile(dataFile.getAbsolutePath, fileHandleFactory, validateChecksum)
     val index = DiskOnlySeqIndex(indexFile.getAbsolutePath)
     val compactionFlag = FlagFile(compactionFlagFile.getAbsolutePath)
     val internalCompactionFlag = FlagFile(internalCompactionFlagFile.getAbsolutePath)

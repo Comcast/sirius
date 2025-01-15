@@ -30,9 +30,9 @@ object UberPair {
    *
    * @return an instantiated UberStoreFilePair
    */
-  def apply(baseDir: String, startingSeq: Long, fileHandleFactory: UberDataFileHandleFactory): UberPair = {
+  def apply(baseDir: String, startingSeq: Long, fileHandleFactory: UberDataFileHandleFactory, validateChecksum: Boolean): UberPair = {
     val baseName = "%s/%s".format(baseDir, startingSeq)
-    val dataFile = UberDataFile("%s.data".format(baseName), fileHandleFactory)
+    val dataFile = UberDataFile("%s.data".format(baseName), fileHandleFactory, validateChecksum)
     val index = DiskOnlySeqIndex("%s.index".format(baseName))
     repairIndex(index, dataFile)
     new UberPair(dataFile, index)

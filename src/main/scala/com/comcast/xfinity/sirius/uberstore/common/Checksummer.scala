@@ -19,6 +19,16 @@ package com.comcast.xfinity.sirius.uberstore.common
  * Trait supplying checksumming capabilities
  */
 trait Checksummer {
+  /**
+   * Determines if the array of bytes has a calculated checksum
+   * that matches the provided checksum
+   *
+   * @param chksum the checksum
+   * @param bytes Array[Byte] to checksum
+   * @return if the checksum of the bytes matches the provided checksum
+   */
+  def validate(bytes: Array[Byte], chksum: Long): Boolean =
+    checksum(bytes) == chksum
 
   /**
    * Given an array of bytes will calculate a Long checksum

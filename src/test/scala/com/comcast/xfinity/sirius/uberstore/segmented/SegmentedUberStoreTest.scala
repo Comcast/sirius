@@ -16,6 +16,8 @@
 
 package com.comcast.xfinity.sirius.uberstore.segmented
 
+import scala.collection.concurrent._
+
 import com.comcast.xfinity.sirius.NiceTest
 import java.io.{File => JFile}
 
@@ -77,7 +79,7 @@ class SegmentedUberStoreTest extends NiceTest {
   }
 
   def buildSegment(base: JFile, name: String): Segment =
-    Segment(base, name, fileHandleFactory)
+    Segment(new JFile(base, name), fileHandleFactory)
 
   def buildSegment(location: JFile): Segment = Segment(location, fileHandleFactory)
 
@@ -192,6 +194,21 @@ class SegmentedUberStoreTest extends NiceTest {
           (acc, event) => event.request +: acc
         ).reverse
       )
+    }
+  }
+
+  describe("parallelForeach") {
+    it("should bootstrap the uberstore in parallel") {
+      createPopulatedSegment(dir, "1", Range.inclusive(1, 3).toList, isApplied = true)
+      createPopulatedSegment(dir, "2", Range.inclusive(4, 6).toList, isApplied = true)
+      createPopulatedSegment(dir, "3", Range.inclusive(7, 9).toList, isApplied = true)
+      val config = new SiriusConfiguration
+      config.setProp(SiriusConfiguration.LOG_PARALLEL_ENABLED, true)
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, config)
+      val map = new TrieMap[Long, SiriusRequest]()
+      uberstore.parallelForeach(event => map.put(event.sequence, event.request))
+
+      assert(map.size == 9)
     }
   }
 

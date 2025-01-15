@@ -58,7 +58,7 @@ class SegmentTest extends NiceTest with BeforeAndAfterAll {
   val fileHandleFactory: UberDataFileHandleFactory = RandomAccessFileHandleFactory
 
   def buildSegment(base: JFile, name: String) =
-    Segment(base, name, fileHandleFactory)
+    Segment(new JFile(base, name), fileHandleFactory)
 
   override def afterAll(): Unit = {
     File(tempDir.getPath).delete()

@@ -308,6 +308,16 @@ object SiriusConfiguration {
    * Maximum akka message size in KB. Default is 1024. Type is Integer.
    */
   final val MAX_AKKA_MESSAGE_SIZE_KB = "sirius.akka.maximum-frame-size-kb"
+
+  /**
+   * Whether or not to bootstrap the log in parallel, only applies to segmented uberstores
+   */
+  final val LOG_PARALLEL_ENABLED = "sirius.log.parallel-enabled"
+
+  /**
+   * Whether to skip checksum validation when reading events from the log
+   */
+  final val LOG_SKIP_CHECKSUM_VALIDATION = "sirius.log.skip-checksum-validation"
 }
 
 /**
