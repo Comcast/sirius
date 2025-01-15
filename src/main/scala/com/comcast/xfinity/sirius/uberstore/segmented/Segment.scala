@@ -23,18 +23,6 @@ import java.io.File
 object Segment {
 
   /**
-   * Create an Segment based in baseDir named "name".
-   *
-   * @param base directory containing the Segment
-   * @param name the name of this dir
-   *
-   * @return an Segment instance, fully repaired and usable
-   */
-  def apply(base: File, name: String, fileHandleFactory: UberDataFileHandleFactory, validateChecksum: Boolean = true): Segment = {
-    apply(new File(base, name), fileHandleFactory, validateChecksum)
-  }
-
-  /**
    * Create an Segment at the specified location.
    *
    * @param location location of segment. must be inside a segmented uberstore's base

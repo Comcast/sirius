@@ -51,7 +51,7 @@ class SegmentedCompactorTest extends NiceTest with BeforeAndAfterAll {
   }
 
   def buildSegment(base: JFile, name: String): Segment = {
-    Segment(base, name, fileHandleFactory)
+    Segment(new JFile(base, name), fileHandleFactory)
   }
 
   def buildSegment(fullPath: String): Segment = {

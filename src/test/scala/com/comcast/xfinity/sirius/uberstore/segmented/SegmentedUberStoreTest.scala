@@ -79,7 +79,7 @@ class SegmentedUberStoreTest extends NiceTest {
   }
 
   def buildSegment(base: JFile, name: String): Segment =
-    Segment(base, name, fileHandleFactory)
+    Segment(new JFile(base, name), fileHandleFactory)
 
   def buildSegment(location: JFile): Segment = Segment(location, fileHandleFactory)
 
