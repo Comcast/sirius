@@ -37,6 +37,13 @@ trait SiriusLog {
   def foreach[T](fun: OrderedEvent => T): Unit = foldLeft(())((_, e) => fun(e))
 
   /**
+   * Apply fun to each entry in the log in parallel and potentially out of order
+   *
+   * @param fun function to apply
+   */
+  def parallelForeach[T](fun: OrderedEvent => T): Unit = foreach[T](fun)
+
+  /**
    * Fold left across the log entries
    * @param acc0 initial accumulator value
    * @param foldFun function to apply to the log entry, the result being the new accumulator

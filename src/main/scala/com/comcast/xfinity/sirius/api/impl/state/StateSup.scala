@@ -119,28 +119,33 @@ class StateSup(requestHandler: RequestHandler,
         bootstrapTime = Some(0L)
 
       case _ =>
+        val parallel = config.getProp(SiriusConfiguration.LOG_PARALLEL_ENABLED, default = false)
         val start = System.currentTimeMillis
         logger.info("Beginning SiriusLog replay at {}", start)
         requestHandler.onBootstrapStarting()
-        siriusLog.foreach(
-          orderedEvent =>
-            try {
-              orderedEvent.request match {
-                case Put(key, body) => requestHandler.handlePut(orderedEvent.sequence, key, body)
-                case Delete(key) => requestHandler.handleDelete(orderedEvent.sequence, key)
-              }
-            } catch {
-              case rte: RuntimeException =>
-                eventReplayFailureCount += 1
-                logger.error("Exception replaying {}: {}", orderedEvent, rte)
-            }
-        )
+        if (parallel) {
+          siriusLog.parallelForeach(bootstrapEvent)
+        } else {
+          siriusLog.foreach(bootstrapEvent)
+        }
         requestHandler.onBootstrapComplete()
         val totalBootstrapTime = System.currentTimeMillis - start
         bootstrapTime = Some(totalBootstrapTime)
         logger.info("Replayed SiriusLog in {}ms", totalBootstrapTime)
     }
   }
+
+  private def bootstrapEvent(orderedEvent : OrderedEvent): Unit =
+    try {
+      orderedEvent.request match {
+        case Put(key, body) => requestHandler.handlePut(orderedEvent.sequence, key, body)
+        case Delete(key) => requestHandler.handleDelete(orderedEvent.sequence, key)
+      }
+    } catch {
+      case rte: RuntimeException =>
+        eventReplayFailureCount += 1
+        logger.error("Exception replaying {}: {}", orderedEvent, rte)
+    }
 
   trait StateInfoMBean {
     def getEventReplayFailureCount: Long
