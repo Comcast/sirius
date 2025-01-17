@@ -3,12 +3,16 @@ package com.comcast.xfinity.sirius.api
 import java.util.concurrent.ConcurrentHashMap
 
 class ParallelBootstrapRequestHandler(val requestHandler: RequestHandler) extends RequestHandler {
-    private var sequences = new ConcurrentHashMap[String, Long]
+    private var sequences: ConcurrentHashMap[String, Long] = _
 
-    override def onBootstrapStarting(): Unit = requestHandler.onBootstrapStarting()
     override def handleGet(key: String): SiriusResult = requestHandler.handleGet(key)
     override def handlePut(key: String, body: Array[Byte]): SiriusResult = requestHandler.handlePut(key, body)
     override def handleDelete(key: String): SiriusResult = requestHandler.handleDelete(key)
+
+    override def onBootstrapStarting(): Unit = {
+        sequences = new ConcurrentHashMap[String, Long]()
+        requestHandler.onBootstrapStarting()
+    }
 
     override def onBootstrapComplete(): Unit = {
         // allow the GC to collect the map
