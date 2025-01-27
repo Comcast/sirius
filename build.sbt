@@ -16,7 +16,8 @@ import java.lang.{Runtime => JRuntime}
 
 name := "sirius"
 
-version := "2.4.0"
+versionScheme := Some("semver-spec")
+version := "2.5.0"
 
 scalaVersion := "2.13.6"
 crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6") // NOTE: keep sync'd with .travis.yml
@@ -89,20 +90,20 @@ parallelExecution := false
 organization := "com.comcast"
 homepage := Some(url("https://github.com/Comcast/sirius"))
 scmInfo := Some(ScmInfo(url("https://github.com/Comcast/sirius"), "git@github.com:Comcast/sirius.git"))
-developers := List(Developer("jryan128",
-  "Jonathan Ryan",
-  "jonathan.ryan@jryan.io",
-  url("https://github.com/jryan128")))
+developers := List(Developer("jryan128", "Jonathan Ryan", "jonathan_ryan@comcast.com", url("https://github.com/jryan128")),
+  Developer("HaloFour", "Justin Spindler", "justin_spindler@comcast.com", url("https://github.com/HaloFour"))
+)
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 publishMavenStyle := true
+usePgpKeyHex("F61518F8742AE8EB2E3CF94BCAC601E88B813144")
 
-usePgpKeyHex("9787EE9D6E7FB77E24EAEF0A0F75392379B78332")
-
+val username = sys.env.getOrElse("ARTIFACTORY_USER", null)
+val password = sys.env.getOrElse("ARTIFACTORY_PASSWORD", null)
+credentials += Credentials("Artifactory Realm", "artifactory.comcast.com", username, password)
 sonatypeSessionName := s"[sbt-sonatype] ${name.value}-${scalaBinaryVersion.value}-${version.value}"
-
-publishTo := sonatypePublishToBundle.value
-
+publishTo := Some("Artifactory Realm" at "https://artifactory.comcast.com/artifactory/xvp-libs-releases")
 pomIncludeRepository := { _ => false }
+publishConfiguration := publishConfiguration.value.withOverwrite(true)
 
 Test / publishArtifact := false
 
