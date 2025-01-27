@@ -30,9 +30,11 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
             sequences match {
                 case Some(map) =>
                     val k = createKey(key)
-                    val existing = map.get(k)
-                    if (existing < sequence) {
+                    // Check if a newer sequence is already in the map and, if so, bail early
+                    if (map.get(k) >= sequence) SiriusResult.none()
+                    else {
                         var result: SiriusResult = SiriusResult.none()
+                        // deserialize the body before calling compute to reduce lock contention
                         val message = deserialize(body)
                         map.compute(k, (_, existing) => {
                             if (existing < sequence) {
@@ -41,7 +43,7 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
                             } else existing
                         })
                         result
-                    } else SiriusResult.none()
+                    }
                 case None => handlePutImpl(sequence, createKey(key), deserialize(body))
             }
         else SiriusResult.none()
