@@ -16,6 +16,8 @@
 package com.comcast.xfinity.sirius.api
 
 object SiriusResult {
+  private val NONE: SiriusResult = SiriusResult(Right(None))
+  private val OK: SiriusResult = some("ok")
   
   /**
    * Factory method for creating a SiriusResult with a value
@@ -26,13 +28,20 @@ object SiriusResult {
    * @return SiriusResult
    */
   def some(value: Object): SiriusResult = SiriusResult(Right(Some(value)))
+
+  /**
+   * Factory method for creating a SiriusResult with the String value "ok"
+   *
+   * @return SiriusResult
+   */
+  def ok(): SiriusResult = OK
   
   /**
    * Factory method for creating a SiriusResult with no value
    * 
    * @return SiriusResult 
    */
-  def none(): SiriusResult = SiriusResult(Right(None))
+  def none(): SiriusResult = NONE
   
   /**
    * Factory method for creating a SiriusResult with an error.

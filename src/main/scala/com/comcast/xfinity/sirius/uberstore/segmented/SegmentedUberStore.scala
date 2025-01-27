@@ -20,6 +20,7 @@ import better.files.File
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
 import com.comcast.xfinity.sirius.uberstore.data.UberDataFileHandleFactory
+import com.comcast.xfinity.sirius.uberstore.segmented.ParallelHelpers.ParSeqConverter
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 
 import scala.annotation.tailrec
@@ -136,7 +137,7 @@ class SegmentedUberStore private[segmented] (base: JFile,
   def getNextSeq = nextSeq
 
   override def parallelForeach[T](fun: OrderedEvent => T): Unit = {
-    ParallelHelpers.parallelize(readOnlyDirs :+ liveDir)
+    (readOnlyDirs :+ liveDir).parallelize
             .foreach(_.foldLeftRange(0, Long.MaxValue)(())((_, e) => fun(e)))
   }
 

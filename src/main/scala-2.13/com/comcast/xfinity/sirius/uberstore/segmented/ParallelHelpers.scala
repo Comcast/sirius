@@ -4,5 +4,7 @@ import scala.collection.parallel.CollectionConverters._
 import scala.collection.parallel.ParSeq
 
 object ParallelHelpers {
-    def parallelize[T](seq: Seq[T]): ParSeq[T] = seq.par
+    implicit class ParSeqConverter[T](private val seq: Seq[T]) {
+        def parallelize: ParSeq[T] = seq.par
+    }
 }
