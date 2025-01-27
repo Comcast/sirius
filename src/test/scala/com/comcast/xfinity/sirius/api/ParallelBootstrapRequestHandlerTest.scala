@@ -11,7 +11,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
             val response = mock[SiriusResult]
             when(requestHandler.handlePut("key1", Array.empty)).thenReturn(response)
 
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
             val result = underTest.handlePut("key1", Array.empty)
 
             assert(result === response)
@@ -23,7 +23,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
             val response = mock[SiriusResult]
             when(requestHandler.handlePut(1L, "key1", Array.empty)).thenReturn(response)
 
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
             val result = underTest.handlePut(1L, "key1", Array.empty)
 
             assert(result === response)
@@ -35,7 +35,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
             val response = mock[SiriusResult]
             when(requestHandler.handleDelete("key1")).thenReturn(response)
 
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
             val result = underTest.handleDelete("key1")
 
             assert(result === response)
@@ -47,7 +47,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
             val response = mock[SiriusResult]
             when(requestHandler.handleDelete(1L, "key1")).thenReturn(response)
 
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
             val result = underTest.handleDelete(1L, "key1")
 
             assert(result === response)
@@ -59,7 +59,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
             val response = mock[SiriusResult]
             when(requestHandler.handleGet("key1")).thenReturn(response)
 
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
             val result = underTest.handleGet("key1")
 
             assert(result === response)
@@ -69,7 +69,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
         it("onBootstrapStarting") {
             val requestHandler = mock[RequestHandler]
 
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
             underTest.onBootstrapStarting()
 
             verify(requestHandler).onBootstrapStarting()
@@ -78,7 +78,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
         it("onBootstrapComplete") {
             val requestHandler = mock[RequestHandler]
 
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
             underTest.onBootstrapComplete()
 
             verify(requestHandler).onBootstrapComplete()
@@ -89,7 +89,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
     describe("during bootstrap") {
         it ("drops out-of-order events for the same key") {
             val requestHandler = mock[RequestHandler]
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
 
             underTest.onBootstrapStarting()
             verify(requestHandler).onBootstrapStarting()
@@ -104,7 +104,7 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
         }
         it ("allows out-of-order events for different keys") {
             val requestHandler = mock[RequestHandler]
-            val underTest = new ParallelBootstrapRequestHandler(requestHandler)
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
 
             underTest.onBootstrapStarting()
             verify(requestHandler).onBootstrapStarting()
