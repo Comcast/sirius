@@ -5,27 +5,29 @@ import java.util.concurrent.ConcurrentHashMap
 abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHandler {
     private var sequences: Option[ConcurrentHashMap[K, Long]] = None
 
-    override def onBootstrapStarting(): Unit = {
+    final override def onBootstrapStarting(): Unit = {
+        onBootstrapStartingImpl()
         sequences = Some(new ConcurrentHashMap[K, Long]())
     }
 
-    override def onBootstrapComplete(): Unit = {
+    final override def onBootstrapComplete(): Unit = {
         sequences = None
+        onBootstrapCompletedImpl()
     }
 
-    override def handleGet(key: String): SiriusResult =
+    final override def handleGet(key: String): SiriusResult =
         if (enabled()) handleGetImpl(createKey(key))
         else SiriusResult.none()
 
-    override def handlePut(key: String, body: Array[Byte]): SiriusResult =
+    final override def handlePut(key: String, body: Array[Byte]): SiriusResult =
         if (enabled()) handlePutImpl(createKey(key), deserialize(body))
         else SiriusResult.none()
 
-    override def handleDelete(key: String): SiriusResult =
+    final override def handleDelete(key: String): SiriusResult =
         if (enabled()) handleDeleteImpl(createKey(key))
         else SiriusResult.none()
 
-    override def handlePut(sequence: Long, key: String, body: Array[Byte]): SiriusResult =
+    final override def handlePut(sequence: Long, key: String, body: Array[Byte]): SiriusResult =
         if (enabled())
             sequences match {
                 case Some(map) =>
@@ -48,7 +50,7 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
             }
         else SiriusResult.none()
 
-    override def handleDelete(sequence: Long, key: String): SiriusResult =
+    final override def handleDelete(sequence: Long, key: String): SiriusResult =
         sequences match {
             case Some(map) =>
                 var result: SiriusResult = SiriusResult.none()
@@ -66,6 +68,8 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
     protected def createKey(key: String): K
     protected def deserialize(body: Array[Byte]): M
 
+    def onBootstrapStartingImpl(): Unit = { }
+    def onBootstrapCompletedImpl(): Unit = { }
     def handleGetImpl(key: K): SiriusResult
     def handlePutImpl(key: K, body: M): SiriusResult
     def handleDeleteImpl(key: K): SiriusResult
