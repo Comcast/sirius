@@ -1,6 +1,7 @@
 package com.comcast.xfinity.sirius.api
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.function.BiFunction
 
 abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHandler {
     private var sequences: Option[ConcurrentHashMap[K, Long]] = None
@@ -38,12 +39,16 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
                         var result: SiriusResult = SiriusResult.none()
                         // deserialize the body before calling compute to reduce lock contention
                         val message = deserialize(body)
-                        map.compute(k, (_, existing) => {
-                            if (existing < sequence) {
-                                result = handlePutImpl(sequence, k, message)
+
+                        // Scala 2.11 has limited support for Java functional interfaces
+                        val updateFunction = new BiFunction[K, Long, Long]() {
+                            override def apply(key: K, existing: Long): Long = if (existing < sequence) {
+                                result = handlePutImpl(sequence, key, message)
                                 sequence
                             } else existing
-                        })
+                        }
+
+                        map.compute(k, updateFunction)
                         result
                     }
                 case None => handlePutImpl(sequence, createKey(key), deserialize(body))
@@ -54,12 +59,17 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
         sequences match {
             case Some(map) =>
                 var result: SiriusResult = SiriusResult.none()
-                map.compute(createKey(key), (k, existing) => {
-                    if (existing < sequence) {
-                        result = handleDeleteImpl(sequence, k)
-                        sequence
-                    } else existing
-                })
+
+                // Scala 2.11 has limited support for Java functional interfaces
+                val updateFunction = new BiFunction[K, Long, Long] {
+                    override def apply(key: K, existing: Long): Long =
+                        if (existing < sequence) {
+                            result = handleDeleteImpl(sequence, key)
+                            sequence
+                        } else existing
+                }
+
+                map.compute(createKey(key), updateFunction)
                 result
             case None => handleDeleteImpl(sequence, createKey(key))
         }
