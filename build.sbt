@@ -23,12 +23,13 @@ ThisBuild / tlBaseVersion := "2.5"
 scalaVersion := "2.13.6"
 crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6")
 
-ThisBuild / organization := "com.comcast.sirius"
 ThisBuild / organizationName := "Comcast Cable Communications Management, LLC"
 ThisBuild / startYear := Some(2012)
 ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("11"), JavaSpec.temurin("17"))
 ThisBuild / githubWorkflowScalaVersions := crossScalaVersions.value
 ThisBuild / tlCiMimaBinaryIssueCheck := false
+ThisBuild / tlMimaPreviousVersions := Set.empty
+ThisBuild / mimaFailOnNoPrevious := false
 
 organization := "com.comcast"
 
