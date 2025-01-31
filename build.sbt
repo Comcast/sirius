@@ -29,7 +29,6 @@ ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.te
 ThisBuild / githubWorkflowScalaVersions := crossScalaVersions.value
 ThisBuild / tlCiMimaBinaryIssueCheck := false
 ThisBuild / tlMimaPreviousVersions := Set.empty
-ThisBuild / mimaFailOnNoPrevious := false
 
 organization := "com.comcast"
 
