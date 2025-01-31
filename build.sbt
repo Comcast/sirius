@@ -104,15 +104,9 @@ developers := List(Developer("jryan128", "Jonathan Ryan", "jonathan_ryan@comcast
 )
 licenses += ("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0.txt"))
 publishMavenStyle := true
-usePgpKeyHex("F61518F8742AE8EB2E3CF94BCAC601E88B813144")
 
-val username = sys.env.getOrElse("ARTIFACTORY_USER", null)
-val password = sys.env.getOrElse("ARTIFACTORY_PASSWORD", null)
-credentials += Credentials("Artifactory Realm", "artifactory.comcast.com", username, password)
 sonatypeSessionName := s"[sbt-sonatype] ${name.value}-${scalaBinaryVersion.value}-${version.value}"
-publishTo := Some("Artifactory Realm" at "https://artifactory.comcast.com/artifactory/xvp-libs-releases")
-pomIncludeRepository := { _ => false }
-publishConfiguration := publishConfiguration.value.withOverwrite(true)
+publishTo := sonatypePublishToBundle.value
 
 Test / publishArtifact := false
 
