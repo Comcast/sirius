@@ -18,9 +18,17 @@ name := "sirius"
 
 versionScheme := Some("semver-spec")
 version := "2.5.0"
+ThisBuild / tlBaseVersion := "2.5"
 
 scalaVersion := "2.13.6"
-crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6") // NOTE: keep sync'd with .travis.yml
+crossScalaVersions := Seq("2.11.12", "2.12.14", "2.13.6")
+
+ThisBuild / organization := "com.comcast.sirius"
+ThisBuild / organizationName := "Comcast Cable Communications Management, LLC"
+ThisBuild / startYear := Some(2012)
+ThisBuild / githubWorkflowJavaVersions := Seq(JavaSpec.temurin("8"), JavaSpec.temurin("11"), JavaSpec.temurin("17"))
+ThisBuild / githubWorkflowScalaVersions := crossScalaVersions.value
+ThisBuild / tlCiMimaBinaryIssueCheck := false
 
 organization := "com.comcast"
 
