@@ -6,7 +6,7 @@ object ParallelBootstrapRequestHandler {
 }
 
 class ParallelBootstrapRequestHandler(val requestHandler: RequestHandler) extends AbstractParallelBootstrapRequestHandler[String, Array[Byte]] {
-    override protected def enabled(): Boolean = true
+    override protected def writesEnabled(): Boolean = true
     override protected def createKey(key: String): String = key
     override protected def deserialize(body: Array[Byte]): Array[Byte] = body
     override def handleGetImpl(key: String): SiriusResult = requestHandler.handleGet(key)
