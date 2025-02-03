@@ -6,9 +6,13 @@ import java.util.function.BiFunction
 abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHandler {
     private var sequences: Option[ConcurrentHashMap[K, Long]] = None
 
-    final override def onBootstrapStarting(): Unit = {
-        onBootstrapStartingImpl()
-        sequences = Some(new ConcurrentHashMap[K, Long]())
+    final override def onBootstrapStarting(parallel: Boolean): Unit = {
+        onBootstrapStartingImpl(parallel)
+
+        // if in parallel bootstrap mode then create the map used to track sequence by key
+        sequences = if (parallel)
+            Some(new ConcurrentHashMap[K, Long]())
+        else None
     }
 
     final override def onBootstrapComplete(): Unit = {
@@ -38,7 +42,15 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
                     else {
                         var result: SiriusResult = SiriusResult.none()
                         // deserialize the body before calling compute to reduce lock contention
-                        val message = deserialize(body)
+                        val message = try {
+                            deserialize(body)
+                        }
+                        catch {
+                            case ex: RuntimeException =>
+                                return SiriusResult.error(ex)
+                            case ex: Exception =>
+                                return SiriusResult.error(new RuntimeException(ex))
+                        }
 
                         // Scala 2.11 has limited support for Java functional interfaces
                         val updateFunction = new BiFunction[K, Long, Long]() {
@@ -76,9 +88,9 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
 
     protected def enabled(): Boolean
     protected def createKey(key: String): K
-    protected def deserialize(body: Array[Byte]): M
+    @throws[Exception] protected def deserialize(body: Array[Byte]): M
 
-    def onBootstrapStartingImpl(): Unit = { }
+    def onBootstrapStartingImpl(parallel: Boolean): Unit = { }
     def onBootstrapCompletedImpl(): Unit = { }
     def handleGetImpl(key: K): SiriusResult
     def handlePutImpl(key: K, body: M): SiriusResult
