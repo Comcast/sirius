@@ -21,19 +21,18 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
     }
 
     final override def handleGet(key: String): SiriusResult =
-        if (enabled()) handleGetImpl(createKey(key))
-        else SiriusResult.none()
+        handleGetImpl(createKey(key))
 
     final override def handlePut(key: String, body: Array[Byte]): SiriusResult =
-        if (enabled()) handlePutImpl(createKey(key), deserialize(body))
+        if (writesEnabled()) handlePutImpl(createKey(key), deserialize(body))
         else SiriusResult.none()
 
     final override def handleDelete(key: String): SiriusResult =
-        if (enabled()) handleDeleteImpl(createKey(key))
+        if (writesEnabled()) handleDeleteImpl(createKey(key))
         else SiriusResult.none()
 
     final override def handlePut(sequence: Long, key: String, body: Array[Byte]): SiriusResult =
-        if (enabled())
+        if (writesEnabled())
             sequences match {
                 case Some(map) =>
                     val k = createKey(key)
@@ -78,7 +77,7 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
             case None => handleDeleteImpl(sequence, createKey(key))
         }
 
-    protected def enabled(): Boolean
+    protected def writesEnabled(): Boolean = true
     protected def createKey(key: String): K
     @throws[Exception] protected def deserialize(body: Array[Byte]): M
 
