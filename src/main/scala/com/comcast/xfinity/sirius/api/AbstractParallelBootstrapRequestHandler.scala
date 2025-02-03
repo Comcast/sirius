@@ -6,9 +6,13 @@ import java.util.function.BiFunction
 abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHandler {
     private var sequences: Option[ConcurrentHashMap[K, Long]] = None
 
-    final override def onBootstrapStarting(): Unit = {
-        onBootstrapStartingImpl()
-        sequences = Some(new ConcurrentHashMap[K, Long]())
+    final override def onBootstrapStarting(parallel: Boolean): Unit = {
+        onBootstrapStartingImpl(parallel)
+
+        // if in parallel bootstrap mode then create the map used to track sequence by key
+        sequences = if (parallel)
+            Some(new ConcurrentHashMap[K, Long]())
+        else None
     }
 
     final override def onBootstrapComplete(): Unit = {
@@ -17,19 +21,18 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
     }
 
     final override def handleGet(key: String): SiriusResult =
-        if (enabled()) handleGetImpl(createKey(key))
-        else SiriusResult.none()
+        handleGetImpl(createKey(key))
 
     final override def handlePut(key: String, body: Array[Byte]): SiriusResult =
-        if (enabled()) handlePutImpl(createKey(key), deserialize(body))
+        if (writesEnabled()) handlePutImpl(createKey(key), deserialize(body))
         else SiriusResult.none()
 
     final override def handleDelete(key: String): SiriusResult =
-        if (enabled()) handleDeleteImpl(createKey(key))
+        if (writesEnabled()) handleDeleteImpl(createKey(key))
         else SiriusResult.none()
 
     final override def handlePut(sequence: Long, key: String, body: Array[Byte]): SiriusResult =
-        if (enabled())
+        if (writesEnabled())
             sequences match {
                 case Some(map) =>
                     val k = createKey(key)
@@ -74,11 +77,11 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
             case None => handleDeleteImpl(sequence, createKey(key))
         }
 
-    protected def enabled(): Boolean
+    protected def writesEnabled(): Boolean = true
     protected def createKey(key: String): K
-    protected def deserialize(body: Array[Byte]): M
+    @throws[Exception] protected def deserialize(body: Array[Byte]): M
 
-    def onBootstrapStartingImpl(): Unit = { }
+    def onBootstrapStartingImpl(parallel: Boolean): Unit = { }
     def onBootstrapCompletedImpl(): Unit = { }
     def handleGetImpl(key: K): SiriusResult
     def handlePutImpl(key: K, body: M): SiriusResult

@@ -122,7 +122,7 @@ class StateSup(requestHandler: RequestHandler,
         val parallel = config.getProp(SiriusConfiguration.LOG_PARALLEL_ENABLED, default = false)
         val start = System.currentTimeMillis
         logger.info("Beginning SiriusLog replay at {}", start)
-        requestHandler.onBootstrapStarting()
+        requestHandler.onBootstrapStarting(parallel)
         if (parallel) {
           siriusLog.parallelForeach(bootstrapEvent)
         } else {

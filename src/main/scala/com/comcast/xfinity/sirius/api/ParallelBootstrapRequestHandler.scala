@@ -6,7 +6,7 @@ object ParallelBootstrapRequestHandler {
 }
 
 class ParallelBootstrapRequestHandler(val requestHandler: RequestHandler) extends AbstractParallelBootstrapRequestHandler[String, Array[Byte]] {
-    override protected def enabled(): Boolean = true
+    override protected def writesEnabled(): Boolean = true
     override protected def createKey(key: String): String = key
     override protected def deserialize(body: Array[Byte]): Array[Byte] = body
     override def handleGetImpl(key: String): SiriusResult = requestHandler.handleGet(key)
@@ -15,6 +15,6 @@ class ParallelBootstrapRequestHandler(val requestHandler: RequestHandler) extend
     override def handlePutImpl(sequence: Long, key: String, body: Array[Byte]): SiriusResult = requestHandler.handlePut(sequence, key, body)
     override def handleDeleteImpl(sequence: Long, key: String): SiriusResult = requestHandler.handleDelete(sequence, key)
 
-    override def onBootstrapStartingImpl(): Unit = requestHandler.onBootstrapStarting()
+    override def onBootstrapStartingImpl(parallel: Boolean): Unit = requestHandler.onBootstrapStarting(parallel)
     override def onBootstrapCompletedImpl(): Unit = requestHandler.onBootstrapComplete()
 }

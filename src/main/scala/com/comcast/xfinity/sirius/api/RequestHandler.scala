@@ -94,8 +94,16 @@ trait RequestHandler {
 
   /**
    * Indicates that the Sirius bootstrap from the Uberstore is starting
+   *
    */
   def onBootstrapStarting(): Unit = { }
+
+  /**
+   * Indicates that the Sirius bootstrap from the Uberstore is starting
+   *
+   * @param parallel whether bootstrap is in parallel mode
+   */
+  def onBootstrapStarting(parallel: Boolean): Unit = onBootstrapStarting()
 
   /**
    * Indicates that the Sirius bootstrap from Uberstore has completed
