@@ -1,7 +1,8 @@
 package com.comcast.xfinity.sirius.api
 
 import com.comcast.xfinity.sirius.NiceTest
-import org.mockito.Mockito.{verify, verifyNoMoreInteractions, when}
+import org.mockito.Mockito
+import org.mockito.Mockito.{inOrder, verify, verifyNoMoreInteractions, when}
 
 class ParallelBootstrapRequestHandlerTest extends NiceTest {
 
@@ -70,9 +71,9 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
             val requestHandler = mock[RequestHandler]
 
             val underTest = ParallelBootstrapRequestHandler(requestHandler)
-            underTest.onBootstrapStarting()
+            underTest.onBootstrapStarting(true)
 
-            verify(requestHandler).onBootstrapStarting()
+            verify(requestHandler).onBootstrapStarting(true)
             verifyNoMoreInteractions(requestHandler)
         }
         it("onBootstrapComplete") {
@@ -86,36 +87,58 @@ class ParallelBootstrapRequestHandlerTest extends NiceTest {
         }
     }
 
-    describe("during bootstrap") {
+    describe("during parallel bootstrap") {
         it ("drops out-of-order events for the same key") {
             val requestHandler = mock[RequestHandler]
             val underTest = ParallelBootstrapRequestHandler(requestHandler)
 
-            underTest.onBootstrapStarting()
-            verify(requestHandler).onBootstrapStarting()
+            underTest.onBootstrapStarting(true)
+            verify(requestHandler).onBootstrapStarting(true)
 
             underTest.handlePut(1L, "key1", Array.empty)
             underTest.handlePut(4L, "key1", Array.empty)
             underTest.handlePut(3L, "key1", Array.empty)
 
-            verify(requestHandler).handlePut(1L, "key1", Array.empty)
-            verify(requestHandler).handlePut(4L, "key1", Array.empty)
-            verifyNoMoreInteractions(requestHandler)
+            val inOrder = Mockito.inOrder(requestHandler)
+            inOrder.verify(requestHandler).handlePut(1L, "key1", Array.empty)
+            inOrder.verify(requestHandler).handlePut(4L, "key1", Array.empty)
+            inOrder.verifyNoMoreInteractions()
         }
         it ("allows out-of-order events for different keys") {
             val requestHandler = mock[RequestHandler]
             val underTest = ParallelBootstrapRequestHandler(requestHandler)
 
-            underTest.onBootstrapStarting()
-            verify(requestHandler).onBootstrapStarting()
+            underTest.onBootstrapStarting(true)
+            verify(requestHandler).onBootstrapStarting(true)
 
             underTest.handlePut(1L, "key1", Array.empty)
             underTest.handlePut(4L, "key1", Array.empty)
             underTest.handlePut(3L, "key2", Array.empty)
 
-            verify(requestHandler).handlePut(1L, "key1", Array.empty)
-            verify(requestHandler).handlePut(4L, "key1", Array.empty)
-            verify(requestHandler).handlePut(3L, "key2", Array.empty)
+            val inOrder = Mockito.inOrder(requestHandler)
+            inOrder.verify(requestHandler).handlePut(1L, "key1", Array.empty)
+            inOrder.verify(requestHandler).handlePut(4L, "key1", Array.empty)
+            inOrder.verify(requestHandler).handlePut(3L, "key2", Array.empty)
+            inOrder.verifyNoMoreInteractions()
+        }
+    }
+
+    describe("during non-parallel bootstrap") {
+        it("does not drop out-of-order events for the same key") {
+            val requestHandler = mock[RequestHandler]
+            val underTest = ParallelBootstrapRequestHandler(requestHandler)
+
+            underTest.onBootstrapStarting(false)
+            verify(requestHandler).onBootstrapStarting(false)
+
+            underTest.handlePut(1L, "key1", Array.empty)
+            underTest.handlePut(4L, "key1", Array.empty)
+            underTest.handlePut(3L, "key1", Array.empty)
+
+            val inOrder = Mockito.inOrder(requestHandler)
+            inOrder.verify(requestHandler).handlePut(1L, "key1", Array.empty)
+            inOrder.verify(requestHandler).handlePut(4L, "key1", Array.empty)
+            inOrder.verify(requestHandler).handlePut(3L, "key1", Array.empty)
             verifyNoMoreInteractions(requestHandler)
         }
     }
