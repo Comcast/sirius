@@ -42,15 +42,7 @@ abstract class AbstractParallelBootstrapRequestHandler[K, M] extends RequestHand
                     else {
                         var result: SiriusResult = SiriusResult.none()
                         // deserialize the body before calling compute to reduce lock contention
-                        val message = try {
-                            deserialize(body)
-                        }
-                        catch {
-                            case ex: RuntimeException =>
-                                return SiriusResult.error(ex)
-                            case ex: Exception =>
-                                return SiriusResult.error(new RuntimeException(ex))
-                        }
+                        val message = deserialize(body)
 
                         // Scala 2.11 has limited support for Java functional interfaces
                         val updateFunction = new BiFunction[K, Long, Long]() {
