@@ -17,7 +17,7 @@ import java.lang.{Runtime => JRuntime}
 name := "sirius"
 
 versionScheme := Some("semver-spec")
-version := "2.5.1"
+version := "2.5.2"
 ThisBuild / tlBaseVersion := "2.5"
 
 scalaVersion := "2.13.6"
