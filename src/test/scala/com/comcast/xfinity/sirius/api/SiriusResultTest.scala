@@ -59,12 +59,12 @@ class SiriusResultTest extends NiceTest {
       }
       
       it("should rethrow the exception when it has an error") {
-        val theException = new RuntimeException()
+        val theThrowable = new Throwable()
         try {
-          SiriusResult.error(theException).getValue
+          SiriusResult.exception(theThrowable).getValue
           assert(false, "Exception should have been thrown")
         } catch {
-          case rte: RuntimeException => assert(theException === rte)
+          case t: Throwable => assert(theThrowable === t)
         }
       }      
     }
@@ -87,6 +87,19 @@ class SiriusResultTest extends NiceTest {
           SiriusResult.error(new RuntimeException()).isError
         }
       }
+
+      it("should throw an IllegalStateException when it has no exception") {
+        intercept[IllegalStateException] {
+          SiriusResult.none().getException
+        }
+      }
+      
+      it("should return the exception when it has been set") {
+        assertResult(true) {
+          val t = new Throwable()
+          SiriusResult.exception(t).getException == t
+        }
+      }      
     }
   }
 }
