@@ -15,11 +15,13 @@
  */
 package com.comcast.xfinity.sirius.api.impl.state
 
-import akka.actor.{Props, Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.{SiriusConfiguration, SiriusResult}
 import com.comcast.xfinity.sirius.api.impl._
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+
+import scala.collection.mutable.ListBuffer
 
 object SiriusPersistenceActor {
 
@@ -41,6 +43,7 @@ object SiriusPersistenceActor {
    * @param end last sequence number of the range, inclusive
    */
   case class GetLogSubrange(begin: Long, end: Long) extends LogQuery
+  case class GetLogRangeLimit(begin: Long, events: Long) extends LogQuery
 
   trait LogSubrange
   trait PopulatedSubrange extends LogSubrange {
@@ -129,21 +132,34 @@ class SiriusPersistenceActor(stateActor: ActorRef,
 
       lastWriteTime = thisWriteTime
 
-    case GetLogSubrange(rangeStart, rangeEnd) if rangeEnd < siriusLog.getNextSeq => // we can answer fully
-      val events = siriusLog.foldLeftRange(rangeStart, rangeEnd)(List[OrderedEvent]())(
-        (acc, event) => event :: acc
-      ).reverse
-      sender ! CompleteSubrange(rangeStart, rangeEnd, events)
+    case GetLogRangeLimit(start, limit) =>
+      val buffer = siriusLog.foldLeftWhile(start)(ListBuffer.empty[OrderedEvent])(buffer => buffer.length < limit)(
+        (acc, event) => acc += event
+      )
+      if (buffer.isEmpty) {
+        sender ! EmptySubrange
+      }
+      if (buffer.length < limit) {
+        sender ! PartialSubrange(buffer.head.sequence, buffer.last.sequence, buffer.toList)
+      } else {
+        sender ! CompleteSubrange(buffer.head.sequence, buffer.last.sequence, buffer.toList)
+      }
 
-    case GetLogSubrange(rangeStart, rangeEnd) if siriusLog.getNextSeq <= rangeStart => // we can't send anything useful back
+    case GetLogSubrange(rangeStart, rangeEnd) if rangeEnd < siriusLog.getNextSeq => // we can answer fully
+      val events = siriusLog.foldLeftRange(rangeStart, rangeEnd)(ListBuffer.empty[OrderedEvent])(
+        (acc, event) => acc += event
+      )
+      sender ! CompleteSubrange(rangeStart, rangeEnd, events.toList)
+
+    case GetLogSubrange(rangeStart, _) if siriusLog.getNextSeq <= rangeStart => // we can't send anything useful back
       sender ! EmptySubrange
 
-    case GetLogSubrange(rangeStart, rangeEnd) => // we can respond partially
+    case GetLogSubrange(rangeStart, _) => // we can respond partially
       val lastSeq = siriusLog.getNextSeq - 1
-      val events = siriusLog.foldLeftRange(rangeStart, lastSeq)(List[OrderedEvent]())(
-        (acc, event) => event :: acc
-      ).reverse
-      sender ! PartialSubrange(rangeStart, lastSeq, events)
+      val events = siriusLog.foldLeftRange(rangeStart, lastSeq)(ListBuffer.empty[OrderedEvent])(
+        (acc, event) => acc += event
+      )
+      sender ! PartialSubrange(rangeStart, lastSeq, events.toList)
 
     case GetNextLogSeq =>
       sender ! siriusLog.getNextSeq

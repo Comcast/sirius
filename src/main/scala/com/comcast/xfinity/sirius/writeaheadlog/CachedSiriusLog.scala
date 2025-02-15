@@ -108,6 +108,9 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
       .values.asScala.foldLeft(acc0)(foldFun)
   }
 
+  override def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T =
+    log.foldLeftWhile(startSeq)(acc0)(pred)(foldFun)
+
   def getNextSeq = log.getNextSeq
 
   def compact(): Unit = {

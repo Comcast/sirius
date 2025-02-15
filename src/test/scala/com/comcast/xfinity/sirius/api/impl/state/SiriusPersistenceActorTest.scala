@@ -19,14 +19,14 @@ import akka.actor.{ActorRef, ActorSystem}
 import akka.testkit.TestActorRef
 import akka.testkit.TestProbe
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
-
-
 import org.mockito.Mockito._
 import com.comcast.xfinity.sirius.NiceTest
-import com.comcast.xfinity.sirius.api.impl.{OrderedEvent, Put, Delete}
+import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent, Put}
 import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor._
-import org.mockito.ArgumentMatchers.{any, eq => meq, anyLong}
+import org.mockito.ArgumentMatchers.{any, anyLong, eq => meq}
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
+
+import scala.collection.mutable.ListBuffer
 
 class SiriusPersistenceActorTest extends NiceTest {
 
@@ -54,9 +54,10 @@ class SiriusPersistenceActorTest extends NiceTest {
     TestActorRef(new SiriusPersistenceActor(stateActor, siriusLog, config))
   }
 
-  def makeMockLog(events: List[OrderedEvent], nextSeq: Long = 1L): SiriusLog = {
+  def makeMockLog(events: ListBuffer[OrderedEvent], nextSeq: Long = 1L): SiriusLog = {
     val mockLog = mock[SiriusLog]
     doReturn(events).when(mockLog).foldLeftRange(anyLong, anyLong)(any[Symbol])(anyFoldFun)
+    doReturn(events).when(mockLog).foldLeftWhile(anyLong)(any[Symbol])(anyPred)(anyFoldFun)
     doReturn(nextSeq).when(mockLog).getNextSeq
 
     mockLog
@@ -64,8 +65,14 @@ class SiriusPersistenceActorTest extends NiceTest {
 
   def anyFoldFun = any[(Symbol, OrderedEvent) => Symbol]()
 
+  def anyPred = any[Symbol => Boolean]
+
   def verifyFoldLeftRanged(siriusLog: SiriusLog, start: Long, end: Long): Unit = {
-    verify(siriusLog).foldLeftRange(meq(start), meq(end))(meq(List[OrderedEvent]()))(any[(List[OrderedEvent], OrderedEvent) => List[OrderedEvent]]())
+    verify(siriusLog).foldLeftRange(meq(start), meq(end))(meq(ListBuffer[OrderedEvent]()))(any[(ListBuffer[OrderedEvent], OrderedEvent) => ListBuffer[OrderedEvent]]())
+  }
+
+  def verifyFoldLeftWhile(siriusLog: SiriusLog, start: Long): Unit = {
+    verify(siriusLog).foldLeftWhile(meq(start))(meq(ListBuffer[OrderedEvent]()))(any[ListBuffer[OrderedEvent] => Boolean])(any[(ListBuffer[OrderedEvent], OrderedEvent) => ListBuffer[OrderedEvent]])
   }
 
   describe("a SiriusPersistenceActor") {
@@ -135,7 +142,7 @@ class SiriusPersistenceActorTest extends NiceTest {
 
           val event1 = mock[OrderedEvent]
           val event2 = mock[OrderedEvent]
-          val mockLog = makeMockLog(List(event2, event1), 10L)
+          val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
           senderProbe.send(underTest, GetLogSubrange(1, 2))
@@ -150,7 +157,7 @@ class SiriusPersistenceActorTest extends NiceTest {
 
           val event1 = mock[OrderedEvent]
           val event2 = mock[OrderedEvent]
-          val mockLog = makeMockLog(List(event2, event1), 10L)
+          val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
           senderProbe.send(underTest, GetLogSubrange(8, 11))
@@ -165,11 +172,61 @@ class SiriusPersistenceActorTest extends NiceTest {
 
           val event1 = mock[OrderedEvent]
           val event2 = mock[OrderedEvent]
-          val mockLog = makeMockLog(List(event2, event1), 5L)
+          val mockLog = makeMockLog(ListBuffer(event1, event2), 5L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
           senderProbe.send(underTest, GetLogSubrange(8, 11))
 
+          senderProbe.expectMsg(EmptySubrange)
+        }
+      }
+    }
+
+    describe("upon receiving a GetLogRangeLimit message") {
+      describe("when we can fully reply") {
+        it("should build the list of events and reply with it") {
+          val senderProbe = TestProbe()
+
+          val event1 = mock[OrderedEvent]
+          doReturn(1L).when(event1).sequence
+          val event2 = mock[OrderedEvent]
+          doReturn(2L).when(event2).sequence
+          val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
+          val underTest = makePersistenceActor(siriusLog = mockLog)
+
+          senderProbe.send(underTest, GetLogRangeLimit(1, 2))
+
+          verifyFoldLeftWhile(mockLog, 1)
+          senderProbe.expectMsg(CompleteSubrange(1, 2, List(event1, event2)))
+        }
+      }
+      describe("when we can partially reply") {
+        it("should build the list of events and reply with it") {
+          val senderProbe = TestProbe()
+
+          val event1 = mock[OrderedEvent]
+          doReturn(8L).when(event1).sequence
+          val event2 = mock[OrderedEvent]
+          doReturn(9L).when(event2).sequence
+          val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
+          val underTest = makePersistenceActor(siriusLog = mockLog)
+
+          senderProbe.send(underTest, GetLogRangeLimit(8, 3))
+
+          verifyFoldLeftWhile(mockLog, 8)
+          senderProbe.expectMsg(PartialSubrange(8, 9, List(event1, event2)))
+        }
+      }
+      describe("when we can't send anything useful at all") {
+        it("should send back an EmptySubrange message") {
+          val senderProbe = TestProbe()
+
+          val mockLog = makeMockLog(ListBuffer(), 5L)
+          val underTest = makePersistenceActor(siriusLog = mockLog)
+
+          senderProbe.send(underTest, GetLogRangeLimit(8, 11))
+
+          verifyFoldLeftWhile(mockLog, 8)
           senderProbe.expectMsg(EmptySubrange)
         }
       }

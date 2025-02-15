@@ -107,7 +107,7 @@ class Segment private[uberstore](val location: File,
    * Get the number of entries written to the Segment
    * @return number of entries in the Segment
    */
-  def size = index.size
+  def size: Long = index.size
 
   /**
    * Write OrderedEvent event into this dir. Will fail if closed or sequence
@@ -137,9 +137,14 @@ class Segment private[uberstore](val location: File,
     )
 
   /**
+   * Get the first sequence number in this dir.
+   */
+  def getFirstSeq: Option[Long] = index.getMinSeq
+
+  /**
    * Get the next possible sequence number in this dir.
    */
-  def getNextSeq = index.getMaxSeq match {
+  def getNextSeq: Long = index.getMaxSeq match {
     case None => 1L
     case Some(seq) => seq + 1
   }
@@ -164,6 +169,13 @@ class Segment private[uberstore](val location: File,
     val (startOffset, endOffset) = index.getOffsetRange(startSeq, endSeq)
     dataFile.foldLeftRange(startOffset, endOffset)(acc0)(
       (acc, _, evt) => foldFun(acc, evt)
+    )
+  }
+
+  def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+    val (startOffset, _) = index.getOffsetRange(startSeq, Long.MaxValue)
+    dataFile.foldLeftWhile(startOffset)(acc0)(pred)(
+      (acc, evt) => foldFun(acc, evt)
     )
   }
 

@@ -151,6 +151,15 @@ class SegmentedUberStore private[segmented] (base: JFile,
     liveDir.foldLeftRange(startSeq, endSeq)(res0)(foldFun)
   }
 
+  /**
+   * @inheritdoc
+   */
+  def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+    val res0 = readOnlyDirs.foldLeft(acc0)(
+      (acc, dir) => dir.foldLeftWhile(startSeq)(acc)(pred)(foldFun)
+    )
+    liveDir.foldLeftWhile(startSeq)(res0)(pred)(foldFun)
+  }
 
   /**
    * Close underlying file handles or connections.  This SegmentedUberStore should not be used after
