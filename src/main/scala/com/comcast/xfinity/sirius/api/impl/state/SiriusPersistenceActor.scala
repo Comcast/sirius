@@ -43,7 +43,7 @@ object SiriusPersistenceActor {
    * @param end last sequence number of the range, inclusive
    */
   case class GetLogSubrange(begin: Long, end: Long) extends LogQuery
-  case class GetLogRangeLimit(begin: Long, events: Long) extends LogQuery
+  case class GetLogSubrangeToLimit(begin: Long, events: Long) extends LogQuery
 
   trait LogSubrange
   trait PopulatedSubrange extends LogSubrange {
@@ -132,7 +132,7 @@ class SiriusPersistenceActor(stateActor: ActorRef,
 
       lastWriteTime = thisWriteTime
 
-    case GetLogRangeLimit(start, limit) =>
+    case GetLogSubrangeToLimit(start, limit) =>
       val buffer = siriusLog.foldLeftWhile(start)(ListBuffer.empty[OrderedEvent])(buffer => buffer.length < limit)(
         (acc, event) => acc += event
       )

@@ -194,7 +194,7 @@ class SiriusPersistenceActorTest extends NiceTest {
           val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogRangeLimit(1, 2))
+          senderProbe.send(underTest, GetLogSubrangeToLimit(1, 2))
 
           verifyFoldLeftWhile(mockLog, 1)
           senderProbe.expectMsg(CompleteSubrange(1, 2, List(event1, event2)))
@@ -211,7 +211,7 @@ class SiriusPersistenceActorTest extends NiceTest {
           val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogRangeLimit(8, 3))
+          senderProbe.send(underTest, GetLogSubrangeToLimit(8, 3))
 
           verifyFoldLeftWhile(mockLog, 8)
           senderProbe.expectMsg(PartialSubrange(8, 9, List(event1, event2)))
@@ -224,7 +224,7 @@ class SiriusPersistenceActorTest extends NiceTest {
           val mockLog = makeMockLog(ListBuffer(), 5L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogRangeLimit(8, 11))
+          senderProbe.send(underTest, GetLogSubrangeToLimit(8, 11))
 
           verifyFoldLeftWhile(mockLog, 8)
           senderProbe.expectMsg(EmptySubrange)

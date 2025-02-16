@@ -15,14 +15,16 @@
  */
 package com.comcast.xfinity.sirius.api.impl.bridge
 
-import akka.actor.{ActorRef, Props, Actor}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.ask
+
 import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.bridge.CatchupSupervisor.CatchupSupervisorInfoMBean
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{GetLogSubrange, LogSubrange, CompleteSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{CompleteSubrange, GetLogSubrangeToLimit, LogSubrange}
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+
 import scala.util.Success
 
 case class InitiateCatchup(fromSeq: Long)
@@ -120,7 +122,7 @@ private[bridge] class CatchupSupervisor(membershipHelper: MembershipHelper,
   }
 
   def requestSubrange(fromSeq: Long, window: Int, source: ActorRef): Unit = {
-    source.ask(GetLogSubrange(fromSeq, fromSeq + window))(timeout()).onComplete {
+    source.ask(GetLogSubrangeToLimit(fromSeq, window))(timeout()).onComplete {
       case Success(logSubrange: LogSubrange) => self ! CatchupRequestSucceeded(logSubrange)
       case _ => self ! CatchupRequestFailed
     }
