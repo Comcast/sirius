@@ -66,7 +66,7 @@ trait SiriusLog {
    * @param pred condition to continue accumulating log entries
    * @param foldFun function to apply to the log entry, the result being the new accumulator
    */
-  def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T
+  def foldLeftRangeWhile[T](startSeq: Long, endSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T
 
   /**
    * retrieves the next sequence number to be written

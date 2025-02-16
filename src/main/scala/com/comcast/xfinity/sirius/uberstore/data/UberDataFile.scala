@@ -107,10 +107,10 @@ private[uberstore] class UberDataFile(dataFileName: String,
     }
   }
 
-  def foldLeftWhile[T](baseOff:Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+  def foldLeftRangeWhile[T](baseOff:Long, endOff: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
     val readHandle = fileHandleFactory.createReadHandle(dataFileName, baseOff)
     try {
-      foldLeftWhile(readHandle, acc0, pred, foldFun)
+      foldLeftRangeWhile(readHandle, endOff, acc0, pred, foldFun)
     } finally {
       readHandle.close()
     }
@@ -133,15 +133,16 @@ private[uberstore] class UberDataFile(dataFileName: String,
   }
 
   @tailrec
-  private def foldLeftWhile[T](readHandle: UberDataFileReadHandle, acc: T, pred: T => Boolean, foldFun: (T, OrderedEvent) => T): T = {
-    if (!pred(acc)) {
+  private def foldLeftRangeWhile[T](readHandle: UberDataFileReadHandle, maxOffset: Long, acc: T, pred: T => Boolean, foldFun: (T, OrderedEvent) => T): T = {
+    val offset = readHandle.offset()
+    if (offset > maxOffset || !pred(acc)) {
       acc
     } else {
       fileOps.readNext(readHandle) match {
         case None => acc
         case Some(bytes) =>
           val accNew = foldFun(acc, codec.deserialize(bytes))
-          foldLeftWhile(readHandle, accNew, pred, foldFun)
+          foldLeftRangeWhile(readHandle, maxOffset, accNew, pred, foldFun)
       }
     }
   }

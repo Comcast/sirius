@@ -85,8 +85,8 @@ class UberStore private[uberstore] (baseDir: String, uberpair: UberPair) extends
   /**
    * @inheritdoc
    */
-  def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
-    uberpair.foldLeftWhile(startSeq)(acc0)(pred)(foldFun)
+  def foldLeftRangeWhile[T](startSeq: Long, endSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+    uberpair.foldLeftRangeWhile(startSeq, endSeq)(acc0)(pred)(foldFun)
   }
 
   /**

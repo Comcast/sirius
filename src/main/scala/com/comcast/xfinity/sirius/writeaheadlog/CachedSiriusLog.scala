@@ -16,8 +16,10 @@
 package com.comcast.xfinity.sirius.writeaheadlog
 
 import com.comcast.xfinity.sirius.api.impl.OrderedEvent
+
 import scala.collection.JavaConverters._
 import java.util.{TreeMap => JTreeMap}
+import scala.annotation.tailrec
 
 object CachedSiriusLog {
   /**
@@ -89,27 +91,51 @@ class CachedSiriusLog(log: SiriusLog, maxCacheSize: Int) extends SiriusLog {
    * @param foldFun function that should take (accumulator, event) and return a new accumulator
    * @return the final value of the accumulator
    */
-  override def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T = {
+  override def foldLeftRange[T](startSeq: Long, endSeq: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T =
     (startSeq, endSeq) match {
       case (start, end) if (firstSeq <= start && end <= lastSeq) =>
         foldLeftRangeCached(start, end)(acc0)(foldFun)
       case (start, end) =>
         log.foldLeftRange(start, end)(acc0)(foldFun)
     }
-  }
+
+  def foldLeftRangeWhile[T](startSeq: Long, endSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T =
+    (startSeq, endSeq) match {
+      case (start, end) if (firstSeq <= start && end <= lastSeq) =>
+        foldLeftRangeWhileCached(start, end)(acc0)(pred)(foldFun)
+      case (start, end) =>
+        log.foldLeftRangeWhile(start, end)(acc0)(pred)(foldFun)
+    }
 
   /**
    * Private inner version of fold left.  This one hits the cache, and assumes that start/endSeqs are
    * contained in the cache.  Synchronizes on writeCache so we can subMap with no fear.
    */
   private def foldLeftRangeCached[T](startSeq: Long, endSeq: Long)
-                                     (acc0: T)(foldFun: (T, OrderedEvent) => T): T = writeCache.synchronized {
+                                    (acc0: T)(foldFun: (T, OrderedEvent) => T): T = writeCache.synchronized {
     writeCache.subMap(startSeq, true, endSeq, true)
       .values.asScala.foldLeft(acc0)(foldFun)
   }
 
-  override def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T =
-    log.foldLeftWhile(startSeq)(acc0)(pred)(foldFun)
+  private def foldLeftRangeWhileCached[T](startSeq: Long, endSeq: Long)
+                                         (acc0: T)
+                                         (pred: T => Boolean)
+                                         (foldFun: (T, OrderedEvent) => T): T = writeCache.synchronized {
+    val iterable = writeCache.subMap(startSeq, true, endSeq, true)
+      .values.asScala
+    foldLeftRangeWhileCached(iterable.iterator, acc0, pred, foldFun)
+  }
+
+  @tailrec
+  private def foldLeftRangeWhileCached[T](iter: Iterator[OrderedEvent], acc: T, pred: T => Boolean, foldFun: (T, OrderedEvent) => T): T = {
+    if (!(pred(acc) && iter.hasNext)) {
+      acc
+    } else {
+      val evt = iter.next()
+      val newAcc = foldFun(acc, evt)
+      foldLeftRangeWhileCached(iter, newAcc, pred, foldFun)
+    }
+  }
 
   def getNextSeq = log.getNextSeq
 

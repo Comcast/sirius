@@ -197,7 +197,7 @@ class SegmentedUberStoreTest extends NiceTest {
     }
   }
 
-  describe("foldLeftWhile") {
+  describe("foldLeftRangeWhile") {
     it("should limit events based on predicate on accumulator") {
       createPopulatedSegment(dir, "1", Range.inclusive(1, 3).toList)
       createPopulatedSegment(dir, "5", Range.inclusive(4, 6).toList)
@@ -206,7 +206,7 @@ class SegmentedUberStoreTest extends NiceTest {
       uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("10")))
       uberstore.writeEntry(OrderedEvent(11L, 1L, Delete("11")))
 
-      val result = uberstore.foldLeftWhile(startSeq = 1)(List[SiriusRequest]())(list => list.size < 5)(
+      val result = uberstore.foldLeftRangeWhile(startSeq = 1, endSeq = Long.MaxValue)(List[SiriusRequest]())(list => list.size < 5)(
         (acc, event) => event.request +: acc
       ).reverse
 
@@ -221,7 +221,7 @@ class SegmentedUberStoreTest extends NiceTest {
       uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("10")))
       uberstore.writeEntry(OrderedEvent(11L, 1L, Delete("11")))
 
-      val result = uberstore.foldLeftWhile(startSeq = 9)(List[SiriusRequest]())(list => list.size < 2)(
+      val result = uberstore.foldLeftRangeWhile(startSeq = 9, endSeq = Long.MaxValue)(List[SiriusRequest]())(list => list.size < 2)(
         (acc, event) => event.request +: acc
       ).reverse
 

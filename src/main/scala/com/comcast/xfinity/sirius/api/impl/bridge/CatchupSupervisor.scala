@@ -22,7 +22,7 @@ import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.bridge.CatchupSupervisor.CatchupSupervisorInfoMBean
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{CompleteSubrange, GetLogSubrangeToLimit, LogSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{CompleteSubrange, GetLogSubrangeWithLimit, LogSubrange}
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
 
 import scala.util.Success
@@ -122,7 +122,7 @@ private[bridge] class CatchupSupervisor(membershipHelper: MembershipHelper,
   }
 
   def requestSubrange(fromSeq: Long, window: Int, source: ActorRef): Unit = {
-    source.ask(GetLogSubrangeToLimit(fromSeq, window))(timeout()).onComplete {
+    source.ask(GetLogSubrangeWithLimit(fromSeq, Long.MaxValue, window))(timeout()).onComplete {
       case Success(logSubrange: LogSubrange) => self ! CatchupRequestSucceeded(logSubrange)
       case _ => self ! CatchupRequestFailed
     }

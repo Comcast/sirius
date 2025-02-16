@@ -36,29 +36,20 @@ object UberToolTest {
     def foldLeftRange[T](start: Long, end: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T =
       events.filter(e => start <= e.sequence && e.sequence <= end).foldLeft(acc0)(foldFun)
 
-    def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
-      var acc: T = acc0
-      for (evt <- events) {
-        if (!pred(acc)) {
-          return acc
-        }
-        acc = foldFun(acc, evt)
-      }
-      acc
+    def foldLeftRangeWhile[T](start: Long, end: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+      val filtered = events.filter(e => start <= e.sequence && e.sequence <= end)
+      foldLeftRangeWhile(filtered, acc0, pred, foldFun)
     }
 
     @tailrec
-    private def foldLeftWhile[T](events: List[OrderedEvent], startSeq: Long, acc: T, pred: T => Boolean, foldFun: (T, OrderedEvent) => T): T = {
+    private def foldLeftRangeWhile[T](events: List[OrderedEvent], acc: T, pred: T => Boolean, foldFun: (T, OrderedEvent) => T): T =
       events match {
         case Nil => acc
-        case evt :: rest if evt.sequence < startSeq =>
-          foldLeftWhile(rest, startSeq, acc, pred, foldFun)
         case _ if !pred(acc) => acc
         case evt :: rest =>
           val accNew = foldFun(acc, evt)
-          foldLeftWhile(rest, startSeq, accNew, pred, foldFun)
+          foldLeftRangeWhile(rest, accNew, pred, foldFun)
       }
-    }
 
     def getNextSeq: Long =
       throw new IllegalStateException("not implemented")

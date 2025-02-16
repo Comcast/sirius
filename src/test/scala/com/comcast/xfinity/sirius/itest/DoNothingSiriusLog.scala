@@ -32,7 +32,9 @@ class DoNothingSiriusLog extends SiriusLog {
     acc0
   }
 
-  override def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = acc0
+  override def foldLeftRangeWhile[T](startSeq: Long, endSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+    acc0
+  }
 
   override def getNextSeq = 1L
 

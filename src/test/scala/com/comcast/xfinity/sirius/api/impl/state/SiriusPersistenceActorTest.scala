@@ -57,7 +57,7 @@ class SiriusPersistenceActorTest extends NiceTest {
   def makeMockLog(events: ListBuffer[OrderedEvent], nextSeq: Long = 1L): SiriusLog = {
     val mockLog = mock[SiriusLog]
     doReturn(events).when(mockLog).foldLeftRange(anyLong, anyLong)(any[Symbol])(anyFoldFun)
-    doReturn(events).when(mockLog).foldLeftWhile(anyLong)(any[Symbol])(anyPred)(anyFoldFun)
+    doReturn(events).when(mockLog).foldLeftRangeWhile(anyLong, anyLong)(any[Symbol])(anyPred)(anyFoldFun)
     doReturn(nextSeq).when(mockLog).getNextSeq
 
     mockLog
@@ -71,8 +71,8 @@ class SiriusPersistenceActorTest extends NiceTest {
     verify(siriusLog).foldLeftRange(meq(start), meq(end))(meq(ListBuffer[OrderedEvent]()))(any[(ListBuffer[OrderedEvent], OrderedEvent) => ListBuffer[OrderedEvent]]())
   }
 
-  def verifyFoldLeftWhile(siriusLog: SiriusLog, start: Long): Unit = {
-    verify(siriusLog).foldLeftWhile(meq(start))(meq(ListBuffer[OrderedEvent]()))(any[ListBuffer[OrderedEvent] => Boolean]())(any[(ListBuffer[OrderedEvent], OrderedEvent) => ListBuffer[OrderedEvent]]())
+  def verifyFoldLeftWhile(siriusLog: SiriusLog, start: Long, end: Long): Unit = {
+    verify(siriusLog).foldLeftRangeWhile(meq(start), meq(end))(meq(ListBuffer[OrderedEvent]()))(any[ListBuffer[OrderedEvent] => Boolean]())(any[(ListBuffer[OrderedEvent], OrderedEvent) => ListBuffer[OrderedEvent]]())
   }
 
   describe("a SiriusPersistenceActor") {
@@ -182,7 +182,7 @@ class SiriusPersistenceActorTest extends NiceTest {
       }
     }
 
-    describe("upon receiving a GetLogRangeLimit message") {
+    describe("upon receiving a GetLogSubrangeWithLimit message") {
       describe("when we can fully reply") {
         it("should build the list of events and reply with it") {
           val senderProbe = TestProbe()
@@ -194,13 +194,13 @@ class SiriusPersistenceActorTest extends NiceTest {
           val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogSubrangeToLimit(1, 2))
+          senderProbe.send(underTest, GetLogSubrangeWithLimit(1, 2, 2))
 
-          verifyFoldLeftWhile(mockLog, 1)
+          verifyFoldLeftRanged(mockLog, 1, 2)
           senderProbe.expectMsg(CompleteSubrange(1, 2, List(event1, event2)))
         }
       }
-      describe("when we can partially reply") {
+      describe("when we can partially reply due to range") {
         it("should build the list of events and reply with it") {
           val senderProbe = TestProbe()
 
@@ -211,9 +211,26 @@ class SiriusPersistenceActorTest extends NiceTest {
           val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogSubrangeToLimit(8, 3))
+          senderProbe.send(underTest, GetLogSubrangeWithLimit(8, Long.MaxValue, 3))
 
-          verifyFoldLeftWhile(mockLog, 8)
+          verifyFoldLeftWhile(mockLog, 8, 9)
+          senderProbe.expectMsg(PartialSubrange(8, 9, List(event1, event2)))
+        }
+      }
+      describe("when we can partially reply due to limit") {
+        it("should build the list of events and reply with it") {
+          val senderProbe = TestProbe()
+
+          val event1 = mock[OrderedEvent]
+          doReturn(8L).when(event1).sequence
+          val event2 = mock[OrderedEvent]
+          doReturn(9L).when(event2).sequence
+          val mockLog = makeMockLog(ListBuffer(event1, event2), 11L)
+          val underTest = makePersistenceActor(siriusLog = mockLog)
+
+          senderProbe.send(underTest, GetLogSubrangeWithLimit(8, 10, 2))
+
+          verifyFoldLeftWhile(mockLog, 8, 10)
           senderProbe.expectMsg(PartialSubrange(8, 9, List(event1, event2)))
         }
       }
@@ -224,9 +241,8 @@ class SiriusPersistenceActorTest extends NiceTest {
           val mockLog = makeMockLog(ListBuffer(), 5L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogSubrangeToLimit(8, 11))
+          senderProbe.send(underTest, GetLogSubrangeWithLimit(8, Long.MaxValue, 11))
 
-          verifyFoldLeftWhile(mockLog, 8)
           senderProbe.expectMsg(EmptySubrange)
         }
       }

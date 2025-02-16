@@ -107,9 +107,9 @@ class UberPair(dataFile: UberDataFile, index: SeqIndex) {
     )
   }
 
-  def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
-    val (startOffset, _) = index.getOffsetRange(startSeq, Long.MaxValue)
-    dataFile.foldLeftWhile(startOffset)(acc0)(pred)(foldFun)
+  def foldLeftRangeWhile[T](startSeq: Long, endSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+    val (startOffset, endOffset) = index.getOffsetRange(startSeq, endSeq)
+    dataFile.foldLeftRangeWhile(startOffset, endOffset)(acc0)(pred)(foldFun)
   }
 
   /**
