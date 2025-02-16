@@ -53,7 +53,7 @@ class CatchupSupervisorTest extends NiceTest {
 
       underTest ! InitiateCatchup(1L)
 
-      remote.expectMsgClass(classOf[GetLogSubrangeWithLimit])
+      remote.expectMsgClass(classOf[GetLogSubrange])
     }
     describe("for successful requests with a complete subrange") {
       it("should forward the message on to the parent") {
@@ -176,7 +176,7 @@ class CatchupSupervisorTest extends NiceTest {
 
       underTest ! ContinueCatchup(1L)
 
-      remote.expectMsg(GetLogSubrangeWithLimit(1L, Long.MaxValue, 1L))
+      remote.expectMsg(GetLogSubrange(1L, 2L))
     }
     it("should ignore InitiateCatchup requests if it's currently in catchup mode") {
       val remote = TestProbe()
@@ -197,7 +197,7 @@ class CatchupSupervisorTest extends NiceTest {
       underTest ! StopCatchup
       underTest ! InitiateCatchup(1L)
 
-      remote.expectMsg(GetLogSubrangeWithLimit(1L, Long.MaxValue, 1L))
+      remote.expectMsg(GetLogSubrange(1L, 2L))
     }
   }
 }
