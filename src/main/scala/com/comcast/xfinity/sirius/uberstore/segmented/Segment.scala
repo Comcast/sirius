@@ -172,12 +172,15 @@ class Segment private[uberstore](val location: File,
     )
   }
 
-  def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
-    val (startOffset, _) = index.getOffsetRange(startSeq, Long.MaxValue)
-    dataFile.foldLeftWhile(startOffset)(acc0)(pred)(
-      (acc, evt) => foldFun(acc, evt)
-    )
-  }
+  def foldLeftWhile[T](startSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T =
+    index.getOffsetRange(startSeq, Long.MaxValue) match {
+      case (_, endOffset) if endOffset == -1 => // indicates an empty range
+        acc0
+      case (startOffset, _) =>
+        dataFile.foldLeftWhile(startOffset)(acc0)(pred)(
+          (acc, evt) => foldFun(acc, evt)
+        )
+    }
 
   /**
    * Close underlying file handles or connections.  This Segment should not be used after
