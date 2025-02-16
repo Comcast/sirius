@@ -72,7 +72,7 @@ class SiriusPersistenceActorTest extends NiceTest {
   }
 
   def verifyFoldLeftWhile(siriusLog: SiriusLog, start: Long): Unit = {
-    verify(siriusLog).foldLeftWhile(meq(start))(meq(ListBuffer[OrderedEvent]()))(any[ListBuffer[OrderedEvent] => Boolean])(any[(ListBuffer[OrderedEvent], OrderedEvent) => ListBuffer[OrderedEvent]])
+    verify(siriusLog).foldLeftWhile(meq(start))(meq(ListBuffer[OrderedEvent]()))(any[ListBuffer[OrderedEvent] => Boolean]())(any[(ListBuffer[OrderedEvent], OrderedEvent) => ListBuffer[OrderedEvent]]())
   }
 
   describe("a SiriusPersistenceActor") {
