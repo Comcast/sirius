@@ -54,7 +54,7 @@ object SiriusPersistenceActor {
    * @param end last sequence number of the range, inclusive
    * @param limit the maximum number of events
    */
-  case class GetLogSubrangeWithLimit(begin: Long, end: Long, limit: Long) extends LogQuery
+  case class GetLogSubrangeWithLimit(begin: Long, end: Option[Long], limit: Long) extends LogQuery
 
   trait LogSubrange
   trait PopulatedSubrange extends LogSubrange {
@@ -143,8 +143,11 @@ class SiriusPersistenceActor(stateActor: ActorRef,
 
       lastWriteTime = thisWriteTime
 
-    case GetLogSubrangeWithLimit(start, end, limit) =>
+    case GetLogSubrangeWithLimit(start, Some(end), limit) =>
       sender ! queryLimitedSubrange(start, end, limit)
+
+    case GetLogSubrangeWithLimit(start, None, limit) =>
+      sender ! queryLimited(start, limit)
 
     case GetLogSubrange(start, end) =>
       sender ! querySubrange(start, end)
@@ -200,6 +203,33 @@ class SiriusPersistenceActor(stateActor: ActorRef,
         }
       }
     }
+
+  private def queryLimited(rangeStart: Long, limit: Long): LogSubrange = {
+    if (limit <= 0) {
+      // invalid query subrange or limit, we can't send anything useful back
+      EmptySubrange
+    } else {
+      val nextSeq = siriusLog.getNextSeq
+      if (rangeStart >= nextSeq) {
+        // query is out of range, we can't send anything useful back
+        EmptySubrange
+      } else {
+        val nextSeq = siriusLog.getNextSeq
+        val lastSeq = nextSeq - 1
+        val buffer = siriusLog.foldLeftRangeWhile(rangeStart, lastSeq)(ListBuffer.empty[OrderedEvent])(
+          // continue folding events as long as the buffer is smaller than the limit
+          buffer => buffer.size < limit
+        )(
+          (acc, event) => acc += event
+        )
+        if (buffer.size < limit) {
+          CompleteSubrange(rangeStart, lastSeq, buffer.toList)
+        } else {
+          PartialSubrange(rangeStart, buffer.last.sequence, buffer.toList)
+        }
+      }
+    }
+  }
 
   private def querySubrange(rangeStart: Long, rangeEnd: Long): LogSubrange =
     if (rangeEnd < rangeStart || rangeEnd <= 0) {
