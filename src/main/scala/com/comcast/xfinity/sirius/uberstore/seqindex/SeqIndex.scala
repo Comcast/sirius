@@ -26,6 +26,13 @@ trait SeqIndex {
   def getOffsetFor(seq: Long): Option[Long]
 
   /**
+   * Get the minimum sequence number stored, if such exists
+   *
+   * @return Some(sequence) or None if none such exists
+   */
+  def getMinSeq: Option[Long]
+
+  /**
    * Get the maximum sequence number stored, if such exists
    *
    * @return Some(sequence) or None if none such exists

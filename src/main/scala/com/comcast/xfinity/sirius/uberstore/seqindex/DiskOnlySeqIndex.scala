@@ -51,7 +51,17 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
   var isClosed = false
   var size: Long = handle.length() / 24
 
-  var maxSeq = {
+  private var minSeq = {
+    if (handle.length == 0)
+      None
+    else {
+      handle.seek(0)
+      val (seq, _) = fileOps.readEntry(handle)
+      Some(seq)
+    }
+  }
+
+  private var maxSeq = {
     if (handle.length == 0)
       None
     else {
@@ -90,6 +100,11 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
   /**
    * {@inheritdoc}
    */
+  def getMinSeq: Option[Long] = minSeq
+
+  /**
+   * {@inheritdoc}
+   */
   def getMaxSeq: Option[Long] = maxSeq
 
   /**
@@ -98,6 +113,9 @@ class DiskOnlySeqIndex private(handle: RandomAccessFile,
   def put(seq: Long, offset: Long): Unit = synchronized {
     handle.seek(handle.length)
     fileOps.put(handle, seq, offset)
+    if (minSeq.isEmpty) {
+      minSeq = Some(seq)
+    }
     maxSeq = Some(seq)
     size += 1
   }

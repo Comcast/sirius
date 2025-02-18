@@ -107,6 +107,11 @@ class UberPair(dataFile: UberDataFile, index: SeqIndex) {
     )
   }
 
+  def foldLeftRangeWhile[T](startSeq: Long, endSeq: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+    val (startOffset, endOffset) = index.getOffsetRange(startSeq, endSeq)
+    dataFile.foldLeftRangeWhile(startOffset, endOffset)(acc0)(pred)(foldFun)
+  }
+
   /**
    * Close underlying file handles or connections.  This UberStoreFilePair should not be used after
    * close is called.

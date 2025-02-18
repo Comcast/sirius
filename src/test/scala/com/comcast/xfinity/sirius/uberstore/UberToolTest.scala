@@ -19,10 +19,12 @@ package com.comcast.xfinity.sirius.uberstore
 import com.comcast.xfinity.sirius.NiceTest
 import com.comcast.xfinity.sirius.writeaheadlog.SiriusLog
 import com.comcast.xfinity.sirius.api.impl.{Delete, OrderedEvent, Put}
-import java.io.{File => JFile}
 
+import java.io.{File => JFile}
 import better.files.File
 import com.comcast.xfinity.sirius.uberstore.segmented.SegmentedUberStore
+
+import scala.annotation.tailrec
 
 object UberToolTest {
   class DummySiriusLog(var events: List[OrderedEvent]) extends SiriusLog {
@@ -33,6 +35,21 @@ object UberToolTest {
 
     def foldLeftRange[T](start: Long, end: Long)(acc0: T)(foldFun: (T, OrderedEvent) => T): T =
       events.filter(e => start <= e.sequence && e.sequence <= end).foldLeft(acc0)(foldFun)
+
+    def foldLeftRangeWhile[T](start: Long, end: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+      val filtered = events.filter(e => start <= e.sequence && e.sequence <= end)
+      foldLeftRangeWhile(filtered, acc0, pred, foldFun)
+    }
+
+    @tailrec
+    private def foldLeftRangeWhile[T](events: List[OrderedEvent], acc: T, pred: T => Boolean, foldFun: (T, OrderedEvent) => T): T =
+      events match {
+        case Nil => acc
+        case _ if !pred(acc) => acc
+        case evt :: rest =>
+          val accNew = foldFun(acc, evt)
+          foldLeftRangeWhile(rest, accNew, pred, foldFun)
+      }
 
     def getNextSeq: Long =
       throw new IllegalStateException("not implemented")

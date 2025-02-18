@@ -31,6 +31,7 @@ class CatchupSupervisorTest extends NiceTest {
   val atomicLong = new AtomicLong
   def makeMockCatchupSupervisor(remoteActorTry: Try[ActorRef] = Success(TestProbe().ref),
                                 maxWindowSize: Int = 1000,
+                                maxLimitSize: Option[Int] = None,
                                 startingSSThresh: Int = 500,
                                 parent: ActorRef = TestProbe().ref): TestActorRef[CatchupSupervisor] = {
     val membershipHelper = mock[MembershipHelper]
@@ -42,7 +43,7 @@ class CatchupSupervisorTest extends NiceTest {
     // in order to specify the parent, we also have to specify a name for this actor. using akka's approach.
     val name = "$" + base64(atomicLong.getAndIncrement)
     val props = Props(new CatchupSupervisor(membershipHelper, timeoutCoeff, timeoutConst,
-                                            maxWindowSize, startingSSThresh, new SiriusConfiguration()))
+                                            maxWindowSize, maxLimitSize, startingSSThresh, new SiriusConfiguration()))
     TestActorRef(props, parent, name)
   }
 
@@ -68,36 +69,36 @@ class CatchupSupervisorTest extends NiceTest {
       }
       it("should update window for Slow Start phase") {
         val underTest = makeMockCatchupSupervisor(startingSSThresh = 100)
-        underTest.underlyingActor.window = 20
+        underTest.underlyingActor.limit = 20
 
         val mockSubrange = mock[CompleteSubrange]
 
         underTest ! InitiateCatchup(1L)
         underTest ! CatchupRequestSucceeded(mockSubrange)
 
-        assert(40 === underTest.underlyingActor.window)
+        assert(40 === underTest.underlyingActor.limit)
       }
       it("should update window for Congestion Avoidance phase") {
         val underTest = makeMockCatchupSupervisor(startingSSThresh = 100)
-        underTest.underlyingActor.window = 120
+        underTest.underlyingActor.limit = 120
 
         val mockSubrange = mock[CompleteSubrange]
 
         underTest ! InitiateCatchup(1L)
         underTest ! CatchupRequestSucceeded(mockSubrange)
 
-        assert(122 === underTest.underlyingActor.window)
+        assert(122 === underTest.underlyingActor.limit)
       }
       it("should not increase the window beyond maxWindowSize") {
         val underTest = makeMockCatchupSupervisor()
-        underTest.underlyingActor.window = 1000
+        underTest.underlyingActor.limit = 1000
 
         val mockSubrange = mock[CompleteSubrange]
 
         underTest ! InitiateCatchup(1L)
         underTest ! CatchupRequestSucceeded(mockSubrange)
 
-        assert(1000 === underTest.underlyingActor.window)
+        assert(1000 === underTest.underlyingActor.limit)
       }
     }
     describe("for successful requests with an empty subrange") {
@@ -112,12 +113,12 @@ class CatchupSupervisorTest extends NiceTest {
       }
       it("should leave window and ssthresh unchanged") {
         val underTest = makeMockCatchupSupervisor(startingSSThresh = 100)
-        underTest.underlyingActor.window = 20
+        underTest.underlyingActor.limit = 20
 
         underTest ! InitiateCatchup(1L)
         underTest ! CatchupRequestSucceeded(EmptySubrange)
 
-        assert(20 === underTest.underlyingActor.window)
+        assert(20 === underTest.underlyingActor.limit)
         assert(100 === underTest.underlyingActor.ssthresh)
       }
     }
@@ -134,14 +135,14 @@ class CatchupSupervisorTest extends NiceTest {
       }
       it("should leave window and ssthresh unchanged") {
         val underTest = makeMockCatchupSupervisor(startingSSThresh = 100)
-        underTest.underlyingActor.window = 20
+        underTest.underlyingActor.limit = 20
 
         val mockSubrange = mock[PartialSubrange]
 
         underTest ! InitiateCatchup(1L)
         underTest ! CatchupRequestSucceeded(mockSubrange)
 
-        assert(20 === underTest.underlyingActor.window)
+        assert(20 === underTest.underlyingActor.limit)
         assert(100 === underTest.underlyingActor.ssthresh)
       }
     }
@@ -157,27 +158,18 @@ class CatchupSupervisorTest extends NiceTest {
       }
       it("should reduce window and ssthresh") {
         val underTest = makeMockCatchupSupervisor()
-        underTest.underlyingActor.window = 50
+        underTest.underlyingActor.limit = 50
         underTest.underlyingActor.ssthresh = 100
 
         underTest ! InitiateCatchup(1L)
         underTest ! CatchupRequestFailed
 
-        assert(1 === underTest.underlyingActor.window)
+        assert(1 === underTest.underlyingActor.limit)
         assert(25 === underTest.underlyingActor.ssthresh)
       }
     }
 
-    it("should request the next subrange upon receiving a ContinueCatchup request while in catchup mode") {
-      val remote = TestProbe()
-      val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
 
-      underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
-
-      underTest ! ContinueCatchup(1L)
-
-      remote.expectMsg(GetLogSubrange(1L, 2L))
-    }
     it("should ignore InitiateCatchup requests if it's currently in catchup mode") {
       val remote = TestProbe()
       val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
@@ -188,16 +180,53 @@ class CatchupSupervisorTest extends NiceTest {
 
       remote.expectNoMessage()
     }
-    it("should leave catchup mode and then be able to re-initiate catchup mode after receiving a StopCatchup") {
-      val remote = TestProbe()
-      val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
 
-      underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
+    describe("without a configured maximum limit") {
+      it("should request the next subrange upon receiving a ContinueCatchup request while in catchup mode") {
+        val remote = TestProbe()
+        val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
 
-      underTest ! StopCatchup
-      underTest ! InitiateCatchup(1L)
+        underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
 
-      remote.expectMsg(GetLogSubrange(1L, 2L))
+        underTest ! ContinueCatchup(1L)
+
+        remote.expectMsg(GetLogSubrange(1L, 2L))
+      }
+      it("should leave catchup mode and then be able to re-initiate catchup mode after receiving a StopCatchup") {
+        val remote = TestProbe()
+        val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref))
+
+        underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
+
+        underTest ! StopCatchup
+        underTest ! InitiateCatchup(1L)
+
+        remote.expectMsg(GetLogSubrange(1L, 2L))
+      }
+    }
+
+    describe("with a configured maximum limit") {
+      it("should request the next subrange upon receiving a ContinueCatchup request while in catchup mode") {
+        val remote = TestProbe()
+        val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref), maxLimitSize = Some(1000))
+
+        underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
+
+        underTest ! ContinueCatchup(1L)
+
+        remote.expectMsg(GetLogSubrangeWithLimit(1L, 1001L, 1L))
+      }
+      it("should leave catchup mode and then be able to re-initiate catchup mode after receiving a StopCatchup") {
+        val remote = TestProbe()
+        val underTest = makeMockCatchupSupervisor(remoteActorTry = Success(remote.ref), maxLimitSize = Some(1000))
+
+        underTest.underlyingActor.context.become(underTest.underlyingActor.catchup(remote.ref))
+
+        underTest ! StopCatchup
+        underTest ! InitiateCatchup(1L)
+
+        remote.expectMsg(GetLogSubrangeWithLimit(1L, 1001L, 1L))
+      }
     }
   }
 }

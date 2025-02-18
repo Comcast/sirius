@@ -101,7 +101,16 @@ private[uberstore] class UberDataFile(dataFileName: String,
   def foldLeftRange[T](baseOff: Long, endOff: Long)(acc0: T)(foldFun: (T, Long, OrderedEvent) => T): T = {
     val readHandle = fileHandleFactory.createReadHandle(dataFileName, baseOff)
     try {
-      foldLeftUntil(readHandle, endOff, acc0, foldFun)
+      foldLeftUntilOffset(readHandle, endOff, acc0, foldFun)
+    } finally {
+      readHandle.close()
+    }
+  }
+
+  def foldLeftRangeWhile[T](baseOff:Long, endOff: Long)(acc0: T)(pred: T => Boolean)(foldFun: (T, OrderedEvent) => T): T = {
+    val readHandle = fileHandleFactory.createReadHandle(dataFileName, baseOff)
+    try {
+      foldLeftRangeWhile(readHandle, endOff, acc0, pred, foldFun)
     } finally {
       readHandle.close()
     }
@@ -109,7 +118,7 @@ private[uberstore] class UberDataFile(dataFileName: String,
 
   // private low low low level fold left
   @tailrec
-  private def foldLeftUntil[T](readHandle: UberDataFileReadHandle, maxOffset: Long, acc: T, foldFun: (T, Long, OrderedEvent) => T): T = {
+  private def foldLeftUntilOffset[T](readHandle: UberDataFileReadHandle, maxOffset: Long, acc: T, foldFun: (T, Long, OrderedEvent) => T): T = {
     val offset = readHandle.offset()
     if (offset > maxOffset) {
       acc
@@ -118,7 +127,22 @@ private[uberstore] class UberDataFile(dataFileName: String,
         case None => acc
         case Some(bytes) =>
           val accNew = foldFun(acc, offset, codec.deserialize(bytes))
-          foldLeftUntil(readHandle, maxOffset, accNew, foldFun)
+          foldLeftUntilOffset(readHandle, maxOffset, accNew, foldFun)
+      }
+    }
+  }
+
+  @tailrec
+  private def foldLeftRangeWhile[T](readHandle: UberDataFileReadHandle, maxOffset: Long, acc: T, pred: T => Boolean, foldFun: (T, OrderedEvent) => T): T = {
+    val offset = readHandle.offset()
+    if (offset > maxOffset || !pred(acc)) {
+      acc
+    } else {
+      fileOps.readNext(readHandle) match {
+        case None => acc
+        case Some(bytes) =>
+          val accNew = foldFun(acc, codec.deserialize(bytes))
+          foldLeftRangeWhile(readHandle, maxOffset, accNew, pred, foldFun)
       }
     }
   }
