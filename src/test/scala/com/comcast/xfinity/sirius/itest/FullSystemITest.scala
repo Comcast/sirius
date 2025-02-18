@@ -95,6 +95,7 @@ class FullSystemITest extends NiceTest with TimedTest {
                  replicaReproposalWindow: Int = 10,
                  sslEnabled: Boolean = false,
                  maxWindowSize: Int = 1000,
+                 maxLimitSize: Option[Int] = None,
                  membershipPath: String = new JFile(tempDir, "membership").getAbsolutePath):
                 (SiriusImpl, RequestHandler, SiriusLog) = {
 
@@ -122,6 +123,11 @@ class FullSystemITest extends NiceTest with TimedTest {
     siriusConfig.setProp(SiriusConfiguration.PAXOS_MEMBERSHIP_CHECK_INTERVAL, 0.1)
     siriusConfig.setProp(SiriusConfiguration.REPROPOSAL_WINDOW, replicaReproposalWindow)
     siriusConfig.setProp(SiriusConfiguration.CATCHUP_MAX_WINDOW_SIZE, maxWindowSize)
+
+    if (maxLimitSize.isDefined) {
+      siriusConfig.setProp(SiriusConfiguration.CATCHUP_USE_LIMIT, true)
+      siriusConfig.setProp(SiriusConfiguration.CATCHUP_MAX_LIMIT_SIZE, maxLimitSize.get)
+    }
 
     if (sslEnabled) {
       siriusConfig.setProp(SiriusConfiguration.AKKA_EXTERN_CONFIG, "src/test/resources/sirius-akka-base.conf")
@@ -224,12 +230,13 @@ class FullSystemITest extends NiceTest with TimedTest {
   }
 
   describe("a full sirius implementation") {
-    it("must reach a decision for lots of slots") {
+
+    def mustReachDecisionForLotsOfSlots(maxLimitSize: Option[Int]): Unit = {
       writeClusterConfig(List(42289, 42290, 42291))
       val numCommands = 50
-      val (sirius1, _, log1) = makeSirius(42289)
-      val (sirius2, _, log2) = makeSirius(42290)
-      val (sirius3, _, log3) = makeSirius(42291)
+      val (sirius1, _, log1) = makeSirius(42289, maxLimitSize = maxLimitSize)
+      val (sirius2, _, log2) = makeSirius(42290, maxLimitSize = maxLimitSize)
+      val (sirius3, _, log3) = makeSirius(42291, maxLimitSize = maxLimitSize)
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
 
@@ -248,11 +255,11 @@ class FullSystemITest extends NiceTest with TimedTest {
         "Wals were not equivalent")
     }
 
-    it("must be able to make progress with a node being down and then catch up") {
+    def mustMakeProgressWithNodeDown(maxLimitSize: Option[Int]): Unit = {
       writeClusterConfig(List(42289, 42290, 42291))
       val numCommands = 50
-      val (sirius1, _, log1) = makeSirius(42289)
-      val (sirius2, _, log2) = makeSirius(42290)
+      val (sirius1, _, log1) = makeSirius(42289, maxLimitSize = maxLimitSize)
+      val (sirius2, _, log2) = makeSirius(42290, maxLimitSize = maxLimitSize)
       sirii = List(sirius1, sirius2)
       waitForMembership(sirii, 2)
 
@@ -277,12 +284,12 @@ class FullSystemITest extends NiceTest with TimedTest {
         "Original and caught-up wals were not equivalent")
     }
 
-    it("must work for master/slave mode") {
+    def mustWorkMasterSlaveNone(maxLimitSize: Option[Int]): Unit = {
       writeClusterConfig(List(42289, 42290, 42291))
       val numCommands = 50
-      val (sirius1, _, log1) = makeSirius(42289, replicaReproposalWindow = 4)
-      val (sirius2, _, log2) = makeSirius(42290, replicaReproposalWindow = 4)
-      val (sirius3, _, log3) = makeSirius(42291, replicaReproposalWindow = 4)
+      val (sirius1, _, log1) = makeSirius(42289, replicaReproposalWindow = 4, maxLimitSize = maxLimitSize)
+      val (sirius2, _, log2) = makeSirius(42290, replicaReproposalWindow = 4, maxLimitSize = maxLimitSize)
+      val (sirius3, _, log3) = makeSirius(42291, replicaReproposalWindow = 4, maxLimitSize = maxLimitSize)
       sirii = List(sirius1, sirius2, sirius3)
       waitForMembership(sirii, 3)
 
@@ -336,6 +343,34 @@ class FullSystemITest extends NiceTest with TimedTest {
 
       assert(waitForTrue(verifyWalsAreEquivalent(List(log1, log2, log3)), 500, 100),
         "Master and slave wals not equivalent")
+    }
+
+    describe("using window-based catchup") {
+      it("must reach a decision for lots of slots") {
+        mustReachDecisionForLotsOfSlots(maxLimitSize = None)
+      }
+
+      it("must be able to make progress with a node being down and then catch up") {
+        mustMakeProgressWithNodeDown(maxLimitSize = None)
+      }
+
+      it("must work for master/slave mode") {
+        mustWorkMasterSlaveNone(maxLimitSize = None)
+      }
+    }
+
+    describe("using limit-based catchup") {
+      it("must reach a decision for lots of slots") {
+        mustReachDecisionForLotsOfSlots(maxLimitSize = Some(1000))
+      }
+
+      it("must be able to make progress with a node being down and then catch up") {
+        mustMakeProgressWithNodeDown(maxLimitSize = Some(1000))
+      }
+
+      it("must work for master/slave mode") {
+        mustWorkMasterSlaveNone(maxLimitSize = Some(1000))
+      }
     }
   }
 

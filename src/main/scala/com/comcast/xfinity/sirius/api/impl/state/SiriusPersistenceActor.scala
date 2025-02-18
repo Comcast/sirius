@@ -30,6 +30,10 @@ object SiriusPersistenceActor {
    * that is, the state of persisted data
    */
   sealed trait LogQuery
+  sealed trait LogQuerySubrange extends LogQuery {
+    def begin: Long
+    def end: Long
+  }
 
   case object GetLogSize extends LogQuery
   /**
@@ -42,7 +46,7 @@ object SiriusPersistenceActor {
    * @param begin first sequence number of the range
    * @param end last sequence number of the range, inclusive
    */
-  case class GetLogSubrange(begin: Long, end: Long) extends LogQuery
+  case class GetLogSubrange(begin: Long, end: Long) extends LogQuerySubrange
   /**
    * Message for directly requesting a chunk of the log from a node.
    *
@@ -54,7 +58,7 @@ object SiriusPersistenceActor {
    * @param end last sequence number of the range, inclusive
    * @param limit the maximum number of events
    */
-  case class GetLogSubrangeWithLimit(begin: Long, end: Option[Long], limit: Long) extends LogQuery
+  case class GetLogSubrangeWithLimit(begin: Long, end: Long, limit: Long) extends LogQuerySubrange
 
   trait LogSubrange
   trait PopulatedSubrange extends LogSubrange {
@@ -143,14 +147,11 @@ class SiriusPersistenceActor(stateActor: ActorRef,
 
       lastWriteTime = thisWriteTime
 
-    case GetLogSubrangeWithLimit(start, Some(end), limit) =>
-      sender ! queryLimitedSubrange(start, end, limit)
-
-    case GetLogSubrangeWithLimit(start, None, limit) =>
-      sender ! queryLimited(start, limit)
-
     case GetLogSubrange(start, end) =>
-      sender ! querySubrange(start, end)
+      sender ! querySubrange(start, end, Long.MaxValue)
+
+    case GetLogSubrangeWithLimit(start, end, limit) =>
+      sender ! querySubrange(start, end, limit)
 
     case GetNextLogSeq =>
       sender ! siriusLog.getNextSeq
@@ -163,98 +164,45 @@ class SiriusPersistenceActor(stateActor: ActorRef,
     case _: SiriusResult =>
   }
 
-  private def queryLimitedSubrange(rangeStart: Long, rangeEnd: Long, limit: Long): LogSubrange =
-    if (limit <= 0 || rangeEnd < rangeStart || rangeEnd <= 0) {
-      // invalid query subrange or limit, we can't send anything useful back
-      EmptySubrange
-    } else if (limit > (rangeEnd - rangeStart)) {
-      // limit is larger than the subrange window, no need to enforce limit
-      querySubrange(rangeStart, rangeEnd)
-    } else {
-      val nextSeq = siriusLog.getNextSeq
-      if (rangeStart >= nextSeq) {
-        // query is out of range, we can't send anything useful back
-        EmptySubrange
-      } else if (rangeEnd >= nextSeq) {
-        // we can only answer partially
-        val lastSeq = nextSeq - 1
-        val buffer = siriusLog.foldLeftRangeWhile(rangeStart, lastSeq)(ListBuffer.empty[OrderedEvent])(
-          // continue folding events as long as the buffer is smaller than the limit
-          buffer => buffer.size < limit
-        )(
-          (acc, event) => acc += event
-        )
-        if (buffer.size < limit) {
-          PartialSubrange(rangeStart, lastSeq, buffer.toList)
-        } else {
-          PartialSubrange(rangeStart, buffer.last.sequence, buffer.toList)
-        }
-      } else {
-        val buffer = siriusLog.foldLeftRangeWhile(rangeStart, rangeEnd)(ListBuffer.empty[OrderedEvent])(
-          // continue folding events as long as the buffer is smaller than the limit
-          buffer => buffer.size < limit
-        )(
-          (acc, event) => acc += event
-        )
-        if (buffer.size < limit) {
-          CompleteSubrange(rangeStart, rangeEnd, buffer.toList)
-        } else {
-          PartialSubrange(rangeStart, buffer.last.sequence, buffer.toList)
-        }
-      }
-    }
-
-  private def queryLimited(rangeStart: Long, limit: Long): LogSubrange = {
-    if (limit <= 0) {
-      // invalid query subrange or limit, we can't send anything useful back
+  private def querySubrange(rangeStart: Long, rangeEnd: Long, limit: Long): LogSubrange = {
+    val nextSeq = siriusLog.getNextSeq
+    val lastSeq = nextSeq - 1
+    if (limit <= 0 || rangeEnd < rangeStart || rangeEnd <= 0 || rangeStart > lastSeq) {
+      // parameters are out of range, can't return anything useful
       EmptySubrange
     } else {
-      val nextSeq = siriusLog.getNextSeq
-      if (rangeStart >= nextSeq) {
-        // query is out of range, we can't send anything useful back
-        EmptySubrange
+      val endSeq = if (rangeEnd > lastSeq) lastSeq else rangeEnd
+      if (limit > (endSeq - rangeStart)) {
+        // the limit is larger than the subrange window, so do not enforce
+        val events = siriusLog.foldLeftRange(rangeStart, endSeq)(ListBuffer.empty[OrderedEvent])(
+          (acc, evt) => acc += evt
+        ).toList
+        if (endSeq < rangeEnd) {
+          // the end of the range extends beyond the end of the log, so can only partially answer
+          PartialSubrange(rangeStart, endSeq, events)
+        } else {
+          // the range is entirely within the log, so can fully answer
+          CompleteSubrange(rangeStart, endSeq, events)
+        }
       } else {
-        val nextSeq = siriusLog.getNextSeq
-        val lastSeq = nextSeq - 1
-        val buffer = siriusLog.foldLeftRangeWhile(rangeStart, lastSeq)(ListBuffer.empty[OrderedEvent])(
-          // continue folding events as long as the buffer is smaller than the limit
+        // the limit is smaller than the subrange window
+        val buffer = siriusLog.foldLeftRangeWhile(rangeStart, endSeq)(ListBuffer.empty[OrderedEvent])(
           buffer => buffer.size < limit
         )(
-          (acc, event) => acc += event
+          (acc, evt) => acc += evt
         )
-        if (buffer.size < limit) {
-          CompleteSubrange(rangeStart, lastSeq, buffer.toList)
+        if (buffer.size < limit && endSeq < rangeEnd) {
+          // the end of the subrange extended part the end of the log
+          // and the buffer was not filled to the limit, so we can only partially respond
+          PartialSubrange(rangeStart, endSeq, buffer.toList)
         } else {
-          PartialSubrange(rangeStart, buffer.last.sequence, buffer.toList)
+          // the buffer was filled to the limit, so completely respond using the sequence of the
+          // last event as the end of the range
+          CompleteSubrange(rangeStart, buffer.last.sequence, buffer.toList)
         }
       }
     }
   }
-
-  private def querySubrange(rangeStart: Long, rangeEnd: Long): LogSubrange =
-    if (rangeEnd < rangeStart || rangeEnd <= 0) {
-      // invalid query subrange or limit, we can't send anything useful back
-      EmptySubrange
-    } else {
-      val nextSeq = siriusLog.getNextSeq
-      if (rangeStart >= nextSeq) {
-        // query is out of range, we can't send anything useful back
-        EmptySubrange
-      } else if (rangeEnd >= nextSeq) {
-        // we can answer partially
-        val lastSeq = nextSeq - 1
-        val buffer = siriusLog.foldLeftRange(rangeStart, lastSeq)(ListBuffer.empty[OrderedEvent])(
-          (acc, event) => acc += event
-        )
-        PartialSubrange(rangeStart, lastSeq, buffer.toList)
-      } else {
-        // we can answer fully
-        val buffer = siriusLog.foldLeftRange(rangeStart, rangeEnd)(ListBuffer.empty[OrderedEvent])(
-          (acc, event) => acc += event
-        )
-        CompleteSubrange(rangeStart, rangeEnd, buffer.toList)
-      }
-    }
 
   /**
    * Monitoring hooks

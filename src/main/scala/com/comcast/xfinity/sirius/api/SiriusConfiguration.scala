@@ -299,6 +299,16 @@ object SiriusConfiguration {
   final val CATCHUP_MAX_WINDOW_SIZE = "sirius.catchup.max-window-size"
 
   /**
+   * Use log limit for congestion avoidance for catchup.  Default is false.
+   */
+  final val CATCHUP_USE_LIMIT = "sirius.catchup.use-limit"
+
+  /**
+   * Maximum catchup limit size, in number of events. Default is 1000.
+   */
+  final val CATCHUP_MAX_LIMIT_SIZE = "sirius.catchup.max-limit-size"
+
+  /**
    * Starting ssthresh, which is the point where catchup transitions from Slow Start to
    * Congestion Avoidance. Default is 500.
    */

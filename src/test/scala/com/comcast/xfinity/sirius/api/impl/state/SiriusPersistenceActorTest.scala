@@ -194,7 +194,7 @@ class SiriusPersistenceActorTest extends NiceTest {
           val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogSubrangeWithLimit(1, Some(2), 2))
+          senderProbe.send(underTest, GetLogSubrangeWithLimit(1, 2, 2))
 
           verifyFoldLeftRanged(mockLog, 1, 2)
           senderProbe.expectMsg(CompleteSubrange(1, 2, List(event1, event2)))
@@ -205,16 +205,14 @@ class SiriusPersistenceActorTest extends NiceTest {
           val senderProbe = TestProbe()
 
           val event1 = mock[OrderedEvent]
-          doReturn(1L).when(event1).sequence
           val event2 = mock[OrderedEvent]
-          doReturn(2L).when(event2).sequence
           val mockLog = makeMockLog(ListBuffer(event1, event2), 10L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogSubrangeWithLimit(1, None, 3))
+          senderProbe.send(underTest, GetLogSubrangeWithLimit(8, 11, 3))
 
-          verifyFoldLeftWhile(mockLog, 1, 9)
-          senderProbe.expectMsg(CompleteSubrange(1, 9, List(event1, event2)))
+          verifyFoldLeftRanged(mockLog, 8, 9)
+          senderProbe.expectMsg(PartialSubrange(8, 9, List(event1, event2)))
         }
       }
       describe("when we can partially reply due to limit") {
@@ -222,16 +220,16 @@ class SiriusPersistenceActorTest extends NiceTest {
           val senderProbe = TestProbe()
 
           val event1 = mock[OrderedEvent]
-          doReturn(1L).when(event1).sequence
+          doReturn(8L).when(event1).sequence
           val event2 = mock[OrderedEvent]
-          doReturn(2L).when(event2).sequence
+          doReturn(9L).when(event2).sequence
           val mockLog = makeMockLog(ListBuffer(event1, event2), 11L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogSubrangeWithLimit(1, Some(10), 2))
+          senderProbe.send(underTest, GetLogSubrangeWithLimit(8, 10, 2))
 
-          verifyFoldLeftWhile(mockLog, 1, 10)
-          senderProbe.expectMsg(PartialSubrange(1, 2, List(event1, event2)))
+          verifyFoldLeftWhile(mockLog, 8, 10)
+          senderProbe.expectMsg(CompleteSubrange(8, 9, List(event1, event2)))
         }
       }
       describe("when we can't send anything useful at all") {
@@ -241,7 +239,7 @@ class SiriusPersistenceActorTest extends NiceTest {
           val mockLog = makeMockLog(ListBuffer(), 5L)
           val underTest = makePersistenceActor(siriusLog = mockLog)
 
-          senderProbe.send(underTest, GetLogSubrangeWithLimit(8, None, 11))
+          senderProbe.send(underTest, GetLogSubrangeWithLimit(8, Long.MaxValue, 11))
 
           senderProbe.expectMsg(EmptySubrange)
         }
