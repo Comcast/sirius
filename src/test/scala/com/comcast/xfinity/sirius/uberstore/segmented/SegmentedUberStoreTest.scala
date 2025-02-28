@@ -182,7 +182,7 @@ class SegmentedUberStoreTest extends NiceTest {
   }
 
   describe("foldLeftRange") {
-    it("should reflect livedir's nextSeq") {
+    it("should include livedir's events") {
       createSegment(dir, "1")
       createSegment(dir, "5")
       createSegment(dir, "10")
@@ -194,6 +194,38 @@ class SegmentedUberStoreTest extends NiceTest {
           (acc, event) => event.request +: acc
         ).reverse
       )
+    }
+  }
+
+  describe("foldLeftRangeWhile") {
+    it("should limit events based on predicate on accumulator") {
+      createPopulatedSegment(dir, "1", Range.inclusive(1, 3).toList)
+      createPopulatedSegment(dir, "5", Range.inclusive(4, 6).toList)
+      createPopulatedSegment(dir, "10", Range.inclusive(7, 9).toList)
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
+      uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("10")))
+      uberstore.writeEntry(OrderedEvent(11L, 1L, Delete("11")))
+
+      val result = uberstore.foldLeftRangeWhile(startSeq = 1, endSeq = Long.MaxValue)(List[SiriusRequest]())(list => list.size < 5)(
+        (acc, event) => event.request +: acc
+      ).reverse
+
+      assert(result === List(Delete("1"), Delete("2"), Delete("3"), Delete("4"), Delete("5")))
+    }
+
+    it("should include livedir's events") {
+      createPopulatedSegment(dir, "1", Range.inclusive(1, 3).toList)
+      createPopulatedSegment(dir, "5", Range.inclusive(4, 6).toList)
+      createPopulatedSegment(dir, "10", Range.inclusive(7, 9).toList)
+      uberstore = SegmentedUberStore(dir.getAbsolutePath, new SiriusConfiguration)
+      uberstore.writeEntry(OrderedEvent(10L, 1L, Delete("10")))
+      uberstore.writeEntry(OrderedEvent(11L, 1L, Delete("11")))
+
+      val result = uberstore.foldLeftRangeWhile(startSeq = 9, endSeq = Long.MaxValue)(List[SiriusRequest]())(list => list.size < 2)(
+        (acc, event) => event.request +: acc
+      ).reverse
+
+      assert(result === List(Delete("9"), Delete("10")))
     }
   }
 

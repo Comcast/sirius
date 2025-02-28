@@ -15,14 +15,16 @@
  */
 package com.comcast.xfinity.sirius.api.impl.bridge
 
-import akka.actor.{ActorRef, Props, Actor}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.pattern.ask
+
 import scala.concurrent.duration._
 import com.comcast.xfinity.sirius.api.impl.membership.MembershipHelper
 import com.comcast.xfinity.sirius.api.SiriusConfiguration
 import com.comcast.xfinity.sirius.api.impl.bridge.CatchupSupervisor.CatchupSupervisorInfoMBean
-import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{GetLogSubrange, LogSubrange, CompleteSubrange}
+import com.comcast.xfinity.sirius.api.impl.state.SiriusPersistenceActor.{CompleteSubrange, GetLogSubrange, GetLogSubrangeWithLimit, LogSubrange}
 import com.comcast.xfinity.sirius.admin.MonitoringHooks
+
 import scala.util.Success
 
 case class InitiateCatchup(fromSeq: Long)
@@ -36,7 +38,7 @@ object CatchupSupervisor {
 
   trait CatchupSupervisorInfoMBean {
     def getSSThresh: Int
-    def getWindow: Int
+    def getLimit: Int
   }
 
   /**
@@ -50,9 +52,14 @@ object CatchupSupervisor {
     val timeoutCoeff = config.getDouble(SiriusConfiguration.CATCHUP_TIMEOUT_INCREASE_PER_EVENT, .01)
     val timeoutConst = config.getDouble(SiriusConfiguration.CATCHUP_TIMEOUT_BASE, 1.0)
     val maxWindowSize = config.getInt(SiriusConfiguration.CATCHUP_MAX_WINDOW_SIZE, 1000)
+    val maxLimitSize = if (config.getProp(SiriusConfiguration.CATCHUP_USE_LIMIT, false)) {
+      config.getProp[Int](SiriusConfiguration.CATCHUP_MAX_LIMIT_SIZE)
+    } else {
+      None
+    }
     // must ensure ssthresh <= maxWindowSize
-    val startingSSThresh = Math.min(maxWindowSize, config.getInt(SiriusConfiguration.CATCHUP_DEFAULT_SSTHRESH, 500))
-    Props(new CatchupSupervisor(membershipHelper, timeoutCoeff, timeoutConst, maxWindowSize, startingSSThresh, config))
+    val startingSSThresh = Math.min(maxLimitSize.getOrElse(maxWindowSize), config.getInt(SiriusConfiguration.CATCHUP_DEFAULT_SSTHRESH, 500))
+    Props(new CatchupSupervisor(membershipHelper, timeoutCoeff, timeoutConst, maxWindowSize, maxLimitSize, startingSSThresh, config))
   }
 }
 
@@ -76,28 +83,29 @@ private[bridge] class CatchupSupervisor(membershipHelper: MembershipHelper,
                                         timeoutCoeff: Double,
                                         timeoutConst: Double,
                                         maxWindowSize: Int,
+                                        maxLimitSize: Option[Int],
                                         var ssthresh: Int,
                                         config: SiriusConfiguration) extends Actor with MonitoringHooks {
 
-  var window = 1
-  def timeout() = (timeoutConst + (window * timeoutCoeff)).seconds
+  var limit = 1
+  def timeout() = (timeoutConst + (limit * timeoutCoeff)).seconds
 
   implicit val executionContext = context.dispatcher
 
   def receive = {
     case InitiateCatchup(fromSeq) =>
       membershipHelper.getRandomMember.map(remote => {
-        requestSubrange(fromSeq, window, remote)
+        requestSubrange(fromSeq, limit, remote)
         context.become(catchup(remote))
       })
   }
 
   def catchup(source: ActorRef): Receive = {
     case CatchupRequestSucceeded(logSubrange: CompleteSubrange) =>
-      if (window >= ssthresh) { // we're in Congestion Avoidance phase
-        window = Math.min(window + 2, maxWindowSize)
+      if (limit >= ssthresh) { // we're in Congestion Avoidance phase
+        limit = Math.min(limit + 2, maxLimitSize.getOrElse(maxWindowSize))
       } else { // we're in Slow Start phase
-        window = Math.min(window * 2, ssthresh)
+        limit = Math.min(limit * 2, ssthresh)
       }
       context.parent ! logSubrange
 
@@ -105,22 +113,26 @@ private[bridge] class CatchupSupervisor(membershipHelper: MembershipHelper,
       context.parent ! logSubrange
 
     case CatchupRequestFailed =>
-      if (window != 1) {
+      if (limit != 1) {
         // adjust ssthresh, revert to Slow Start phase
-        ssthresh = Math.max(window / 2, 1)
-        window = 1
+        ssthresh = Math.max(limit / 2, 1)
+        limit = 1
       }
       context.unbecome()
 
     case ContinueCatchup(fromSeq: Long) =>
-      requestSubrange(fromSeq, window, source)
+      requestSubrange(fromSeq, limit, source)
 
     case StopCatchup =>
       context.unbecome()
   }
 
-  def requestSubrange(fromSeq: Long, window: Int, source: ActorRef): Unit = {
-    source.ask(GetLogSubrange(fromSeq, fromSeq + window))(timeout()).onComplete {
+  def requestSubrange(fromSeq: Long, limit: Int, source: ActorRef): Unit = {
+    val message = maxLimitSize match {
+      case Some(_) => GetLogSubrangeWithLimit(fromSeq, fromSeq + maxWindowSize, limit)
+      case None => GetLogSubrange(fromSeq, fromSeq + limit)
+    }
+    source.ask(message)(timeout()).onComplete {
       case Success(logSubrange: LogSubrange) => self ! CatchupRequestSucceeded(logSubrange)
       case _ => self ! CatchupRequestFailed
     }
@@ -135,6 +147,6 @@ private[bridge] class CatchupSupervisor(membershipHelper: MembershipHelper,
 
   class CatchupSupervisorInfo extends CatchupSupervisorInfoMBean {
     def getSSThresh = ssthresh
-    def getWindow = window
+    def getLimit = limit
   }
 }
